@@ -1173,23 +1173,71 @@ const Dashboard = {
 
 
   renderTarefasHoje(lista) {
-    const cont = document.getElementById('lista-tarefas-hoje');
+    this._tarefasHojeLista = lista || [];
+    this._renderTarefasFiltradas();
+    this._bindFiltrosTarefas();
+  },
+
+  _renderTarefasFiltradas() {
+    const cont    = document.getElementById('lista-tarefas-hoje');
+    const countEl = document.getElementById('tarefas-count');
     if (!cont) return;
-    this._tarefasHojeLista = lista; // cache para o modal
+
+    let lista = [...(this._tarefasHojeLista || [])];
+
+    // ── Aplicar filtros ────────────────────────────────────────
+    const statusFil = document.getElementById('filtro-tarefa-status')?.value   || '';
+    const priorFil  = document.getElementById('filtro-tarefa-prioridade')?.value || '';
+
+    if (statusFil === 'pendente')  lista = lista.filter(t => !(t.concluida || t.status === 'CONCLUIDA'));
+    if (statusFil === 'concluida') lista = lista.filter(t =>   t.concluida || t.status === 'CONCLUIDA');
+    if (priorFil)                  lista = lista.filter(t => (t.prioridade || 'MEDIA') === priorFil);
+
+    // ── Contador ───────────────────────────────────────────────
+    if (countEl) {
+      const total    = lista.length;
+      const pend     = lista.filter(t => !(t.concluida || t.status === 'CONCLUIDA')).length;
+      countEl.textContent = `${total} missão${total !== 1 ? 'ões' : ''} · ${pend} pendente${pend !== 1 ? 's' : ''}`;
+      countEl.style.display = total ? '' : 'none';
+    }
 
     if (!lista.length) {
       cont.innerHTML = `
         <div class="empty-state">
           <div class="empty-icon">&#128203;</div>
-          <div>Sem tarefas para hoje</div>
+          <div>Nenhuma tarefa encontrada com esses filtros</div>
         </div>`;
       return;
     }
+
+    // Ordenar: pendentes → concluídas
+    lista.sort((a, b) => {
+      const ca = (a.concluida || a.status === 'CONCLUIDA') ? 1 : 0;
+      const cb = (b.concluida || b.status === 'CONCLUIDA') ? 1 : 0;
+      return ca - cb;
+    });
 
     cont.innerHTML = lista.map(t => this._buildMissaoItem(t)).join('');
     this._bindCheckboxes(cont);
     this._bindTarefaDblClick(cont);
     this._iniciarTimerTarefas();
+  },
+
+  _bindFiltrosTarefas() {
+    const bind = (id) => {
+      const el = document.getElementById(id);
+      if (el && !el._tarefaListenerAdded) {
+        el.addEventListener('change', () => this._renderTarefasFiltradas());
+        el._tarefaListenerAdded = true;
+      }
+    };
+    ['filtro-tarefa-status', 'filtro-tarefa-prioridade'].forEach(bind);
+
+    const btnAtualizar = document.getElementById('btn-atualizar-tarefas-hoje');
+    if (btnAtualizar && !btnAtualizar._tarefaListenerAdded) {
+      btnAtualizar.addEventListener('click', () => this._renderTarefasFiltradas());
+      btnAtualizar._tarefaListenerAdded = true;
+    }
   },
 
   renderGraficoXP(dados) {
