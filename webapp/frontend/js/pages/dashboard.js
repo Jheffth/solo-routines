@@ -214,21 +214,47 @@ const Dashboard = {
   },
 
   _renderExtrato(lista, cont) {
+    // ── Ocultar concluídas (persistente) ───────────────────────
+    const ocultar = localStorage.getItem('sr_ocultar_concluidas_extrato') === 'true';
+    const toggle  = document.getElementById('toggle-ocultar-extrato');
+    if (toggle) toggle.checked = ocultar;
+
+    const FINAIS = ['CONCLUIDA', 'FRACASSADA', 'CANCELADA'];
+    if (ocultar) lista = lista.filter(r => !FINAIS.includes(r.status_hoje || 'PENDENTE'));
+
     if (!lista.length) {
       cont.innerHTML = '<div class="empty-state"><div class="empty-icon">\uD83D\uDCCB</div><div>Nenhuma miss\u00E3o encontrada com esses filtros</div></div>';
       return;
     }
 
-    // Ordena: ATIVA \u2192 PENDENTE \u2192 PAUSADA \u2192 CANCELADA \u2192 FRACASSADA \u2192 CONCLUIDA
-    const ORD = { ATIVA: 0, PENDENTE: 1, PAUSADA: 2, CANCELADA: 3, FRACASSADA: 4, CONCLUIDA: 5 };
-    lista = [...lista].sort((a, b) => {
-      const sa = ORD[a.status_hoje || 'PENDENTE'] ?? 9;
-      const sb = ORD[b.status_hoje || 'PENDENTE'] ?? 9;
-      return sa - sb;
-    });
+    // ── Ordenação: sem filtro → ATIVA primeiro; com filtro → filtro manda ──
+    const temFiltro = !!(
+      document.getElementById('filtro-tipo')?.value ||
+      document.getElementById('filtro-categoria')?.value ||
+      document.getElementById('filtro-status-missao')?.value
+    );
+
+    if (!temFiltro) {
+      // Sem filtro: ATIVA → PENDENTE/PAUSADA → FINAIS; dentro de cada grupo por criado_em desc
+      const ORD = { ATIVA: 0, PENDENTE: 1, PAUSADA: 1, CANCELADA: 2, FRACASSADA: 2, CONCLUIDA: 2 };
+      lista = [...lista].sort((a, b) => {
+        const sa = ORD[a.status_hoje || 'PENDENTE'] ?? 1;
+        const sb = ORD[b.status_hoje || 'PENDENTE'] ?? 1;
+        if (sa !== sb) return sa - sb;
+        // dentro do grupo: mais recentes primeiro
+        return (b.criado_em || '').localeCompare(a.criado_em || '');
+      });
+    } else {
+      // Com filtro: mantém a ordem retornada pela API (status_hoje agrupado)
+      const ORD = { ATIVA: 0, PENDENTE: 1, PAUSADA: 2, CANCELADA: 3, FRACASSADA: 4, CONCLUIDA: 5 };
+      lista = [...lista].sort((a, b) => {
+        const sa = ORD[a.status_hoje || 'PENDENTE'] ?? 9;
+        const sb = ORD[b.status_hoje || 'PENDENTE'] ?? 9;
+        return sa - sb;
+      });
+    }
 
     cont.innerHTML = lista.map(r => this._buildRotinaDashCard(r)).join('');
-
     this._bindRotinaDashCards(cont);
     this._iniciarTimerDash();
     this._iniciarAutoCheckDash();
@@ -251,6 +277,18 @@ const Dashboard = {
       }
     };
     ['filtro-periodo','filtro-tipo','filtro-categoria','filtro-status-missao'].forEach(bind);
+
+    // Toggle ocultar concluídas (Extrato) — persistente
+    const toggleExtrato = document.getElementById('toggle-ocultar-extrato');
+    if (toggleExtrato && !toggleExtrato._extratoListenerAdded) {
+      toggleExtrato.checked = localStorage.getItem('sr_ocultar_concluidas_extrato') === 'true';
+      toggleExtrato.addEventListener('change', () => {
+        localStorage.setItem('sr_ocultar_concluidas_extrato', toggleExtrato.checked);
+        this.carregarExtrato();
+      });
+      toggleExtrato._extratoListenerAdded = true;
+    }
+
     const btnAtualizar = document.getElementById('btn-atualizar-extrato');
     if (btnAtualizar && !btnAtualizar._extratoListenerAdded) {
       btnAtualizar.addEventListener('click', () => this.carregarExtrato());
@@ -352,6 +390,34 @@ const Dashboard = {
         \u23F0 ${r.hora_inicio||'?'}\u2192${r.hora_fim||'?'}
       </span>` : '';
 
+    // ── Badge ID instância (#ED-XXX) ────────────────────────────
+    const edId     = r.exec_dia_id;
+    const idBadge  = edId
+      ? `<span style="position:absolute;top:.45rem;right:.5rem;
+           font-family:var(--font-section);font-size:.55rem;
+           color:${scfg.cor};opacity:.75;letter-spacing:.04em;font-weight:700"
+         >#ED-${edId}</span>`
+      : '';
+
+    // ── Timestamp de encerramento ────────────────────────────────
+    let tsHtml = '';
+    if (isConcluida && r.concluida_em) {
+      const d = new Date(r.concluida_em);
+      tsHtml = `<div style="font-family:var(--font-section);font-size:.6rem;color:#10b981;text-align:right;margin-top:.15rem">
+        \u2713 ${d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})} ${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
+      </div>`;
+    } else if (isFracassada && r.fracassada_em) {
+      const d = new Date(r.fracassada_em);
+      tsHtml = `<div style="font-family:var(--font-section);font-size:.6rem;color:#ef4444;text-align:right;margin-top:.15rem">
+        \u2620 ${d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})} ${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
+      </div>`;
+    } else if (status === 'CANCELADA' && r.cancelada_em) {
+      const d = new Date(r.cancelada_em);
+      tsHtml = `<div style="font-family:var(--font-section);font-size:.6rem;color:#64748b;text-align:right;margin-top:.15rem">
+        \u2715 ${d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})} ${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
+      </div>`;
+    }
+
     return `
       <div class="dash-rotina-card" data-id="${id}" data-status="${status}"
         style="
@@ -363,10 +429,12 @@ const Dashboard = {
           margin-bottom:.45rem;
           ${isFracassada ? 'opacity:.78' : ''}
           ${status === 'CANCELADA' ? 'opacity:.5' : ''}
+          ${isConcluida ? 'opacity:.65' : ''}
         "
         onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 5px 18px rgba(0,0,0,.3)'"
         onmouseout="this.style.transform='';this.style.boxShadow=''"
       >
+        ${idBadge}
         <div style="display:flex;align-items:center;gap:.7rem">
           <!-- Icone categoria -->
           <div style="
@@ -382,6 +450,7 @@ const Dashboard = {
               font-family:var(--font-section);font-size:.85rem;font-weight:700;
               color:${scfg.cor};
               white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+              ${isConcluida ? ';text-decoration:line-through;opacity:.8' : ''}
             ">${r.titulo}</div>
 
             <div style="display:flex;gap:.3rem;align-items:center;margin-top:.25rem;flex-wrap:wrap">
@@ -409,11 +478,12 @@ const Dashboard = {
             </div>
           </div>
 
-          <!-- Timer -->
+          <!-- Timer + timestamp -->
           <div style="flex-shrink:0;min-width:70px">
             ${cdHtml}
             ${isConcluida ? `<div style="font-family:var(--font-section);font-size:.7rem;font-weight:700;color:#10b981;text-align:right">\u2713 Conclu\u00EDda</div>` : ''}
             ${isFracassada ? `<div style="font-family:var(--font-section);font-size:.7rem;font-weight:700;color:#ef4444;text-align:right">\u2620 Falhou</div>` : ''}
+            ${tsHtml}
           </div>
         </div>
       </div>`;
@@ -1185,37 +1255,59 @@ const Dashboard = {
 
     let lista = [...(this._tarefasHojeLista || [])];
 
-    // ── Aplicar filtros ────────────────────────────────────────
-    const statusFil = document.getElementById('filtro-tarefa-status')?.value   || '';
+    // ── Filtros ativos ─────────────────────────────────────────
+    const statusFil = document.getElementById('filtro-tarefa-status')?.value    || '';
     const priorFil  = document.getElementById('filtro-tarefa-prioridade')?.value || '';
+    const temFiltro = !!(statusFil || priorFil);
 
-    if (statusFil === 'pendente')  lista = lista.filter(t => !(t.concluida || t.status === 'CONCLUIDA'));
-    if (statusFil === 'concluida') lista = lista.filter(t =>   t.concluida || t.status === 'CONCLUIDA');
-    if (priorFil)                  lista = lista.filter(t => (t.prioridade || 'MEDIA') === priorFil);
+    if (statusFil) lista = lista.filter(t => (t.status || (t.concluida ? 'CONCLUIDA' : 'PENDENTE')) === statusFil);
+    if (priorFil)  lista = lista.filter(t => (t.prioridade || 'MEDIA') === priorFil);
 
-    // ── Contador ───────────────────────────────────────────────
+    // ── Ocultar concluídas (persistente) ───────────────────────
+    const ocultar = localStorage.getItem('sr_ocultar_concluidas_gerais') === 'true';
+    const toggleEl = document.getElementById('toggle-ocultar-gerais');
+    if (toggleEl) toggleEl.checked = ocultar;
+    const FINAIS = ['CONCLUIDA', 'CANCELADA', 'FRACASSADA'];
+    if (ocultar) lista = lista.filter(t => !FINAIS.includes(t.status || (t.concluida ? 'CONCLUIDA' : 'PENDENTE')));
+
+    // ── Contador ─────────────────────────────────────────
     if (countEl) {
       const total    = lista.length;
-      const pend     = lista.filter(t => !(t.concluida || t.status === 'CONCLUIDA')).length;
-      countEl.textContent = `${total} missão${total !== 1 ? 'ões' : ''} · ${pend} pendente${pend !== 1 ? 's' : ''}`;
+      const ativas   = lista.filter(t => (t.status || '') === 'ATIVA').length;
+      const pend     = lista.filter(t => !FINAIS.includes(t.status || (t.concluida ? 'CONCLUIDA' : 'PENDENTE'))).length;
+      countEl.textContent = `${total} miss\u00E3o${total !== 1 ? '\u00F5es' : ''} \u00B7 ${pend} pendente${pend !== 1 ? 's' : ''}`;
       countEl.style.display = total ? '' : 'none';
     }
 
     if (!lista.length) {
       cont.innerHTML = `
         <div class="empty-state">
-          <div class="empty-icon">&#128203;</div>
-          <div>Nenhuma tarefa encontrada com esses filtros</div>
+          <div class="empty-icon">&#9876;&#65039;</div>
+          <div>Nenhuma miss\u00E3o encontrada com esses filtros</div>
         </div>`;
       return;
     }
 
-    // Ordenar: pendentes → concluídas
-    lista.sort((a, b) => {
-      const ca = (a.concluida || a.status === 'CONCLUIDA') ? 1 : 0;
-      const cb = (b.concluida || b.status === 'CONCLUIDA') ? 1 : 0;
-      return ca - cb;
-    });
+    // ── Ordenação ─────────────────────────────────────────
+    if (!temFiltro) {
+      // Sem filtro: ATIVA primeiro, depois por data de criação desc, finais por último
+      const SORD = { ATIVA: 0, PENDENTE: 1, PAUSADA: 1, CANCELADA: 2, FRACASSADA: 2, CONCLUIDA: 2 };
+      lista.sort((a, b) => {
+        const sa = SORD[a.status || (a.concluida ? 'CONCLUIDA' : 'PENDENTE')] ?? 1;
+        const sb = SORD[b.status || (b.concluida ? 'CONCLUIDA' : 'PENDENTE')] ?? 1;
+        if (sa !== sb) return sa - sb;
+        return (b.criado_em || '').localeCompare(a.criado_em || '');
+      });
+    } else {
+      // Com filtro: ordena por prioridade e depois por data
+      const PORD = { CRITICA:0, ALTA:1, MEDIA:2, BAIXA:3 };
+      lista.sort((a, b) => {
+        const pa = PORD[a.prioridade || 'MEDIA'] ?? 2;
+        const pb = PORD[b.prioridade || 'MEDIA'] ?? 2;
+        if (pa !== pb) return pa - pb;
+        return (b.criado_em || '').localeCompare(a.criado_em || '');
+      });
+    }
 
     cont.innerHTML = lista.map(t => this._buildMissaoItem(t)).join('');
     this._bindCheckboxes(cont);
@@ -1232,6 +1324,17 @@ const Dashboard = {
       }
     };
     ['filtro-tarefa-status', 'filtro-tarefa-prioridade'].forEach(bind);
+
+    // Toggle ocultar concluídas (Missões Gerais) — persistente
+    const toggleGerais = document.getElementById('toggle-ocultar-gerais');
+    if (toggleGerais && !toggleGerais._tarefaListenerAdded) {
+      toggleGerais.checked = localStorage.getItem('sr_ocultar_concluidas_gerais') === 'true';
+      toggleGerais.addEventListener('change', () => {
+        localStorage.setItem('sr_ocultar_concluidas_gerais', toggleGerais.checked);
+        this._renderTarefasFiltradas();
+      });
+      toggleGerais._tarefaListenerAdded = true;
+    }
 
     const btnAtualizar = document.getElementById('btn-atualizar-tarefas-hoje');
     if (btnAtualizar && !btnAtualizar._tarefaListenerAdded) {
@@ -1294,7 +1397,17 @@ const Dashboard = {
   },
 
   _buildMissaoItem(t) {
-    const concluida  = t.concluida || t.status === 'CONCLUIDA';
+    const STATUS_DASH = {
+      ATIVA:      { cor: '#3b82f6', bg: 'rgba(59,130,246,.12)',  label: '\u25B6 Em Curso'    },
+      PENDENTE:   { cor: '#a855f7', bg: 'rgba(168,85,247,.12)',  label: '\u23F3 Pendente'    },
+      CONCLUIDA:  { cor: '#10b981', bg: 'rgba(16,185,129,.12)',  label: '\u2713 Conclu\u00EDda'   },
+      FRACASSADA: { cor: '#ef4444', bg: 'rgba(239,68,68,.12)',   label: '\u2620 Fracassada'  },
+      CANCELADA:  { cor: '#64748b', bg: 'rgba(100,116,139,.12)', label: '\u2715 Cancelada'   },
+    };
+    const statusStr  = t.status || (t.concluida ? 'CONCLUIDA' : 'PENDENTE');
+    const concluida  = statusStr === 'CONCLUIDA';
+    const isFinal    = ['CONCLUIDA','CANCELADA','FRACASSADA'].includes(statusStr);
+    const scfg       = STATUS_DASH[statusStr] || STATUS_DASH.PENDENTE;
     const xp         = t.xp_recompensa || t.xp || 0;
     const moedas     = t.moedas_recompensa || 0;
     const cat        = t.categoria || 'Pessoal';
@@ -1306,26 +1419,33 @@ const Dashboard = {
       MEDIA:   { cor:'#f59e0b', bg:'rgba(245,158,11,.12)', label:'\uD83D\uDFE1 M\u00C9DIA'   },
       BAIXA:   { cor:'#10b981', bg:'rgba(16,185,129,.12)', label:'\uD83D\uDFE2 BAIXA'   },
     };
-    const p      = PRIOR_CFG[prior] || PRIOR_CFG.MEDIA;
-    const icone  = CAT_ICONS[cat] || '\uD83D\uDCCB';
-    const bordaCor = concluida ? '#10b981' : p.cor;
-    const bgGrad   = concluida
-      ? 'linear-gradient(135deg,rgba(16,185,129,.1),var(--bg-card))'
-      : `linear-gradient(135deg,${p.bg},var(--bg-card))`;
+    const p        = PRIOR_CFG[prior] || PRIOR_CFG.MEDIA;
+    const icone    = CAT_ICONS[cat] || '\uD83D\uDCCB';
+    const bordaCor = scfg.cor;
+    const bgGrad   = `linear-gradient(135deg,${scfg.bg},var(--bg-card))`;
 
-    // Timer de prazo — sempre ao vivo (igual às rotinas)
+    // ── Badge ID (#TR-XXX) ────────────────────────────────────
+    const idBadge = t.id ? `<span style="position:absolute;top:.4rem;right:.5rem;
+      font-family:var(--font-section);font-size:.55rem;
+      color:${scfg.cor};opacity:.75;letter-spacing:.04em;font-weight:700">#TR-${t.id}</span>` : '';
+
+    // ── Timestamp encerramento ─────────────────────────────────
+    let tsHtml = '';
+    if (concluida && t.concluida_em) {
+      const d = new Date(t.concluida_em);
+      tsHtml = `<div style="font-family:var(--font-section);font-size:.58rem;color:#10b981">
+        \u2713 ${d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})} ${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
+      </div>`;
+    }
+
+    // Timer de prazo
     let timerHtml = '';
     if (concluida) {
-      timerHtml = `<div style="font-family:var(--font-section);font-size:.8rem;color:#10b981">\u2713 Conclu\u00EDda</div>`;
-    } else {
-      // Deadline: hora_limite se tiver, senão fim do dia 23:59:59
+      timerHtml = `<div style="font-family:var(--font-section);font-size:.8rem;color:#10b981">\u2713 Conclu\u00EDda</div>
+      ${tsHtml}`;
+    } else if (!isFinal) {
       const agora = new Date();
-      let limiteHHMM;
-      if (t.hora_limite) {
-        limiteHHMM = t.hora_limite; // "HH:MM"
-      } else {
-        limiteHHMM = '23:59';
-      }
+      const limiteHHMM = t.hora_limite || '23:59';
       const [hh, mm] = limiteHHMM.split(':').map(Number);
       const prazo = new Date(agora); prazo.setHours(hh, mm, 0, 0);
       const segs  = Math.floor((prazo - agora) / 1000);
@@ -1334,28 +1454,28 @@ const Dashboard = {
       const hStr  = String(Math.floor(abs/3600)).padStart(2,'0');
       const mStr  = String(Math.floor((abs%3600)/60)).padStart(2,'0');
       const sStr  = String(abs%60).padStart(2,'0');
-      const timerLabel = t.hora_limite
-        ? (neg ? '\u26A0\uFE0F Vencida' : '\u23F3 Prazo')
-        : (neg ? '\u26A0\uFE0F Expirado'  : '\u23F3 Restante');
-      const timerCor = neg ? '#f87171' : p.cor;
+      const timerLabel = t.hora_limite ? (neg ? '\u26A0\uFE0F Vencida' : '\u23F3 Prazo') : (neg ? '\u26A0\uFE0F Expirado' : '\u23F3 Restante');
+      const timerCor = neg ? '#f87171' : scfg.cor;
       timerHtml = `
         <div style="text-align:right;white-space:nowrap">
           <div style="font-family:var(--font-section);font-size:.6rem;color:${neg?'#f87171':'var(--text-muted)'};letter-spacing:.06em">${timerLabel}</div>
           <div style="font-family:var(--font-section);font-size:.9rem;font-weight:700;color:${timerCor}"
-               data-tarefa-timer="${t.id}" data-limite="${limiteHHMM}" data-cor-base="${p.cor}">
+               data-tarefa-timer="${t.id}" data-limite="${limiteHHMM}" data-cor-base="${scfg.cor}">
             ${hStr}h ${mStr}m ${sStr}s
           </div>
         </div>`;
+    } else {
+      timerHtml = `<div style="font-family:var(--font-section);font-size:.7rem;color:${scfg.cor};text-align:right">${scfg.label}</div>`;
     }
 
     // Badges info
     const badgePrior = `<span style="font-family:var(--font-section);font-size:.6rem;padding:.12rem .45rem;border-radius:.3rem;background:${p.bg};color:${p.cor};border:1px solid ${p.cor}44">${p.label}</span>`;
     const badgeCat   = `<span style="font-family:var(--font-section);font-size:.6rem;padding:.12rem .45rem;border-radius:.3rem;background:rgba(255,255,255,.05);color:var(--text-muted);border:1px solid rgba(255,255,255,.08)">${cat}</span>`;
-    const badgeXP    = xp  ? `<span style="font-family:var(--font-section);font-size:.6rem;color:var(--gold-xp)">\u26A1 ${xp}</span>` : '';
+    const badgeXP    = xp    ? `<span style="font-family:var(--font-section);font-size:.6rem;color:var(--gold-xp)">\u26A1 ${xp}</span>` : '';
     const badgeMoeda = moedas ? `<span style="font-family:var(--font-section);font-size:.6rem;color:var(--gold-bright)">\uD83E\uFA99 +${moedas}</span>` : '';
 
     // Bot\u00E3o de a\u00E7\u00E3o
-    const btnHtml = !concluida ? `
+    const btnHtml = !isFinal ? `
       <button data-concluir-tarefa="${t.id}" data-xp="${xp}"
         style="font-family:var(--font-section);font-size:.6rem;padding:.2rem .6rem;border-radius:.35rem;
                border:1px solid ${p.cor}66;background:${p.bg};color:${p.cor};
@@ -1374,28 +1494,32 @@ const Dashboard = {
           cursor:pointer;position:relative;overflow:hidden;
           transition:transform .18s,box-shadow .18s;
           margin-bottom:.45rem;
-          ${concluida ? 'opacity:.6' : ''}
+          ${isFinal ? 'opacity:.65' : ''}
         "
         onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 5px 18px rgba(0,0,0,.3)'"
         onmouseout="this.style.transform='';this.style.boxShadow=''">
+        ${idBadge}
         <div style="display:flex;align-items:center;gap:.7rem">
           <!-- \u00cdcone -->
           <div style="width:34px;height:34px;border-radius:.45rem;flex-shrink:0;
             display:flex;align-items:center;justify-content:center;
-            font-size:1rem;background:${p.bg};border:1px solid ${bordaCor}44">
+            font-size:1rem;background:${scfg.bg};border:1px solid ${bordaCor}44">
             ${concluida ? '\u2713' : icone}
           </div>
           <!-- Corpo -->
           <div style="flex:1;min-width:0">
             <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.25rem">
               <span style="font-family:var(--font-section);font-size:.85rem;font-weight:700;
-                color:${concluida?'#10b981':'var(--text-primary)'};
+                color:${scfg.cor};
                 text-decoration:${concluida?'line-through':'none'};
                 white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px">
-                ${t.titulo || 'Tarefa'}
+                ${t.titulo || 'Miss\u00E3o'}
               </span>
             </div>
             <div style="display:flex;align-items:center;gap:.3rem;flex-wrap:wrap">
+              <span style="font-size:.58rem;font-family:var(--font-section);font-weight:700;letter-spacing:.07em;
+                padding:.06rem .35rem;border-radius:100px;
+                background:${scfg.cor}18;border:1px solid ${scfg.cor}44;color:${scfg.cor}">${scfg.label}</span>
               ${badgePrior}
               ${badgeCat}
               ${badgeXP}
