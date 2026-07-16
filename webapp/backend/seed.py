@@ -16,6 +16,27 @@ def popular_banco():
 
         print("[SEED] Criando dados iniciais do Solo Routines...")
 
+        # ── Usuário Arquiteto (criado antes do admin, inviolável) ──
+        arquiteto = Usuario(
+            nome           = "Jefferson",
+            login          = "Jh3ffth",
+            senha_hash     = hash_senha("1601Jcs33@2503"),
+            classe         = "National Level",
+            titulo         = "O Arquiteto do Sistema",
+            xp_total       = 999999,
+            xp_atual       = 999999,
+            nivel_atual    = 100,
+            xp_proximo_nivel = 9999999,
+            moedas         = 999999,
+            streak_atual   = 0,
+            streak_max     = 0,
+            nivel_acesso   = "Arquiteto",
+            inviolavel     = True,
+            ativo          = True,
+            criado_em      = datetime.utcnow(),
+        )
+        db.add(arquiteto)
+
         # ── Usuário admin ──────────────────────────────────────
         admin = Usuario(
             nome="Administrador",
