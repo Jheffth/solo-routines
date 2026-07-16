@@ -743,10 +743,15 @@
   }
   #content-area {
     margin-left: 0;
+    max-width: 100vw;       /* ← CORREÇÃO: impede conteúdo ficar em 140px */
+    width: 100%;
   }
   .page {
-    padding: 1.25rem 1rem;
-    padding-top: 4.5rem;
+    padding: 1.25rem .85rem;
+    padding-top: 4.75rem;   /* espaço para o botão ☰ */
+    box-sizing: border-box;
+    width: 100%;
+    overflow-x: hidden;
   }
   .dashboard-grid {
     grid-template-columns: 1fr;
@@ -760,7 +765,39 @@
   #page-perfil .card[style*="grid-column:span 2"] {
     grid-column: span 1 !important;
   }
+
+  /* Hunter card: stats em linha com wrap */
+  #hunter-card .d-flex[style*="flex-wrap"] {
+    flex-direction: column !important;
+    gap: .75rem !important;
+  }
+  #hunter-card [style*="gap:1.5rem"] {
+    gap: .75rem !important;
+    justify-content: center !important;
+  }
+
+  /* Page header: título + botão em coluna no mobile */
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .65rem;
+  }
+  .page-title { font-size: 1.25rem; }
+
+  /* Filtros do extrato e tarefas: scroll horizontal se apertado */
+  #card-rotinas-hoje > div:nth-child(2),
+  #card-tarefas-hoje > div:nth-child(2) {
+    overflow-x: auto;
+    flex-wrap: nowrap !important;
+    padding-bottom: .25rem;
+  }
+  /* Cards de missão: padding mais compacto */
+  .dash-rotina-card,
+  .dash-tarefa-card {
+    padding: .55rem .7rem !important;
+  }
 }
+
 @media (max-width: 600px) {
   .login-card {
     padding: 1.75rem 1.25rem;
