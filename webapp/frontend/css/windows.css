@@ -1,0 +1,349 @@
+/* ============================================================
+   SOLO ROUTINES — Draggable Windows
+   Sistema de janelas flutuantes arrastáveis
+   ============================================================ */
+
+/* ── Backdrop ──────────────────────────────────────────── */
+.window-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 990;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.window-backdrop.visible {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* ── Janela Arrastável ─────────────────────────────────── */
+.draggable-window {
+  position: fixed;
+  z-index: 1000;
+  min-width: 420px;
+  max-width: 95vw;
+  max-height: 92vh;
+  background: rgba(10, 10, 22, 0.97);
+  border: 1px solid rgba(124, 58, 237, 0.4);
+  border-radius: var(--radius-xl);
+  box-shadow:
+    0 0 40px rgba(124, 58, 237, 0.25),
+    0 25px 60px rgba(0, 0, 0, 0.8),
+    inset 0 0 60px rgba(124, 58, 237, 0.03);
+  overflow: hidden;
+  display: none;
+  flex-direction: column;
+  user-select: none;
+  /* Animação de entrada */
+  animation: windowOpen 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.draggable-window.visible {
+  display: flex;
+}
+
+@keyframes windowOpen {
+  from { opacity: 0; transform: scale(0.85) translateY(20px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes windowClose {
+  from { opacity: 1; transform: scale(1) translateY(0); }
+  to   { opacity: 0; transform: scale(0.85) translateY(20px); }
+}
+.draggable-window.closing {
+  animation: windowClose 0.2s ease forwards;
+}
+
+/* ── Header (área de drag) ─────────────────────────────── */
+.window-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 1.5rem;
+  background: linear-gradient(135deg, rgba(124,58,237,0.15), rgba(124,58,237,0.05));
+  border-bottom: 1px solid rgba(124, 58, 237, 0.2);
+  cursor: grab;
+  flex-shrink: 0;
+}
+.window-header:active { cursor: grabbing; }
+
+.window-title {
+  font-family: var(--font-section);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--purple-light);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  letter-spacing: 0.5px;
+}
+.window-title-icon { font-size: 1.2rem; }
+
+.window-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.window-close-btn {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: var(--red-crit);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  transition: var(--transition-fast);
+  line-height: 1;
+}
+.window-close-btn:hover {
+  background: var(--red-crit);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(239,68,68,0.4);
+}
+
+/* Grip indicator */
+.window-grip {
+  width: 40px;
+  height: 4px;
+  background: rgba(124, 58, 237, 0.3);
+  border-radius: 2px;
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* ── Body da Janela ────────────────────────────────────── */
+.window-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+.window-body::-webkit-scrollbar { width: 4px; }
+.window-body::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.4); }
+
+/* ── Footer da Janela ──────────────────────────────────── */
+.window-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid rgba(124, 58, 237, 0.15);
+  background: rgba(5, 5, 8, 0.5);
+  flex-shrink: 0;
+}
+
+/* ── Lançador de Missões ───────────────────────────────── */
+#lancador-window {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 480px;
+}
+
+/* Tipo toggle (Rotina / Tarefa) */
+.tipo-toggle {
+  display: flex;
+  background: rgba(255,255,255,0.03);
+  border-radius: var(--radius-md);
+  padding: 0.3rem;
+  border: 1px solid var(--border-subtle);
+  margin-bottom: 1.25rem;
+}
+.tipo-btn {
+  flex: 1;
+  padding: 0.65rem;
+  background: none;
+  border: none;
+  border-radius: calc(var(--radius-md) - 2px);
+  color: var(--text-muted);
+  font-family: var(--font-section);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+.tipo-btn.active {
+  background: linear-gradient(135deg, var(--purple-main), var(--purple-mid));
+  color: #fff;
+  box-shadow: 0 0 15px rgba(124,58,237,0.3);
+}
+
+/* Botões de prioridade */
+.priority-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 0;
+}
+.priority-btn {
+  padding: 0.6rem 0.3rem;
+  border-radius: var(--radius-md);
+  border: 2px solid transparent;
+  background: rgba(255,255,255,0.04);
+  color: var(--text-muted);
+  font-family: var(--font-section);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+.priority-btn .p-icon { font-size: 1.1rem; }
+.priority-btn[data-p="CRITICA"]:hover,
+.priority-btn[data-p="CRITICA"].active {
+  background: rgba(239,68,68,0.15); color: var(--red-crit);
+  border-color: var(--red-crit);
+  box-shadow: 0 0 12px rgba(239,68,68,0.3);
+}
+.priority-btn[data-p="ALTA"]:hover,
+.priority-btn[data-p="ALTA"].active {
+  background: rgba(249,115,22,0.15); color: var(--orange-high);
+  border-color: var(--orange-high);
+}
+.priority-btn[data-p="MEDIA"]:hover,
+.priority-btn[data-p="MEDIA"].active {
+  background: rgba(234,179,8,0.15); color: var(--yellow-mid);
+  border-color: var(--yellow-mid);
+}
+.priority-btn[data-p="BAIXA"]:hover,
+.priority-btn[data-p="BAIXA"].active {
+  background: rgba(16,185,129,0.15); color: var(--green-done);
+  border-color: var(--green-done);
+}
+
+/* Categoria grid */
+.categoria-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.5rem;
+}
+.cat-btn {
+  aspect-ratio: 1;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--border-subtle);
+  background: rgba(255,255,255,0.03);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  transition: var(--transition-fast);
+  font-size: 1.2rem;
+  color: var(--text-muted);
+}
+.cat-btn span.cat-label {
+  font-size: 0.55rem;
+  font-family: var(--font-section);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.cat-btn:hover, .cat-btn.active {
+  border-color: var(--purple-main);
+  background: rgba(124,58,237,0.15);
+  color: var(--purple-light);
+}
+
+/* Dias da semana (rotinas semanais) */
+.dias-semana-grid {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.dia-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--border-subtle);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-muted);
+  font-family: var(--font-section);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dia-btn.active {
+  background: var(--purple-main);
+  border-color: var(--purple-glow);
+  color: #fff;
+  box-shadow: 0 0 10px rgba(124,58,237,0.4);
+}
+
+/* XP/Moedas calculados */
+.recompensa-preview {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  background: rgba(245,158,11,0.06);
+  border: 1px solid rgba(245,158,11,0.15);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+}
+.recompensa-preview-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-section);
+  font-weight: 600;
+}
+.recompensa-input {
+  width: 70px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--gold-xp);
+  font-family: var(--font-section);
+  font-weight: 700;
+  font-size: 1rem;
+  text-align: center;
+  padding: 0.25rem 0.4rem;
+}
+
+/* ── Modal de Confirmação ──────────────────────────────── */
+#confirmacao-modal .draggable-window {
+  width: 380px;
+}
+.modal-message {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 0.5rem;
+}
+
+/* ── Redimensionamento (drag handle) ───────────────────── */
+.resize-handle {
+  position: absolute;
+  bottom: 0; right: 0;
+  width: 20px; height: 20px;
+  cursor: se-resize;
+  opacity: 0.3;
+}
+.resize-handle:hover { opacity: 0.7; }
+.resize-handle::after {
+  content: '';
+  position: absolute;
+  bottom: 4px; right: 4px;
+  width: 10px; height: 10px;
+  border-right: 2px solid var(--purple-glow);
+  border-bottom: 2px solid var(--purple-glow);
+}

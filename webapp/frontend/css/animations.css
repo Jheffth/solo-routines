@@ -1,0 +1,254 @@
+/* ============================================================
+   SOLO ROUTINES — Animations
+   Keyframes, efeitos de partículas, level-up, XP float
+   ============================================================ */
+
+/* ── Keyframes ─────────────────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(124,58,237,0.3); }
+  50%       { box-shadow: 0 0 25px rgba(124,58,237,0.6), 0 0 50px rgba(124,58,237,0.2); }
+}
+@keyframes goldPulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(245,158,11,0.3); }
+  50%       { box-shadow: 0 0 25px rgba(245,158,11,0.6), 0 0 50px rgba(245,158,11,0.2); }
+}
+@keyframes xpShine {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+@keyframes xpBarFill {
+  from { width: 0%; }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+@keyframes flameDance {
+  0%, 100% { transform: scale(1) rotate(-3deg); }
+  25%       { transform: scale(1.1) rotate(3deg); }
+  50%       { transform: scale(0.95) rotate(-2deg); }
+  75%       { transform: scale(1.05) rotate(2deg); }
+}
+@keyframes levelUpFlash {
+  0%   { opacity: 0; transform: scale(0.5); }
+  20%  { opacity: 1; transform: scale(1.05); }
+  80%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.9); }
+}
+@keyframes xpFloat {
+  0%   { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-80px) scale(0.8); }
+}
+@keyframes checkmarkDraw {
+  0%   { stroke-dashoffset: 50; }
+  100% { stroke-dashoffset: 0; }
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}
+@keyframes particleFloat {
+  0%   { transform: translateY(0) translateX(0) rotate(0deg); opacity: 0.6; }
+  33%  { transform: translateY(-30px) translateX(15px) rotate(120deg); opacity: 0.4; }
+  66%  { transform: translateY(-60px) translateX(-10px) rotate(240deg); opacity: 0.3; }
+  100% { transform: translateY(-100px) translateX(5px) rotate(360deg); opacity: 0; }
+}
+@keyframes badgeUnlock {
+  0%   { transform: scale(0) rotate(-20deg); opacity: 0; }
+  60%  { transform: scale(1.2) rotate(5deg); opacity: 1; }
+  80%  { transform: scale(0.95) rotate(-2deg); }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+@keyframes typeIn {
+  from { width: 0; }
+  to   { width: 100%; }
+}
+
+/* ── Classes de Animação ───────────────────────────────── */
+.animate-fade-in    { animation: fadeIn 0.4s ease forwards; }
+.animate-fade-up    { animation: fadeInUp 0.4s ease forwards; }
+.animate-slide-right{ animation: slideInRight 0.4s ease forwards; }
+.animate-bounce     { animation: bounce 2s infinite; }
+.animate-spin       { animation: spin 1s linear infinite; }
+
+/* Delays para stagger */
+.delay-1 { animation-delay: 0.1s; }
+.delay-2 { animation-delay: 0.2s; }
+.delay-3 { animation-delay: 0.3s; }
+.delay-4 { animation-delay: 0.4s; }
+.delay-5 { animation-delay: 0.5s; }
+
+/* ── Glow Effects ──────────────────────────────────────── */
+.glow-border   { animation: glowPulse 2s infinite; }
+.glow-gold     { animation: goldPulse 2s infinite; }
+
+/* ── Streak Flame ──────────────────────────────────────── */
+.flame-icon { display: inline-block; animation: flameDance 1.5s infinite; }
+
+/* ── Shimmer (conquistas bloqueadas) ───────────────────── */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.03) 25%,
+    rgba(255,255,255,0.08) 50%,
+    rgba(255,255,255,0.03) 75%
+  );
+  background-size: 200% auto;
+  animation: shimmer 2.5s infinite linear;
+}
+
+/* ── Level Up Overlay ──────────────────────────────────── */
+#level-up-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  display: none;
+}
+#level-up-overlay.show { display: flex; }
+.level-up-backdrop {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center,
+    rgba(124,58,237,0.4) 0%,
+    rgba(5,5,8,0.8) 70%);
+  animation: fadeIn 0.3s ease;
+}
+.level-up-content {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  animation: levelUpFlash 3s ease forwards;
+}
+.level-up-title {
+  font-family: var(--font-title);
+  font-size: clamp(2rem, 6vw, 4rem);
+  color: var(--gold-bright);
+  text-shadow: 0 0 30px rgba(251,191,36,0.8), 0 0 60px rgba(251,191,36,0.4);
+  letter-spacing: 4px;
+  display: block;
+}
+.level-up-rank {
+  font-family: var(--font-section);
+  font-size: 1.5rem;
+  color: var(--purple-light);
+  margin-top: 0.5rem;
+}
+.level-up-titulo {
+  font-family: var(--font-section);
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-top: 0.3rem;
+}
+
+/* ── XP Float ──────────────────────────────────────────── */
+.xp-float-item {
+  position: fixed;
+  font-family: var(--font-section);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--gold-bright);
+  text-shadow: 0 0 10px rgba(251,191,36,0.6);
+  pointer-events: none;
+  z-index: 8000;
+  animation: xpFloat 1.5s ease forwards;
+}
+
+/* ── Conquista Toast ───────────────────────────────────── */
+#conquista-toast {
+  position: fixed;
+  bottom: 6rem;
+  right: 2rem;
+  z-index: 7000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+.conquista-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(13, 13, 26, 0.95);
+  border: 1px solid var(--gold-xp);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1.25rem;
+  box-shadow: 0 0 20px rgba(245,158,11,0.3);
+  animation: badgeUnlock 0.5s ease, fadeIn 0.3s ease reverse 4s forwards;
+  min-width: 260px;
+}
+.conquista-icon { font-size: 1.8rem; }
+.conquista-info { flex: 1; }
+.conquista-title { font-family: var(--font-section); font-weight: 700; color: var(--gold-xp); }
+.conquista-desc  { font-size: 0.78rem; color: var(--text-muted); }
+
+/* ── Mission Checkbox ──────────────────────────────────── */
+.mission-checkbox {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--border-glow);
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+.mission-checkbox:hover {
+  border-color: var(--green-done);
+  background: rgba(16,185,129,0.1);
+}
+.mission-checkbox.checked {
+  background: var(--green-done);
+  border-color: var(--green-done);
+  box-shadow: 0 0 12px rgba(16,185,129,0.5);
+}
+.mission-checkbox.checked::after {
+  content: '✓';
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+/* ── Spark Effect ──────────────────────────────────────── */
+@keyframes sparkle {
+  0%   { transform: scale(0) translate(0, 0); opacity: 1; }
+  100% { transform: scale(1) translate(var(--dx), var(--dy)); opacity: 0; }
+}
+.spark {
+  position: absolute;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--gold-bright);
+  pointer-events: none;
+  animation: sparkle 0.6s ease forwards;
+}

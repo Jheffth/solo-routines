@@ -1,0 +1,187 @@
+/* ============================================================
+   SOLO ROUTINES — API CLIENT
+   ============================================================ */
+
+class API {
+  static BASE  = '/api';
+  static token = localStorage.getItem('sr_token');
+
+  /* ── Core request ──────────────────────────────────────── */
+  static async request(method, path, body = null) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (API.token) headers['Authorization'] = `Bearer ${API.token}`;
+
+    const config = { method: method.toUpperCase(), headers };
+    if (body !== null && method !== 'GET') config.body = JSON.stringify(body);
+
+    try {
+      const response = await fetch(`${API.BASE}${path}`, config);
+
+      if (response.status === 401) {
+        API.token = null;
+        localStorage.removeItem('sr_token');
+        window.dispatchEvent(new CustomEvent('sr:session-expired'));
+        throw new Error('Sessao expirada. Faca login novamente.');
+      }
+
+      let data;
+      const ct = response.headers.get('content-type');
+      if (ct && ct.includes('application/json')) {
+        data = await response.json();
+      } else {
+        data = { message: await response.text() };
+      }
+
+      if (!response.ok) {
+        throw new Error(data?.detail || data?.message || data?.error || ('Erro ' + response.status));
+      }
+      return data;
+    } catch (err) {
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        throw new Error('Nao foi possivel conectar ao servidor.');
+      }
+      throw err;
+    }
+  }
+
+  static async get(path)            { return API.request('GET', path); }
+  static async post(path, body)     { return API.request('POST', path, body); }
+  static async put(path, body)      { return API.request('PUT', path, body); }
+  static async patch(path, body)    { return API.request('PATCH', path, body); }
+  static async delete(path)         { return API.request('DELETE', path); }
+
+  static setToken(t) {
+    API.token = t;
+    if (t) localStorage.setItem('sr_token', t);
+    else   localStorage.removeItem('sr_token');
+  }
+
+  /* ── Auth ──────────────────────────────────────────────── */
+  static auth = {
+    /** OAuth2PasswordRequestForm: exige form-urlencoded username/password */
+    login: async (login, senha) => {
+      const form = new URLSearchParams();
+      form.append('username', login);
+      form.append('password', senha);
+
+      const headers = {};
+      if (API.token) headers['Authorization'] = `Bearer ${API.token}`;
+
+      const res = await fetch(`${API.BASE}/auth/login`, {
+        method: 'POST',
+        headers,
+        body: form,
+      });
+
+      let data;
+      try { data = await res.json(); } catch { data = {}; }
+
+      if (!res.ok) {
+        throw new Error(data?.detail || data?.message || 'Login ou senha incorretos');
+      }
+
+      const token = data.access_token || data.token;
+      if (token) {
+        API.token = token;
+        localStorage.setItem('sr_token', token);
+      }
+      return data;
+    },
+
+    registro: async (nome, login, senha) =>
+      API.post('/auth/registro', { nome, login, senha }),
+
+    me: async () => API.get('/auth/me'),
+
+    logout: async () => {
+      try { await API.post('/auth/logout', {}); } catch { /* ignore */ }
+      API.token = null;
+      localStorage.removeItem('sr_token');
+    },
+  };
+
+  /* ── Dashboard ────────────────────────────────────────── */
+  static dashboard = {
+    get: async () => API.get('/dashboard/'),
+  };
+
+  /* ── Rotinas ───────────────────────────────────────────── */
+  static rotinas = {
+    listar: async (frequencia = null) => {
+      const q = frequencia ? `?frequencia=${frequencia}` : '';
+      return API.get('/rotinas' + q);
+    },
+    hoje:     async ()       => API.get('/rotinas/hoje'),
+    criar:    async (dados)  => API.post('/rotinas/', dados),
+    atualizar:async (id, d)  => API.put('/rotinas/' + id, d),
+    deletar:  async (id)     => API.delete('/rotinas/' + id),
+  };
+
+  /* ── Tarefas ───────────────────────────────────────────── */
+  static tarefas = {
+    listar: async (filtros = {}) => {
+      const p = new URLSearchParams();
+      if (filtros.status)     p.set('status', filtros.status);
+      if (filtros.data)       p.set('data', filtros.data);
+      if (filtros.prioridade) p.set('prioridade', filtros.prioridade);
+      const q = p.toString() ? '?' + p.toString() : '';
+      return API.get('/tarefas' + q);
+    },
+    hoje:     async ()       => API.get('/tarefas/hoje'),
+    criar:    async (dados)  => API.post('/tarefas/', dados),
+    concluir: async (id)     => API.patch('/tarefas/' + id + '/concluir', {}),
+    atualizar:async (id, d)  => API.put('/tarefas/' + id, d),
+    deletar:  async (id)     => API.delete('/tarefas/' + id),
+  };
+
+  /* ── Execucoes ───────────────────────────────────────── */
+  static execucoes = {
+    concluirRotina: async (rotinaId) => API.post('/execucoes/rotina', { rotina_id: rotinaId }),
+    historico:      async (periodo = 'semana') => API.get('/execucoes/historico?periodo=' + periodo),
+    heatmap:        async () => API.get('/execucoes/heatmap'),
+  };
+
+  /* ── Recompensas ──────────────────────────────────────── */
+  static recompensas = {
+    listar:  async ()   => API.get('/recompensas/'),
+    resgatar:async (id) => API.post('/recompensas/' + id + '/resgatar', {}),
+  };
+
+  /* ── Conquistas ─────────────────────────────────────── */
+  static conquistas = {
+    listar: async () => API.get('/conquistas/'),
+  };
+
+  /* ── Perfil ──────────────────────────────────────────── */
+  static perfil = {
+    get: async () => API.get('/perfil/'),
+    uploadAvatar: async (formData) => {
+      const res = await fetch(API.BASE + '/perfil/avatar', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + API.token },
+        body: formData,
+      });
+      if (!res.ok) throw new Error('Falha no upload de avatar');
+      return res.json();
+    },
+  };
+
+  /* ── Configuracoes ───────────────────────────────────── */
+  static configuracoes = {
+    get:      async ()            => API.get('/configuracoes/'),
+    atualizar:async (chave, val)  => API.put('/configuracoes/', { chave, valor: val }),
+    batch:    async (configs)     => API.put('/configuracoes/batch', { configs }),
+  };
+
+  /* ── Gerencial (Admin) ─────────────────────────────────── */
+  static gerencial = {
+    stats:    async ()             => API.get('/gerencial/stats'),
+    usuarios: async ()             => API.get('/gerencial/usuarios'),
+    ajustar:  async (id, payload)  => API.put('/gerencial/usuarios/' + id, payload),
+    deletar:  async (id)           => API.delete('/gerencial/usuarios/' + id),
+    logs:     async (limit = 50)   => API.get('/gerencial/logs?limit=' + limit),
+  };
+}
+
+// Expõe globalmente
+window.API = API;

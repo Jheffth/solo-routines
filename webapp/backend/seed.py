@@ -1,0 +1,169 @@
+from database import (
+    SessionLocal, Usuario, Nivel, Conquista, Recompensa,
+    ConfiguracaoApp, criar_tabelas
+)
+from auth.service import hash_senha
+from datetime import datetime
+
+
+def popular_banco():
+    criar_tabelas()
+    db = SessionLocal()
+    try:
+        if db.query(Usuario).count() > 0:
+            print("[SEED] Banco de dados já populado. Pulando.")
+            return
+
+        print("[SEED] Criando dados iniciais do Solo Routines...")
+
+        # ── Usuário admin ──────────────────────────────────────
+        admin = Usuario(
+            nome="Administrador",
+            login="admin",
+            senha_hash=hash_senha("admin123"),
+            classe="S-Rank",
+            titulo="Monarca das Sombras",
+            xp_total=0,
+            xp_atual=0,
+            nivel_atual=1,
+            xp_proximo_nivel=100,
+            moedas=500,
+            nivel_acesso="Criador",
+            ativo=True,
+        )
+        db.add(admin)
+
+        # ── Tabela de Níveis ───────────────────────────────────
+        niveis_data = [
+            # nivel, rank, titulo, xp_total, xp_para_prox, moedas_bonus
+            (1,  "E-Rank", "O Mais Fraco",           0,       100,   10),
+            (2,  "E-Rank", "Caçador Iniciante",       100,     150,   15),
+            (3,  "E-Rank", "Sobrevivente",            250,     200,   15),
+            (4,  "E-Rank", "Aspirante",               450,     250,   20),
+            (5,  "E-Rank", "Guerreiro Relutante",     700,     300,   20),
+            (6,  "D-Rank", "Caçador Treinado",        1000,    400,   30),
+            (7,  "D-Rank", "Espadachim das Sombras",  1400,    500,   30),
+            (8,  "D-Rank", "Guardião",                1900,    600,   35),
+            (9,  "D-Rank", "Vigilante",               2500,    700,   35),
+            (10, "D-Rank", "Sentinela",               3200,    800,   40),
+            (11, "C-Rank", "Guerreiro das Sombras",   4000,    1000,  50),
+            (12, "C-Rank", "Caçador Veterano",        5000,    1200,  55),
+            (13, "C-Rank", "Comandante",              6200,    1400,  55),
+            (14, "C-Rank", "Destruidor",              7600,    1600,  60),
+            (15, "C-Rank", "Lâmina das Trevas",       9200,    1800,  60),
+            (16, "C-Rank", "Devastador",              11000,   2000,  70),
+            (17, "C-Rank", "Conquistador",            13000,   2200,  70),
+            (18, "C-Rank", "Ceifador",                15200,   2400,  75),
+            (19, "C-Rank", "Sombra Viva",             17600,   2600,  75),
+            (20, "C-Rank", "Mestre das Sombras Jr.",  20200,   2800,  80),
+            (21, "B-Rank", "Cavaleiro das Trevas",    23000,   3500,  100),
+            (22, "B-Rank", "Paladino Sombrio",        26500,   4000,  110),
+            (23, "B-Rank", "Guardião de Elite",       30500,   4500,  120),
+            (24, "B-Rank", "Lorde das Sombras",       35000,   5000,  130),
+            (25, "B-Rank", "Senhor dos Abismos",      40000,   5500,  140),
+            (26, "B-Rank", "Comandante de Elites",    45500,   6000,  150),
+            (27, "B-Rank", "Destruidor de Dungeons",  51500,   6500,  160),
+            (28, "B-Rank", "Arrasador",               58000,   7000,  170),
+            (29, "B-Rank", "Monarca Menor",           65000,   7500,  180),
+            (30, "B-Rank", "Cavaleiro Supremo",       72500,   8000,  200),
+            (31, "A-Rank", "Mestre das Sombras",      80500,   10000, 250),
+            (32, "A-Rank", "Lorde Supremo",           90500,   11000, 270),
+            (33, "A-Rank", "Ceifador Lendário",       101500,  12000, 290),
+            (34, "A-Rank", "Tirano das Trevas",       113500,  13000, 310),
+            (35, "A-Rank", "Arrasador Lendário",      126500,  14000, 330),
+            (36, "A-Rank", "Destruidor de Reinos",    140500,  15000, 350),
+            (37, "A-Rank", "Monarca da Penumbra",     155500,  16000, 370),
+            (38, "A-Rank", "Senhor das Sombras",      171500,  17000, 390),
+            (39, "A-Rank", "Caçador Supremo",         188500,  18000, 410),
+            (40, "A-Rank", "Lâmina do Abismo",        206500,  20000, 450),
+            (41, "S-Rank", "Caçador de Elite",        226500,  25000, 600),
+            (42, "S-Rank", "Destruidor de Monarcas",  251500,  27000, 650),
+            (43, "S-Rank", "Guardião do Mundo",       278500,  29000, 700),
+            (44, "S-Rank", "Tirano Absoluto",         307500,  31000, 750),
+            (45, "S-Rank", "Senhor dos Monarcas",     338500,  33000, 800),
+            (46, "S-Rank", "Destruidor de Deuses",    371500,  35000, 850),
+            (47, "S-Rank", "Lorde do Caos",           406500,  37000, 900),
+            (48, "S-Rank", "Monarca Supremo",         443500,  39000, 950),
+            (49, "S-Rank", "O Mais Forte",            482500,  42500, 1000),
+            (50, "National-Level", "Monarca das Sombras", 525000, 0, 5000),
+        ]
+        for n, rank, titulo, xp_total, xp_prox, moedas_b in niveis_data:
+            db.add(Nivel(
+                nivel=n, rank=rank, titulo=titulo,
+                xp_necessario=xp_total, xp_para_proximo=xp_prox,
+                moedas_bonus=moedas_b,
+                icone_rank="⭐" if n == 50 else ("🟣" if "S-Rank" in rank else
+                            "🔵" if "A-Rank" in rank else
+                            "🟢" if "B-Rank" in rank else
+                            "🟡" if "C-Rank" in rank else
+                            "🟠" if "D-Rank" in rank else "⚪")
+            ))
+
+        # ── Conquistas ─────────────────────────────────────────
+        conquistas_data = [
+            ("primeiro_despertar",   "Primeiro Despertar",     "Conclua sua 1ª missão",              "🔵", "#3b82f6", 50,  10, "execucoes_total", 1),
+            ("sete_dias",            "7 Dias de Treinamento",  "Mantenha um streak de 7 dias",       "🟣", "#7c3aed", 150, 30, "streak", 7),
+            ("mes_cacador",          "Mês do Caçador",         "Mantenha um streak de 30 dias",      "🟠", "#f59e0b", 500, 100,"streak", 30),
+            ("frenesi",              "Frenesi de Batalha",     "Conclua 5 missões em 1 dia",         "⚔️", "#ef4444", 200, 50, "execucoes_dia", 5),
+            ("dungeon_cleared",      "Dungeon Cleared",        "100% das rotinas em 1 semana",       "🎯", "#10b981", 300, 75, "rotinas_semana_perfeita", 1),
+            ("centuriao",            "Centurião",              "Conclua 100 missões",                "👥", "#06b6d4", 500, 150,"execucoes_total", 100),
+            ("lendario",             "Lendário",               "Alcance o nível 50",                 "🌑", "#a855f7", 2000,500,"nivel", 50),
+            ("mestre_rotinas",       "Mestre das Rotinas",     "Conclua 50 rotinas recorrentes",     "📅", "#8b5cf6", 400, 80, "rotinas_total", 50),
+            ("despertar_semana",     "Despertar Semanal",      "Complete todas rotinas por 4 semanas","💪", "#ec4899", 600, 120,"semanas_perfeitas", 4),
+            ("colecao_moedas",       "Tesoureiro de Mana",     "Acumule 1000 Mana Coins",            "💰", "#f59e0b", 250, 50, "moedas_acumuladas", 1000),
+        ]
+        for cod, tit, desc, ico, cor, xp_b, mc_b, cond_t, cond_v in conquistas_data:
+            db.add(Conquista(
+                codigo=cod, titulo=tit, descricao=desc, icone=ico, cor=cor,
+                xp_bonus=xp_b, moedas_bonus=mc_b,
+                condicao_tipo=cond_t, condicao_valor=cond_v
+            ))
+
+        # ── Recompensas padrão ─────────────────────────────────
+        recompensas_data = [
+            ("Episódio de Anime",    "Assista um episódio do seu anime favorito",    "📺", "Lazer",    50,  0, 1),
+            ("Lanche Especial",      "Coma algo especial que você gosta",            "🍕", "Alimentação", 100, 0, 1),
+            ("Dia de Jogo",          "Dedique algumas horas ao seu jogo favorito",   "🎮", "Lazer",    150, 0, 1),
+            ("Série/Filme",          "Assista a um filme ou episódios de série",     "🎬", "Lazer",    120, 0, 1),
+            ("Passeio Livre",        "Dê um passeio sem objetivos",                  "🚶", "Pessoal",  80,  0, 1),
+            ("Compra Pequena",       "Permita uma compra pequena que você quer",     "🛒", "Pessoal",  300, 5, 3),
+            ("Descanso Total",       "Um dia sem obrigações extras",                 "😴", "Saúde",    200, 3, 1),
+            ("Restaurante",          "Jante em um restaurante especial",             "🍽️", "Alimentação", 500, 10, 2),
+            ("Upgrade de Equip.",    "Compre um item para sua configuração",         "💻", "Trabalho", 1000, 20, 3),
+            ("Férias Mini",          "Uma tarde/manhã completamente livre",          "🏖️", "Pessoal",  800, 15, 2),
+        ]
+        for tit, desc, ico, cat, custo_mc, nivel_min, estoque in recompensas_data:
+            db.add(Recompensa(
+                titulo=tit, descricao=desc, icone=ico,
+                categoria=cat, custo_moedas=custo_mc,
+                nivel_minimo=nivel_min, estoque=estoque
+            ))
+
+        # ── Configurações padrão do App ────────────────────────
+        configs_padrao = [
+            ("app_nome",             "Solo Routines"),
+            ("logo_url",             ""),
+            ("fonte_titulo",         "Cinzel Decorative"),
+            ("fonte_secao",          "Rajdhani"),
+            ("fonte_body",           "Inter"),
+            ("cor_destaque",         "#7c3aed"),
+            ("notif_manha",          "07:00"),
+            ("notif_tarde",          "14:00"),
+            ("notif_noite",          "21:00"),
+        ]
+        for chave, valor in configs_padrao:
+            db.add(ConfiguracaoApp(chave=chave, valor=valor))
+
+        db.commit()
+        print("[SEED] ✅ Dados iniciais criados com sucesso!")
+        print("[SEED] Login: admin | Senha: admin123")
+    except Exception as e:
+        db.rollback()
+        print(f"[SEED] ❌ Erro: {e}")
+        raise
+    finally:
+        db.close()
+
+
+if __name__ == "__main__":
+    popular_banco()

@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Ambiente virtual
+venv/
+env/
+.venv/
+
+# Banco de dados local
+*.db
+*.sqlite
+*.sqlite3
+
+# Variáveis de ambiente (NUNCA subir ao Git)
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.user
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Logs e temp
+*.log
+*.tmp
+fix_*.py
+migrar_*.py
+test_*.py
+criar_*.py
+
+# Atalho local
+*.lnk
+_servidor.bat
+INICIAR_SOLO_ROUTINES.bat
