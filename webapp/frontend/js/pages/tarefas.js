@@ -108,6 +108,13 @@ const Tarefas = {
     const cont = document.getElementById('lista-tarefas');
     if (!cont) return;
 
+    // Ocultar concluídas (persistente)
+    const ocultar = localStorage.getItem('sr_ocultar_concluidas_tarefas') === 'true';
+    const toggleEl = document.getElementById('toggle-ocultar-tarefas');
+    if (toggleEl) toggleEl.checked = ocultar;
+    const FINAIS = ['CONCLUIDA', 'CANCELADA', 'FRACASSADA'];
+    if (ocultar) lista = lista.filter(t => !FINAIS.includes(t.status || 'PENDENTE'));
+
     if (!lista.length) {
       cont.innerHTML = `
         <div class="empty-state">
@@ -120,12 +127,12 @@ const Tarefas = {
       return;
     }
 
-    const ativas   = lista.filter(t => !['CONCLUIDA','CANCELADA','FRACASSADA'].includes(t.status));
-    const finais   = lista.filter(t =>  ['CONCLUIDA','CANCELADA','FRACASSADA'].includes(t.status));
+    const ativas   = lista.filter(t => !FINAIS.includes(t.status));
+    const finais   = lista.filter(t =>  FINAIS.includes(t.status));
 
     let html = `<div style="display:flex;flex-direction:column;gap:.9rem">`;
     ativas.forEach(t  => { html += this._buildCard(t); });
-    if (finais.length) {
+    if (finais.length && !ocultar) {
       html += `
         <div style="font-family:var(--font-section);font-size:.72rem;color:var(--text-muted);
           letter-spacing:1.5px;text-transform:uppercase;margin-top:.5rem;padding-top:.5rem;
@@ -297,6 +304,10 @@ const Tarefas = {
         ${isFracassada ? 'box-shadow:0 0 16px rgba(239,68,68,.12)'  : ''}
         ${isCancelada  ? 'opacity:.6' : ''}
       ">
+        <!-- Badge ID -->
+        <span style="position:absolute;top:.45rem;right:.7rem;
+          font-family:var(--font-section);font-size:.55rem;
+          color:${scfg.cor};opacity:.75;letter-spacing:.04em;font-weight:700">#TR-${id}</span>
         <!-- Barra lateral -->
         <div style="position:absolute;left:0;top:0;bottom:0;width:3px;
           background:${bordaCor};border-radius:2px 0 0 2px"></div>
@@ -596,6 +607,17 @@ const Tarefas = {
         this.renderLista(this._ordenarLista(this._lista));
       });
     });
+
+    // Toggle ocultar concluídas — persistente
+    const toggleOcultar = document.getElementById('toggle-ocultar-tarefas');
+    if (toggleOcultar && !toggleOcultar._tarefasListenerAdded) {
+      toggleOcultar.checked = localStorage.getItem('sr_ocultar_concluidas_tarefas') === 'true';
+      toggleOcultar.addEventListener('change', () => {
+        localStorage.setItem('sr_ocultar_concluidas_tarefas', toggleOcultar.checked);
+        this.renderLista(this._ordenarLista(this._lista));
+      });
+      toggleOcultar._tarefasListenerAdded = true;
+    }
   },
 
   // ── Cálculo de prazo ─────────────────────────────────────
