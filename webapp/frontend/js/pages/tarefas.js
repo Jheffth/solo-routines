@@ -45,12 +45,15 @@ const Tarefas = {
     this._dataAtual = this._fmtDate(hoje);
 
     const inputData = document.getElementById('filter-data-tarefa');
-    if (inputData) {
+    if (inputData && !inputData._tarefaChangeAdded) {
       inputData.value = this._dataAtual;
       inputData.addEventListener('change', (e) => {
         this._dataAtual = e.target.value;
         this.carregarPorData(this._dataAtual);
       });
+      inputData._tarefaChangeAdded = true;
+    } else if (inputData) {
+      inputData.value = this._dataAtual;
     }
 
     await this.carregarPorData(this._dataAtual);
@@ -529,7 +532,7 @@ const Tarefas = {
 
   abrirFormulario(tarefa) {
     if (typeof Lancador !== 'undefined')
-      Lancador.open('tarefa', tarefa, { data: this._dataAtual });
+      Lancador.abrir('TAREFA', tarefa || null);
   },
 
   confirmarExcluir(t) {

@@ -1235,10 +1235,24 @@ const Dashboard = {
 
     const btnAtualizar = document.getElementById('btn-atualizar-tarefas-hoje');
     if (btnAtualizar && !btnAtualizar._tarefaListenerAdded) {
-      btnAtualizar.addEventListener('click', () => this._renderTarefasFiltradas());
+      btnAtualizar.addEventListener('click', async () => {
+        // Re-busca da API em vez de só re-renderizar a lista em memória
+        btnAtualizar.textContent = '⏳';
+        btnAtualizar.disabled = true;
+        try {
+          const lista = await API.tarefas.hoje();
+          this.renderTarefasHoje(lista || []);
+        } catch (e) {
+          console.error('[Dashboard] Erro ao atualizar tarefas:', e);
+        } finally {
+          btnAtualizar.textContent = '↻';
+          btnAtualizar.disabled = false;
+        }
+      });
       btnAtualizar._tarefaListenerAdded = true;
     }
   },
+
 
   renderGraficoXP(dados) {
     if (!dados.length) {
