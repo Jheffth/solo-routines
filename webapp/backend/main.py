@@ -20,6 +20,7 @@ from routers.conquistas import router as conquistas_router
 from routers.configuracoes import router as configuracoes_router
 from routers.gerencial import router as gerencial_router
 from routers.bot_telegram import router as bot_router
+from routers.dungeons import router as dungeons_router
 
 # ==============================================================================
 # APP
@@ -58,6 +59,7 @@ app.include_router(conquistas_router,    prefix="/api")
 app.include_router(configuracoes_router, prefix="/api")
 app.include_router(gerencial_router,     prefix="/api")
 app.include_router(bot_router,           prefix="/api")
+app.include_router(dungeons_router,      prefix="/api")
 
 # ==============================================================================
 # STATIC FILES (FRONTEND)

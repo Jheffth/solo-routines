@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="css/lancador.css">
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/pages.css">
+  <link rel="stylesheet" href="css/dungeon.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -138,6 +139,9 @@
           </a>
           <a class="nav-item" data-page="tarefas" id="nav-tarefas" href="#">
             <span class="nav-icon">&#9876;&#65039;</span><span>Miss&#245;es Gerais</span>
+          </a>
+          <a class="nav-item" data-page="dungeons" id="nav-dungeons" href="#">
+            <span class="nav-icon">&#127761;</span><span>Dungeons</span>
           </a>
           <div class="nav-section"><span class="nav-section-label">Recompensas</span></div>
           <a class="nav-item" data-page="loja" id="nav-loja" href="#">
@@ -538,6 +542,20 @@
           </div>
         </div>
 
+        <!-- PAGE: DUNGEONS -->
+        <div class="page hidden" id="page-dungeons">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title">&#127761; Dungeons</h1>
+              <p class="page-subtitle">Portões para ambientes isolados — entre, cumpra as missões internas e saia com o clear</p>
+            </div>
+            <button class="btn btn-primary" id="btn-nova-dungeon">+ Forjar Portão</button>
+          </div>
+          <div class="dg-grid" id="lista-dungeons">
+            <div class="loading-spinner-wrap" style="grid-column:1/-1"><div class="loading-spinner"></div></div>
+          </div>
+        </div>
+
         <!-- PAGE: LOJA -->
         <div class="page hidden" id="page-loja">
           <div class="page-header">
@@ -770,6 +788,9 @@
   <script src="js/pages/dashboard.js"></script>
   <script src="js/pages/rotinas.js"></script>
   <script src="js/pages/tarefas.js"></script>
+  <script src="js/pages/dungeons.js"></script>
+  <script src="js/pages/dungeon-interior.js"></script>
+  <script src="js/pages/dungeon-score.js"></script>
   <script src="js/pages/loja.js"></script>
   <script src="js/pages/perfil.js"></script>
   <script src="js/pages/gerencial.js"></script>

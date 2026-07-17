@@ -132,12 +132,59 @@ const Perfil = {
       </div>
     `;
 
-    // Clique no avatar → campo de URL
-    document.getElementById('perfil-avatar-click')?.addEventListener('click', () => {
-      const url = prompt('URL da foto de perfil (deixe vazio para remover):', dados.avatar_url || '');
-      if (url === null) return;
-      this._salvarCampo({ avatar_url: url.trim() }, dados);
-    });
+    // Clique no avatar → seletor de arquivo local (PC e mobile)
+    document.getElementById('perfil-avatar-click')?.addEventListener('click', () => this.escolherFoto());
+  },
+
+  // ── Upload de foto local ────────────────────────────────
+  escolherFoto() {
+    let input = document.getElementById('pf-avatar-file');
+    if (!input) {
+      input = document.createElement('input');
+      input.type = 'file';
+      input.id = 'pf-avatar-file';
+      input.accept = 'image/png,image/jpeg,image/gif,image/webp';
+      input.style.display = 'none';
+      document.body.appendChild(input);
+      input.addEventListener('change', () => this._enviarFoto(input));
+    }
+    input.value = '';
+    input.click();
+  },
+
+  async _enviarFoto(input) {
+    const arquivo = input.files?.[0];
+    if (!arquivo) return;
+    if (arquivo.size > 5 * 1024 * 1024) {
+      SoloDialog.toast('Imagem muito grande — máximo 5 MB.', 'error');
+      return;
+    }
+    try {
+      SoloDialog.toast('⏳ Enviando foto...', 'info', 1500);
+      const form = new FormData();
+      form.append('arquivo', arquivo);
+      const resp = await API.perfil.uploadAvatar(form);
+      SoloDialog.toast('📷 Foto de perfil atualizada!', 'success');
+      // Atualiza avatar em todos os cantos sem recarregar a página
+      const url = resp.avatar_url + '?t=' + Date.now();   // quebra cache
+      document.querySelectorAll('#dash-avatar, #sidebar-avatar, #perfil-avatar-click').forEach(el => {
+        el.innerHTML = `<img src="${url}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+      });
+      if (this._dadosUsuario) this._dadosUsuario.avatar_url = resp.avatar_url;
+      await this.carregar();
+    } catch (err) {
+      SoloDialog.toast('Erro no upload: ' + (err.message || err), 'error');
+    }
+  },
+
+  async removerFoto() {
+    try {
+      await API.delete('/perfil/avatar');
+      SoloDialog.toast('Foto removida.', 'info');
+      await this.carregar();
+    } catch (err) {
+      SoloDialog.toast('Erro: ' + (err.message || err), 'error');
+    }
   },
 
   // ── Formulário de edição ────────────────────────────────
@@ -181,11 +228,27 @@ const Perfil = {
               value="${dados.classe || ''}" placeholder="Ex: National Level">
           </div>
 
-          <!-- URL do Avatar -->
+          <!-- Foto de Perfil (arquivo local) -->
           <div class="form-group">
-            <label class="form-label">URL da Foto de Perfil</label>
-            <input type="url" id="pf-edit-avatar" class="form-input"
-              value="${dados.avatar_url || ''}" placeholder="https://...">
+            <label class="form-label">Foto de Perfil</label>
+            <div style="display:flex;gap:.5rem;align-items:center">
+              <button type="button" class="btn btn-sm" onclick="Perfil.escolherFoto()" style="
+                font-family:var(--font-section);font-size:.75rem;padding:.5rem .9rem;border-radius:.5rem;
+                border:1px solid rgba(124,58,237,.4);background:rgba(124,58,237,.12);
+                color:var(--purple-glow);cursor:pointer">
+                📷 Escolher do dispositivo
+              </button>
+              ${dados.avatar_url ? `
+              <button type="button" class="btn btn-sm" onclick="Perfil.removerFoto()" style="
+                font-family:var(--font-section);font-size:.75rem;padding:.5rem .9rem;border-radius:.5rem;
+                border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.07);
+                color:#f87171;cursor:pointer">
+                ✕ Remover
+              </button>` : ''}
+            </div>
+            <div style="font-size:.65rem;color:var(--text-muted);margin-top:.35rem">
+              PNG, JPG, GIF ou WEBP · máx. 5 MB · ou clique direto na foto lá em cima
+            </div>
           </div>
 
           ${isArquiteto ? `
@@ -249,7 +312,7 @@ const Perfil = {
         nome:       document.getElementById('pf-edit-nome')?.value?.trim()   || undefined,
         titulo:     document.getElementById('pf-edit-titulo')?.value?.trim()  || undefined,
         classe:     document.getElementById('pf-edit-classe')?.value?.trim()  || undefined,
-        avatar_url: document.getElementById('pf-edit-avatar')?.value?.trim()  || undefined,
+        // avatar agora é via upload local (Perfil.escolherFoto), não por URL
       };
 
       let endpoint = '/perfil/';

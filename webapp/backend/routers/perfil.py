@@ -1,7 +1,10 @@
 """
 Router de Perfil — dados detalhados para gráficos e histórico.
 """
-from fastapi import APIRouter, Depends, HTTPException
+import os
+import uuid
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from datetime import date, timedelta
 from collections import defaultdict
@@ -15,6 +18,76 @@ from database import (
 from auth.router import get_usuario_atual
 
 router = APIRouter(prefix="/perfil", tags=["perfil"])
+
+# ── Upload de avatar (arquivo local, PC e mobile) ─────────
+AVATAR_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "uploads", "avatars")
+_EXT_PERMITIDAS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
+_TAMANHO_MAX = 5 * 1024 * 1024  # 5 MB
+
+
+@router.post("/avatar")
+async def upload_avatar(
+    arquivo: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_atual),
+):
+    """Recebe a foto de perfil do dispositivo do usuário e salva localmente."""
+    ext = os.path.splitext(arquivo.filename or "")[1].lower() or ".png"
+    if ext not in _EXT_PERMITIDAS:
+        raise HTTPException(400, "Formato inválido — use PNG, JPG, GIF ou WEBP")
+
+    conteudo = await arquivo.read()
+    if len(conteudo) > _TAMANHO_MAX:
+        raise HTTPException(400, "Imagem muito grande — máximo 5 MB")
+    if not conteudo:
+        raise HTTPException(400, "Arquivo vazio")
+
+    os.makedirs(AVATAR_DIR, exist_ok=True)
+
+    # Remove o avatar antigo (se era um upload local)
+    if usuario.avatar_url and usuario.avatar_url.startswith("/api/perfil/avatar/"):
+        antigo = os.path.join(AVATAR_DIR, os.path.basename(usuario.avatar_url))
+        try:
+            if os.path.isfile(antigo):
+                os.remove(antigo)
+        except Exception:
+            pass
+
+    nome = f"u{usuario.id}_{uuid.uuid4().hex[:10]}{ext}"
+    with open(os.path.join(AVATAR_DIR, nome), "wb") as f:
+        f.write(conteudo)
+
+    usuario.avatar_url = f"/api/perfil/avatar/{nome}"
+    db.commit()
+    return {"ok": True, "avatar_url": usuario.avatar_url}
+
+
+@router.delete("/avatar")
+def remover_avatar(
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_atual),
+):
+    """Remove a foto de perfil."""
+    if usuario.avatar_url and usuario.avatar_url.startswith("/api/perfil/avatar/"):
+        antigo = os.path.join(AVATAR_DIR, os.path.basename(usuario.avatar_url))
+        try:
+            if os.path.isfile(antigo):
+                os.remove(antigo)
+        except Exception:
+            pass
+    usuario.avatar_url = None
+    db.commit()
+    return {"ok": True}
+
+
+@router.get("/avatar/{nome}")
+def servir_avatar(nome: str):
+    """Serve a imagem do avatar (rota pública — tags <img> não enviam token)."""
+    nome = os.path.basename(nome)  # anti path-traversal
+    caminho = os.path.join(AVATAR_DIR, nome)
+    if not os.path.isfile(caminho):
+        raise HTTPException(404, "Avatar não encontrado")
+    return FileResponse(caminho)
 
 
 # ── Schema de auto-edição: qualquer usuário ──────────────

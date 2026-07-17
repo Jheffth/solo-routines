@@ -159,6 +159,7 @@ const App = {
       case 'dashboard': await Dashboard.carregar(); break;
       case 'rotinas':   await Rotinas.carregar();   break;
       case 'tarefas':   await Tarefas.carregar();   break;
+      case 'dungeons':  await Dungeons.carregar();  break;
       case 'loja':      await Loja.carregar();      break;
       case 'perfil':    await Perfil.carregar();    break;
       case 'gerencial': await Gerencial.carregar(); break;

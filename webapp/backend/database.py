@@ -264,6 +264,156 @@ class RecompensaUsuario(Base):
 
 
 # ==============================================================================
+# DUNGEONS — Ambientes isolados com missões próprias
+# Regra de ouro: nada aqui toca Rotina/TarefaDia/Execucao/ExecucaoDia.
+# Único ponto de contato com o mundo externo é o perfil (Usuario) via aplicar_xp.
+# ==============================================================================
+class Dungeon(Base):
+    __tablename__ = "dungeons"
+
+    id                     = Column(Integer, primary_key=True, index=True)
+    titulo                 = Column(String(200), nullable=False)
+    descricao              = Column(Text, nullable=True)              # "lore" da dungeon
+
+    # Permanência / recorrência
+    tipo_permanencia       = Column(String(20), default="PERMANENTE") # PERMANENTE | TEMPORARIA
+    tipo_recorrencia       = Column(String(20), default="DIARIA")    # DIARIA|SEMANAL|MENSAL|ANUAL
+    dias_semana            = Column(Text, nullable=True)              # JSON "[0,1,2,3,4]"
+    dia_mes                = Column(Integer, nullable=True)
+    mes_dia                = Column(String(5), nullable=True)         # "MM-DD"
+    data_inicio            = Column(Date, nullable=True)              # só TEMPORARIA
+    data_fim               = Column(Date, nullable=True)              # só TEMPORARIA
+
+    # Janela de tempo
+    hora_entrada           = Column(String(5), nullable=True)         # "HH:MM" (padrão)
+    hora_saida             = Column(String(5), nullable=True)         # "HH:MM" (padrão)
+    tolerancia_min         = Column(Integer, default=10)
+
+    # Agenda avançada
+    # agenda_semanal: JSON {"0":{"aberto":true,"entrada":"08:00","saida":"17:30"},"2":{"aberto":false}}
+    #   chave = weekday (0=seg..6=dom); dia ausente usa o padrão acima
+    agenda_semanal         = Column(Text, nullable=True)
+    # folgas: JSON ["2026-07-22","2026-08-02"] — datas em que a dungeon NÃO abre
+    folgas                 = Column(Text, nullable=True)
+
+    # Identidade
+    categoria              = Column(String(50), default="Pessoal")    # Trabalho|Saúde|Estudo|Casa|Pessoal|Combate
+    rank                   = Column(String(2), default="E")           # E|D|C|B|A|S
+    dificuldade            = Column(String(20), default="NORMAL")     # FACIL|NORMAL|DIFICIL|LENDARIO
+    icone                  = Column(String(10), default="🌀")
+    cor                    = Column(String(7), default="#7c3aed")
+    tema_ambiente          = Column(String(30), nullable=True)        # preset visual do interior
+
+    # Recompensas / penalidades
+    xp_entrada             = Column(Integer, default=25)
+    xp_clear               = Column(Integer, default=100)
+    moedas_clear           = Column(Integer, default=10)
+    penalidade_entrada_xp  = Column(Integer, default=50)
+    penalidade_atraso_xp   = Column(Integer, default=15)
+
+    # Streak próprio da Dungeon (independente do global)
+    streak_atual           = Column(Integer, default=0)
+    streak_max             = Column(Integer, default=0)
+
+    # Controle
+    status                 = Column(String(20), default="ATIVA")      # ATIVA|PAUSADA|ARQUIVADA
+    usuario_id             = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    criado_em              = Column(DateTime, default=datetime.utcnow)
+
+    sessoes                = relationship("DungeonSessao", back_populates="dungeon", lazy="dynamic")
+    missoes                = relationship("DungeonMissao", back_populates="dungeon", lazy="dynamic")
+
+
+class DungeonSessao(Base):
+    __tablename__ = "dungeon_sessoes"
+
+    id                     = Column(Integer, primary_key=True, index=True)
+    dungeon_id             = Column(Integer, ForeignKey("dungeons.id"), nullable=False, index=True)
+    usuario_id             = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    data                   = Column(Date, nullable=False, index=True)
+
+    # PENDENTE → ATIVA → CONCLUIDA | FRACASSADA | CANCELADA
+    status                 = Column(String(20), default="PENDENTE")
+
+    # Modo teste do Arquiteto: sessão paralela que NUNCA credita XP/streak
+    modo_teste             = Column(Boolean, default=False)
+
+    entrada_em             = Column(DateTime, nullable=True)
+    saida_em               = Column(DateTime, nullable=True)
+    fracassada_em          = Column(DateTime, nullable=True)
+    atraso_minutos         = Column(Integer, default=0)
+
+    tempo_total_min        = Column(Integer, default=0)               # acumulado via heartbeat
+    ultimo_heartbeat_em    = Column(DateTime, nullable=True)
+
+    pct_missoes_concluidas = Column(Float, default=0.0)               # snapshot na saída
+    rank_obtido            = Column(String(2), nullable=True)         # S|A|B|C|D|F
+
+    xp_ganho               = Column(Integer, default=0)
+    xp_perdido             = Column(Integer, default=0)
+    moedas_ganhas          = Column(Integer, default=0)
+    criado_em              = Column(DateTime, default=datetime.utcnow)
+
+    dungeon                = relationship("Dungeon", back_populates="sessoes")
+    missao_execucoes       = relationship("DungeonMissaoExecucao", back_populates="sessao", lazy="dynamic")
+
+
+class DungeonMissao(Base):
+    __tablename__ = "dungeon_missoes"
+
+    id                     = Column(Integer, primary_key=True, index=True)
+    dungeon_id             = Column(Integer, ForeignKey("dungeons.id"), nullable=False, index=True)
+    titulo                 = Column(String(200), nullable=False)
+    descricao              = Column(Text, nullable=True)
+    icone                  = Column(String(10), default="⚔️")
+
+    tipo                   = Column(String(20), default="ATIVA")      # ATIVA | PASSIVA
+    natureza               = Column(String(20), default="PADRAO")     # PADRAO|AGENDADA|RESISTENCIA|EVENTO_ALEATORIO|BEM_ESTAR|FLAVOR
+
+    xp_recompensa          = Column(Integer, default=30)
+    moedas_recompensa      = Column(Integer, default=3)
+    penalidade_xp          = Column(Integer, nullable=True)           # null = auto (50% da recompensa); 0 = sem punição
+
+    # Agenda da missão
+    dias_semana            = Column(Text, nullable=True)              # JSON "[0,4,6]" — só aparece nesses dias (null = todos)
+    hora_inicio            = Column(String(5), nullable=True)         # AGENDADA: abre neste horário
+    hora_limite            = Column(String(5), nullable=True)         # AGENDADA: expira neste horário
+
+    intervalo_min          = Column(Integer, nullable=True)           # PASSIVA: tick a cada N min
+    meta_minutos           = Column(Integer, nullable=True)           # RESISTENCIA: minutos até 100%
+    janela_disparo_min     = Column(Integer, nullable=True)           # EVENTO_ALEATORIO
+    janela_disparo_max     = Column(Integer, nullable=True)
+    expira_em_min          = Column(Integer, default=5)               # evento some depois disso
+
+    ativo                  = Column(Boolean, default=True)
+    criado_em              = Column(DateTime, default=datetime.utcnow)
+
+    dungeon                = relationship("Dungeon", back_populates="missoes")
+    execucoes              = relationship("DungeonMissaoExecucao", back_populates="missao", lazy="dynamic")
+
+
+class DungeonMissaoExecucao(Base):
+    __tablename__ = "dungeon_missao_execucoes"
+
+    id                     = Column(Integer, primary_key=True, index=True)
+    dungeon_missao_id      = Column(Integer, ForeignKey("dungeon_missoes.id"), nullable=False, index=True)
+    dungeon_sessao_id      = Column(Integer, ForeignKey("dungeon_sessoes.id"), nullable=False, index=True)
+
+    status                 = Column(String(20), default="PENDENTE")   # PENDENTE|EM_PROGRESSO|CONCLUIDA|EXPIRADA
+    progresso_pct          = Column(Float, default=0.0)
+    disparada_em           = Column(DateTime, nullable=True)          # quando o evento surgiu
+    concluida_em           = Column(DateTime, nullable=True)
+
+    xp_ganho               = Column(Integer, default=0)
+    xp_perdido             = Column(Integer, default=0)               # penalidade aplicada (cancelada/expirada)
+    moedas_ganhas          = Column(Integer, default=0)
+    criado_em              = Column(DateTime, default=datetime.utcnow)
+
+    missao                 = relationship("DungeonMissao", back_populates="execucoes")
+    sessao                 = relationship("DungeonSessao", back_populates="missao_execucoes")
+
+
+# ==============================================================================
 # CONFIGURAÇÕES DO APP (Logo, Fontes, Tema)
 # ==============================================================================
 class ConfiguracaoApp(Base):

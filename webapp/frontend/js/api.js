@@ -141,6 +141,44 @@ class API {
     heatmap:        async () => API.get('/execucoes/heatmap'),
   };
 
+  /* ── Dungeons ─────────────────────────────────────────── */
+  static dungeons = {
+    listar:       async ()        => API.get('/dungeons/'),
+    obter:        async (id)      => API.get('/dungeons/' + id),
+    criar:        async (dados)   => API.post('/dungeons/', dados),
+    atualizar:    async (id, d)   => API.put('/dungeons/' + id, d),
+    deletar:      async (id)      => API.delete('/dungeons/' + id),
+    // Missões
+    criarMissao:  async (id, m)   => API.post('/dungeons/' + id + '/missoes', m),
+    atualizarMissao: async (mid, m) => API.put('/dungeons/missoes/' + mid, m),
+    deletarMissao:async (mid)     => API.delete('/dungeons/missoes/' + mid),
+    // Ciclo de vida da sessão
+    sessao:       async (id)      => API.get('/dungeons/' + id + '/sessao'),
+    entrar:       async (id)      => API.post('/dungeons/' + id + '/entrar', {}),
+    entrarArquiteto: async (id)   => API.post('/dungeons/' + id + '/entrar-arquiteto', {}),
+    heartbeat:    async (id, teste = false) => API.post('/dungeons/' + id + '/heartbeat' + (teste ? '?teste=true' : ''), {}),
+    sair:         async (id, teste = false) => API.post('/dungeons/' + id + '/sair' + (teste ? '?teste=true' : ''), {}),
+    fracassar:    async (id)      => API.post('/dungeons/' + id + '/fracassar', {}),
+    resetar:      async (id)      => API.post('/dungeons/' + id + '/resetar', {}),
+    cancelar:     async (id)      => API.post('/dungeons/' + id + '/cancelar', {}),
+    cumprir:      async (execId)  => API.post('/dungeons/execucoes/' + execId + '/cumprir', {}),
+    iniciarExec:  async (execId)  => API.post('/dungeons/execucoes/' + execId + '/iniciar', {}),
+    pausarExec:   async (execId)  => API.post('/dungeons/execucoes/' + execId + '/pausar', {}),
+    retomarExec:  async (execId)  => API.post('/dungeons/execucoes/' + execId + '/retomar', {}),
+    cancelarExec: async (execId)  => API.post('/dungeons/execucoes/' + execId + '/cancelar', {}),
+    historico:    async (id)      => API.get('/dungeons/' + id + '/historico'),
+    score:        async (id, filtros = {}) => {
+      const p = new URLSearchParams();
+      if (filtros.inicio)        p.set('inicio', filtros.inicio);
+      if (filtros.fim)           p.set('fim', filtros.fim);
+      if (filtros.status)        p.set('status', filtros.status);
+      if (filtros.natureza)      p.set('natureza', filtros.natureza);
+      if (filtros.apenas_falhas) p.set('apenas_falhas', 'true');
+      const q = p.toString() ? '?' + p.toString() : '';
+      return API.get('/dungeons/' + id + '/score' + q);
+    },
+  };
+
   /* ── Recompensas ──────────────────────────────────────── */
   static recompensas = {
     listar:  async ()   => API.get('/recompensas/'),
