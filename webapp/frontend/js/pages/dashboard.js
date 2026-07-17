@@ -54,8 +54,11 @@ const Dashboard = {
         });
       }
 
-      // Gr\u00E1fico XP (sem dados por agora, renderiza vazio)
-      this.renderGraficoXP([]);
+      // Gráfico XP dos últimos 7 dias
+      const xpSemana = (dashStats.status === 'fulfilled' && dashStats.value?.xp_semana)
+        ? dashStats.value.xp_semana
+        : [];
+      this.renderGraficoXP(xpSemana);
 
       // Conquistas recentes
       const listaConq = conquistas.status === 'fulfilled' ? (conquistas.value || []) : [];
@@ -1377,18 +1380,37 @@ const Dashboard = {
 
 
   renderGraficoXP(dados) {
-    if (!dados.length) {
-      // Gera dados vazios dos ultimos 7 dias
-      dados = Array.from({length: 7}, (_, i) => {
+    // Converte formato backend {data:'2026-07-10', xp:50} para {label:'sex.', xp:50}
+    const _toLabel = (item) => {
+      if (item.label) return item.label; // já tem label
+      if (item.data) {
+        // Parse a data como local (sem deslocamento de fuso)
+        const [y, m, d] = item.data.split('-').map(Number);
+        const dt = new Date(y, m - 1, d);
+        return dt.toLocaleDateString('pt-BR', { weekday: 'short' });
+      }
+      return '';
+    };
+
+    let chartData;
+    if (!dados || !dados.length) {
+      // Sem dados: gera 7 dias vazios com labels de dias
+      chartData = Array.from({ length: 7 }, (_, i) => {
         const d = new Date();
         d.setDate(d.getDate() - (6 - i));
         return {
-          label: d.toLocaleDateString('pt-BR', {weekday:'short'}),
+          label: d.toLocaleDateString('pt-BR', { weekday: 'short' }),
           xp: 0
         };
       });
+    } else {
+      chartData = dados.map(item => ({
+        label: _toLabel(item),
+        xp: item.xp || item.valor || 0,
+      }));
     }
-    Charts.criarGraficoXPSemana('chart-xp-semana', dados);
+
+    Charts.criarGraficoXPSemana('chart-xp-semana', chartData);
   },
 
   renderConquistas(lista) {

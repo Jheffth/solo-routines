@@ -79,9 +79,15 @@ const Charts = {
           },
           y: {
             grid: { color: 'rgba(255,255,255,0.04)' },
-            ticks: { color: 'rgba(200,200,220,0.5)', font: { size: 11 } },
+            ticks: {
+              color: 'rgba(200,200,220,0.5)',
+              font: { size: 11 },
+              precision: 0,
+              callback: (v) => v >= 1000 ? (v/1000).toFixed(1)+'k' : v
+            },
             beginAtZero: true,
-            suggestedMax: maxVal * 1.2
+            min: 0,
+            suggestedMax: maxVal <= 1 ? 10 : Math.ceil(maxVal * 1.25)
           }
         }
       }

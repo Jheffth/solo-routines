@@ -20,7 +20,7 @@ def dashboard_stats(
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(get_usuario_atual),
 ):
-    """Stats rápidos para os cards do dashboard (sem recarregar tudo)."""
+    """Stats rápidos + XP dos últimos 7 dias para o dashboard."""
     hoje = date.today()
     total_exec = db.query(Execucao).filter(Execucao.usuario_id == usuario.id).count()
     exec_hoje  = db.query(Execucao).filter(
@@ -31,10 +31,23 @@ def dashboard_stats(
         Rotina.usuario_id == usuario.id,
         Rotina.ativo == True,
     ).count()
+
+    # XP dos últimos 7 dias
+    xp_semana = []
+    for i in range(6, -1, -1):
+        dia = hoje - timedelta(days=i)
+        execucoes_dia = db.query(Execucao).filter(
+            Execucao.usuario_id == usuario.id,
+            Execucao.data_execucao == dia,
+        ).all()
+        xp_dia = sum(e.xp_ganho or 0 for e in execucoes_dia)
+        xp_semana.append({"data": dia.isoformat(), "xp": xp_dia})
+
     return {
         "execucoes_hoje":  exec_hoje,
         "total_execucoes": total_exec,
         "rotinas_ativas":  rot_ativas,
+        "xp_semana":       xp_semana,
     }
 
 
