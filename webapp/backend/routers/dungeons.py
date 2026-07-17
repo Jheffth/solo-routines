@@ -877,6 +877,7 @@ def entrar_dungeon(
         "pontual": pontual,
         "atraso_minutos": atraso,
         "eventos_xp": eventos_xp,
+        "agora_server": datetime.now().isoformat(),
     }
 
 

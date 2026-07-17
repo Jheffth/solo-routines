@@ -162,6 +162,9 @@ const DungeonInterior = {
       this._sessao = resp.sessao;
       this._execs  = resp.execucoes || [];
       this._dungeon = resp.dungeon || this._dungeon;
+      if (resp.agora_server) {
+        this._timeOffset = Date.now() - new Date(resp.agora_server).getTime();
+      }
 
       if (resp.pontual) {
         this._log(`Travessia pontual. +${resp.eventos_xp?.xp_ganho || 0} XP. O Sistema aprova.`, 'ganho');
@@ -390,10 +393,13 @@ const DungeonInterior = {
     const s = this._sessao, d = this._dungeon;
     if (!s || !s.entrada_em) return;
 
+    // Sincroniza o relógio do navegador com a hora que o servidor acha que é
+    const agoraSync = Date.now() - (this._timeOffset || 0);
+
     // Cronômetro
     const el = document.getElementById('dg-cron');
     if (el) {
-      const seg = Math.max(0, Math.floor((Date.now() - new Date(s.entrada_em).getTime()) / 1000));
+      const seg = Math.max(0, Math.floor((agoraSync - new Date(s.entrada_em).getTime()) / 1000));
       const h = String(Math.floor(seg / 3600)).padStart(2, '0');
       const m = String(Math.floor((seg % 3600) / 60)).padStart(2, '0');
       const ss = String(seg % 60).padStart(2, '0');
@@ -404,8 +410,9 @@ const DungeonInterior = {
     const cd = document.getElementById('dg-countdown');
     if (cd && d.hora_saida) {
       const [hh, mm] = d.hora_saida.split(':').map(Number);
-      const alvo = new Date(); alvo.setHours(hh, mm, 0, 0);
-      let diff = Math.floor((alvo.getTime() - Date.now()) / 1000);
+      const alvo = new Date(agoraSync); 
+      alvo.setHours(hh, mm, 0, 0);
+      let diff = Math.floor((alvo.getTime() - agoraSync) / 1000);
       if (diff <= 0) {
         cd.textContent = 'ABERTO';
         cd.classList.add('warn');
@@ -419,7 +426,7 @@ const DungeonInterior = {
 
     // Timers dos eventos pop-in
     document.querySelectorAll('.dg-evento [data-expira]').forEach(t => {
-      const resta = Math.floor((parseInt(t.dataset.expira) - Date.now()) / 1000);
+      const resta = Math.floor((parseInt(t.dataset.expira) - agoraSync) / 1000);
       if (resta <= 0) t.closest('.dg-evento')?.remove();
       else t.textContent = `dissipa em ${Math.floor(resta / 60)}:${String(resta % 60).padStart(2, '0')}`;
     });
@@ -429,6 +436,10 @@ const DungeonInterior = {
     if (!this._aberto || this._sessao?.status !== 'ATIVA') return;
     try {
       const resp = await API.dungeons.heartbeat(this._dungeon.id, this._modoTeste);
+
+      if (resp.agora_server) {
+        this._timeOffset = Date.now() - new Date(resp.agora_server).getTime();
+      }
 
       // Check-out automático: o horário de saída passou e o Sistema encerrou
       if (resp.relatorio_auto) {
