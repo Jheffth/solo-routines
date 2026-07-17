@@ -134,9 +134,10 @@ const Rotinas = {
     const isFracassada = status === 'FRACASSADA';
     const isFinal      = isConcluida || isFracassada || isCancelada;
 
-    // Cor da borda usa prioridade em primeiro, depois status
-    const bordaCor = isFinal || isPausada ? scfg.cor : prior.cor;
-    const bgEfect  = isFinal || isPausada ? scfg.bg  : prior.bg;
+    // A borda e fundo SEMPRE usam prioridade — a rotina é template eterno
+    // status_hoje é apenas informação secundária no badge
+    const bordaCor = prior.cor;
+    const bgEfect  = prior.bg;
 
     // Badge de status
     const statusBadge = `<span style="
@@ -206,33 +207,30 @@ const Rotinas = {
     if (isPendente) {
       acoesHtml = `
         <button data-action="iniciar" data-id="${id}" style="${btnStyle('#a855f7','rgba(168,85,247,.18)','#a855f7')}">
-          ▶ Iniciar Missão
+          &#9654; Iniciar Miss&#227;o
         </button>`;
     } else if (isAtiva) {
       acoesHtml = `
         <button data-action="concluir" data-id="${id}" style="${btnStyle('#10b981','rgba(16,185,129,.15)')}">
-          ✓ Concluir
+          &#10003; Concluir
         </button>
         <button data-action="pausar" data-id="${id}" style="${btnStyle('#64748b','rgba(100,116,139,.1)')}">
-          ⏸ Pausar
+          &#9208; Pausar
         </button>
-        <button data-action="cancelar" data-id="${id}" style="${btnStyle('#f87171','rgba(239,68,68,.06)','rgba(239,68,68,.4)')}">
-          ✕ Cancelar
+        <button data-action="cancelar" data-id="${id}" title="Cancela apenas de hoje" style="${btnStyle('#f87171','rgba(239,68,68,.06)','rgba(239,68,68,.4)')}">
+          &#10005; Cancelar hoje
         </button>`;
     } else if (isPausada) {
       acoesHtml = `
         <button data-action="retomar" data-id="${id}" style="${btnStyle('var(--purple-glow)','rgba(124,58,237,.15)','var(--purple-main)')}">
-          ▶ Retomar
+          &#9654; Retomar
         </button>
-        <button data-action="cancelar" data-id="${id}" style="${btnStyle('#f87171','rgba(239,68,68,.06)','rgba(239,68,68,.4)')}">
-          ✕ Cancelar
-        </button>`;
-    } else if (isCancelada) {
-      acoesHtml = `
-        <button data-action="retomar" data-id="${id}" style="${btnStyle('var(--purple-glow)','rgba(124,58,237,.12)','var(--purple-main)')}">
-          ▶ Retomar
+        <button data-action="cancelar" data-id="${id}" title="Cancela apenas de hoje" style="${btnStyle('#f87171','rgba(239,68,68,.06)','rgba(239,68,68,.4)')}">
+          &#10005; Cancelar hoje
         </button>`;
     }
+    // CONCLUIDA / FRACASSADA / CANCELADA: sem botões de ação
+    // (a rotina já encerrou seu ciclo de hoje e retorna passivamente)
 
     // Arquiteto: extinguir sempre disponível (exceto já extinto)
     const extBtn = this._isArquiteto ? `
@@ -289,11 +287,8 @@ const Rotinas = {
         background:var(--bg-card);
         border:1px solid ${bordaCor}55;border-left:3px solid ${bordaCor};
         border-radius:.9rem;padding:1rem 1.2rem;position:relative;overflow:hidden;
-        transition:all .25s;${clickable}
+        transition:all .25s;
         background:linear-gradient(135deg,${bgEfect},var(--bg-card));
-        ${isConcluida  ? 'box-shadow:0 0 16px rgba(16,185,129,.15)' : ''}
-        ${isFracassada ? 'box-shadow:0 0 16px rgba(239,68,68,.12)' : ''}
-        ${isCancelada  ? 'opacity:.6' : ''}
       ">
         <!-- Barra lateral de prioridade -->
         <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:${bordaCor};border-radius:2px 0 0 2px"></div>
@@ -305,15 +300,13 @@ const Rotinas = {
               width:40px;height:40px;border-radius:.6rem;flex-shrink:0;
               display:flex;align-items:center;justify-content:center;font-size:1.3rem;
               background:${prior.bg};border:1px solid ${prior.cor}44
-              ${isFracassada ? ';filter:grayscale(.6)' : ''}
             ">${icone}</div>
             <div style="min-width:0">
               <div style="
-                font-family:var(--font-section);font-size:.95rem;font-weight:700;
-                color:${isFracassada ? '#f87171' : 'var(--text-primary)'};
-                white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:.2rem
-                ${isFracassada ? ';text-decoration:line-through;text-decoration-color:#f8717155' : ''}
-              ">${titulo}</div>
+              font-family:var(--font-section);font-size:.95rem;font-weight:700;
+              color:var(--text-primary);
+              white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:.2rem
+            ">${titulo}</div>
               <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
                 <span style="
                   font-family:var(--font-section);font-size:.6rem;font-weight:700;letter-spacing:.08em;
@@ -347,17 +340,35 @@ const Rotinas = {
             ${r.descricao}
           </div>` : ''}
 
-        <!-- Fracassada: mensagem de falha -->
+        <!-- Mensagem de retorno (quando encerrado hoje) -->
+        ${isConcluida ? `
+          <div style="
+            margin-top:.6rem;padding:.4rem .8rem;border-radius:.5rem;
+            background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);
+            font-family:var(--font-section);font-size:.7rem;
+            display:flex;align-items:center;justify-content:space-between;gap:.5rem">
+            <span style="color:#10b981">&#10003; Conclu&#237;da hoje!</span>
+            ${r.tipo !== 'AVULSA' ? `<span style="color:#a855f7;font-size:.65rem">&#8617; Retorna ${r.tipo === 'DIARIA' ? 'amanh&#227;' : 'na pr&#243;xima ocorr&#234;ncia'}</span>` : ''}
+          </div>` : ''}
+
         ${isFracassada ? `
           <div style="
-            margin-top:.65rem;padding:.5rem .75rem;border-radius:.5rem;
-            background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);
-            font-family:var(--font-section);font-size:.72rem;color:#f87171;letter-spacing:.04em">
-            ☠️ Prazo encerrado — missão fracassada.
-            ${r.fracassada_em ? `<span style="color:#94a3b8;font-size:.65rem">
-              (${new Date(r.fracassada_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})})
-            </span>` : ''}
-            ${r.tipo !== 'AVULSA' ? `<span style="color:#a855f7"> · Retorna ${r.tipo === 'DIARIA' ? 'amanhã' : 'na próxima ocorrência'}</span>` : ''}
+            margin-top:.6rem;padding:.4rem .8rem;border-radius:.5rem;
+            background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);
+            font-family:var(--font-section);font-size:.7rem;
+            display:flex;align-items:center;justify-content:space-between;gap:.5rem">
+            <span style="color:#f87171">&#9760; Prazo encerrado hoje</span>
+            ${r.tipo !== 'AVULSA' ? `<span style="color:#a855f7;font-size:.65rem">&#8617; Retorna ${r.tipo === 'DIARIA' ? 'amanh&#227;' : 'na pr&#243;xima ocorr&#234;ncia'}</span>` : ''}
+          </div>` : ''}
+
+        ${isCancelada ? `
+          <div style="
+            margin-top:.6rem;padding:.4rem .8rem;border-radius:.5rem;
+            background:rgba(100,116,139,.06);border:1px solid rgba(100,116,139,.2);
+            font-family:var(--font-section);font-size:.7rem;
+            display:flex;align-items:center;justify-content:space-between;gap:.5rem">
+            <span style="color:var(--text-muted)">&#8617; Cancelada hoje</span>
+            ${r.tipo !== 'AVULSA' ? `<span style="color:#a855f7;font-size:.65rem">&#8617; Retorna ${r.tipo === 'DIARIA' ? 'amanh&#227;' : 'na pr&#243;xima ocorr&#234;ncia'}</span>` : ''}
           </div>` : ''}
 
         <!-- Rodapé: recompensas + botões -->
@@ -370,7 +381,7 @@ const Rotinas = {
               background:none;border:none;color:rgba(100,116,139,.5);font-size:.8rem;cursor:pointer;
               padding:.2rem;border-radius:.3rem;transition:.2s"
               onmouseover="this.style.color='#f87171'"
-              onmouseout="this.style.color='rgba(100,116,139,.5)'">🗑</button>
+              onmouseout="this.style.color='rgba(100,116,139,.5)'">&#128465;</button>
           </div>
         </div>
       </div>`;
