@@ -962,22 +962,26 @@ const Dashboard = {
           itemRotinas.exec_hoje      = r.exec_hoje;
         }
       }
-      // \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
-      // Atualiza card no dash
-      const card = document.querySelector(`.dash-rotina-card[data-id="${id}"]`);
-      if (card) card.outerHTML = this._buildRotinaDashCard(r);
-      // Fecha modal e reabre com dados novos
+      // Fecha modal
       document.getElementById('dash-rotina-modal').style.display = 'none';
-      this._abrirModalRotinaDash(r);
+
       // Float XP
       const xpFloat = document.getElementById('xp-float');
-      if (xpFloat) { xpFloat.textContent = `+${r.xp_recompensa} XP`; xpFloat.classList.add('visible'); setTimeout(() => xpFloat.classList.remove('visible'), 1800); }
+      if (xpFloat) {
+        xpFloat.textContent = `+${r.xp_recompensa} XP`;
+        xpFloat.classList.add('visible');
+        setTimeout(() => xpFloat.classList.remove('visible'), 1800);
+      }
+
+      // Atualização completa do dashboard (card + stats + XP)
+      setTimeout(() => this.atualizarStatsMini(), 400);
+
     } catch (err) {
       if (err.message?.includes('j\u00E1 foi conclu\u00EDda')) {
         r.concluida_hoje = true;
         document.getElementById('dash-rotina-modal').style.display = 'none';
-        this._abrirModalRotinaDash(r);
+        setTimeout(() => this.atualizarStatsMini(), 400);
       } else {
         SoloDialog.toast('Erro: ' + (err.message || err), 'error');
         if (btn) { btn.disabled = false; btn.textContent = '\u25B6 Concluir Miss\u00E3o'; }
@@ -1554,7 +1558,7 @@ const Dashboard = {
     container.querySelectorAll('[data-concluir-tarefa]').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
-        const id  = btn.dataset.concluirTarefa;
+        const id  = parseInt(btn.dataset.concluirTarefa);
         const xp  = parseInt(btn.dataset.xp) || 0;
         const row = btn.closest('.dash-tarefa-card');
 
@@ -1564,14 +1568,27 @@ const Dashboard = {
         try {
           const resp = await API.post(`/tarefas/${id}/concluir`, {});
 
-          if (row) {
-            row.style.opacity = '.6';
-            const titulo = row.querySelector('[style*="font-weight:700"]');
-            if (titulo) titulo.style.textDecoration = 'line-through';
-            btn.remove();
+          // Atualiza local cache imediatamente
+          const t = (this._tarefasHojeLista || []).find(x => x.id === id);
+          if (t) { t.status = 'CONCLUIDA'; t.concluida = true; }
+
+          // Reconstrói o card com o status correto (feedback imediato)
+          if (row && t) {
+            const tmp = document.createElement('div');
+            tmp.innerHTML = this._buildMissaoItem(t);
+            const novoCard = tmp.firstElementChild;
+            if (novoCard) {
+              row.replaceWith(novoCard);
+              // Re-bind o novo card
+              const container2 = novoCard.parentElement;
+              if (container2) {
+                this._bindCheckboxes(container2);
+                this._bindTarefaDblClick(container2);
+              }
+            }
           }
 
-          // Anima\u00e7\u00e3o XP
+          // Animação XP
           const xpFloat = document.getElementById('xp-float');
           if (xpFloat && xp > 0) {
             xpFloat.textContent = `+${xp} XP`;
@@ -1588,7 +1605,9 @@ const Dashboard = {
             Animations.levelUp(resp.novo_nivel);
           }
 
-          setTimeout(() => this.atualizarStatsMini(), 600);
+          // Atualização completa: personagem + stats + extrato + tarefas
+          setTimeout(() => this.atualizarStatsMini(), 500);
+
         } catch (err) {
           console.error('[Dashboard] Erro ao concluir tarefa:', err);
           btn.disabled = false;
@@ -1599,17 +1618,29 @@ const Dashboard = {
   },
 
   async atualizarStatsMini() {
+    // Atualização completa: personagem, stats, extrato (rotinas) e tarefas
     try {
-      const [perfil, stats] = await Promise.allSettled([
+      const [perfil, stats, tarefasHoje] = await Promise.allSettled([
         API.auth.me(),
         API.get('/dashboard/stats'),
+        API.tarefas.hoje(),
       ]);
+
       if (perfil.status === 'fulfilled' && perfil.value) {
         this.renderPersonagem(perfil.value);
       }
       if (stats.status === 'fulfilled' && stats.value) {
         this.renderStats(stats.value);
       }
+      if (tarefasHoje.status === 'fulfilled') {
+        // Preserva cache local para que a atualização seja suave
+        this._tarefasHojeLista = tarefasHoje.value || [];
+        this._renderTarefasFiltradas();
+      }
+
+      // Recarrega o extrato de rotinas (busca fresh do servidor)
+      await this.carregarExtrato();
+
     } catch (_) {}
   },
 
