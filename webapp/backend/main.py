@@ -82,6 +82,12 @@ if os.path.exists(frontend_path):
         idx = os.path.join(frontend_path, "index.html")
         return FileResponse(f) if os.path.exists(f) else FileResponse(idx)
 
+    @app.get("/apple-touch-icon.png", include_in_schema=False)
+    def apple_touch_icon():
+        f = os.path.join(frontend_path, "apple-touch-icon.png")
+        idx = os.path.join(frontend_path, "index.html")
+        return FileResponse(f) if os.path.exists(f) else FileResponse(idx)
+
     @app.get("/", include_in_schema=False)
     def serve_root():
         idx = os.path.join(frontend_path, "index.html")

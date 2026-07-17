@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Solo Routines - Sistema Gamificado de Rotinas Pessoais baseado em Solo Leveling">
   <title>Solo Routines</title>
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/design-system.css">
   <link rel="stylesheet" href="css/animations.css">
@@ -163,7 +165,13 @@
             <div class="sidebar-user-name" id="sidebar-nome">Hunter</div>
             <div class="sidebar-user-rank" id="sidebar-rank">E-Rank</div>
           </div>
-          <button class="sidebar-logout" id="btn-logout" title="Sair">&#128682;</button>
+          <button class="sidebar-logout" id="btn-logout" title="Deixar o Sistema" aria-label="Sair">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
+              <line x1="12" y1="2" x2="12" y2="11"/>
+            </svg>
+          </button>
         </div>
       </div>
 

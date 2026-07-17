@@ -463,11 +463,24 @@
   transition: all .2s;
   flex-shrink: 0;
 }
-.sidebar-logout:hover {
-  background: rgba(239,68,68,.1);
-  border-color: rgba(239,68,68,.3);
-  color: #f87171;
+.sidebar-logout {
+  border: 1px solid rgba(124,58,237,.25);
+  color: var(--text-muted);
+  position: relative;
+  overflow: hidden;
 }
+.sidebar-logout svg { transition: all .25s ease; }
+.sidebar-logout:hover {
+  background: radial-gradient(circle at center, rgba(239,68,68,.18), rgba(239,68,68,.05));
+  border-color: rgba(239,68,68,.55);
+  color: #f87171;
+  box-shadow: 0 0 14px rgba(239,68,68,.35), inset 0 0 10px rgba(239,68,68,.08);
+}
+.sidebar-logout:hover svg {
+  filter: drop-shadow(0 0 5px rgba(239,68,68,.8));
+  transform: scale(1.1);
+}
+.sidebar-logout:active svg { transform: scale(.9); }
 
 /* ─── SIDEBAR MOBILE TOGGLE ─── */
 #sidebar-toggle {

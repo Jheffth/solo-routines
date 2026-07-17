@@ -25,6 +25,67 @@ const Dungeons = {
     return 'dg-theme-' + (cat || 'Pessoal').normalize('NFD').replace(/[̀-ͯ]/g, '');
   },
 
+  /* ── Biblioteca de ícones do Sistema ──────────────────── */
+  ICONES: [
+    { cat: '⚔️ Combate & Caça', lista: [
+      '⚔️','🗡','🛡','🏹','🪓','🔱','⚡','💥','🔥','❄️','☠️','💀','👹','👺','🐉','🐺',
+      '🦂','🕷','🐍','👾','🧟','🦴','🩸','⛓','🗿','🏴','🚩','🎯' ] },
+    { cat: '✨ Magia & Sistema', lista: [
+      '✨','🔮','🌀','💠','🔷','🔶','🟣','💎','🌟','⭐','🌙','☀️','🌌','🌠','🧿','📿',
+      '🕯','🪄','🧪','⚗️','📜','🗝','🔑','🚪','🌫','👁','🫧','♾️' ] },
+    { cat: '💼 Trabalho & Estudo', lista: [
+      '💼','💻','🖥','⌨️','🖱','📱','☎️','📊','📈','📉','📋','📝','✏️','🖊','📚','📖',
+      '📓','🗂','📁','📎','🧾','💰','💳','🪙','🏦','📦','🏗','⚙️' ] },
+    { cat: '❤️ Corpo & Bem-estar', lista: [
+      '❤️','💪','🧠','🫀','🦾','🏃','🏋️','🧘','🤸','🚴','🥊','🥋','💧','🚿','🛁','😴',
+      '🛌','🍎','🥗','🍳','☕','🍵','💊','🩺','🦷','👁‍🗨','🧴','🌡' ] },
+    { cat: '🏠 Casa & Cotidiano', lista: [
+      '🏠','🧹','🧺','🧽','🗑','🛠','🔧','🔨','🪛','🧰','🚗','⛽','🛒','🍽','🍲','🥘',
+      '🧊','🔌','💡','🪟','🚪','🌱','🪴','🐕','🐈','👕','🧦','📬' ] },
+    { cat: '🍽 Restaurante & Pedidos', lista: [
+      '🍞','🥖','🥐','🍅','🥬','🥕','🧅','🥔','🍖','🥩','🍗','🐟','🦐','🧀','🥚','🥛',
+      '🍚','🫘','🌶','🧂','🫒','🍋','📞','🚚','📥','📤','🧑‍🍳','🔪' ] },
+    { cat: '⏳ Tempo & Ritmo', lista: [
+      '⏰','⏱','⏳','⌛','🕐','📅','🗓','🔔','🔕','🌅','🌄','🌆','🌃','🌞','🌝','🔁',
+      '▶️','⏸','⏹','⏩','🐇','🐢','🚀','🛸','🎢','🌊','🪫','🔋' ] },
+  ],
+
+  _bindIconPicker(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input || input.dataset.picker) return;
+    input.dataset.picker = '1';
+    input.readOnly = true;
+    input.style.cursor = 'pointer';
+    input.title = 'Clique para escolher um ícone';
+
+    const wrap = input.parentElement;
+    wrap.style.position = 'relative';
+
+    const pop = document.createElement('div');
+    pop.className = 'dg-iconpicker';
+    pop.innerHTML = this.ICONES.map(g => `
+      <div class="dg-ip-cat">${g.cat}</div>
+      <div class="dg-ip-grid">
+        ${g.lista.map(i => `<span class="dg-ip-item" data-ico="${i}">${i}</span>`).join('')}
+      </div>`).join('');
+    wrap.appendChild(pop);
+
+    const abrir = (on) => pop.classList.toggle('on', on);
+    input.addEventListener('click', e => { e.stopPropagation(); abrir(!pop.classList.contains('on')); });
+    pop.addEventListener('click', e => {
+      const item = e.target.closest('.dg-ip-item');
+      if (item) {
+        input.value = item.dataset.ico;
+        abrir(false);
+        input.style.animation = 'none';
+        void input.offsetWidth;
+        input.style.animation = 'dg-icon-breathe 1s ease 1';
+      }
+      e.stopPropagation();
+    });
+    document.addEventListener('click', () => abrir(false));
+  },
+
   /* ── Carregar e renderizar a aba ─────────────────────────── */
   async carregar() {
     const cont = document.getElementById('lista-dungeons');
@@ -610,6 +671,10 @@ const Dungeons = {
         linha.querySelectorAll('input').forEach(inp => inp.disabled = !b.classList.contains('on'));
         linha.style.opacity = b.classList.contains('on') ? '1' : '.4';
       }));
+    // Seletores de ícone (dungeon e missão)
+    this._bindIconPicker('dgf-icone');
+    this._bindIconPicker('dgfm-icone');
+
     document.getElementById('dgf-folga-add').addEventListener('click', () => {
       const inp = document.getElementById('dgf-folga-data');
       if (!inp.value) return;
