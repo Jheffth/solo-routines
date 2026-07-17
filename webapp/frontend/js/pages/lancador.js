@@ -83,6 +83,12 @@ const Lancador = {
 
     if (dadosEdicao) this._preencherEdicao(dadosEdicao);
 
+    // Atualiza data padrão para hoje (LOCAL) toda vez que abre
+    if (!dadosEdicao) {
+      const dtTarefa = document.getElementById('lanc-data-tarefa');
+      if (dtTarefa) dtTarefa.value = this._dataHojeLocal();
+    }
+
     // Garante visibilidade diretamente (fallback)
     const el = document.getElementById('lancador-window');
     if (el) {
@@ -486,9 +492,9 @@ const Lancador = {
     // Submit
     document.getElementById('lanc-submit')?.addEventListener('click', () => this._salvar());
 
-    // Define data padrão da tarefa = hoje
+    // Define data padrão da tarefa = hoje (data LOCAL, não UTC)
     const dtTarefa = document.getElementById('lanc-data-tarefa');
-    if (dtTarefa) dtTarefa.value = new Date().toISOString().split('T')[0];
+    if (dtTarefa) dtTarefa.value = this._dataHojeLocal();
   },
 
   // ── Eventos globais com delegação (funcionam após login) ─
@@ -768,6 +774,15 @@ const Lancador = {
     if (btn) btn.disabled = false;
     if (txt) txt.textContent = '\u2694\uFE0F Criar Miss\u00E3o';
   },
+  // ── Helper: data local no formato YYYY-MM-DD ────────────
+  _dataHojeLocal() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  },
+
 };
 
 // Auto-init quando DOM estiver pronto
