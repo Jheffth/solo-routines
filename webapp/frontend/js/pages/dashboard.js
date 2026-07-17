@@ -1568,27 +1568,20 @@ const Dashboard = {
         try {
           const resp = await API.post(`/tarefas/${id}/concluir`, {});
 
-          // Atualiza local cache imediatamente
+          // Feedback visual imediato (antes do refresh completo)
+          if (row) {
+            row.style.opacity = '.5';
+            row.style.transition = 'opacity .3s';
+            const titulo = row.querySelector('span[style*="font-weight:700"]');
+            if (titulo) titulo.style.textDecoration = 'line-through';
+            btn.remove();
+          }
+
+          // Atualiza cache local para que o refresh saiba o novo status
           const t = (this._tarefasHojeLista || []).find(x => x.id === id);
           if (t) { t.status = 'CONCLUIDA'; t.concluida = true; }
 
-          // Reconstrói o card com o status correto (feedback imediato)
-          if (row && t) {
-            const tmp = document.createElement('div');
-            tmp.innerHTML = this._buildMissaoItem(t);
-            const novoCard = tmp.firstElementChild;
-            if (novoCard) {
-              row.replaceWith(novoCard);
-              // Re-bind o novo card
-              const container2 = novoCard.parentElement;
-              if (container2) {
-                this._bindCheckboxes(container2);
-                this._bindTarefaDblClick(container2);
-              }
-            }
-          }
-
-          // Animação XP
+          // Anima\u00e7\u00e3o XP
           const xpFloat = document.getElementById('xp-float');
           if (xpFloat && xp > 0) {
             xpFloat.textContent = `+${xp} XP`;
@@ -1605,8 +1598,8 @@ const Dashboard = {
             Animations.levelUp(resp.novo_nivel);
           }
 
-          // Atualização completa: personagem + stats + extrato + tarefas
-          setTimeout(() => this.atualizarStatsMini(), 500);
+          // Refresh completo: reconstr\u00f3i o card corretamente + stats + XP + extrato
+          setTimeout(() => this.atualizarStatsMini(), 600);
 
         } catch (err) {
           console.error('[Dashboard] Erro ao concluir tarefa:', err);
