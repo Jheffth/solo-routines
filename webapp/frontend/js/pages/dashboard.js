@@ -19,11 +19,12 @@ const Dashboard = {
       }
 
       // Carrega dados em paralelo
-      const [perfil, rotinasHoje, tarefasHoje, conquistas] = await Promise.allSettled([
+      const [perfil, rotinasHoje, tarefasHoje, conquistas, dashStats] = await Promise.allSettled([
         API.auth.me(),
         API.rotinas.hoje(),
         API.tarefas.hoje(),
         API.conquistas.listar(),
+        API.get('/dashboard/stats'),
       ]);
 
       // Perfil / personagem
@@ -38,6 +39,20 @@ const Dashboard = {
       // Tarefas de hoje
       const listaTarefas = tarefasHoje.status === 'fulfilled' ? (tarefasHoje.value || []) : [];
       this.renderTarefasHoje(listaTarefas);
+
+      // Stats (cards de contadores)
+      if (dashStats.status === 'fulfilled' && dashStats.value) {
+        this.renderStats(dashStats.value);
+      } else {
+        // Fallback: computa dos dados já carregados
+        const concHoje = listaRotinas.filter(r => r.status_hoje === 'CONCLUIDA').length
+                       + listaTarefas.filter(t => t.status  === 'CONCLUIDA').length;
+        this.renderStats({
+          execucoes_hoje:  concHoje,
+          total_execucoes: 0,
+          rotinas_ativas:  listaRotinas.filter(r => r.status_hoje === 'ATIVA').length,
+        });
+      }
 
       // Gr\u00E1fico XP (sem dados por agora, renderiza vazio)
       this.renderGraficoXP([]);
@@ -1585,12 +1600,15 @@ const Dashboard = {
 
   async atualizarStatsMini() {
     try {
-      const [perfil, rotinasHoje] = await Promise.allSettled([
+      const [perfil, stats] = await Promise.allSettled([
         API.auth.me(),
-        API.get('/rotinas/hoje'),
+        API.get('/dashboard/stats'),
       ]);
       if (perfil.status === 'fulfilled' && perfil.value) {
         this.renderPersonagem(perfil.value);
+      }
+      if (stats.status === 'fulfilled' && stats.value) {
+        this.renderStats(stats.value);
       }
     } catch (_) {}
   },

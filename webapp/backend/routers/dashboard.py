@@ -15,6 +15,30 @@ from routers.rotinas import _eh_rotina_de_hoje
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
+@router.get("/stats")
+def dashboard_stats(
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_atual),
+):
+    """Stats rápidos para os cards do dashboard (sem recarregar tudo)."""
+    hoje = date.today()
+    total_exec = db.query(Execucao).filter(Execucao.usuario_id == usuario.id).count()
+    exec_hoje  = db.query(Execucao).filter(
+        Execucao.usuario_id == usuario.id,
+        Execucao.data_execucao == hoje,
+    ).count()
+    rot_ativas = db.query(Rotina).filter(
+        Rotina.usuario_id == usuario.id,
+        Rotina.ativo == True,
+    ).count()
+    return {
+        "execucoes_hoje":  exec_hoje,
+        "total_execucoes": total_exec,
+        "rotinas_ativas":  rot_ativas,
+    }
+
+
+
 @router.get("/")
 def dashboard(
     db: Session = Depends(get_db),
