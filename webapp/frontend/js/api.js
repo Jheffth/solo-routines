@@ -50,6 +50,14 @@ class API {
       else if (data?.resultado?.level_ups?.length)   levelUps = data.resultado.level_ups;
       else if (data?.eventos_xp?.level_ups?.length)  levelUps = data.eventos_xp.level_ups;
 
+      // Ganho de XP sem cerimônia (missão comum): ainda assim a Janela de
+      // Status precisa refletir o novo XP/moedas.
+      const houveGanho = !!(data?.xp_ganho || data?.resultado?.xp_ganho ||
+                            data?.eventos_xp?.xp_ganho);
+      if (houveGanho && !levelUps.length && !conquistasNovas.length) {
+        window.dispatchEvent(new CustomEvent('sr:recompensa', { detail: { xp: true } }));
+      }
+
       const celebrar = async () => {
         if (levelUps.length && window.Ascensao) {
           await window.Ascensao.mostrar(levelUps);       // aguarda a Ascensão terminar
@@ -57,6 +65,11 @@ class API {
         if (conquistasNovas.length && window.ConquistaFX) {
           conquistasNovas.forEach(c => window.ConquistaFX.show(c));
         }
+        // Avisa o app para atualizar a Janela de Status (XP, nível, relíquias)
+        // sem o usuário precisar recarregar a página.
+        window.dispatchEvent(new CustomEvent('sr:recompensa', {
+          detail: { levelUps, conquistas: conquistasNovas },
+        }));
       };
       if (levelUps.length || conquistasNovas.length) celebrar();
 

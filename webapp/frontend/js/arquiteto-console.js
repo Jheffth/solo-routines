@@ -481,8 +481,8 @@ const ArquitetoConsole = {
       // Reabre o painel já atualizado
       document.getElementById('arq-comemorativas')?.remove();
       this.comemorativas();
-      // Atualiza o dashboard se estiver visível
-      if (window.App?.currentPage === 'dashboard' && window.Dashboard) Dashboard.carregar();
+      // Estorno não passa pelo canal de celebração: atualiza a tela na mão
+      window.App?.atualizarPaginaAtual?.();
     } catch (err) {
       SoloDialog.toast(err.message || String(err), 'error');
     }
@@ -496,10 +496,7 @@ const ArquitetoConsole = {
         SoloDialog.toast('✔ Nível já está em dia', 'info');
         return;
       }
-      // O interceptador do api.js já dispara a Ascensão automaticamente
-      if (window.App?.currentPage === 'dashboard' && window.Dashboard) {
-        setTimeout(() => Dashboard.carregar(), 4500);
-      }
+      // A Ascensão e a atualização da tela vêm pelo canal 'sr:recompensa'
     } catch (err) {
       SoloDialog.toast(err.message || String(err), 'error');
     }

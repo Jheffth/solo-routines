@@ -116,6 +116,43 @@ const App = {
 
     // 11. Inicializa particulas (canvas bg)
     this._initParticulas();
+
+    // 12. Recompensa recebida → atualiza a página atual sozinha
+    this._bindRecompensa();
+  },
+
+  /* Ouve o fim de qualquer celebração (Ascensão/Cerimônia) e recarrega
+     os dados da página visível — sem F5, sem piscar a tela. */
+  _bindRecompensa() {
+    if (this._recompensaBound) return;
+    this._recompensaBound = true;
+    window.addEventListener('sr:recompensa', () => {
+      clearTimeout(this._recompensaTimer);
+      // pequeno atraso: deixa o selo/carimbo assentarem antes de repintar
+      this._recompensaTimer = setTimeout(() => this.atualizarPaginaAtual(), 700);
+    });
+  },
+
+  /* Recarrega os dados da página em foco (útil após ganhos de XP) */
+  async atualizarPaginaAtual() {
+    try {
+      switch (this.currentPage) {
+        case 'dashboard': await Dashboard.carregar(); break;
+        case 'perfil':    await Perfil.carregar();    break;
+        case 'rotinas':   await Rotinas.carregar();   break;
+        case 'tarefas':   await Tarefas.carregar();   break;
+        case 'dungeons':  await Dungeons.carregar();  break;
+        case 'loja':      await Loja.carregar();      break;
+      }
+      // A sidebar mostra rank/nível — atualiza sempre
+      const u = await API.auth.me();
+      if (u) {
+        const rankEl = document.getElementById('sidebar-rank');
+        if (rankEl && u.nivel_acesso !== 'Arquiteto') {
+          rankEl.textContent = `${u.classe || 'E-Rank'} — Nv.${u.nivel_atual || 1}`;
+        }
+      }
+    } catch (_) { /* silencioso: atualização é cortesia, não pode quebrar nada */ }
   },
 
   async navigate(page) {
