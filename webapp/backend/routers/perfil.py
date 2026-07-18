@@ -20,18 +20,21 @@ from auth.router import get_usuario_atual
 
 router = APIRouter(prefix="/perfil", tags=["perfil"])
 
-# ── Cloudinary — armazenamento permanente de avatares ────────────────────────
+# ── Cloudinary — armazenamento permanente de avatares (opcional) ─────────────
 # A CLOUDINARY_URL no formato cloudinary://key:secret@cloud_name
 # é lida automaticamente pelo SDK quando está no ambiente.
-import cloudinary
-import cloudinary.uploader
-
-_CLOUDINARY_URL = os.getenv("CLOUDINARY_URL", "")
-if _CLOUDINARY_URL:
-    cloudinary.config(cloudinary_url=_CLOUDINARY_URL)
-    _CLOUDINARY_OK = True
-else:
-    _CLOUDINARY_OK = False
+# Import blindado: sem o pacote instalado, cai no armazenamento local
+# em vez de derrubar o servidor inteiro.
+_CLOUDINARY_OK = False
+try:
+    import cloudinary
+    import cloudinary.uploader
+    _CLOUDINARY_URL = os.getenv("CLOUDINARY_URL", "")
+    if _CLOUDINARY_URL:
+        cloudinary.config(cloudinary_url=_CLOUDINARY_URL)
+        _CLOUDINARY_OK = True
+except ImportError:
+    print("[PERFIL] cloudinary não instalado — avatares em disco local (ok para dev)")
 
 # Fallback local (usado apenas no desenvolvimento sem Cloudinary configurado)
 AVATAR_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "uploads", "avatars")
@@ -262,21 +265,23 @@ def perfil_completo(
     for (d,) in execs_ano:
         heatmap[d.isoformat()] += 1
 
-    # ── Todas as conquistas ───────────────────────────────
+    # ── Todas as conquistas ─────────────────────────────────
     todas_cq = db.query(Conquista).filter(Conquista.ativo == True).all()
-    desbloqueadas_ids = {
-        cu.conquista_id for cu in
+    desbloqueadas_map = {
+        cu.conquista_id: cu.desbloqueada_em
+        for cu in
         db.query(ConquistaUsuario).filter(ConquistaUsuario.usuario_id == usuario.id).all()
     }
     conquistas_lista = [
         {
-            "id":           c.id,
-            "titulo":       c.titulo,
-            "descricao":    c.descricao,
-            "icone":        c.icone,
-            "cor":          c.cor,
-            "xp_bonus":     c.xp_bonus,
-            "desbloqueada": c.id in desbloqueadas_ids,
+            "id":             c.id,
+            "titulo":         c.titulo,
+            "descricao":      c.descricao,
+            "icone":          c.icone,
+            "cor":            c.cor,
+            "xp_bonus":       c.xp_bonus,
+            "desbloqueada":   c.id in desbloqueadas_map,
+            "desbloqueada_em": desbloqueadas_map[c.id].isoformat() if c.id in desbloqueadas_map and desbloqueadas_map[c.id] else None,
         }
         for c in todas_cq
     ]

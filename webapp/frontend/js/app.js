@@ -211,6 +211,9 @@ const App = {
       if (usuario.nivel_acesso === 'Arquiteto') {
         rankEl.innerHTML = `<span style="color:#fbbf24;font-weight:700;text-shadow:0 0 8px rgba(251,191,36,.6)">★ Arquiteto ★</span>`;
         if (avEl) { avEl.style.border = '2px solid #fbbf24'; avEl.style.boxShadow = '0 0 16px rgba(251,191,36,.5)'; }
+        // Aura de chamas vivas do Arquiteto
+        avEl?.classList.add('chamas-arquiteto');
+        document.getElementById('dash-avatar')?.classList.add('chamas-arquiteto');
       } else {
         rankEl.textContent = `${usuario.classe || 'E-Rank'} — Nv.${usuario.nivel_atual || 1}`;
       }

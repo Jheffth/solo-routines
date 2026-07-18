@@ -2,9 +2,13 @@
 Motor de XP, Streaks, Level-up e Conquistas do Solo Routines.
 Centraliza toda a lógica de gamificação.
 """
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from datetime import date, datetime, timedelta
-from database import Usuario, Nivel, Conquista, ConquistaUsuario, Execucao, TarefaDia
+from database import (
+    Usuario, Nivel, Conquista, ConquistaUsuario, Execucao, TarefaDia,
+    ExecucaoDia, Dungeon, DungeonSessao, DungeonMissao, DungeonMissaoExecucao,
+)
 
 
 # ── Tabela de XP por prioridade ──────────────────────────────────
@@ -162,6 +166,87 @@ def verificar_conquistas(db: Session, usuario: Usuario) -> list[dict]:
                 Execucao.rotina_id != None
             ).count()
             desbloqueou = total_rot >= val
+
+        # ── Semanas perfeitas (condições que estavam órfãs no motor) ──
+        # Perfeito = nos últimos N dias, pelo menos 1 conclusão por dia
+        # e NENHUM fracasso de rotina no período.
+        elif cond in ("rotinas_semana_perfeita", "semanas_perfeitas"):
+            dias = 7 * (val if cond == "semanas_perfeitas" else 1)
+            inicio = hoje - timedelta(days=dias - 1)
+            eds = db.query(ExecucaoDia).filter(
+                ExecucaoDia.usuario_id == usuario.id,
+                ExecucaoDia.data >= inicio,
+            ).all()
+            if eds:
+                dias_ok = {ed.data for ed in eds if ed.status == "CONCLUIDA"}
+                fracassou = any(ed.status == "FRACASSADA" for ed in eds)
+                desbloqueou = (not fracassou) and len(dias_ok) >= dias
+
+        # ── Condições de Dungeon (sessões de teste nunca contam) ──
+        elif cond == "dungeon_clears":
+            desbloqueou = db.query(DungeonSessao).filter(
+                DungeonSessao.usuario_id == usuario.id,
+                DungeonSessao.modo_teste == False,
+                DungeonSessao.status == "CONCLUIDA",
+            ).count() >= val
+
+        elif cond == "dungeon_clear_s":
+            desbloqueou = db.query(DungeonSessao).filter(
+                DungeonSessao.usuario_id == usuario.id,
+                DungeonSessao.modo_teste == False,
+                DungeonSessao.rank_obtido == "S",
+            ).count() >= val
+
+        elif cond == "dungeon_streak":
+            melhor = db.query(func.max(Dungeon.streak_max)).filter(
+                Dungeon.usuario_id == usuario.id
+            ).scalar() or 0
+            desbloqueou = melhor >= val
+
+        elif cond == "dungeon_eventos":
+            desbloqueou = db.query(DungeonMissaoExecucao).join(
+                DungeonSessao, DungeonMissaoExecucao.dungeon_sessao_id == DungeonSessao.id
+            ).join(
+                DungeonMissao, DungeonMissaoExecucao.dungeon_missao_id == DungeonMissao.id
+            ).filter(
+                DungeonSessao.usuario_id == usuario.id,
+                DungeonSessao.modo_teste == False,
+                DungeonMissaoExecucao.status == "CONCLUIDA",
+                DungeonMissao.natureza.in_(("EVENTO_ALEATORIO", "BEM_ESTAR")),
+            ).count() >= val
+
+        elif cond == "dungeon_tempo":
+            total_min = db.query(func.sum(DungeonSessao.tempo_total_min)).filter(
+                DungeonSessao.usuario_id == usuario.id,
+                DungeonSessao.modo_teste == False,
+            ).scalar() or 0
+            desbloqueou = total_min >= val
+
+        elif cond == "rotinas_semana_perfeita":
+            # Semana perfeita = execuções em todos os 7 dias da semana anterior
+            inicio_sem = hoje - timedelta(days=hoje.weekday() + 7)
+            fim_sem    = inicio_sem + timedelta(days=6)
+            dias_exec  = db.query(Execucao.data_execucao).filter(
+                Execucao.usuario_id == usuario.id,
+                Execucao.data_execucao >= inicio_sem,
+                Execucao.data_execucao <= fim_sem,
+            ).distinct().count()
+            desbloqueou = dias_exec >= 7
+
+        elif cond == "semanas_perfeitas":
+            # 4 semanas perfeitas nos últimos 28 dias
+            semanas_ok = 0
+            for i in range(4):
+                ini = hoje - timedelta(days=(i + 1) * 7)
+                fim = ini + timedelta(days=6)
+                dias = db.query(Execucao.data_execucao).filter(
+                    Execucao.usuario_id == usuario.id,
+                    Execucao.data_execucao >= ini,
+                    Execucao.data_execucao <= fim,
+                ).distinct().count()
+                if dias >= 7:
+                    semanas_ok += 1
+            desbloqueou = semanas_ok >= val
 
         if desbloqueou:
             cu = ConquistaUsuario(usuario_id=usuario.id, conquista_id=conquista.id)

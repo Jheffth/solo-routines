@@ -19,6 +19,20 @@
 </head>
 <body>
 
+  <!-- Filtro de chamas vivas (turbulência animada) — usado pela aura do Arquiteto -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <filter id="fx-chamas" x="-60%" y="-60%" width="220%" height="220%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.013 0.055" numOctaves="3" seed="7" result="ruido">
+          <animate attributeName="baseFrequency" dur="7s"
+            values="0.013 0.055;0.018 0.075;0.011 0.05;0.016 0.068;0.013 0.055"
+            repeatCount="indefinite"/>
+        </feTurbulence>
+        <feDisplacementMap in="SourceGraphic" in2="ruido" scale="42" xChannelSelector="R" yChannelSelector="G"/>
+      </filter>
+    </defs>
+  </svg>
+
   <canvas id="particles-bg" style="position:fixed;inset:0;z-index:0;pointer-events:none;"></canvas>
 
   <div id="app-container">
@@ -221,8 +235,16 @@
               <div class="xp-bar-fill" id="dash-xp-bar" style="width:0%"></div>
             </div>
           </div>
-          <!-- Botão Editar Perfil -->
-          <div style="margin-top:1rem;display:flex;justify-content:flex-end">
+          <!-- Botão Editar Perfil e Ações Extras -->
+          <div style="margin-top:1rem;display:flex;justify-content:flex-end;gap:.5rem">
+            <button id="dash-btn-reset-arquiteto" class="btn btn-ghost btn-sm" style="
+              display:none; font-family:var(--font-section);font-size:.75rem;letter-spacing:.06em;
+              border:1px solid rgba(245,158,11,.4);color:#f59e0b;
+              padding:.35rem .9rem;border-radius:.5rem;cursor:pointer;
+              transition:all .2s;align-items:center;gap:.4rem;
+            " onmouseover="this.style.background='rgba(245,158,11,.15)'" onmouseout="this.style.background='transparent'">
+              &#8635; Resetar Progresso (Arquiteto)
+            </button>
             <button id="dash-btn-editar-perfil" class="btn btn-ghost btn-sm" style="
               font-family:var(--font-section);font-size:.75rem;letter-spacing:.06em;
               border:1px solid rgba(124,58,237,.4);color:var(--purple-glow);
@@ -764,16 +786,7 @@
     </div>
   </div>
 
-  <!-- CONQUISTA TOAST -->
-  <div id="conquista-toast" class="hidden">
-    <div class="conquista-toast-inner">
-      <div class="conquista-toast-icon" id="toast-icon">&#127942;</div>
-      <div>
-        <div class="conquista-toast-title">Conquista Desbloqueada!</div>
-        <div class="conquista-toast-name" id="toast-nome"></div>
-      </div>
-    </div>
-  </div>
+  <!-- Conquistas: cerimônia e selos são criados dinamicamente pelo ConquistaFX (animations.js) -->
 
   <!-- XP FLOAT -->
   <div id="xp-float" style="
@@ -790,7 +803,9 @@
   <script src="js/auth.js"></script>
   <script src="js/dialog.js"></script>
   <script src="js/drag-windows.js"></script>
+  <script src="js/sfx.js"></script>
   <script src="js/animations.js"></script>
+  <script src="js/arquiteto-console.js"></script>
   <script src="js/charts.js"></script>
   <script src="js/pages/lancador.js"></script>
   <script src="js/pages/dashboard.js"></script>

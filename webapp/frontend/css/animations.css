@@ -182,6 +182,203 @@
   animation: xpFloat 1.5s ease forwards;
 }
 
+/* ══════════════════════════════════════════════════════════
+   CERIMÔNIA DE CONQUISTA (3 atos)
+   ══════════════════════════════════════════════════════════ */
+.cq-overlay {
+  position: fixed; inset: 0;
+  z-index: 9500;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at center, rgba(20,10,2,.55), rgba(3,3,8,.82));
+  backdrop-filter: blur(4px);
+  animation: cq-fade-in .35s ease;
+  cursor: pointer;
+}
+.cq-overlay.cq-saindo { animation: cq-fade-out .55s ease forwards; }
+@keyframes cq-fade-in  { from { opacity: 0; } }
+@keyframes cq-fade-out { to   { opacity: 0; transform: scale(1.05); } }
+
+/* Ato I — flash dourado */
+.cq-flash {
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at center, rgba(255,236,170,.9), rgba(251,191,36,.35) 40%, transparent 70%);
+  animation: cq-flash 0.7s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes cq-flash { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+.cq-palco {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center;
+  pointer-events: none;
+}
+
+/* Raios de luz varrendo */
+.cq-raios {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 560px; height: 560px;
+  margin: -280px 0 0 -280px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg,
+    transparent 0%, rgba(251,191,36,.18) 4%, transparent 9%,
+    transparent 24%, rgba(251,191,36,.14) 29%, transparent 34%,
+    transparent 49%, rgba(255,220,130,.16) 54%, transparent 59%,
+    transparent 74%, rgba(251,191,36,.12) 79%, transparent 84%);
+  filter: blur(2px);
+  animation: cq-raios-girar 9s linear infinite;
+  top: 130px;
+}
+@keyframes cq-raios-girar { to { transform: rotate(360deg); } }
+
+/* Ato II — medalha forjada (SVG: estrela, gema, louros, coroa) */
+.cq-medalha {
+  position: relative;
+  width: 240px; height: 240px;
+  display: flex; align-items: center; justify-content: center;
+  filter: drop-shadow(0 0 34px rgba(251,191,36,.55)) drop-shadow(0 0 90px rgba(251,191,36,.25));
+  animation: cq-forjar .95s cubic-bezier(.34,1.56,.64,1) backwards;
+}
+@keyframes cq-forjar {
+  0%   { transform: scale(0) rotate(-540deg); opacity: 0; filter: blur(12px) brightness(3.2); }
+  60%  { transform: scale(1.14) rotate(18deg); opacity: 1; filter: blur(0) brightness(1.7); }
+  100% { transform: scale(1) rotate(0); filter: blur(0) brightness(1); }
+}
+.cq-svg { display: block; }
+
+/* Estrela de fundo girando lenta */
+.cq-svg-star {
+  transform-origin: 130px 130px;
+  animation: cq-anel-girar 26s linear infinite;
+}
+/* Brilho metálico varrendo a borda */
+.cq-svg-brilho {
+  transform-origin: 130px 130px;
+  animation: cq-anel-girar 3.2s linear infinite;
+  opacity: .8;
+}
+
+/* Ícone da conquista incrustado na gema */
+.cq-ico {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 3.1rem;
+  filter: drop-shadow(0 3px 10px rgba(0,0,0,.6)) drop-shadow(0 0 14px rgba(233,213,255,.6));
+  animation: cq-ico-pulsar 2.2s ease-in-out .95s infinite;
+}
+@keyframes cq-ico-pulsar {
+  0%,100% { transform: translate(-50%, -50%) scale(1); }
+  50%     { transform: translate(-50%, -50%) scale(1.1); }
+}
+
+/* Anel de runas externo girando */
+.cq-anel {
+  position: absolute;
+  border-radius: 50%;
+}
+.cq-anel.r2 {
+  inset: -26px;
+  border: 1px dotted rgba(217,70,239,.5);
+  animation: cq-anel-girar 18s linear infinite reverse;
+}
+@keyframes cq-anel-girar { to { transform: rotate(360deg); } }
+
+/* Textos */
+.cq-textos { text-align: center; margin-top: 1.6rem; animation: cq-texto-subir .7s ease .35s backwards; }
+@keyframes cq-texto-subir { from { opacity: 0; transform: translateY(24px); } }
+
+.cq-lbl {
+  font-family: var(--font-section);
+  font-size: .72rem; font-weight: 700;
+  letter-spacing: .34em; text-transform: uppercase;
+  color: rgba(251,191,36,.85);
+  text-shadow: 0 0 12px rgba(251,191,36,.6);
+}
+.cq-nome {
+  font-family: var(--font-title);
+  font-size: 2rem;
+  margin-top: .45rem;
+  background: linear-gradient(100deg, #fff7e0 20%, #fbbf24 40%, #fff7e0 60%, #fbbf24 80%);
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: cq-shimmer 2.4s linear infinite;
+}
+@keyframes cq-shimmer { to { background-position: -220% center; } }
+.cq-desc { font-size: .85rem; color: var(--text-secondary); margin-top: .45rem; max-width: 420px; }
+.cq-xp {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.15rem; font-weight: 700;
+  color: var(--gold-bright);
+  margin-top: .7rem;
+  text-shadow: 0 0 14px rgba(251,191,36,.7);
+  animation: cq-texto-subir .6s ease .7s backwards;
+}
+
+/* Ato III — selo compacto no canto */
+#cq-pilha {
+  position: fixed;
+  right: 1.4rem; bottom: 6.2rem;
+  z-index: 9000;
+  display: flex; flex-direction: column-reverse; gap: .6rem;
+  pointer-events: none;
+}
+.cq-selo {
+  display: flex; align-items: center; gap: .8rem;
+  min-width: 250px;
+  padding: .7rem 1rem;
+  border-radius: 13px;
+  background: linear-gradient(160deg, rgba(42,26,4,.96), rgba(13,13,26,.96));
+  border: 1px solid rgba(251,191,36,.55);
+  box-shadow: 0 0 24px rgba(251,191,36,.3), 0 10px 30px rgba(0,0,0,.55);
+  animation: cq-selo-in .5s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes cq-selo-in { from { transform: translateX(120%) scale(.9); opacity: 0; } }
+.cq-selo-out { animation: cq-selo-sair .5s ease forwards; }
+@keyframes cq-selo-sair { to { transform: translateX(120%); opacity: 0; } }
+
+.cq-selo-ico { font-size: 1.7rem; filter: drop-shadow(0 0 8px rgba(251,191,36,.7)); }
+.cq-selo-lbl {
+  font-family: var(--font-section); font-size: .58rem; font-weight: 700;
+  letter-spacing: .2em; text-transform: uppercase; color: var(--gold-xp);
+}
+.cq-selo-nome { font-family: var(--font-section); font-size: .9rem; font-weight: 600; color: var(--text-primary); }
+.cq-selo-xp {
+  margin-left: auto;
+  font-family: 'Orbitron', monospace; font-size: .8rem; font-weight: 700;
+  color: var(--gold-bright);
+}
+
+/* Carimbo no quadro "Conquistas Recentes": slam + neblina */
+.cq-carimbo {
+  position: relative;
+  animation: cq-slam .55s cubic-bezier(.22,1.6,.36,1) .25s backwards;
+  border-color: rgba(251,191,36,.5) !important;
+  box-shadow: 0 0 18px rgba(251,191,36,.25);
+}
+@keyframes cq-slam {
+  0%   { transform: scale(2.1) rotate(-7deg); opacity: 0; filter: blur(5px); }
+  55%  { transform: scale(.94) rotate(1.5deg); opacity: 1; filter: blur(0); }
+  75%  { transform: scale(1.04) rotate(-.5deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+.cq-nevoa {
+  position: absolute; inset: -22px;
+  border-radius: 16px;
+  background: radial-gradient(circle at center, rgba(255,232,170,.5), rgba(251,191,36,.18) 45%, transparent 70%);
+  filter: blur(10px);
+  pointer-events: none;
+  animation: cq-nevoa .45s ease .28s both, cq-nevoa-sumir 1.6s ease .75s forwards;
+}
+@keyframes cq-nevoa       { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: scale(1.25); } }
+@keyframes cq-nevoa-sumir { to { opacity: 0; transform: scale(1.7); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .cq-overlay, .cq-flash, .cq-raios, .cq-anel { animation: none; }
+}
+
 /* ── Conquista Toast ───────────────────────────────────── */
 #conquista-toast {
   position: fixed;

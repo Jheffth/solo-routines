@@ -71,7 +71,7 @@ if not os.path.exists(frontend_path):
 print(f"[STATIC] frontend_path = {frontend_path} (exists={os.path.exists(frontend_path)})")
 
 if os.path.exists(frontend_path):
-    for subdir in ("css", "js", "assets", "img", "fonts"):
+    for subdir in ("css", "js", "assets", "img", "fonts", "sounds"):
         full = os.path.join(frontend_path, subdir)
         if os.path.exists(full):
             app.mount(f"/{subdir}", StaticFiles(directory=full), name=f"static-{subdir}")

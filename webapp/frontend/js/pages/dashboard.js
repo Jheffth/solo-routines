@@ -130,12 +130,44 @@ const Dashboard = {
       }
     });
 
-    // Bot\u00E3o Editar Perfil
+    // Botão Editar Perfil
     const btnEdit = document.getElementById('dash-btn-editar-perfil');
     if (btnEdit) {
       btnEdit.onclick = () => {
         if (window.App) App.navigate('perfil');
       };
+    }
+
+    // Botão Resetar Arquiteto
+    const btnResetArq = document.getElementById('dash-btn-reset-arquiteto');
+    if (btnResetArq) {
+      if (dados.nivel_acesso === 'Arquiteto') {
+        btnResetArq.style.display = 'flex';
+        btnResetArq.onclick = async () => {
+          const ok = await SoloDialog.confirm(
+            `Deseja RESETAR completamente o seu progresso?<br><span style="color:#94a3b8">Isso apagará nível, conquistas, moedas e XP!</span>`,
+            { titulo: 'Resetar (Modo Arquiteto)', icon: '&#8635;', tipo: 'error', btnOk: 'Zerar Tudo', btnCancel: 'Cancelar' }
+          );
+          if (ok) {
+            try {
+              await API.post(`/gerencial/reset-perfil/${dados.id}`, {});
+              SoloDialog.toast('Progresso zerado!', 'success');
+              // Limpa cache de conquistas vistas no navegador
+              for (let i = localStorage.length - 1; i >= 0; i--) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('cq_seen_')) {
+                  localStorage.removeItem(key);
+                }
+              }
+              setTimeout(() => { window.location.reload(); }, 800);
+            } catch (err) {
+              SoloDialog.toast('Erro ao resetar: ' + err.message, 'error');
+            }
+          }
+        };
+      } else {
+        btnResetArq.style.display = 'none';
+      }
     }
   },
 
@@ -1417,7 +1449,10 @@ const Dashboard = {
     const cont = document.getElementById('lista-conquistas-recentes');
     if (!cont) return;
 
-    if (!lista.length) {
+    // Apenas mostrar as desbloqueadas na home, ordenadas pelas mais recentes (se houver data)
+    let desbloqueadas = lista.filter(c => c.desbloqueada);
+
+    if (!desbloqueadas.length) {
       cont.innerHTML = `
         <div class="empty-state" style="width:100%">
           <div class="empty-icon">&#127942;</div>
@@ -1426,15 +1461,49 @@ const Dashboard = {
       return;
     }
 
-    cont.innerHTML = lista.map(c => `
-      <div class="conquista-mini ${c.desbloqueada ? '' : 'bloqueada'}">
-        <div class="conquista-mini-icon">${c.icone || '&#127942;'}</div>
-        <div class="conquista-mini-info">
-          <div class="conquista-mini-nome">${c.titulo || c.nome || 'Conquista'}</div>
-          <div class="conquista-mini-desc">${c.descricao || ''}</div>
+    // Se houver data de desbloqueio, ordena pelas mais recentes, senão deixa como vieram
+    desbloqueadas.sort((a, b) => {
+      if (a.desbloqueada_em && b.desbloqueada_em) {
+        return new Date(b.desbloqueada_em) - new Date(a.desbloqueada_em);
+      }
+      return 0;
+    });
+
+    const now = new Date();
+    let delay = 0;
+
+    cont.innerHTML = desbloqueadas.map((c, i) => {
+      let isNew = false;
+      if (c.desbloqueada_em) {
+        // Se desbloqueada há menos de 1 minuto e ainda não foi listada nesta sessão
+        isNew = (now - new Date(c.desbloqueada_em)) < 60000;
+      }
+
+      let classes = 'conquista-mini c-pulsing';
+      let style = `--c-pulse-delay: ${Math.random()*2}s;`;
+
+      if (isNew) {
+        classes += ' c-materializing';
+        style += `--c-delay: ${delay}ms;`;
+        delay += 150;
+      } else {
+        classes += ' c-entering';
+        style += `--c-delay: ${i * 50}ms;`;
+      }
+
+      const medalha = (typeof ConquistaFX !== 'undefined' && ConquistaFX.miniMedalha)
+        ? ConquistaFX.miniMedalha(c)
+        : `<div class="conquista-mini-icon">${c.icone || '&#127942;'}</div>`;
+      return `
+        <div class="${classes}" style="${style}">
+          ${medalha}
+          <div class="conquista-mini-info">
+            <div class="conquista-mini-nome">${c.titulo || c.nome || 'Conquista'}</div>
+            <div class="conquista-mini-desc">${c.descricao || ''}</div>
+          </div>
         </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
   },
 
   _buildMissaoItem(t) {
@@ -1615,9 +1684,9 @@ const Dashboard = {
             }, 1600);
           }
 
-          // Level up
-          if (resp && resp.level_up && typeof Animations !== 'undefined') {
-            Animations.levelUp(resp.novo_nivel);
+          // Level up (corrigido: o objeto global é LevelUp, não Animations)
+          if (resp && resp.level_up && typeof LevelUp !== 'undefined') {
+            LevelUp.show(resp.novo_nivel);
           }
 
           // Refresh completo: reconstr\u00f3i o card corretamente + stats + XP + extrato

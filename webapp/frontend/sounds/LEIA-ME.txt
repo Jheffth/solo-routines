@@ -1,0 +1,23 @@
+═══════════════════════════════════════════════════════════
+  SOLO ROUTINES — PASTA DE SONS (SFX)
+═══════════════════════════════════════════════════════════
+
+Coloque aqui os arquivos de som do Sistema. O app procura
+automaticamente por estes nomes (formato .mp3, .ogg ou .wav):
+
+  conquista.mp3   → Cerimônia de Conquista (fanfarra/sino)
+  carimbo.mp3     → Selo da conquista no quadro (impacto/carimbo)
+  levelup.mp3     → Level Up
+  missao.mp3      → Missão cumprida (reservado)
+  portal.mp3      → Entrada na dungeon (reservado)
+
+REGRAS:
+- Se o arquivo existir, ele é tocado.
+- Se NÃO existir, o Sistema usa um som sintetizado embutido
+  (Web Audio) como reserva — nada quebra.
+- Volume recomendado: sons curtos (0.5s a 2s), sem silêncio
+  no início do arquivo.
+
+Para trocar um som, basta substituir o arquivo e dar
+Ctrl+F5 no navegador. Nenhum código precisa mudar.
+═══════════════════════════════════════════════════════════

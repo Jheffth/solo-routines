@@ -7,8 +7,8 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 
-from database import get_db, Usuario, LogAuditoria, Rotina, TarefaDia, Execucao
-from auth.router import get_admin
+from database import get_db, Usuario, LogAuditoria, Rotina, TarefaDia, Execucao, ConquistaUsuario, RecompensaUsuario
+from auth.router import get_admin, get_arquiteto
 from auth.service import hash_senha
 
 router = APIRouter(prefix="/gerencial", tags=["gerencial"])
@@ -147,3 +147,39 @@ def listar_logs(
         }
         for l in logs
     ]
+
+
+@router.post("/reset-perfil/{usuario_id}")
+def reset_perfil(
+    usuario_id: int,
+    db: Session = Depends(get_db),
+    arquiteto: Usuario = Depends(get_arquiteto),
+):
+    """
+    Reseta o progresso de gamificação de um usuário (exclusivo Arquiteto).
+    Zera: XP, nível, moedas, streak, conquistas e histórico de execuções.
+    Não apaga: nome, login, senha, avatar, rotinas e tarefas criadas.
+    """
+    u = db.query(Usuario).filter(Usuario.id == usuario_id).first()
+    if not u:
+        raise HTTPException(404, "Usuário não encontrado")
+
+    # Reseta os campos de gamificação
+    u.xp_total          = 0
+    u.xp_atual          = 0
+    u.nivel_atual       = 1
+    u.moedas            = 0
+    u.streak_atual      = 0
+    u.streak_max        = 0
+    u.ultima_atividade  = None
+    u.classe            = "E-Rank"
+    u.titulo            = "O Mais Fraco"
+    u.xp_proximo_nivel  = 1000  # XP necessário para o nível 2
+
+    # Remove o histórico de progresso
+    db.query(ConquistaUsuario).filter(ConquistaUsuario.usuario_id == usuario_id).delete()
+    db.query(Execucao).filter(Execucao.usuario_id == usuario_id).delete()
+    db.query(RecompensaUsuario).filter(RecompensaUsuario.usuario_id == usuario_id).delete()
+
+    db.commit()
+    return {"ok": True, "msg": f"Perfil de '{u.nome}' resetado com sucesso"}

@@ -35,6 +35,19 @@ class API {
       if (!response.ok) {
         throw new Error(data?.detail || data?.message || data?.error || ('Erro ' + response.status));
       }
+
+      // Intercepta globalmente novas conquistas — canal ÚNICO da Cerimônia
+      // (cobre rotinas/tarefas: resultado.conquistas | novas_conquistas
+      //  e dungeons: eventos_xp.conquistas). ConquistaFX deduplica sozinho.
+      let conquistasNovas = [];
+      if (data?.resultado?.conquistas?.length)       conquistasNovas = data.resultado.conquistas;
+      else if (data?.novas_conquistas?.length)       conquistasNovas = data.novas_conquistas;
+      else if (data?.eventos_xp?.conquistas?.length) conquistasNovas = data.eventos_xp.conquistas;
+
+      if (conquistasNovas.length && typeof window.ConquistaFX !== 'undefined') {
+        conquistasNovas.forEach(c => window.ConquistaFX.show(c));
+      }
+
       return data;
     } catch (err) {
       if (err.name === 'TypeError' && err.message.includes('fetch')) {

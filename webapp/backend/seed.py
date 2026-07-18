@@ -6,11 +6,41 @@ from auth.service import hash_senha
 from datetime import datetime
 
 
+# ── Conquistas de Dungeon (forjadas depois do seed original) ──────────────────
+# Inseridas também em bancos JÁ populados, via _garantir_conquistas_extra.
+CONQUISTAS_EXTRA = [
+    ("primeira_travessia", "Primeira Travessia",  "Faça o primeiro clear de uma Dungeon",      "🌀", "#7c3aed", 100, 20,  "dungeon_clears",   1),
+    ("perfeccionista",     "Perfeccionista",      "Conquiste um clear rank S numa Dungeon",    "⭐", "#fbbf24", 250, 60,  "dungeon_clear_s",  1),
+    ("guardiao_portao",    "Guardião do Portão",  "Mantenha 7 dias de streak numa Dungeon",    "🚪", "#06b6d4", 300, 80,  "dungeon_streak",   7),
+    ("cacador_eventos",    "Caçador de Eventos",  "Capture 10 eventos dentro de Dungeons",     "⚡", "#f59e0b", 200, 40,  "dungeon_eventos", 10),
+    ("maratonista",        "Maratonista",         "Acumule 10 horas dentro de Dungeons",       "⏳", "#10b981", 350, 90,  "dungeon_tempo",  600),
+    ("imparavel",          "Imparável",           "Some 30 clears de Dungeon",                 "🔥", "#ef4444", 800, 200, "dungeon_clears",  30),
+]
+
+
+def _garantir_conquistas_extra(db):
+    """Upsert defensivo: forja as conquistas novas que ainda não existem no banco."""
+    existentes = {c[0] for c in db.query(Conquista.codigo).all()}
+    novas = 0
+    for cod, tit, desc, ico, cor, xp_b, mc_b, cond_t, cond_v in CONQUISTAS_EXTRA:
+        if cod not in existentes:
+            db.add(Conquista(
+                codigo=cod, titulo=tit, descricao=desc, icone=ico, cor=cor,
+                xp_bonus=xp_b, moedas_bonus=mc_b,
+                condicao_tipo=cond_t, condicao_valor=cond_v,
+            ))
+            novas += 1
+    if novas:
+        db.commit()
+        print(f"[SEED] {novas} conquistas de Dungeon forjadas no banco existente.")
+
+
 def popular_banco():
     criar_tabelas()
     db = SessionLocal()
     try:
         if db.query(Usuario).count() > 0:
+            _garantir_conquistas_extra(db)
             print("[SEED] Banco de dados já populado. Pulando.")
             return
 
@@ -133,7 +163,7 @@ def popular_banco():
             ("despertar_semana",     "Despertar Semanal",      "Complete todas rotinas por 4 semanas","💪", "#ec4899", 600, 120,"semanas_perfeitas", 4),
             ("colecao_moedas",       "Tesoureiro de Mana",     "Acumule 1000 Mana Coins",            "💰", "#f59e0b", 250, 50, "moedas_acumuladas", 1000),
         ]
-        for cod, tit, desc, ico, cor, xp_b, mc_b, cond_t, cond_v in conquistas_data:
+        for cod, tit, desc, ico, cor, xp_b, mc_b, cond_t, cond_v in conquistas_data + CONQUISTAS_EXTRA:
             db.add(Conquista(
                 codigo=cod, titulo=tit, descricao=desc, icone=ico, cor=cor,
                 xp_bonus=xp_b, moedas_bonus=mc_b,

@@ -522,9 +522,11 @@ const DungeonInterior = {
   _fxEventosXP(ev) {
     if (!ev) return;
     try {
-      if (ev.level_ups?.length && typeof LevelUp !== 'undefined') LevelUp.show(ev.level_ups[0].nivel);
-      if (ev.conquistas?.length && typeof ConquistaFX !== 'undefined')
-        ev.conquistas.forEach((c, i) => setTimeout(() => ConquistaFX.show(c), i * 1600));
+      if (ev.level_ups?.length && typeof LevelUp !== 'undefined') {
+        const lu = ev.level_ups[0];
+        LevelUp.show(lu.nivel, lu.rank, lu.titulo, lu.moedas_bonus);
+      }
+      // Conquistas: interceptador global do api.js cuida (canal único)
       if (ev.xp_ganho > 0 && typeof XPFloat !== 'undefined') XPFloat.show(ev.xp_ganho, ev.moedas_ganhas);
     } catch (_) {}
   },

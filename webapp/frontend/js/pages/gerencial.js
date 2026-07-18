@@ -69,6 +69,9 @@ const Gerencial = {
         return;
       }
 
+      const eu = Auth.getUsuario() || {};
+      const euArq = eu.nivel_acesso === 'Arquiteto';
+
       tbody.innerHTML = lista.map(u => {
         const isArq   = u.nivel_acesso === 'Arquiteto';
         const rankStr = u.nivel_acesso || 'User';
@@ -92,6 +95,7 @@ const Gerencial = {
               <button class="miss-action-btn" onclick="Gerencial.ajustarMoedas(${u.id},'${u.nome}')" title="Ajustar Moedas">&#128176;</button>
               <button class="miss-action-btn delete" onclick="Gerencial.excluirUsuario(${u.id},'${u.nome}')" title="Excluir">&#128465;</button>
               ` : `<span style="color:var(--gold-xp);font-size:.7rem">&#9888; Arquiteto</span>`}
+              ${euArq ? `<button class="miss-action-btn delete" onclick="Gerencial.resetarPerfil(${u.id},'${u.nome}')" title="Resetar Perfil">&#8635;</button>` : ''}
             </div>
           </td>
         </tr>`;
@@ -222,6 +226,23 @@ const Gerencial = {
       SoloDialog.toast(`Usuário "${nome}" excluído.`, 'success');
     } catch (err) {
       SoloDialog.toast('Erro ao excluir: ' + (err.message || err), 'error');
+    }
+  },
+
+  // ── Resetar Perfil ──────────────────────────────────────
+  async resetarPerfil(id, nome) {
+    const ok = await SoloDialog.confirm(
+      `Deseja realmente RESETAR o progresso de <strong style="color:#f59e0b">${nome}</strong>?<br><br>
+       <span style="color:#94a3b8">Isso zerará o Nível, XP, Moedas, Conquistas e Histórico deste usuário. Rotinas, tarefas e avatar serão mantidos.<br>Ação irreversível!</span>`,
+      { titulo: 'Resetar Progresso', icon: '&#8635;', tipo: 'error', btnOk: 'Resetar Perfil', btnCancel: 'Cancelar' }
+    );
+    if (!ok) return;
+    try {
+      await API.post(`/gerencial/reset-perfil/${id}`);
+      await this.carregarUsuarios();
+      SoloDialog.toast(`Progresso de "${nome}" resetado para Nível 1.`, 'success');
+    } catch (err) {
+      SoloDialog.toast('Erro ao resetar perfil: ' + (err.message || err), 'error');
     }
   },
 

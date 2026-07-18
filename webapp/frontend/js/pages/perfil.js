@@ -3,6 +3,15 @@
    Página de perfil: hero card + formulário de edição + gráficos
    ============================================================ */
 
+/* ConquistasAnim (legado): agora delega para a Cerimônia de Conquista
+   oficial (ConquistaFX, em animations.js) — um único visual no app inteiro. */
+window.ConquistasAnim = {
+  async showUnlockModal(c) {
+    if (typeof ConquistaFX !== 'undefined') ConquistaFX.show(c);
+    return Promise.resolve();
+  }
+};
+
 const Perfil = {
   _dadosCarregados: false,
   _dadosUsuario: null,
@@ -62,7 +71,7 @@ const Perfil = {
           background:radial-gradient(circle,rgba(124,58,237,.18),transparent 70%);pointer-events:none"></div>
 
         <!-- Avatar -->
-        <div style="
+        <div class="${dados.nivel_acesso === 'Arquiteto' ? 'chamas-arquiteto' : ''}" style="
           width:90px;height:90px;border-radius:50%;flex-shrink:0;
           border:3px solid ${rankColor};box-shadow:0 0 24px ${rankColor}66;
           overflow:hidden;cursor:pointer;position:relative;
@@ -408,7 +417,7 @@ const Perfil = {
   },
 
   // ── Conquistas ──────────────────────────────────────────
-  renderConquistas(lista) {
+  async renderConquistas(lista) {
     const cont = document.getElementById('perfil-conquistas');
     if (!cont) return;
 
@@ -421,14 +430,47 @@ const Perfil = {
       return;
     }
 
-    cont.innerHTML = lista.map(c => `
-      <div class="conquista-badge ${c.desbloqueada ? 'desbloqueada' : 'bloqueada'}">
-        <div class="conquista-icon">${c.icone || '&#127942;'}</div>
-        <div class="conquista-nome">${c.titulo || c.nome || 'Conquista'}</div>
-        <div class="conquista-desc">${c.descricao || ''}</div>
-        ${c.xp_bonus ? `<div class="conquista-xp-badge">+${c.xp_bonus} XP</div>` : ''}
-      </div>
-    `).join('');
+    const now = new Date();
+    const recent = lista.filter(c => c.desbloqueada && c.desbloqueada_em && (now - new Date(c.desbloqueada_em)) < 60000); // 1 minuto
+
+    let delay = 0;
+    cont.innerHTML = lista.map((c, i) => {
+      const isNew = recent.includes(c) && !localStorage.getItem('cq_seen_'+c.id);
+      let classes = 'conquista-badge';
+      let style = '';
+      
+      if (c.desbloqueada) {
+        classes += ' desbloqueada c-pulsing';
+        style += `--c-pulse-delay: ${Math.random()*2}s;`;
+      } else {
+        classes += ' bloqueada';
+      }
+      
+      if (isNew) {
+        classes += ' c-materializing';
+        style += `--c-delay: ${delay}ms;`;
+        delay += 150;
+      } else {
+        classes += ' c-entering';
+        style += `--c-delay: ${i * 50}ms;`;
+      }
+      
+      return `
+        <div class="${classes}" style="${style}">
+          <div class="conquista-icon">${c.icone || '&#127942;'}</div>
+          <div class="conquista-nome">${c.titulo || c.nome || 'Conquista'}</div>
+          <div class="conquista-desc">${c.descricao || ''}</div>
+          ${c.xp_bonus ? `<div class="conquista-xp-badge">+${c.xp_bonus} XP</div>` : ''}
+        </div>
+      `;
+    }).join('');
+
+    for (const c of recent) {
+      if (!localStorage.getItem('cq_seen_'+c.id)) {
+        await ConquistasAnim.showUnlockModal(c);
+        localStorage.setItem('cq_seen_'+c.id, '1');
+      }
+    }
   },
 
   _getTituloByRank(rank) {
