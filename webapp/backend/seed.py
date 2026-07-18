@@ -18,6 +18,24 @@ CONQUISTAS_EXTRA = [
 ]
 
 
+# ── Comemorativas do Arquiteto ───────────────────────────────────────────────
+# Marcos do desenvolvimento do Sistema. Só aparecem para o Arquiteto e são
+# concedidas manualmente (condicao_tipo = "manual" — nunca desbloqueiam sozinhas).
+CONQUISTAS_ARQUITETO = [
+    ("dominio_habilidades", "Domínio das Habilidades",
+     "Desenvolvimento integrado S-Rank (Caçador, Opus e Gemini)", "💻", "#38bdf8", 5000, 1000),
+    ("dominio_forja",       "Domínio da Forja",
+     "A Arte da Criação — forjou o próprio Sistema", "⚒", "#10b981", 3000, 600),
+    ("arquiteto_supremo",   "Arquiteto Supremo",
+     "Ergueu o Sistema do vazio à existência", "🌌", "#a855f7", 10000, 2000),
+    # Insígnias pessoais — medalhas SVG próprias (ver MEDALHAS_CUSTOM no frontend)
+    ("jh3ffth",             "JH3FFTH, o Arquiteto",
+     "A insígnia de quem ativou a Forja da Criação", "🛡", "#ef4444", 7500, 1500),
+    ("solo",                "SOLO",
+     "O selo da empresa — sistema tático de produtividade S-Rank", "🌌", "#a855f7", 7500, 1500),
+]
+
+
 def _garantir_conquistas_extra(db):
     """Upsert defensivo: forja as conquistas novas que ainda não existem no banco."""
     existentes = {c[0] for c in db.query(Conquista.codigo).all()}
@@ -30,9 +48,24 @@ def _garantir_conquistas_extra(db):
                 condicao_tipo=cond_t, condicao_valor=cond_v,
             ))
             novas += 1
+    # Comemorativas do Arquiteto
+    for cod, tit, desc, ico, cor, xp_b, mc_b in CONQUISTAS_ARQUITETO:
+        if cod not in existentes:
+            c = Conquista(
+                codigo=cod, titulo=tit, descricao=desc, icone=ico, cor=cor,
+                xp_bonus=xp_b, moedas_bonus=mc_b,
+                condicao_tipo="manual", condicao_valor=0,
+            )
+            try:
+                c.exclusiva_arquiteto = True
+                c.visivel = True
+            except Exception:
+                pass
+            db.add(c)
+            novas += 1
     if novas:
         db.commit()
-        print(f"[SEED] {novas} conquistas de Dungeon forjadas no banco existente.")
+        print(f"[SEED] {novas} conquistas forjadas no banco existente.")
 
 
 def popular_banco():
@@ -168,6 +201,13 @@ def popular_banco():
                 codigo=cod, titulo=tit, descricao=desc, icone=ico, cor=cor,
                 xp_bonus=xp_b, moedas_bonus=mc_b,
                 condicao_tipo=cond_t, condicao_valor=cond_v
+            ))
+        for cod, tit, desc, ico, cor, xp_b, mc_b in CONQUISTAS_ARQUITETO:
+            db.add(Conquista(
+                codigo=cod, titulo=tit, descricao=desc, icone=ico, cor=cor,
+                xp_bonus=xp_b, moedas_bonus=mc_b,
+                condicao_tipo="manual", condicao_valor=0,
+                exclusiva_arquiteto=True, visivel=True,
             ))
 
         # ── Recompensas padrão ─────────────────────────────────

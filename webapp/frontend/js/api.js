@@ -36,17 +36,29 @@ class API {
         throw new Error(data?.detail || data?.message || data?.error || ('Erro ' + response.status));
       }
 
-      // Intercepta globalmente novas conquistas — canal ÚNICO da Cerimônia
-      // (cobre rotinas/tarefas: resultado.conquistas | novas_conquistas
-      //  e dungeons: eventos_xp.conquistas). ConquistaFX deduplica sozinho.
+      // ── Canal ÚNICO de celebração ────────────────────────────────
+      // Ordem sagrada: ASCENSÃO (level-up) primeiro, CERIMÔNIA depois.
+      // Cobre rotinas/tarefas (resultado.* | novas_conquistas) e
+      // dungeons (eventos_xp.*). ConquistaFX deduplica sozinho.
       let conquistasNovas = [];
       if (data?.resultado?.conquistas?.length)       conquistasNovas = data.resultado.conquistas;
       else if (data?.novas_conquistas?.length)       conquistasNovas = data.novas_conquistas;
       else if (data?.eventos_xp?.conquistas?.length) conquistasNovas = data.eventos_xp.conquistas;
 
-      if (conquistasNovas.length && typeof window.ConquistaFX !== 'undefined') {
-        conquistasNovas.forEach(c => window.ConquistaFX.show(c));
-      }
+      let levelUps = [];
+      if (data?.level_ups?.length)                   levelUps = data.level_ups;
+      else if (data?.resultado?.level_ups?.length)   levelUps = data.resultado.level_ups;
+      else if (data?.eventos_xp?.level_ups?.length)  levelUps = data.eventos_xp.level_ups;
+
+      const celebrar = async () => {
+        if (levelUps.length && window.Ascensao) {
+          await window.Ascensao.mostrar(levelUps);       // aguarda a Ascensão terminar
+        }
+        if (conquistasNovas.length && window.ConquistaFX) {
+          conquistasNovas.forEach(c => window.ConquistaFX.show(c));
+        }
+      };
+      if (levelUps.length || conquistasNovas.length) celebrar();
 
       return data;
     } catch (err) {
@@ -200,7 +212,11 @@ class API {
 
   /* ── Conquistas ─────────────────────────────────────── */
   static conquistas = {
-    listar: async () => API.get('/conquistas/'),
+    listar:        async ()   => API.get('/conquistas/'),
+    comemorativas: async ()   => API.get('/conquistas/comemorativas'),
+    conceder:      async (id) => API.post('/conquistas/' + id + '/conceder', {}),
+    revogar:       async (id) => API.delete('/conquistas/' + id + '/revogar'),
+    visibilidade:  async (id, visivel) => API.put('/conquistas/' + id + '/visibilidade', { visivel }),
   };
 
   /* ── Perfil ──────────────────────────────────────────── */

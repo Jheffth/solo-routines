@@ -97,8 +97,102 @@ const Particles = {
 };
 
 // ── Level Up Effect ────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+// ASCENSÃO — level-up cerimonial
+//   Múltiplos níveis viram UMA cerimônia (contador rolando),
+//   nunca N animações seguidas.
+//   Retorna Promise: quem chamou pode encadear a Cerimônia depois.
+// ══════════════════════════════════════════════════════════
+const Ascensao = {
+  _reduzido: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+
+  /* levelUps: array vindo do backend [{nivel, rank, titulo, moedas_bonus, nivel_anterior?}] */
+  mostrar(levelUps) {
+    if (!levelUps || !levelUps.length) return Promise.resolve();
+    const ultimo   = levelUps[levelUps.length - 1];
+    const nFinal   = ultimo.nivel;
+    const nInicial = ultimo.nivel_anterior ?? (levelUps[0].nivel - 1);
+    const saltos   = ultimo.niveis_ganhos ?? levelUps.length;
+    const moedas   = levelUps.reduce((s, l) => s + (l.moedas_bonus || 0), 0);
+    // Ranks atravessados (sem repetir) — mostra a escalada quando há salto grande
+    const ranks = [...new Set(levelUps.map(l => l.rank).filter(Boolean))];
+
+    if (this._reduzido) {
+      SoloDialog?.toast?.(`⬆ Nível ${nFinal} — ${ultimo.titulo || ''}`, 'success');
+      return new Promise(r => setTimeout(r, 800));
+    }
+
+    return new Promise(resolve => {
+      const ov = document.createElement('div');
+      ov.className = 'asc-overlay';
+      ov.innerHTML = `
+        <div class="asc-rasgo"></div>
+        <div class="asc-flash"></div>
+        <div class="asc-pilar"></div>
+        <div class="asc-ondas">
+          <span class="asc-onda"></span><span class="asc-onda o2"></span><span class="asc-onda o3"></span>
+        </div>
+        <div class="asc-runas">
+          ${Array.from({ length: 12 }, (_, i) =>
+            `<span class="asc-runa" style="--a:${i * 30}deg;--d:${i * 60}ms">◆</span>`).join('')}
+        </div>
+        <div class="asc-palco">
+          <div class="asc-lbl">⟁ ASCENSÃO ⟁</div>
+          <div class="asc-nivel">
+            <span class="asc-num" id="asc-num">${nInicial}</span>
+          </div>
+          <div class="asc-rank">${ultimo.rank || ''}</div>
+          <div class="asc-titulo">"${ultimo.titulo || ''}"</div>
+          ${saltos > 1 ? `<div class="asc-saltos">+${saltos} NÍVEIS · ${ranks.join(' → ')}</div>` : ''}
+          ${moedas > 0 ? `<div class="asc-moedas">💰 +${moedas.toLocaleString('pt-BR')} Mana Coins</div>` : ''}
+        </div>`;
+      document.body.appendChild(ov);
+
+      // Som + tremor da tela
+      if (typeof SFX !== 'undefined') SFX.play('levelup');
+      document.getElementById('app-container')?.classList.add('asc-tremor');
+      setTimeout(() => document.getElementById('app-container')?.classList.remove('asc-tremor'), 900);
+
+      // Tempestade de partículas
+      const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+      if (typeof Particles !== 'undefined') {
+        Particles.burst(cx, cy, 70, 'rgba(168,85,247,');
+        setTimeout(() => Particles.burst(cx, cy, 50, 'rgba(34,211,238,'), 200);
+        setTimeout(() => Particles.burst(cx, cy, 40, 'rgba(251,191,36,'), 420);
+      }
+
+      // Contador rolando do nível antigo ao novo (o "peso" do salto)
+      const elNum = ov.querySelector('#asc-num');
+      const dur = Math.min(1800, 700 + saltos * 120);
+      const t0 = performance.now();
+      const rolar = (t) => {
+        const p = Math.min(1, (t - t0) / dur);
+        const eased = 1 - Math.pow(1 - p, 3);
+        elNum.textContent = Math.round(nInicial + (nFinal - nInicial) * eased);
+        if (p < 1) requestAnimationFrame(rolar);
+        else elNum.classList.add('asc-num-final');
+      };
+      setTimeout(() => requestAnimationFrame(rolar), 650);
+
+      const encerrar = () => {
+        if (ov.dataset.saindo) return;
+        ov.dataset.saindo = '1';
+        ov.classList.add('asc-saindo');
+        setTimeout(() => { ov.remove(); resolve(); }, 600);
+      };
+      ov.addEventListener('click', encerrar);
+      setTimeout(encerrar, 4200);
+    });
+  },
+};
+
 const LevelUp = {
+  /* Compatibilidade: chamadas antigas caem na Ascensão */
   show(nivel, rank, titulo, moedasBonus) {
+    return Ascensao.mostrar([{ nivel, rank, titulo, moedas_bonus: moedasBonus }]);
+  },
+
+  _showAntigo(nivel, rank, titulo, moedasBonus) {
     const overlay = document.getElementById('level-up-overlay');
     if (!overlay) return;
     if (typeof SFX !== 'undefined') SFX.play('levelup');
@@ -131,17 +225,10 @@ const LevelUp = {
     }, 3500);
   },
 
-  // Verificar e exibir level-ups do resultado da API
+  // Level-ups do resultado da API: TUDO numa cerimônia só (Ascensão)
   processarResultado(resultado) {
-    if (!resultado) return;
-    const lu = resultado.level_ups || [];
-    let delay = 0;
-    for (const l of lu) {
-      setTimeout(() => {
-        LevelUp.show(l.nivel, l.rank, l.titulo, l.moedas_bonus);
-      }, delay);
-      delay += 4000;
-    }
+    if (!resultado) return Promise.resolve();
+    return Ascensao.mostrar(resultado.level_ups || []);
     // Conquistas: disparadas pelo interceptador global do api.js (canal único)
   },
 };
@@ -202,8 +289,25 @@ const ConquistaFX = {
     this._reduzido ? this._versaoCalma(c) : this._cerimonia(c);
   },
 
+  /* Insígnias com arte própria — desenhadas no arquiteto-console.js.
+     Quando a conquista tem uma, ela substitui a medalha padrão em TODOS
+     os lugares: cerimônia, selo lateral, carimbo e grade do perfil. */
+  _insigniaCustom(codigo, tam) {
+    const mapa = {
+      jh3ffth:       () => window.Jh3ffthFX?._svgMedalhaArquiteto?.(tam),
+      solo:          () => window.SoloFX?._svgMedalhaSolo?.(tam),
+      dominio_forja: () => window.ForjaFX?._svgMedalhaForja?.(tam),
+    };
+    try { return (codigo && mapa[codigo] && mapa[codigo]()) || null; }
+    catch (_) { return null; }
+  },
+
   /* Medalha em miniatura — para os selos permanentes (quadro/perfil) */
   miniMedalha(c, tamanho = 52) {
+    const custom = this._insigniaCustom(c.codigo, tamanho);
+    if (custom) {
+      return `<span class="cq-medalhinha" style="width:${tamanho}px;height:${tamanho}px">${custom}</span>`;
+    }
     return `<span class="cq-medalhinha" style="width:${tamanho}px;height:${tamanho}px">
       ${this._svgMedalha(tamanho)}
       <span class="cq-medalhinha-ico" style="font-size:${Math.round(tamanho * 0.3)}px">${c.icone || '🏆'}</span>
@@ -306,8 +410,12 @@ const ConquistaFX = {
         <div class="cq-raios"></div>
         <div class="cq-medalha">
           <div class="cq-anel r2"></div>
-          ${this._svgMedalha()}
-          <div class="cq-ico">${c.icone || '🏆'}</div>
+          ${(() => {
+            // Insígnia própria (Jh3ffth / SOLO / Forja) tem prioridade no clímax
+            const custom = this._insigniaCustom(c.codigo, 240);
+            return custom ? custom
+                 : `${this._svgMedalha()}<div class="cq-ico">${c.icone || '🏆'}</div>`;
+          })()}
         </div>
         <div class="cq-textos">
           <div class="cq-lbl">⟁ CONQUISTA DESBLOQUEADA ⟁</div>
@@ -360,8 +468,11 @@ const ConquistaFX = {
     }
     const el = document.createElement('div');
     el.className = 'cq-selo';
+    const seloCustom = this._insigniaCustom(c.codigo, 40);
     el.innerHTML = `
-      <div class="cq-selo-ico">${c.icone || '🏆'}</div>
+      <div class="cq-selo-ico">${seloCustom
+        ? `<span class="cq-medalhinha" style="width:40px;height:40px">${seloCustom}</span>`
+        : (c.icone || '🏆')}</div>
       <div>
         <div class="cq-selo-lbl">Conquista</div>
         <div class="cq-selo-nome">${c.titulo || ''}</div>
@@ -377,8 +488,21 @@ const ConquistaFX = {
     if (!quadro) return;
     quadro.querySelector('.empty-state')?.remove();
 
+    // Idempotente: se esta conquista já está no quadro, não carimba de novo.
+    // (o quadro também é populado pelo Dashboard a partir do banco, e havia
+    //  demos do console carimbando o mesmo título → cards duplicados)
+    const chave = String(c.id ?? c.titulo ?? '');
+    if (chave && quadro.querySelector(`[data-cq-chave="${CSS.escape(chave)}"]`)) return;
+    const titulo = (c.titulo || '').trim().toLowerCase();
+    if (titulo) {
+      const jaTem = [...quadro.querySelectorAll('.conquista-mini-nome')]
+        .some(el => el.textContent.trim().toLowerCase() === titulo);
+      if (jaTem) return;
+    }
+
     const card = document.createElement('div');
     card.className = 'conquista-mini cq-carimbo';
+    card.dataset.cqChave = chave;
     card.innerHTML = `
       <div class="cq-nevoa"></div>
       ${this.miniMedalha(c)}
@@ -428,6 +552,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 window.Particles   = Particles;
 window.LevelUp     = LevelUp;
+window.Ascensao    = Ascensao;
 window.XPFloat     = XPFloat;
 window.ConquistaFX = ConquistaFX;
 window.missionComplete = missionComplete;

@@ -1,0 +1,198 @@
+/* ============================================================
+   relicario.css — A Galeria de Relíquias (grade de conquistas)
+   Raridade por faixa de XP · silhueta nas bloqueadas · ouro no lugar do verde
+   ============================================================ */
+
+#perfil-conquistas {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)) !important;
+  gap: 1rem !important;
+}
+
+/* ── Card base ────────────────────────────────────────────── */
+.reliquia-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: .35rem;
+  padding: 1.1rem .9rem .8rem;
+  border-radius: 14px;
+  overflow: hidden;
+  background: linear-gradient(165deg, #12101c 0%, #0a0a14 60%, #0d0b16 100%);
+  border: 1px solid rgba(148,163,184,.14);
+  transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+}
+.reliquia-card:hover { transform: translateY(-4px); }
+
+/* lampejo diagonal no hover */
+.reliquia-brilho {
+  position: absolute; inset: 0;
+  background: linear-gradient(105deg, transparent 42%, rgba(255,255,255,.10) 50%, transparent 58%);
+  transform: translateX(-130%);
+  transition: transform .75s ease;
+  pointer-events: none;
+}
+.reliquia-card:hover .reliquia-brilho { transform: translateX(130%); }
+
+/* ── Medalha ──────────────────────────────────────────────── */
+.reliquia-medalha {
+  display: flex; align-items: center; justify-content: center;
+  height: 68px;
+  transition: transform .3s ease, filter .3s ease;
+}
+.reliquia-card:hover .reliquia-medalha { transform: scale(1.1) rotate(-4deg); }
+.reliquia-medalha .cq-medalhinha { filter: none; }
+
+/* ── Textos ───────────────────────────────────────────────── */
+.reliquia-nome {
+  font-family: var(--font-section);
+  font-size: .84rem; font-weight: 700;
+  line-height: 1.2;
+  margin-top: .2rem;
+}
+.reliquia-desc {
+  font-size: .68rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+  min-height: 2.4em;
+}
+.reliquia-rodape {
+  display: flex; align-items: center; justify-content: center;
+  gap: .4rem; flex-wrap: wrap;
+  margin-top: .35rem;
+}
+.reliquia-rar {
+  font-family: var(--font-section);
+  font-size: .55rem; font-weight: 700;
+  letter-spacing: .14em; text-transform: uppercase;
+  padding: .12rem .5rem;
+  border-radius: 100px;
+  border: 1px solid currentColor;
+  opacity: .85;
+}
+.reliquia-xp {
+  font-family: 'Orbitron', monospace;
+  font-size: .62rem; font-weight: 700;
+  color: var(--gold-bright);
+  padding: .12rem .5rem;
+  border-radius: 100px;
+  background: rgba(251,191,36,.1);
+  border: 1px solid rgba(251,191,36,.35);
+}
+.reliquia-data {
+  font-family: 'Orbitron', monospace;
+  font-size: .55rem;
+  color: var(--text-dim);
+  margin-top: .3rem;
+}
+
+/* ── Raridades (moldura + aura + cor do nome) ─────────────── */
+.rar-comum.desbloqueada    { border-color: rgba(148,163,184,.45); }
+.rar-comum.desbloqueada .reliquia-nome { color: #cbd5e1; }
+.rar-comum.desbloqueada .reliquia-rar  { color: #94a3b8; }
+
+.rar-rara.desbloqueada {
+  border-color: rgba(34,211,238,.5);
+  box-shadow: 0 0 16px rgba(34,211,238,.12);
+}
+.rar-rara.desbloqueada .reliquia-nome { color: #67e8f9; }
+.rar-rara.desbloqueada .reliquia-rar  { color: #22d3ee; }
+
+.rar-epica.desbloqueada {
+  border-color: rgba(168,85,247,.55);
+  box-shadow: 0 0 22px rgba(168,85,247,.18);
+  background: linear-gradient(165deg, #1a1030 0%, #0a0a14 60%, #150c22 100%);
+}
+.rar-epica.desbloqueada .reliquia-nome { color: #d8b4fe; }
+.rar-epica.desbloqueada .reliquia-rar  { color: #a855f7; }
+
+.rar-lendaria.desbloqueada {
+  border-color: rgba(251,191,36,.65);
+  box-shadow: 0 0 30px rgba(251,191,36,.25), inset 0 0 26px rgba(251,191,36,.05);
+  background: linear-gradient(165deg, #241a06 0%, #0a0a14 58%, #1d1405 100%);
+}
+.rar-lendaria.desbloqueada .reliquia-nome {
+  background: linear-gradient(100deg,#fff7e0 20%,#fbbf24 40%,#fff7e0 60%,#fbbf24 80%);
+  background-size: 220% auto;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: cq-shimmer 3s linear infinite;
+}
+.rar-lendaria.desbloqueada .reliquia-rar { color: #fbbf24; }
+/* lendária desbloqueada emite partículas de luz (raios girando) */
+.rar-lendaria.desbloqueada::before {
+  content: '';
+  position: absolute;
+  top: -40%; left: 50%; width: 190%; height: 190%;
+  transform: translateX(-50%);
+  background: conic-gradient(from 0deg,
+    transparent 0%, rgba(251,191,36,.12) 5%, transparent 12%,
+    transparent 30%, rgba(251,191,36,.10) 36%, transparent 43%,
+    transparent 62%, rgba(255,220,130,.11) 68%, transparent 75%);
+  animation: cq-anel-girar 14s linear infinite;
+  pointer-events: none;
+}
+
+/* ── Bloqueadas: silhueta misteriosa ──────────────────────── */
+.reliquia-card.bloqueada {
+  border-style: dashed;
+  border-color: rgba(100,116,139,.22);
+  background: linear-gradient(165deg, #0b0b12, #08080e);
+}
+.reliquia-card.bloqueada .reliquia-medalha {
+  filter: grayscale(1) brightness(.28) contrast(.75);
+  opacity: .5;
+}
+.reliquia-card.bloqueada .cq-medalhinha-ico { opacity: 0; }   /* o ícone é segredo */
+.reliquia-card.bloqueada .reliquia-nome { color: var(--text-muted); }
+.reliquia-card.bloqueada .reliquia-desc { color: var(--text-dim); }
+.reliquia-card.bloqueada .reliquia-rar  { color: var(--text-dim); opacity: .5; }
+.reliquia-card.bloqueada .reliquia-xp {
+  color: var(--text-dim); background: rgba(100,116,139,.06); border-color: rgba(100,116,139,.2);
+}
+.reliquia-card.bloqueada:hover {
+  border-color: rgba(148,163,184,.4);
+  transform: translateY(-2px);
+}
+.reliquia-card.bloqueada:hover .reliquia-medalha { filter: grayscale(.85) brightness(.45); opacity: .7; }
+.reliquia-cadeado {
+  position: absolute; top: .55rem; right: .6rem;
+  font-size: .8rem; opacity: .35;
+}
+
+/* ── Comemorativa do Arquiteto ────────────────────────────── */
+.reliquia-card.comemorativa.desbloqueada {
+  border-color: rgba(56,189,248,.55);
+  box-shadow: 0 0 26px rgba(56,189,248,.2);
+  background: linear-gradient(165deg, #06202e 0%, #0a0a14 60%, #05202c 100%);
+}
+.reliquia-selo-arq {
+  position: absolute; top: .5rem; left: .6rem;
+  font-size: .8rem;
+  color: var(--gold-bright);
+  text-shadow: 0 0 8px rgba(251,191,36,.8);
+  animation: dg-pulse-txt 2.6s ease-in-out infinite;
+}
+
+/* ── Entrada em cascata (usa keyframes já existentes) ─────── */
+.reliquia-card.c-entering {
+  opacity: 0;
+  animation: conquista-enter .5s cubic-bezier(.34,1.56,.64,1) var(--c-delay,0ms) forwards;
+}
+.reliquia-card.c-materializing {
+  opacity: 0;
+  animation: conquista-materialize 1.1s cubic-bezier(.34,1.56,.64,1) var(--c-delay,0ms) forwards;
+}
+/* combinação entrada + pulso (evita a colisão de `animation`) */
+.reliquia-card.c-pulsing.c-entering {
+  animation: conquista-enter .5s cubic-bezier(.34,1.56,.64,1) var(--c-delay,0ms) forwards;
+}
+.reliquia-card.c-pulsing.c-materializing {
+  animation: conquista-materialize 1.1s cubic-bezier(.34,1.56,.64,1) var(--c-delay,0ms) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reliquia-card, .reliquia-brilho, .reliquia-medalha,
+  .rar-lendaria.desbloqueada::before, .reliquia-selo-arq { animation: none !important; transition: none; }
+}

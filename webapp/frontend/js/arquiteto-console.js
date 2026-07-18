@@ -22,92 +22,123 @@ const Jh3ffthFX = {
   },
 
   _svgMedalhaArquiteto(tamanho = 260) {
-    const pontas = [];
-    for (let i = 0; i < 8; i++) {
-      const a = (Math.PI / 4) * i - Math.PI / 2;
-      const rExt = 120;
-      const a1 = a - Math.PI / 8, a2 = a + Math.PI / 8;
-      pontas.push(`M 130 130 
-                   L ${130 + 65 * Math.cos(a1)} ${130 + 65 * Math.sin(a1)}
-                   L ${130 + rExt * Math.cos(a)} ${130 + rExt * Math.sin(a)}
-                   L ${130 + 65 * Math.cos(a2)} ${130 + 65 * Math.sin(a2)} Z`);
+    // Lâminas/Escamas Sapuris (Fractais negros afiados girando ao fundo)
+    const laminas = [];
+    for(let i=0; i<8; i++){
+        const a = (Math.PI / 4) * i;
+        const xTip = 130 + 125 * Math.cos(a);
+        const yTip = 130 + 125 * Math.sin(a);
+        const xSide = 130 + 80 * Math.cos(a + Math.PI/12);
+        const ySide = 130 + 80 * Math.sin(a + Math.PI/12);
+        const xBase1 = 130 + 40 * Math.cos(a - Math.PI/6);
+        const yBase1 = 130 + 40 * Math.sin(a - Math.PI/6);
+        const xBase2 = 130 + 40 * Math.cos(a + Math.PI/6);
+        const yBase2 = 130 + 40 * Math.sin(a + Math.PI/6);
+        laminas.push(`M ${xBase1} ${yBase1} L ${xTip} ${yTip} L ${xSide} ${ySide} L ${xBase2} ${yBase2} Z`);
     }
-    
+
+    // Runas de Sangue
     const runas = [];
-    for (let i = 0; i < 24; i++) {
-      const a = (Math.PI / 12) * i;
-      const r1 = 80, r2 = i % 3 === 0 ? 66 : 74;
+    for (let i = 0; i < 36; i++) {
+      const a = (Math.PI / 18) * i;
+      const r1 = 95, r2 = i % 2 === 0 ? 85 : 90;
       runas.push(`M ${130 + r1 * Math.cos(a)} ${130 + r1 * Math.sin(a)} L ${130 + r2 * Math.cos(a)} ${130 + r2 * Math.sin(a)}`);
     }
 
-    const hexagono = [];
-    for (let i = 0; i < 6; i++) {
-      const a = (Math.PI / 3) * i - Math.PI / 2;
-      hexagono.push(`${130 + 55 * Math.cos(a)},${130 + 55 * Math.sin(a)}`);
+    // Cruz/Estrela de Sangue (Estilo armadura divina)
+    const estrelaSangue = [];
+    for(let i=0; i<4; i++){
+        const a = (Math.PI / 2) * i;
+        const xTip = 130 + 115 * Math.cos(a);
+        const yTip = 130 + 115 * Math.sin(a);
+        const xMid1 = 130 + 15 * Math.cos(a + Math.PI/4);
+        const yMid1 = 130 + 15 * Math.sin(a + Math.PI/4);
+        const xMid2 = 130 + 15 * Math.cos(a - Math.PI/4);
+        const yMid2 = 130 + 15 * Math.sin(a - Math.PI/4);
+        estrelaSangue.push(`M 130 130 L ${xMid1} ${yMid1} L ${xTip} ${yTip} L ${xMid2} ${yMid2} Z`);
     }
 
     return `
     <svg viewBox="0 0 260 260" width="${tamanho}" height="${tamanho}" style="overflow:visible" class="cq-svg">
       <defs>
-        <radialGradient id="arqObsidian" cx="38%" cy="30%">
-          <stop offset="0%"  stop-color="#71717a"/>
-          <stop offset="35%" stop-color="#27272a"/>
-          <stop offset="75%" stop-color="#09090b"/>
+        <!-- Metal Negro da Surplice (Sapuris) -->
+        <radialGradient id="sapuriMetal" cx="45%" cy="30%">
+          <stop offset="0%" stop-color="#52525b"/>
+          <stop offset="30%" stop-color="#18181b"/>
+          <stop offset="70%" stop-color="#2e1065"/>
           <stop offset="100%" stop-color="#000000"/>
         </radialGradient>
-        <radialGradient id="arqRuby" cx="40%" cy="35%">
-          <stop offset="0%"  stop-color="#fca5a5"/>
-          <stop offset="35%" stop-color="#dc2626"/>
-          <stop offset="75%" stop-color="#7f1d1d"/>
+        
+        <!-- Brilho Escarlate do Núcleo -->
+        <radialGradient id="rubyGlow" cx="50%" cy="50%">
+          <stop offset="0%" stop-color="#fca5a5"/>
+          <stop offset="25%" stop-color="#ef4444"/>
+          <stop offset="60%" stop-color="#991b1b"/>
           <stop offset="100%" stop-color="#270202"/>
         </radialGradient>
-        <linearGradient id="arqRubyBright" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#f87171"/>
-          <stop offset="50%" stop-color="#b91c1c"/>
-          <stop offset="100%" stop-color="#7f1d1d"/>
+
+        <!-- Fio de Corte da Armadura -->
+        <linearGradient id="sapuriEdge" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#fca5a5"/>
+          <stop offset="50%" stop-color="#991b1b"/>
+          <stop offset="100%" stop-color="#450a0a"/>
         </linearGradient>
-        <filter id="arqGlow" x="-30%" y="-30%" width="160%" height="160%">
-          <feGaussianBlur stdDeviation="5" result="blur" />
+
+        <!-- Filtros S-Rank: Aura Sanguínea e Sombras -->
+        <filter id="bloodGlow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="6" result="blur" />
           <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
-        <filter id="arqShadow" x="-30%" y="-30%" width="160%" height="160%">
-          <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#000" flood-opacity="0.9"/>
-          <feDropShadow dx="0" dy="0" stdDeviation="15" flood-color="#dc2626" flood-opacity="0.5"/>
+
+        <filter id="sapuriShadow" x="-30%" y="-30%" width="160%" height="160%">
+          <feDropShadow dx="0" dy="12" stdDeviation="10" flood-color="#000" flood-opacity="0.95"/>
+          <feDropShadow dx="0" dy="0" stdDeviation="25" flood-color="#991b1b" flood-opacity="0.6"/>
         </filter>
       </defs>
-      
-      <g filter="url(#arqShadow)">
-        <!-- Outer Ring Base -->
-        <circle cx="130" cy="130" r="95" fill="url(#arqObsidian)" stroke="url(#arqRubyBright)" stroke-width="2"/>
+
+      <g filter="url(#sapuriShadow)">
         
-        <!-- Mechanical Runes (Counter-clockwise rotation) -->
-        <g style="transform-origin: 130px 130px; animation: cq-anel-girar 22s linear infinite reverse;">
-          <path d="${runas.join(' ')}" stroke="#f87171" stroke-width="2" opacity="0.6"/>
-          <path d="${runas.join(' ')}" stroke="#f87171" stroke-width="4" filter="url(#arqGlow)" opacity="0.4"/>
+        <!-- Aro de Lâminas Sapuris (Giro lento) -->
+        <g style="transform-origin: 130px 130px; animation: cq-anel-girar 28s linear infinite;">
+          <path d="${laminas.join(' ')}" fill="url(#sapuriMetal)" stroke="url(#sapuriEdge)" stroke-width="1.5" opacity="0.9"/>
         </g>
         
-        <!-- 8-Pointed Star (Clockwise rotation like Fable5's star) -->
-        <g class="cq-svg-star">
-          <path d="${pontas.join(' ')}" fill="url(#arqObsidian)" stroke="url(#arqRubyBright)" stroke-width="1.5"/>
+        <!-- Runas Sanguíneas (Contra-rotação) -->
+        <g style="transform-origin: 130px 130px; animation: cq-anel-girar 20s linear infinite reverse;">
+          <circle cx="130" cy="130" r="95" fill="none" stroke="#270202" stroke-width="8"/>
+          <path d="${runas.join(' ')}" stroke="#ef4444" stroke-width="2" filter="url(#bloodGlow)" opacity="0.8"/>
+          <circle cx="130" cy="130" r="95" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="8 24"/>
         </g>
         
-        <!-- Inner Core (Hexagon) -->
-        <polygon points="${hexagono.join(' ')}" fill="url(#arqRuby)" stroke="#fca5a5" stroke-width="2" filter="url(#arqGlow)"/>
-        
-        <!-- Glass Facets for the Ruby -->
-        <polygon points="130,76 178,104 130,130 82,104" fill="rgba(255,255,255,0.18)"/>
-        <polygon points="82,104 130,130 82,156" fill="rgba(255,255,255,0.06)"/>
-        
-        <!-- Sweeping light highlight tracing the rim -->
-        <circle cx="130" cy="130" r="95" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="2.5" stroke-dasharray="35 562" class="cq-svg-brilho"/>
-        
-        <!-- Vector Icon (The Eye) -->
-        <g transform="translate(130, 130)">
-          <path d="M -28 0 C -15 -18, 15 -18, 28 0 C 15 18, -15 18, -28 0 Z" fill="none" stroke="#fff" stroke-width="3"/>
-          <circle cx="0" cy="0" r="9" fill="#fff" filter="url(#arqGlow)" opacity="0.6"/>
-          <circle cx="0" cy="0" r="9" fill="#fff"/>
-          <circle cx="0" cy="0" r="3" fill="#450a0a"/>
+        <!-- Cruz de Sangue Pulsante -->
+        <g class="cq-svg-star" style="animation-direction: alternate; animation-duration: 4s;">
+          <path d="${estrelaSangue.join(' ')}" fill="none" stroke="#f87171" stroke-width="2.5" filter="url(#bloodGlow)"/>
+          <path d="${estrelaSangue.join(' ')}" fill="rgba(220,38,38,0.2)"/>
         </g>
+
+        <!-- Escudo Pipa Gótico (O Núcleo da Armadura) -->
+        <polygon points="130,25 200,105 130,235 60,105" fill="url(#sapuriMetal)" stroke="url(#sapuriEdge)" stroke-width="3"/>
+        
+        <!-- Gema de Rubi Central -->
+        <polygon points="130,40 180,105 130,215 80,105" fill="url(#rubyGlow)" filter="url(#bloodGlow)"/>
+        
+        <!-- Facetas de Vidro 3D do Rubi -->
+        <polygon points="130,40 80,105 130,105" fill="rgba(255,255,255,0.3)"/>
+        <polygon points="130,40 180,105 130,105" fill="rgba(255,255,255,0.05)"/>
+        <polygon points="80,105 130,215 130,105" fill="rgba(0,0,0,0.4)"/>
+        <polygon points="180,105 130,215 130,105" fill="rgba(0,0,0,0.7)"/>
+
+        <!-- Veias de Hades (Luz correndo pelas bordas do escudo) -->
+        <polygon points="130,25 200,105 130,235 60,105" fill="none" stroke="#fca5a5" stroke-width="2" stroke-dasharray="50 350" class="cq-svg-brilho"/>
+        
+        <!-- O Olho Demoniaco do Arquiteto -->
+        <g transform="translate(130, 105)">
+          <path d="M -35 0 C -15 -20, 15 -20, 35 0 C 15 20, -15 20, -35 0 Z" fill="#000" stroke="#fca5a5" stroke-width="2"/>
+          <circle cx="0" cy="0" r="11" fill="#ef4444" filter="url(#bloodGlow)"/>
+          <circle cx="0" cy="0" r="11" fill="#fff"/>
+          <path d="M 0 -8 L 4 0 L 0 8 L -4 0 Z" fill="#450a0a"/> 
+        </g>
+
       </g>
     </svg>`;
   },
@@ -216,9 +247,12 @@ const Jh3ffthFX = {
     const quadro = document.getElementById('lista-conquistas-recentes');
     if (!quadro) return;
     quadro.querySelector('.empty-state')?.remove();
+    // demo idempotente: nunca duplica um card já presente no quadro
+    if (quadro.querySelector('[data-cq-chave="demo-arquiteto"]')) return;
 
     const card = document.createElement('div');
     card.className = 'conquista-mini cq-carimbo c-entering c-materializing';
+    card.dataset.cqChave = 'demo-arquiteto';
     card.style.borderColor = 'rgba(239,68,68,0.4)';
     card.style.background = 'linear-gradient(90deg, rgba(30,5,5,0.9), rgba(15,0,0,0.95))';
     card.style.boxShadow = '0 0 15px rgba(239,68,68,0.2) inset, 0 0 8px rgba(239,68,68,0.2)';
@@ -306,7 +340,28 @@ const ArquitetoConsole = {
       [50, 'National-Level', 'Monarca das Sombras', 5000],
     ];
     const [n, r, t, m] = niveis[Math.floor(Math.random() * niveis.length)];
-    LevelUp.show(n, r, t, m);
+    Ascensao.mostrar([{ nivel: n, rank: r, titulo: t, moedas_bonus: m, nivel_anterior: n - 1 }]);
+  },
+
+  /* Ascensão com salto grande (vários níveis de uma vez) */
+  ascensaoMultipla() {
+    Ascensao.mostrar([{
+      nivel: 12, rank: 'D-Rank', titulo: 'Sentinela',
+      moedas_bonus: 940, nivel_anterior: 1, niveis_ganhos: 11,
+    }]);
+  },
+
+  /* Sequência real: Ascensão -> Cerimônia (a ordem do Sistema) */
+  async sequenciaCompleta() {
+    await Ascensao.mostrar([{
+      nivel: 10, rank: 'D-Rank', titulo: 'Sentinela',
+      moedas_bonus: 700, nivel_anterior: 1, niveis_ganhos: 9,
+    }]);
+    ConquistaFX.show({
+      id: 'seq_' + Date.now(), codigo: 'solo', icone: '🌌', titulo: 'SOLO',
+      descricao: 'O selo da empresa — sistema tático de produtividade S-Rank',
+      xp_bonus: 7500,
+    });
   },
 
   explosao() {
@@ -328,6 +383,147 @@ const ArquitetoConsole = {
     const c = this._CONQUISTAS_TESTE[Math.floor(Math.random() * this._CONQUISTAS_TESTE.length)];
     ConquistaFX._selo(c);
     ConquistaFX._carimbarQuadro(c);
+  },
+
+  /* Insígnias com arte própria (mesmo mapa usado no perfil) */
+  _insignia(codigo, tam = 44) {
+    const mapa = {
+      jh3ffth:       () => window.Jh3ffthFX?._svgMedalhaArquiteto?.(tam),
+      solo:          () => window.SoloFX?._svgMedalhaSolo?.(tam),
+      dominio_forja: () => window.ForjaFX?._svgMedalhaForja?.(tam),
+    };
+    try { return (mapa[codigo] && mapa[codigo]()) || null; }
+    catch (_) { return null; }
+  },
+
+  /* ── Comemorativas: conceder de verdade e controlar visibilidade ── */
+  async comemorativas() {
+    let cx = document.getElementById('arq-comemorativas');
+    if (cx) { cx.remove(); return; }
+    try {
+      const lista = await API.conquistas.comemorativas();
+      cx = document.createElement('div');
+      cx.id = 'arq-comemorativas';
+      cx.style.cssText = `
+        position:fixed;inset:0;z-index:9995;display:flex;align-items:center;justify-content:center;
+        background:rgba(3,3,8,.88);backdrop-filter:blur(6px);padding:1.2rem`;
+      cx.innerHTML = `
+        <div style="width:min(560px,100%);max-height:86vh;overflow-y:auto;padding:1.4rem 1.5rem;
+          background:linear-gradient(170deg,#1a1206,#0d0d1a 60%);border:1px solid rgba(251,191,36,.5);
+          border-radius:16px;box-shadow:0 0 50px rgba(251,191,36,.25)">
+          <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:1rem">
+            <span style="font-size:1.2rem">🏛</span>
+            <div style="flex:1">
+              <div style="font-family:var(--font-title);font-size:1rem;color:var(--gold-bright)">Comemorativas do Arquiteto</div>
+              <div style="font-family:var(--font-section);font-size:.6rem;letter-spacing:.14em;color:var(--text-muted)">MARCOS DO DESENVOLVIMENTO · SÓ VOCÊ VÊ</div>
+            </div>
+            <button onclick="document.getElementById('arq-comemorativas').remove()"
+              style="background:none;border:none;color:var(--text-muted);font-size:1.1rem;cursor:pointer">✕</button>
+          </div>
+          ${lista.map(c => `
+            <div style="display:flex;align-items:center;gap:.8rem;padding:.7rem .8rem;margin-bottom:.5rem;
+              border-radius:12px;background:rgba(255,255,255,.03);border:1px solid ${c.desbloqueada ? 'rgba(56,189,248,.4)' : 'rgba(148,163,184,.15)'}">
+              <span style="width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">
+                ${this._insignia(c.codigo, 44) || `<span style="font-size:1.5rem">${c.icone}</span>`}
+              </span>
+              <div style="flex:1;min-width:0">
+                <div style="font-family:var(--font-section);font-weight:700;font-size:.85rem;color:var(--text-primary)">${c.titulo}</div>
+                <div style="font-size:.66rem;color:var(--text-muted)">${c.descricao}</div>
+                <div style="font-family:'Orbitron',monospace;font-size:.62rem;color:var(--gold-bright);margin-top:.15rem">+${c.xp_bonus} XP · +${c.moedas_bonus} 💰</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:.3rem;align-items:stretch">
+                ${c.desbloqueada
+                  ? `<span style="font-size:.58rem;font-family:var(--font-section);color:#34d399;text-align:center">✔ CONQUISTADA</span>
+                     <button onclick="ArquitetoConsole._revogar(${c.id})" title="Devolve ao estado bloqueado e estorna o bônus — permite reviver a cerimônia"
+                       style="font-family:var(--font-section);font-size:.6rem;font-weight:700;
+                       padding:.3rem .6rem;border-radius:7px;cursor:pointer;color:#f87171;
+                       background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.35)">↺ REVOGAR</button>`
+                  : `<button onclick="ArquitetoConsole._conceder(${c.id})" style="font-family:var(--font-section);font-size:.65rem;font-weight:700;
+                      padding:.35rem .7rem;border-radius:7px;cursor:pointer;color:#38bdf8;
+                      background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.4)">CONCEDER</button>`}
+                <label style="display:flex;align-items:center;gap:.3rem;font-family:var(--font-section);font-size:.6rem;color:var(--text-muted);cursor:pointer">
+                  <input type="checkbox" ${c.visivel ? 'checked' : ''}
+                    onchange="ArquitetoConsole._visibilidade(${c.id}, this.checked)"
+                    style="accent-color:var(--gold-bright);cursor:pointer">
+                  visível
+                </label>
+              </div>
+            </div>`).join('')}
+          <div style="font-size:.6rem;color:var(--text-dim);margin-top:.6rem;font-family:var(--font-section)">
+            Ocultar remove a medalha do seu perfil — o progresso permanece.
+          </div>
+        </div>`;
+      cx.addEventListener('click', e => { if (e.target === cx) cx.remove(); });
+      document.body.appendChild(cx);
+    } catch (err) {
+      SoloDialog.toast('Erro: ' + (err.message || err), 'error');
+    }
+  },
+
+  async _conceder(id) {
+    try {
+      await API.conquistas.conceder(id);   // o interceptador do api.js dispara a Cerimônia
+      document.getElementById('arq-comemorativas')?.remove();
+    } catch (err) {
+      SoloDialog.toast(err.message || String(err), 'error');
+    }
+  },
+
+  async _revogar(id) {
+    const ok = await SoloDialog.confirm(
+      'Revogar esta comemorativa? Ela volta ao estado bloqueado e o XP/moedas do bônus são estornados — útil para rever a cerimônia.',
+      { titulo: 'Revogar Comemorativa', tipo: 'warn', icon: '↺', btnOk: 'Revogar', btnCancel: 'Cancelar' }
+    );
+    if (!ok) return;
+    try {
+      const r = await API.conquistas.revogar(id);
+      SoloDialog.toast(`↺ Revogada — −${r.xp_estornado} XP estornados`, 'info');
+      // Reabre o painel já atualizado
+      document.getElementById('arq-comemorativas')?.remove();
+      this.comemorativas();
+      // Atualiza o dashboard se estiver visível
+      if (window.App?.currentPage === 'dashboard' && window.Dashboard) Dashboard.carregar();
+    } catch (err) {
+      SoloDialog.toast(err.message || String(err), 'error');
+    }
+  },
+
+  /* Reconcilia nível/rank/título com o XP acumulado e celebra o resultado */
+  async sincronizarNivel() {
+    try {
+      const r = await API.post('/conquistas/sincronizar-nivel', {});
+      if (!r.level_ups?.length) {
+        SoloDialog.toast('✔ Nível já está em dia', 'info');
+        return;
+      }
+      // O interceptador do api.js já dispara a Ascensão automaticamente
+      if (window.App?.currentPage === 'dashboard' && window.Dashboard) {
+        setTimeout(() => Dashboard.carregar(), 4500);
+      }
+    } catch (err) {
+      SoloDialog.toast(err.message || String(err), 'error');
+    }
+  },
+
+  async _visibilidade(id, visivel) {
+    try {
+      await API.conquistas.visibilidade(id, visivel);
+      SoloDialog.toast(visivel ? '👁 Medalha visível no perfil' : '🚫 Medalha oculta', 'info');
+    } catch (err) {
+      SoloDialog.toast(err.message || String(err), 'error');
+    }
+  },
+
+  dominioHabilidades() {
+    if (typeof ConquistaFX === 'undefined') return;
+    ConquistaFX.show({
+      id: 'conq_dev_habilidades_' + Date.now(),
+      codigo: 'dominio_habilidades',
+      icone: '💻',
+      titulo: 'Domínio das Habilidades',
+      descricao: 'Desenvolvimento integrado S-Rank (Caçador, Opus e Gemini)',
+      xp_bonus: 5000
+    });
   },
 
   /* ── DOM ───────────────────────────────────────────────── */
@@ -407,9 +603,22 @@ const ArquitetoConsole = {
         onmouseout="this.style.background='rgba(16,185,129,.07)';this.style.boxShadow='none'">
         🧪 TESTAR DOMÍNIO DA FORJA
       </button>
+      <button onclick="ArquitetoConsole.dominioHabilidades()" style="
+        font-family:var(--font-section);font-size:.78rem;font-weight:700;letter-spacing:.06em;
+        padding:.6rem .9rem;border-radius:10px;cursor:pointer;text-align:left;
+        color:#38bdf8;background:rgba(56,189,248,.07);
+        border:1px dashed rgba(56,189,248,.35);transition:all .15s"
+        onmouseover="this.style.background='rgba(56,189,248,.18)';this.style.boxShadow='0 0 12px rgba(56,189,248,.35)'"
+        onmouseout="this.style.background='rgba(56,189,248,.07)';this.style.boxShadow='none'">
+        🧪 TESTAR DOMÍNIO DAS HABILIDADES
+      </button>
+      ${btn('🏛 Comemorativas (conceder/ocultar)', 'comemorativas()')}
       ${btn('🏅 Cerimônia de Conquista', 'cerimonia()')}
       ${btn('🎞 Fila — 3 cerimônias seguidas', 'fila3()')}
-      ${btn('✨ Level Up (rank aleatório)', 'levelup()')}
+      ${btn('✨ Ascensão (1 nível)', 'levelup()')}
+      ${btn('🌌 Ascensão múltipla (+11 níveis)', 'ascensaoMultipla()')}
+      ${btn('🎬 Sequência: Ascensão → Cerimônia', 'sequenciaCompleta()')}
+      ${btn('🔧 Sincronizar meu nível (reparo)', 'sincronizarNivel()')}
       ${btn('💥 Explosão de partículas', 'explosao()')}
       ${btn('⚔️ Sparks + XP Float', 'xpfloat()')}
       ${btn('📜 Selo + carimbo no quadro', 'selo()')}
@@ -419,6 +628,16 @@ const ArquitetoConsole = {
         ${btn('<div style="font-size:1.1rem;margin-bottom:.2rem">🔨</div>carimbo', "som('carimbo')").replace('text-align:left', 'flex:1;text-align:center;padding:.5rem .2rem;line-height:1.2').replace('padding:.6rem .9rem;', '')}
         ${btn('<div style="font-size:1.1rem;margin-bottom:.2rem">🌟</div>levelup', "som('levelup')").replace('text-align:left', 'flex:1;text-align:center;padding:.5rem .2rem;line-height:1.2').replace('padding:.6rem .9rem;', '')}
       </div>
+      <div style="font-family:var(--font-section);font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin-top:.5rem">Zona de Perigo</div>
+      <button onclick="if(window.__resetPerfilArquiteto)window.__resetPerfilArquiteto();else SoloDialog.toast('Abra o Dashboard primeiro','warn')" style="
+        font-family:var(--font-section);font-size:.75rem;font-weight:700;letter-spacing:.06em;
+        padding:.55rem .9rem;border-radius:10px;cursor:pointer;text-align:left;
+        color:#f87171;background:rgba(239,68,68,.07);
+        border:1px solid rgba(239,68,68,.4);transition:all .15s"
+        onmouseover="this.style.background='rgba(239,68,68,.2)';this.style.boxShadow='0 0 12px rgba(239,68,68,.4)'"
+        onmouseout="this.style.background='rgba(239,68,68,.07)';this.style.boxShadow='none'">
+        ↺ Resetar Progresso (zera tudo)
+      </button>
       <div style="font-size:.6rem;color:var(--text-dim);margin-top:.4rem;font-family:var(--font-section)">
         Atalho: Ctrl+Alt+A · ou duplo-clique no badge ★ Arquiteto ★
       </div>`;
@@ -1257,9 +1476,16 @@ const ForjaFX = {
     const quadro = document.getElementById('lista-conquistas-recentes');
     if (!quadro) return;
     quadro.querySelector('.empty-state')?.remove();
+    // Idempotente: este demo tem o mesmo nome da comemorativa real
+    // "Domínio da Forja" — sem o guarda, o quadro ficava com cards repetidos.
+    if (quadro.querySelector('[data-cq-chave="demo-forja"]')) return;
+    const jaTemReal = [...quadro.querySelectorAll('.conquista-mini-nome')]
+      .some(el => el.textContent.trim().toLowerCase() === 'domínio da forja');
+    if (jaTemReal) return;
 
     const card = document.createElement('div');
     card.className = 'conquista-mini cq-carimbo c-entering c-materializing';
+    card.dataset.cqChave = 'demo-forja';
     card.style.borderColor = 'rgba(16,185,129,0.4)';
     card.style.background = 'linear-gradient(90deg, rgba(5,40,30,0.9), rgba(0,15,15,0.95))';
     card.style.boxShadow = '0 0 15px rgba(16,185,129,0.2) inset, 0 0 8px rgba(16,185,129,0.2)';

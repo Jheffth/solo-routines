@@ -55,94 +55,137 @@ const Perfil = {
     const rankColors = { 'N':'#f59e0b','S':'#a855f7','A':'#3b82f6','B':'#10b981','C':'#06b6d4' };
     const rankColor  = rankColors[classe.charAt(0)] || '#7c3aed';
 
+    // Dentro do hexágono a foto não pode ser circular
     const avatarHtml = dados.avatar_url
-      ? `<img src="${dados.avatar_url}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
-      : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2.5rem;background:linear-gradient(135deg,var(--purple-main),var(--blue-mana))">&#128737;</div>`;
+      ? `<img src="${dados.avatar_url}" alt="Avatar" style="width:100%;height:100%;object-fit:cover">`
+      : `<span style="font-size:2.1rem">&#128737;&#65039;</span>`;
+
+    // Rank: letra + cor (mesma linguagem da Janela de Status do dashboard)
+    const RANK_CORES = { 'E':'#94a3b8','D':'#22d3ee','C':'#10b981','B':'#3b82f6','A':'#a855f7','S':'#fbbf24','N':'#fb7185' };
+    const cUp = (classe || 'E-Rank').toUpperCase();
+    const letra = cUp.includes('NATIONAL') ? 'N'
+                : ((cUp.match(/\b([EDCBAS])\b|^([EDCBAS])-/) || [])[1]
+                || (cUp.match(/^([EDCBAS])-/) || [])[1] || 'E');
+    const cor = RANK_CORES[letra] || '#a855f7';
 
     cont.innerHTML = `
-      <div style="
-        display:flex;align-items:center;gap:2rem;flex-wrap:wrap;
-        background:linear-gradient(135deg,rgba(124,58,237,.1),rgba(6,182,212,.04));
-        border:1px solid rgba(124,58,237,.3);border-radius:1.2rem;
-        padding:2rem 2.5rem;position:relative;overflow:hidden;
-      ">
-        <!-- Glow de fundo -->
-        <div style="position:absolute;top:-60px;left:-60px;width:250px;height:250px;
-          background:radial-gradient(circle,rgba(124,58,237,.18),transparent 70%);pointer-events:none"></div>
+      <div class="hunter-window" id="perfil-window" style="--rank-cor:${cor};--rank-aura:${cor}26">
+        <canvas class="hunter-window-fx" id="perfil-fx"></canvas>
+        <div class="hunter-window-body">
 
-        <!-- Avatar -->
-        <div class="${dados.nivel_acesso === 'Arquiteto' ? 'chamas-arquiteto' : ''}" style="
-          width:90px;height:90px;border-radius:50%;flex-shrink:0;
-          border:3px solid ${rankColor};box-shadow:0 0 24px ${rankColor}66;
-          overflow:hidden;cursor:pointer;position:relative;
-        " id="perfil-avatar-click" title="Clique para trocar foto">
-          ${avatarHtml}
-          <div style="position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;
-            align-items:center;justify-content:center;opacity:0;transition:.2s;border-radius:50%"
-            onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0">
-            <span style="font-size:1.5rem">&#128247;</span>
+          <!-- Hexágono de rank (clicável: troca a foto) -->
+          <div class="hunter-hex-wrap ${isArquiteto ? 'chamas-arquiteto' : ''}"
+               id="perfil-avatar-click" title="Clique para trocar a foto" style="cursor:pointer">
+            <div class="hunter-hex-ring"></div>
+            <div class="hunter-hex">${avatarHtml}</div>
+            <div class="hunter-hex-rank">${letra}</div>
+            <div class="hunter-hex-camera">&#128247;</div>
+          </div>
+
+          <!-- Identidade -->
+          <div class="hunter-ident">
+            <div class="hunter-nome">${nome.toUpperCase()}</div>
+            <div class="hunter-titulo">&ldquo;${titulo}&rdquo;</div>
+            <div class="hunter-badges">
+              <span style="font-family:var(--font-section);font-size:.68rem;font-weight:700;letter-spacing:.12em;
+                padding:.2rem .7rem;border-radius:100px;color:${cor};
+                border:1px solid ${cor}66;background:${cor}14">${classe}</span>
+              ${isArquiteto ? `<span class="dg-badge-arquiteto" style="margin-left:0">★ ARQUITETO ★</span>` : ''}
+            </div>
+
+            <div class="hunter-xp">
+              <div class="hunter-xp-top">
+                <span class="hunter-xp-lbl">Progresso para o nível ${nivel + 1}</span>
+                <span class="hunter-xp-val">${xpAtual.toLocaleString('pt-BR')} / ${xpProx.toLocaleString('pt-BR')} XP</span>
+              </div>
+              <div class="hunter-xp-track ${pct >= 85 ? 'quase' : ''}">
+                <div class="hunter-xp-fill" id="perfil-xp-fill" style="width:0%"></div>
+                <div class="hunter-xp-ticks"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cristais -->
+          <div class="hunter-cristais">
+            <div class="cristal cristal-nivel">
+              <div class="cristal-gema"><span id="pf-c-nivel">0</span></div>
+              <div class="cristal-lbl">Nível</div>
+            </div>
+            <div class="cristal cristal-moedas">
+              <div class="cristal-gema"><span id="pf-c-moedas">0</span></div>
+              <div class="cristal-lbl">Mana Coins</div>
+            </div>
+            <div class="cristal cristal-streak ${streak === 0 ? 'apagado' : ''}">
+              <div class="cristal-gema">
+                <span class="cristal-chama">&#128293;</span><span id="pf-c-streak">0</span>
+              </div>
+              <div class="cristal-lbl">Streak</div>
+            </div>
           </div>
         </div>
-
-        <!-- Dados principais -->
-        <div style="flex:1;min-width:200px">
-          <div style="font-family:var(--font-title);font-size:1.5rem;font-weight:700;
-            color:var(--text-primary);letter-spacing:.08em;margin-bottom:.1rem">
-            ${nome.toUpperCase()}
-          </div>
-          <div style="font-family:var(--font-section);font-size:.9rem;
-            color:var(--gold-xp);margin-bottom:.6rem;font-style:italic">
-            &ldquo;${titulo}&rdquo;
-          </div>
-          <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
-            <span style="
-              font-family:var(--font-section);font-size:.72rem;font-weight:700;
-              letter-spacing:.12em;padding:.3rem .9rem;border-radius:100px;
-              border:1.5px solid ${rankColor};color:${rankColor};background:${rankColor}18
-            ">${classe}</span>
-            ${isArquiteto ? `<span style="
-              font-family:var(--font-section);font-size:.68rem;padding:.2rem .7rem;
-              border-radius:100px;background:rgba(245,158,11,.15);
-              border:1px solid rgba(245,158,11,.5);color:#fbbf24
-            ">&#9889; Arquiteto</span>` : ''}
-          </div>
-        </div>
-
-        <!-- Stats -->
-        <div style="display:flex;gap:2.5rem;align-items:center;flex-shrink:0;flex-wrap:wrap">
-          <div style="text-align:center">
-            <div style="font-family:var(--font-section);font-size:.62rem;color:var(--text-muted);
-              letter-spacing:.15em;text-transform:uppercase;margin-bottom:.3rem">NÍVEL</div>
-            <div style="font-family:var(--font-title);font-size:2.2rem;font-weight:700;
-              color:var(--purple-glow)">${nivel}</div>
-          </div>
-          <div style="text-align:center">
-            <div style="font-family:var(--font-section);font-size:.62rem;color:var(--text-muted);
-              letter-spacing:.15em;text-transform:uppercase;margin-bottom:.3rem">MANA COINS</div>
-            <div style="font-family:var(--font-title);font-size:2.2rem;font-weight:700;
-              color:var(--gold-xp)">${moedas.toLocaleString('pt-BR')}</div>
-          </div>
-          <div style="text-align:center">
-            <div style="font-family:var(--font-section);font-size:.62rem;color:var(--text-muted);
-              letter-spacing:.15em;text-transform:uppercase;margin-bottom:.3rem">STREAK</div>
-            <div style="font-family:var(--font-title);font-size:2.2rem;font-weight:700;
-              color:#f97316">&#128293; ${streak}</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- XP Bar -->
-      <div style="margin-top:.75rem;padding:0 .3rem">
-        <div style="display:flex;justify-content:space-between;margin-bottom:.35rem">
-          <span style="font-family:var(--font-section);font-size:.72rem;color:var(--text-muted)">XP para nível ${nivel + 1}</span>
-          <span style="font-family:var(--font-section);font-size:.72rem;color:var(--gold-xp)">${xpAtual.toLocaleString('pt-BR')} / ${xpProx.toLocaleString('pt-BR')} XP</span>
-        </div>
-        <div class="xp-bar-container"><div class="xp-bar-fill" style="width:${pct}%"></div></div>
       </div>
     `;
 
-    // Clique no avatar → seletor de arquivo local (PC e mobile)
+    // Anima barra e contadores (mesmo comportamento do dashboard)
+    setTimeout(() => {
+      const bar = document.getElementById('perfil-xp-fill');
+      if (bar) bar.style.width = pct + '%';
+    }, 120);
+    this._contar(document.getElementById('pf-c-nivel'), nivel, 700);
+    this._contar(document.getElementById('pf-c-moedas'), moedas, 900);
+    this._contar(document.getElementById('pf-c-streak'), streak, 600);
+    this._initFxPerfil();
+
+    // Clique no hexágono → seletor de arquivo local (PC e mobile)
     document.getElementById('perfil-avatar-click')?.addEventListener('click', () => this.escolherFoto());
+  },
+
+  // Contagem animada (espelha Dashboard._contar)
+  _contar(el, alvo, dur = 900) {
+    if (!el) return;
+    const t0 = performance.now();
+    const passo = (t) => {
+      const p = Math.min(1, (t - t0) / dur);
+      const eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = Math.round(alvo * eased).toLocaleString('pt-BR');
+      if (p < 1) requestAnimationFrame(passo);
+    };
+    requestAnimationFrame(passo);
+  },
+
+  // Partículas de mana na janela do perfil
+  _initFxPerfil() {
+    const canvas = document.getElementById('perfil-fx');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let W = 0, H = 0;
+    const ajustar = () => {
+      const r = canvas.getBoundingClientRect();
+      W = canvas.width = r.width; H = canvas.height = r.height;
+    };
+    ajustar();
+    window.addEventListener('resize', ajustar);
+    const ps = Array.from({ length: 26 }, () => ({
+      x: Math.random(), y: Math.random(),
+      r: Math.random() * 1.6 + .4,
+      v: Math.random() * .00035 + .00012,
+      a: Math.random() * .5 + .15,
+    }));
+    const loop = () => {
+      if (!canvas.isConnected) return;
+      ctx.clearRect(0, 0, W, H);
+      const cor = getComputedStyle(canvas.parentElement).getPropertyValue('--rank-cor').trim() || '#a855f7';
+      ps.forEach(p => {
+        p.y -= p.v;
+        if (p.y < -0.05) { p.y = 1.05; p.x = Math.random(); }
+        ctx.beginPath();
+        ctx.arc(p.x * W, p.y * H, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = cor; ctx.globalAlpha = p.a; ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+      requestAnimationFrame(loop);
+    };
+    loop();
   },
 
   // ── Upload de foto local ────────────────────────────────
@@ -431,46 +474,88 @@ const Perfil = {
     }
 
     const now = new Date();
-    const recent = lista.filter(c => c.desbloqueada && c.desbloqueada_em && (now - new Date(c.desbloqueada_em)) < 60000); // 1 minuto
+    const recent = lista.filter(c => c.desbloqueada && c.desbloqueada_em && (now - new Date(c.desbloqueada_em)) < 60000);
+
+    // Ordena: desbloqueadas primeiro, depois por raridade (XP) decrescente
+    const ordenada = [...lista].sort((a, b) => {
+      if (a.desbloqueada !== b.desbloqueada) return a.desbloqueada ? -1 : 1;
+      return (b.xp_bonus || 0) - (a.xp_bonus || 0);
+    });
 
     let delay = 0;
-    cont.innerHTML = lista.map((c, i) => {
-      const isNew = recent.includes(c) && !localStorage.getItem('cq_seen_'+c.id);
-      let classes = 'conquista-badge';
+    cont.innerHTML = ordenada.map((c, i) => {
+      const isNew = recent.includes(c) && !localStorage.getItem('cq_seen_' + c.id);
+      const rar   = this._raridade(c.xp_bonus || 0);
+
+      let classes = `reliquia-card rar-${rar.k}`;
       let style = '';
-      
       if (c.desbloqueada) {
         classes += ' desbloqueada c-pulsing';
-        style += `--c-pulse-delay: ${Math.random()*2}s;`;
+        style += `--c-pulse-delay:${Math.random() * 2}s;`;
       } else {
         classes += ' bloqueada';
       }
-      
-      if (isNew) {
-        classes += ' c-materializing';
-        style += `--c-delay: ${delay}ms;`;
-        delay += 150;
-      } else {
-        classes += ' c-entering';
-        style += `--c-delay: ${i * 50}ms;`;
-      }
-      
+      if (c.exclusiva_arquiteto) classes += ' comemorativa';
+
+      if (isNew) { classes += ' c-materializing'; style += `--c-delay:${delay}ms;`; delay += 150; }
+      else       { classes += ' c-entering';      style += `--c-delay:${i * 45}ms;`; }
+
+      // Medalha: insígnia própria (se houver) → SVG da cerimônia → emoji
+      const medalha = this._medalhaDe(c, 64);
+
       return `
-        <div class="${classes}" style="${style}">
-          <div class="conquista-icon">${c.icone || '&#127942;'}</div>
-          <div class="conquista-nome">${c.titulo || c.nome || 'Conquista'}</div>
-          <div class="conquista-desc">${c.descricao || ''}</div>
-          ${c.xp_bonus ? `<div class="conquista-xp-badge">+${c.xp_bonus} XP</div>` : ''}
-        </div>
-      `;
+        <div class="${classes}" style="${style}" title="${c.desbloqueada ? 'Conquistada' : 'Bloqueada'} — ${rar.nome}">
+          <div class="reliquia-brilho"></div>
+          ${c.exclusiva_arquiteto ? '<div class="reliquia-selo-arq">⟁</div>' : ''}
+          <div class="reliquia-medalha">${medalha}</div>
+          <div class="reliquia-nome">${c.titulo || c.nome || 'Conquista'}</div>
+          <div class="reliquia-desc">${c.descricao || ''}</div>
+          <div class="reliquia-rodape">
+            <span class="reliquia-rar">${rar.nome}</span>
+            ${c.xp_bonus ? `<span class="reliquia-xp">+${c.xp_bonus.toLocaleString('pt-BR')} XP</span>` : ''}
+          </div>
+          ${c.desbloqueada && c.desbloqueada_em
+            ? `<div class="reliquia-data">⟢ ${this._fmtDateDisplay(c.desbloqueada_em)}</div>`
+            : (c.desbloqueada ? '' : '<div class="reliquia-cadeado">🔒</div>')}
+        </div>`;
     }).join('');
 
     for (const c of recent) {
-      if (!localStorage.getItem('cq_seen_'+c.id)) {
+      if (!localStorage.getItem('cq_seen_' + c.id)) {
         await ConquistasAnim.showUnlockModal(c);
-        localStorage.setItem('cq_seen_'+c.id, '1');
+        localStorage.setItem('cq_seen_' + c.id, '1');
       }
     }
+  },
+
+  /* Insígnias com arte própria (desenhadas no arquiteto-console.js).
+     Cada entrada aponta para a função que gera o SVG da medalha. */
+  _medalhaCustom(codigo, tam) {
+    const mapa = {
+      jh3ffth:       () => window.Jh3ffthFX?._svgMedalhaArquiteto?.(tam),
+      solo:          () => window.SoloFX?._svgMedalhaSolo?.(tam),
+      dominio_forja: () => window.ForjaFX?._svgMedalhaForja?.(tam),
+    };
+    try { return (mapa[codigo] && mapa[codigo]()) || null; }
+    catch (_) { return null; }
+  },
+
+  _medalhaDe(c, tam = 64) {
+    const custom = this._medalhaCustom(c.codigo, tam);
+    if (custom) {
+      return `<span class="cq-medalhinha" style="width:${tam}px;height:${tam}px">${custom}</span>`;
+    }
+    return (typeof ConquistaFX !== 'undefined' && ConquistaFX.miniMedalha)
+      ? ConquistaFX.miniMedalha(c, tam)
+      : `<div style="font-size:2rem">${c.icone || '🏆'}</div>`;
+  },
+
+  // Raridade por faixa de XP — dita moldura, brilho e rótulo
+  _raridade(xp) {
+    if (xp >= 2000) return { k: 'lendaria', nome: 'Lendária' };
+    if (xp >= 500)  return { k: 'epica',    nome: 'Épica'    };
+    if (xp >= 200)  return { k: 'rara',     nome: 'Rara'     };
+    return              { k: 'comum',    nome: 'Comum'    };
   },
 
   _getTituloByRank(rank) {

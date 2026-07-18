@@ -70,7 +70,142 @@ const Dashboard = {
     }
   },
 
+  // ── Cores por rank (Janela de Status) ──
+  _RANK_CORES: {
+    'E': '#94a3b8', 'D': '#22d3ee', 'C': '#10b981',
+    'B': '#3b82f6', 'A': '#a855f7', 'S': '#fbbf24', 'N': '#fb7185',
+  },
+
+  _letraRank(classe) {
+    const c = (classe || 'E-Rank').toUpperCase();
+    if (c.includes('NATIONAL')) return 'N';
+    const m = c.match(/\b([EDCBAS])\b|^([EDCBAS])-/);
+    return (m && (m[1] || m[2])) || 'E';
+  },
+
+  // Contagem animada de números (Orbitron fica lindo contando)
+  _contar(el, alvo, dur = 900) {
+    if (!el) return;
+    const ini = 0, t0 = performance.now();
+    const passo = (t) => {
+      const p = Math.min(1, (t - t0) / dur);
+      const eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = Math.round(ini + (alvo - ini) * eased).toLocaleString('pt-BR');
+      if (p < 1) requestAnimationFrame(passo);
+    };
+    requestAnimationFrame(passo);
+  },
+
+  // ── Relicário: as 3 últimas conquistas na Janela de Status ──
+  async _renderRelicario() {
+    const cont = document.getElementById('dash-relicario');
+    if (!cont) return;
+    try {
+      const lista = await API.conquistas.listar();
+      const desb = (lista || []).filter(c => c.desbloqueada).sort((a, b) => {
+        if (a.desbloqueada_em && b.desbloqueada_em) return new Date(b.desbloqueada_em) - new Date(a.desbloqueada_em);
+        return 0;
+      }).slice(0, 8);   // cabe a coleção completa de comemorativas
+      if (!desb.length) {
+        cont.innerHTML = `<span class="hunter-relicario-lbl">Nenhuma relíquia ainda — cumpra missões</span>`;
+        return;
+      }
+      const medalha = c => (typeof ConquistaFX !== 'undefined' && ConquistaFX.miniMedalha)
+        ? ConquistaFX.miniMedalha(c, 34) : (c.icone || '🏆');
+      cont.innerHTML = `<span class="hunter-relicario-lbl">Relíquias</span>` +
+        desb.map(c => `<span class="hunter-reliquia" title="${c.titulo}${c.descricao ? ' — ' + c.descricao : ''}">${medalha(c)}</span>`).join('');
+      cont.querySelectorAll('.hunter-reliquia').forEach(el =>
+        el.addEventListener('click', () => window.App && App.navigate('perfil')));
+    } catch (_) { /* silencioso */ }
+  },
+
+  // ── Chip: dungeon aberta agora ──
+  async _renderChipDungeon() {
+    const chip = document.getElementById('sys-dungeon-chip');
+    if (!chip) return;
+    try {
+      const lista = await API.dungeons.listar();
+      const abertas = (lista || []).filter(d =>
+        d.devida_hoje && (!d.sessao_hoje || ['PENDENTE', 'ATIVA'].includes(d.sessao_hoje.status)));
+      if (!abertas.length) { chip.style.display = 'none'; return; }
+      const dentro = abertas.find(d => d.sessao_hoje?.status === 'ATIVA');
+      const alvo = dentro || abertas[0];
+      chip.textContent = dentro
+        ? `⚔️ Você está em ${alvo.titulo}`
+        : `🌀 ${abertas.length} portão${abertas.length > 1 ? 'es' : ''} aberto${abertas.length > 1 ? 's' : ''}`;
+      chip.style.display = '';
+      chip.onclick = () => window.App && App.navigate('dungeons');
+    } catch (_) { chip.style.display = 'none'; }
+  },
+
+  // ── Sussurros do Sistema na placa ──
+  _SUSSURROS_PLACA: [
+    'O Sistema observa seu progresso',
+    'Todo dia é uma chance de subir de rank',
+    'Os fracos morrem, os fortes evoluem',
+    'Seu potencial ainda não foi medido',
+    'Nenhum portão se fecha para quem insiste',
+    'A disciplina é a lâmina mais afiada',
+    'Hunters comuns já teriam parado',
+  ],
+
+  _iniciarSussurros() {
+    const el = document.getElementById('sys-whisper');
+    if (!el || this._sussurroTimer) return;
+    let i = 0;
+    this._sussurroTimer = setInterval(() => {
+      el.classList.add('trocando');
+      setTimeout(() => {
+        i = (i + 1) % this._SUSSURROS_PLACA.length;
+        el.textContent = this._SUSSURROS_PLACA[i];
+        el.classList.remove('trocando');
+      }, 600);
+    }, 9000);
+  },
+
+  // ── Partículas de mana dentro da Janela de Status ──
+  _initFxJanela() {
+    const canvas = document.getElementById('hunter-fx');
+    if (!canvas || canvas.dataset.on) return;
+    canvas.dataset.on = '1';
+    const ctx = canvas.getContext('2d');
+    let W = 0, H = 0;
+    const ajustar = () => {
+      const r = canvas.getBoundingClientRect();
+      W = canvas.width = r.width; H = canvas.height = r.height;
+    };
+    ajustar();
+    window.addEventListener('resize', ajustar);
+
+    const ps = Array.from({ length: 26 }, () => ({
+      x: Math.random(), y: Math.random(),
+      r: Math.random() * 1.6 + .4,
+      v: Math.random() * .00035 + .00012,
+      a: Math.random() * .5 + .15,
+    }));
+    const loop = () => {
+      if (!canvas.isConnected) return;
+      ctx.clearRect(0, 0, W, H);
+      const cor = getComputedStyle(document.getElementById('hunter-card'))
+        .getPropertyValue('--rank-cor').trim() || '#a855f7';
+      ps.forEach(p => {
+        p.y -= p.v;
+        if (p.y < -0.05) { p.y = 1.05; p.x = Math.random(); }
+        ctx.beginPath();
+        ctx.arc(p.x * W, p.y * H, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = cor;
+        ctx.globalAlpha = p.a;
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+      requestAnimationFrame(loop);
+    };
+    loop();
+  },
+
   renderPersonagem(dados) {
+    this._iniciarSussurros();
+    this._initFxJanela();
     // Nome
     const elNome = document.getElementById('dash-nome');
     if (elNome) elNome.textContent = dados.nome || 'Hunter';
@@ -82,17 +217,27 @@ const Dashboard = {
     const elTitulo = document.getElementById('dash-titulo');
     if (elTitulo) elTitulo.textContent = `"${dados.titulo || this._getTituloByRank(dados.rank)}"`;
 
-    // Nivel
-    const elNivel = document.getElementById('dash-nivel');
-    if (elNivel) elNivel.textContent = dados.nivel_atual || dados.nivel || 1;
+    // ── Rank: colore a janela inteira ──
+    const classe = dados.classe || dados.rank || 'E-Rank';
+    const letra  = this._letraRank(classe);
+    const cor    = this._RANK_CORES[letra] || '#a855f7';
+    const janela = document.getElementById('hunter-card');
+    if (janela) {
+      janela.style.setProperty('--rank-cor', cor);
+      janela.style.setProperty('--rank-aura', cor + '26');
+    }
+    const selo = document.getElementById('dash-rank-selo');
+    if (selo) selo.textContent = letra;
 
-    // Moedas
-    const elMoedas = document.getElementById('dash-moedas');
-    if (elMoedas) elMoedas.textContent = (dados.moedas || 0).toLocaleString('pt-BR');
+    // Cristais com contagem animada
+    this._contar(document.getElementById('dash-nivel'), dados.nivel_atual || dados.nivel || 1, 700);
+    this._contar(document.getElementById('dash-moedas'), dados.moedas || 0);
 
-    // Streak
+    // Streak (chama apaga se zerado)
+    const streak = dados.streak_atual || dados.streak_dias || 0;
     const elStreak = document.getElementById('dash-streak');
-    if (elStreak) elStreak.innerHTML = `&#128293; ${dados.streak_atual || dados.streak_dias || 0}`;
+    if (elStreak) this._contar(elStreak, streak, 600);
+    document.querySelector('.cristal-streak')?.classList.toggle('apagado', streak === 0);
 
     // XP
     const xpAtual  = dados.xp_atual   || 0;
@@ -103,14 +248,24 @@ const Dashboard = {
     if (elXPTxt) elXPTxt.textContent = `${xpAtual.toLocaleString('pt-BR')} / ${xpProx.toLocaleString('pt-BR')} XP`;
 
     const elXPBar = document.getElementById('dash-xp-bar');
-    if (elXPBar) setTimeout(() => { elXPBar.style.width = pct + '%'; }, 100);
+    if (elXPBar) setTimeout(() => { elXPBar.style.width = pct + '%'; }, 120);
+    // Perto de subir (>=85%): a barra arde em ouro
+    document.querySelector('.hunter-xp-track')?.classList.toggle('quase', pct >= 85);
 
-    // Rank badge
+    // Badges (rank textual + nível)
     const elRankBadge = document.getElementById('dash-rank-badge');
     if (elRankBadge) {
-      const rank = dados.classe || dados.rank || 'E-Rank';
-      elRankBadge.innerHTML = `<span class="hunter-rank-badge rank-e">${rank}</span>`;
+      const ehArq = dados.nivel_acesso === 'Arquiteto';
+      elRankBadge.innerHTML = `
+        <span style="font-family:var(--font-section);font-size:.68rem;font-weight:700;letter-spacing:.12em;
+          padding:.2rem .7rem;border-radius:100px;color:${cor};
+          border:1px solid ${cor}66;background:${cor}14">${classe}</span>
+        ${ehArq ? `<span class="dg-badge-arquiteto" style="margin-left:0">★ ARQUITETO ★</span>` : ''}`;
     }
+
+    // Relicário + chip de dungeon (extras da Janela de Status)
+    this._renderRelicario();
+    this._renderChipDungeon();
 
     // Sidebar rank
     const sbRank = document.getElementById('sidebar-rank');
@@ -122,13 +277,17 @@ const Dashboard = {
       }
     }
 
-    // Avatar
-    const avatarEls = document.querySelectorAll('#dash-avatar, #sidebar-avatar');
-    avatarEls.forEach(el => {
-      if (dados.avatar_url) {
-        el.innerHTML = `<img src="${dados.avatar_url}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
-      }
-    });
+    // Avatar (o do dashboard vive num hexágono — sem border-radius)
+    if (dados.avatar_url) {
+      const hex = document.getElementById('dash-avatar');
+      if (hex) hex.innerHTML = `<img src="${dados.avatar_url}" alt="Avatar" style="width:100%;height:100%;object-fit:cover">`;
+      const sb = document.getElementById('sidebar-avatar');
+      if (sb) sb.innerHTML = `<img src="${dados.avatar_url}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    }
+    // Aura de chamas do Arquiteto no hexágono
+    if (dados.nivel_acesso === 'Arquiteto') {
+      document.querySelector('.hunter-hex-wrap')?.classList.add('chamas-arquiteto');
+    }
 
     // Botão Editar Perfil
     const btnEdit = document.getElementById('dash-btn-editar-perfil');
@@ -138,37 +297,26 @@ const Dashboard = {
       };
     }
 
-    // Botão Resetar Arquiteto
-    const btnResetArq = document.getElementById('dash-btn-reset-arquiteto');
-    if (btnResetArq) {
-      if (dados.nivel_acesso === 'Arquiteto') {
-        btnResetArq.style.display = 'flex';
-        btnResetArq.onclick = async () => {
-          const ok = await SoloDialog.confirm(
-            `Deseja RESETAR completamente o seu progresso?<br><span style="color:#94a3b8">Isso apagará nível, conquistas, moedas e XP!</span>`,
-            { titulo: 'Resetar (Modo Arquiteto)', icon: '&#8635;', tipo: 'error', btnOk: 'Zerar Tudo', btnCancel: 'Cancelar' }
-          );
-          if (ok) {
-            try {
-              await API.post(`/gerencial/reset-perfil/${dados.id}`, {});
-              SoloDialog.toast('Progresso zerado!', 'success');
-              // Limpa cache de conquistas vistas no navegador
-              for (let i = localStorage.length - 1; i >= 0; i--) {
-                const key = localStorage.key(i);
-                if (key && key.startsWith('cq_seen_')) {
-                  localStorage.removeItem(key);
-                }
-              }
-              setTimeout(() => { window.location.reload(); }, 800);
-            } catch (err) {
-              SoloDialog.toast('Erro ao resetar: ' + err.message, 'error');
-            }
-          }
-        };
-      } else {
-        btnResetArq.style.display = 'none';
+    // Reset de progresso: ação perigosa — mora na Forja de Testes (Ctrl+Alt+A),
+    // fora do cabeçalho. Exposto aqui para a Forja consumir.
+    window.__resetPerfilArquiteto = async () => {
+      const ok = await SoloDialog.confirm(
+        `Deseja RESETAR completamente o seu progresso?<br><span style="color:#94a3b8">Isso apagará nível, conquistas, moedas e XP!</span>`,
+        { titulo: 'Resetar (Modo Arquiteto)', icon: '&#8635;', tipo: 'error', btnOk: 'Zerar Tudo', btnCancel: 'Cancelar' }
+      );
+      if (!ok) return;
+      try {
+        await API.post(`/gerencial/reset-perfil/${dados.id}`, {});
+        SoloDialog.toast('Progresso zerado!', 'success');
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('cq_seen_')) localStorage.removeItem(key);
+        }
+        setTimeout(() => { window.location.reload(); }, 800);
+      } catch (err) {
+        SoloDialog.toast('Erro ao resetar: ' + err.message, 'error');
       }
-    }
+    };
   },
 
   renderStats(stats) {
@@ -1449,8 +1597,15 @@ const Dashboard = {
     const cont = document.getElementById('lista-conquistas-recentes');
     if (!cont) return;
 
-    // Apenas mostrar as desbloqueadas na home, ordenadas pelas mais recentes (se houver data)
-    let desbloqueadas = lista.filter(c => c.desbloqueada);
+    // Apenas as desbloqueadas, sem repetição (id ou título)
+    const vistos = new Set();
+    let desbloqueadas = lista.filter(c => {
+      if (!c.desbloqueada) return false;
+      const chave = String(c.id ?? '') + '|' + (c.titulo || '').trim().toLowerCase();
+      if (vistos.has(chave)) return false;
+      vistos.add(chave);
+      return true;
+    });
 
     if (!desbloqueadas.length) {
       cont.innerHTML = `
@@ -1491,11 +1646,16 @@ const Dashboard = {
         style += `--c-delay: ${i * 50}ms;`;
       }
 
-      const medalha = (typeof ConquistaFX !== 'undefined' && ConquistaFX.miniMedalha)
-        ? ConquistaFX.miniMedalha(c)
-        : `<div class="conquista-mini-icon">${c.icone || '&#127942;'}</div>`;
+      // Insígnia própria (Jh3ffth / SOLO / Forja) tem prioridade sobre a medalha padrão
+      const custom = (typeof ArquitetoConsole !== 'undefined' && ArquitetoConsole._insignia)
+        ? ArquitetoConsole._insignia(c.codigo, 52) : null;
+      const medalha = custom
+        ? `<span class="cq-medalhinha" style="width:52px;height:52px">${custom}</span>`
+        : ((typeof ConquistaFX !== 'undefined' && ConquistaFX.miniMedalha)
+            ? ConquistaFX.miniMedalha(c)
+            : `<div class="conquista-mini-icon">${c.icone || '&#127942;'}</div>`);
       return `
-        <div class="${classes}" style="${style}">
+        <div class="${classes}" style="${style}" data-cq-chave="${c.id ?? (c.titulo || '')}">
           ${medalha}
           <div class="conquista-mini-info">
             <div class="conquista-mini-nome">${c.titulo || c.nome || 'Conquista'}</div>

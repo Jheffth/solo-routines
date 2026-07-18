@@ -213,6 +213,9 @@ class Conquista(Base):
     condicao_tipo    = Column(String(50), nullable=False)    # ex: "execucoes_total", "streak", "nivel"
     condicao_valor   = Column(Integer, nullable=False)
     ativo            = Column(Boolean, default=True)
+    # Comemorativas: exclusivas do Arquiteto (marcos do desenvolvimento)
+    exclusiva_arquiteto = Column(Boolean, default=False)
+    visivel             = Column(Boolean, default=True)   # o Arquiteto pode ocultá-las
 
     usuarios         = relationship("ConquistaUsuario", back_populates="conquista", lazy="dynamic")
 

@@ -15,6 +15,9 @@
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/pages.css">
   <link rel="stylesheet" href="css/dungeon.css">
+  <link rel="stylesheet" href="css/status-window.css">
+  <link rel="stylesheet" href="css/relicario.css">
+  <link rel="stylesheet" href="css/ascensao.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -30,6 +33,12 @@
         </feTurbulence>
         <feDisplacementMap in="SourceGraphic" in2="ruido" scale="42" xChannelSelector="R" yChannelSelector="G"/>
       </filter>
+      <!-- Gradiente do glifo do Sistema (usado nas placas de aquisição) -->
+      <linearGradient id="sysGlyphGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#d8b4fe"/>
+        <stop offset="60%" stop-color="#a855f7"/>
+        <stop offset="100%" stop-color="#22d3ee"/>
+      </linearGradient>
     </defs>
   </svg>
 
@@ -193,58 +202,88 @@
 
         <!-- PAGE: DASHBOARD -->
         <div class="page active" id="page-dashboard">
-          <div class="page-header">
-            <div>
-              <h1 class="page-title">&#127968; Status Screen</h1>
-              <p class="page-subtitle" id="dash-data">Hoje</p>
+          <!-- ═══ PLACA DE AQUISIÇÃO DO SISTEMA ═══ -->
+          <div class="sys-plate">
+            <div class="sys-plate-glyph">
+              <svg viewBox="0 0 48 48" width="34" height="34" aria-hidden="true">
+                <path d="M24 2 L44 13 V35 L24 46 L4 35 V13 Z" fill="none"
+                  stroke="url(#sysGlyphGrad)" stroke-width="2.5" stroke-linejoin="round"/>
+                <path d="M24 12 L34 18 V30 L24 36 L14 30 V18 Z" fill="rgba(168,85,247,.18)"
+                  stroke="url(#sysGlyphGrad)" stroke-width="1.5"/>
+                <circle cx="24" cy="24" r="4" fill="url(#sysGlyphGrad)" class="sys-glyph-core"/>
+              </svg>
             </div>
-            <button class="btn btn-primary" id="btn-nova-missao">+ Nova Missao</button>
+            <div class="sys-plate-texts">
+              <h1 class="sys-plate-title">STATUS</h1>
+              <div class="sys-plate-sub">
+                <span id="dash-data">Hoje</span>
+                <span class="sys-plate-sep">·</span>
+                <span class="sys-plate-whisper" id="sys-whisper">O Sistema observa seu progresso</span>
+              </div>
+              <div class="sys-plate-line"></div>
+            </div>
+            <div class="sys-plate-actions">
+              <span id="sys-dungeon-chip" class="sys-chip-dungeon" style="display:none"></span>
+              <button class="sys-btn-missao" id="btn-nova-missao">
+                <span>+ Nova Missão</span>
+              </button>
+            </div>
           </div>
-          <div class="card card-glow mb-2" id="hunter-card" style="background:linear-gradient(135deg,rgba(124,58,237,.12),rgba(6,182,212,.05))">
-            <div class="d-flex align-center justify-between" style="flex-wrap:wrap;gap:1rem">
-              <div class="d-flex align-center gap-2">
-                <div id="dash-avatar" style="width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg,var(--purple-main),var(--blue-mana));display:flex;align-items:center;justify-content:center;font-size:2rem;border:3px solid var(--purple-glow);box-shadow:0 0 20px rgba(124,58,237,.4);flex-shrink:0;overflow:hidden">&#128737;&#65039;</div>
-                <div>
-                  <div style="font-family:var(--font-title);font-size:1.3rem;color:var(--text-primary)" id="dash-nome">Hunter</div>
-                  <div style="font-family:var(--font-section);color:var(--gold-xp);font-size:.85rem;margin-top:.2rem" id="dash-titulo">"O Mais Fraco"</div>
-                  <div style="margin-top:.4rem;display:flex;gap:.5rem;align-items:center" id="dash-rank-badge"></div>
+          <!-- ═══ JANELA DE STATUS DO HUNTER ═══ -->
+          <div class="hunter-window" id="hunter-card">
+            <canvas class="hunter-window-fx" id="hunter-fx"></canvas>
+            <div class="hunter-window-body">
+
+              <!-- Coluna 1: avatar em hexágono de rank -->
+              <div class="hunter-hex-wrap">
+                <div class="hunter-hex-ring"></div>
+                <div class="hunter-hex" id="dash-avatar">&#128737;&#65039;</div>
+                <div class="hunter-hex-rank" id="dash-rank-selo">E</div>
+              </div>
+
+              <!-- Coluna 2: identidade + XP -->
+              <div class="hunter-ident">
+                <div class="hunter-nome" id="dash-nome">Hunter</div>
+                <div class="hunter-titulo" id="dash-titulo">"O Mais Fraco"</div>
+                <div class="hunter-badges" id="dash-rank-badge"></div>
+
+                <div class="hunter-xp">
+                  <div class="hunter-xp-top">
+                    <span class="hunter-xp-lbl">Progresso para o próximo nível</span>
+                    <span class="hunter-xp-val" id="dash-xp-txt">0 / 100 XP</span>
+                  </div>
+                  <div class="hunter-xp-track">
+                    <div class="hunter-xp-fill" id="dash-xp-bar" style="width:0%"></div>
+                    <div class="hunter-xp-ticks"></div>
+                  </div>
+                </div>
+
+                <!-- Relíquias recentes -->
+                <div class="hunter-relicario" id="dash-relicario"></div>
+              </div>
+
+              <!-- Coluna 3: cristais de status -->
+              <div class="hunter-cristais">
+                <div class="cristal cristal-nivel">
+                  <div class="cristal-gema"><span id="dash-nivel">1</span></div>
+                  <div class="cristal-lbl">Nível</div>
+                </div>
+                <div class="cristal cristal-moedas">
+                  <div class="cristal-gema"><span id="dash-moedas">0</span></div>
+                  <div class="cristal-lbl">Mana Coins</div>
+                </div>
+                <div class="cristal cristal-streak">
+                  <div class="cristal-gema">
+                    <span class="cristal-chama" id="dash-streak-chama">&#128293;</span>
+                    <span id="dash-streak">0</span>
+                  </div>
+                  <div class="cristal-lbl">Streak</div>
                 </div>
               </div>
-              <div style="display:flex;gap:1.5rem;flex-wrap:wrap">
-                <div style="text-align:center">
-                  <div style="font-family:var(--font-section);font-size:.72rem;color:var(--text-muted);letter-spacing:1px;text-transform:uppercase">Nivel</div>
-                  <div style="font-family:var(--font-section);font-size:2rem;font-weight:700;color:var(--purple-glow)" id="dash-nivel">1</div>
-                </div>
-                <div style="text-align:center">
-                  <div style="font-family:var(--font-section);font-size:.72rem;color:var(--text-muted);letter-spacing:1px;text-transform:uppercase">Mana Coins</div>
-                  <div style="font-family:var(--font-section);font-size:2rem;font-weight:700;color:var(--gold-xp)" id="dash-moedas">0</div>
-                </div>
-                <div style="text-align:center">
-                  <div style="font-family:var(--font-section);font-size:.72rem;color:var(--text-muted);letter-spacing:1px;text-transform:uppercase">Streak</div>
-                  <div style="font-family:var(--font-section);font-size:2rem;font-weight:700;color:var(--orange-high)" id="dash-streak">&#128293; 0</div>
-                </div>
-              </div>
-          </div>
-          <!-- XP Bar -->
-          <div style="margin-top:1.25rem">
-            <div style="display:flex;justify-content:space-between;margin-bottom:.4rem">
-              <span style="font-family:var(--font-section);font-size:.78rem;color:var(--text-muted)">XP para próximo nível</span>
-              <span style="font-family:var(--font-section);font-size:.78rem;color:var(--gold-xp)" id="dash-xp-txt">0 / 100 XP</span>
             </div>
-            <div class="xp-bar-container xp-bar-lg">
-              <div class="xp-bar-fill" id="dash-xp-bar" style="width:0%"></div>
-            </div>
-          </div>
-          <!-- Botão Editar Perfil e Ações Extras -->
-          <div style="margin-top:1rem;display:flex;justify-content:flex-end;gap:.5rem">
-            <button id="dash-btn-reset-arquiteto" class="btn btn-ghost btn-sm" style="
-              display:none; font-family:var(--font-section);font-size:.75rem;letter-spacing:.06em;
-              border:1px solid rgba(245,158,11,.4);color:#f59e0b;
-              padding:.35rem .9rem;border-radius:.5rem;cursor:pointer;
-              transition:all .2s;align-items:center;gap:.4rem;
-            " onmouseover="this.style.background='rgba(245,158,11,.15)'" onmouseout="this.style.background='transparent'">
-              &#8635; Resetar Progresso (Arquiteto)
-            </button>
+
+          <div style="margin-top:.25rem;display:flex;justify-content:flex-end;gap:.5rem">
+            <button id="dash-btn-reset-arquiteto" style="display:none"></button>
             <button id="dash-btn-editar-perfil" class="btn btn-ghost btn-sm" style="
               font-family:var(--font-section);font-size:.75rem;letter-spacing:.06em;
               border:1px solid rgba(124,58,237,.4);color:var(--purple-glow);
@@ -604,10 +643,25 @@
 
         <!-- PAGE: PERFIL -->
         <div class="page hidden" id="page-perfil">
-          <div class="page-header">
-            <div>
-              <h1 class="page-title">&#128202; Perfil do Hunter</h1>
-              <p class="page-subtitle">Suas informações, estatísticas e conquistas</p>
+          <!-- ═══ PLACA DE AQUISIÇÃO ═══ -->
+          <div class="sys-plate">
+            <div class="sys-plate-glyph">
+              <svg viewBox="0 0 48 48" width="34" height="34" aria-hidden="true">
+                <path d="M24 2 L44 13 V35 L24 46 L4 35 V13 Z" fill="none"
+                  stroke="url(#sysGlyphGrad)" stroke-width="2.5" stroke-linejoin="round"/>
+                <path d="M24 12 L34 18 V30 L24 36 L14 30 V18 Z" fill="rgba(168,85,247,.18)"
+                  stroke="url(#sysGlyphGrad)" stroke-width="1.5"/>
+                <circle cx="24" cy="24" r="4" fill="url(#sysGlyphGrad)" class="sys-glyph-core"/>
+              </svg>
+            </div>
+            <div class="sys-plate-texts">
+              <h1 class="sys-plate-title">HUNTER</h1>
+              <div class="sys-plate-sub">
+                <span>Ficha completa</span>
+                <span class="sys-plate-sep">·</span>
+                <span class="sys-plate-whisper">Estatísticas, habilidades e relíquias</span>
+              </div>
+              <div class="sys-plate-line"></div>
             </div>
           </div>
 
