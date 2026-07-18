@@ -1,6 +1,6 @@
 from sqlalchemy import (
     create_engine, Column, Integer, String, Float, Date, DateTime,
-    Boolean, Text, ForeignKey, JSON
+    Boolean, Text, ForeignKey, JSON, text
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
@@ -454,3 +454,17 @@ def get_db():
 
 def criar_tabelas():
     Base.metadata.create_all(bind=engine)
+    
+    # Migracoes automaticas seguras para SQLite persistente (Render)
+    try:
+        with engine.begin() as conn:
+            try:
+                conn.execute(text("ALTER TABLE conquistas ADD COLUMN exclusiva_arquiteto BOOLEAN DEFAULT 0"))
+            except Exception:
+                pass
+            try:
+                conn.execute(text("ALTER TABLE conquistas ADD COLUMN visivel BOOLEAN DEFAULT 1"))
+            except Exception:
+                pass
+    except Exception as e:
+        print(f"[DB] Erro nas migracoes automaticas: {e}")
