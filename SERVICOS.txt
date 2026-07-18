@@ -1,0 +1,152 @@
+# ============================================================
+#   SOLO ROUTINES — REGISTRO DE SERVIÇOS
+#   Arquivo de referência rápida para o projeto
+#   Atualizado em: Julho 2026
+# ============================================================
+
+
+# ============================================================
+# ✅ SERVIÇOS ATUALMENTE EM USO
+# ============================================================
+
+[CÓDIGO / VERSIONAMENTO]
+  Serviço : GitHub
+  Conta   : github.com/Jheffth
+  Repo    : Jheffth/solo-routines
+  Plano   : Free
+  Função  : Armazena todo o código-fonte do projeto.
+            Qualquer push aqui dispara o deploy automático no Render.
+
+[SERVIDOR / HOSPEDAGEM]
+  Serviço : Render
+  URL     : solo-routines.onrender.com
+  Plano   : Free (Web Service)
+  Função  : Hospeda o backend Python (FastAPI) e serve o frontend.
+  ATENÇÃO : No plano gratuito, o servidor hiberna após 50s sem
+            uso e demora ~30s para acordar. Arquivos salvos em
+            disco são apagados a cada reinício (filesystem efêmero).
+  Variáveis de Ambiente configuradas no painel do Render:
+    - SECRET_KEY     → chave JWT de autenticação
+    - DATABASE_URL   → connection string do Neon (PostgreSQL)
+    - CLOUDINARY_URL → connection string do Cloudinary (imagens)
+    - PYTHON_VERSION → 3.12.0
+
+[BANCO DE DADOS]
+  Serviço : Neon
+  URL     : neon.tech
+  Projeto : ep-broad-hat-at3qi4mu
+  Plano   : Free (0.5 GB)
+  Função  : Banco de dados PostgreSQL principal.
+            Armazena TUDO: usuários, rotinas, tarefas, dungeons,
+            XP, moedas, conquistas, recompensas, logs.
+  NOTA    : Dados persistem mesmo quando o Render hiberna.
+            O banco NUNCA é afetado por reinício do servidor.
+
+[ARMAZENAMENTO DE IMAGENS]
+  Serviço : Cloudinary
+  URL     : cloudinary.com
+  Plano   : Free (25 GB espaço / 25 GB banda por mês)
+  Função  : Armazena as fotos de perfil (avatares) dos usuários.
+            Substitui o sistema anterior que salvava imagens
+            no disco do Render (que era apagado a cada reinício).
+  Como funciona: Upload chega ao Render → Render envia para o
+            Cloudinary → Cloudinary retorna URL pública permanente
+            → URL é salva no Neon → Frontend exibe a imagem.
+
+
+# ============================================================
+# ❌ SERVIÇOS QUE NÃO ESTÃO MAIS EM USO
+# ============================================================
+
+[HOSPEDAGEM ANTIGA]
+  Serviço : Railway
+  Motivo  : Migrado para o Render.
+  Status  : DESATIVADO — não utilizar mais.
+
+[ARMAZENAMENTO DE IMAGENS ANTIGO]
+  Método  : Disco local do Render (pasta uploads/avatars/)
+  Motivo  : O filesystem do Render é efêmero — os arquivos
+            eram apagados toda vez que o servidor hibernava,
+            causando perda das fotos de perfil dos usuários.
+  Status  : SUBSTITUÍDO pelo Cloudinary (julho 2026).
+
+
+# ============================================================
+# 🗺️ ARQUITETURA RESUMIDA
+# ============================================================
+
+  Navegador do Usuário
+        ↓
+     Render  ──────────→  Neon (todos os dados)
+       ↓ ↑
+  Cloudinary (fotos de perfil)
+        ↑
+     GitHub (código → deploy automático)
+
+
+# ============================================================
+# 💸 CUSTOS MENSAIS ATUAIS
+# ============================================================
+
+  GitHub     : R$ 0,00  (Free)
+  Render     : R$ 0,00  (Free — com hibernação)
+  Neon       : R$ 0,00  (Free — 0.5 GB)
+  Cloudinary : R$ 0,00  (Free — 25 GB)
+               --------
+  TOTAL      : R$ 0,00 / mês
+
+
+# ============================================================
+# ⚠️ LIMITAÇÕES DO PLANO GRATUITO
+# ============================================================
+
+  Render     → App hiberna após 50s de inatividade (~30s para acordar)
+  Render     → 750h de compute por mês
+  Neon       → 0.5 GB de armazenamento total
+  Neon       → Banco hiberna por inatividade (reconecta sozinho)
+  Cloudinary → 25 GB de espaço total
+  Cloudinary → 25 GB de transferência por mês
+
+
+# ============================================================
+# 📋 VARIÁVEIS DE AMBIENTE NECESSÁRIAS (.env local / Render)
+# ============================================================
+
+  SECRET_KEY       = (string aleatória segura — nunca commitar)
+  DATABASE_URL     = postgresql://user:senha@host/dbname?sslmode=require
+  CLOUDINARY_URL   = cloudinary://api_key:api_secret@cloud_name
+  PYTHON_VERSION   = 3.12.0
+
+  Opcionais (integração Telegram — não implementado ainda):
+  TELEGRAM_BOT_TOKEN = ...
+  TELEGRAM_CHAT_ID   = ...
+  TELEGRAM_SECRET    = ...
+
+
+# ============================================================
+# 🔄 FLUXO DE DEPLOY
+# ============================================================
+
+  1. Editar código localmente
+  2. git add . && git commit -m "descrição"
+  3. git push origin master
+  4. Render detecta o push e faz deploy automático (~2 min)
+  5. Banco Neon e Cloudinary NÃO são afetados (dados persistem)
+
+
+# ============================================================
+# 🎨 PADRÃO DE DESIGN (Solo Leveling)
+# ============================================================
+
+  --bg-deep      : #050508
+  --bg-card      : #0d0d1a
+  --purple-main  : #7c3aed
+  --purple-glow  : #a855f7
+  --gold-xp      : #f59e0b
+  --text-primary : #e2e8f0
+
+  Regras:
+  - Dark mode obrigatório
+  - Glassmorphism nos cards
+  - Animações suaves (CSS transitions)
+  - Fonte: Inter ou Outfit (Google Fonts)

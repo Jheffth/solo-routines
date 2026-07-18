@@ -3,6 +3,7 @@ Router de Perfil — dados detalhados para gráficos e histórico.
 """
 import os
 import uuid
+import io
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
@@ -19,7 +20,20 @@ from auth.router import get_usuario_atual
 
 router = APIRouter(prefix="/perfil", tags=["perfil"])
 
-# ── Upload de avatar (arquivo local, PC e mobile) ─────────
+# ── Cloudinary — armazenamento permanente de avatares ────────────────────────
+# A CLOUDINARY_URL no formato cloudinary://key:secret@cloud_name
+# é lida automaticamente pelo SDK quando está no ambiente.
+import cloudinary
+import cloudinary.uploader
+
+_CLOUDINARY_URL = os.getenv("CLOUDINARY_URL", "")
+if _CLOUDINARY_URL:
+    cloudinary.config(cloudinary_url=_CLOUDINARY_URL)
+    _CLOUDINARY_OK = True
+else:
+    _CLOUDINARY_OK = False
+
+# Fallback local (usado apenas no desenvolvimento sem Cloudinary configurado)
 AVATAR_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "uploads", "avatars")
 _EXT_PERMITIDAS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
 _TAMANHO_MAX = 5 * 1024 * 1024  # 5 MB
@@ -31,7 +45,7 @@ async def upload_avatar(
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(get_usuario_atual),
 ):
-    """Recebe a foto de perfil do dispositivo do usuário e salva localmente."""
+    """Recebe a foto de perfil e envia para o Cloudinary (produção) ou disco local (dev)."""
     ext = os.path.splitext(arquivo.filename or "")[1].lower() or ".png"
     if ext not in _EXT_PERMITIDAS:
         raise HTTPException(400, "Formato inválido — use PNG, JPG, GIF ou WEBP")
@@ -42,9 +56,33 @@ async def upload_avatar(
     if not conteudo:
         raise HTTPException(400, "Arquivo vazio")
 
-    os.makedirs(AVATAR_DIR, exist_ok=True)
+    # ── Cloudinary (produção) ────────────────────────────────────────────────
+    if _CLOUDINARY_OK:
+        # Remove avatar antigo do Cloudinary
+        if usuario.avatar_url and usuario.avatar_url.startswith("https://res.cloudinary.com"):
+            try:
+                public_id = f"solo-routines/avatars/u{usuario.id}"
+                cloudinary.uploader.destroy(public_id)
+            except Exception:
+                pass
 
-    # Remove o avatar antigo (se era um upload local)
+        public_id = f"solo-routines/avatars/u{usuario.id}"
+        result = cloudinary.uploader.upload(
+            io.BytesIO(conteudo),
+            public_id=public_id,
+            overwrite=True,
+            resource_type="image",
+            transformation=[{"width": 400, "height": 400, "crop": "fill", "gravity": "face"}],
+        )
+        url = result.get("secure_url", "")
+        if not url:
+            raise HTTPException(500, "Falha no upload para o Cloudinary")
+
+        usuario.avatar_url = url
+        db.commit()
+        return {"ok": True, "avatar_url": usuario.avatar_url}
+
+    # ── Fallback local (desenvolvimento sem Cloudinary) ──────────────────────
     if usuario.avatar_url and usuario.avatar_url.startswith("/api/perfil/avatar/"):
         antigo = os.path.join(AVATAR_DIR, os.path.basename(usuario.avatar_url))
         try:
@@ -53,6 +91,7 @@ async def upload_avatar(
         except Exception:
             pass
 
+    os.makedirs(AVATAR_DIR, exist_ok=True)
     nome = f"u{usuario.id}_{uuid.uuid4().hex[:10]}{ext}"
     with open(os.path.join(AVATAR_DIR, nome), "wb") as f:
         f.write(conteudo)
@@ -67,14 +106,21 @@ def remover_avatar(
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(get_usuario_atual),
 ):
-    """Remove a foto de perfil."""
-    if usuario.avatar_url and usuario.avatar_url.startswith("/api/perfil/avatar/"):
-        antigo = os.path.join(AVATAR_DIR, os.path.basename(usuario.avatar_url))
-        try:
-            if os.path.isfile(antigo):
-                os.remove(antigo)
-        except Exception:
-            pass
+    """Remove a foto de perfil (Cloudinary ou disco local)."""
+    if usuario.avatar_url:
+        if _CLOUDINARY_OK and usuario.avatar_url.startswith("https://res.cloudinary.com"):
+            try:
+                public_id = f"solo-routines/avatars/u{usuario.id}"
+                cloudinary.uploader.destroy(public_id)
+            except Exception:
+                pass
+        elif usuario.avatar_url.startswith("/api/perfil/avatar/"):
+            antigo = os.path.join(AVATAR_DIR, os.path.basename(usuario.avatar_url))
+            try:
+                if os.path.isfile(antigo):
+                    os.remove(antigo)
+            except Exception:
+                pass
     usuario.avatar_url = None
     db.commit()
     return {"ok": True}
@@ -82,7 +128,7 @@ def remover_avatar(
 
 @router.get("/avatar/{nome}")
 def servir_avatar(nome: str):
-    """Serve a imagem do avatar (rota pública — tags <img> não enviam token)."""
+    """Serve avatar do disco local (fallback para uploads antigos ou ambiente dev)."""
     nome = os.path.basename(nome)  # anti path-traversal
     caminho = os.path.join(AVATAR_DIR, nome)
     if not os.path.isfile(caminho):
