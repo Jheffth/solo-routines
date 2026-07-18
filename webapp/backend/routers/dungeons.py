@@ -8,8 +8,8 @@ Regra de ouro (isolamento): nada aqui cria/edita/conclui Rotina ou TarefaDia.
 O único canal de saída para o resto do sistema é motors.gamificacao.aplicar_xp,
 que credita XP/moedas/streak global no perfil do hunter.
 
-Nota de tempo: este router usa datetime.now() (hora LOCAL do servidor) porque
-hora_entrada/hora_saida são horários de parede do usuário ("10:30" local).
+Nota de tempo: este router usa _agora() que retorna a hora de Brasília (UTC-3)
+para comparar com hora_entrada/hora_saida que são horários de parede do usuário.
 """
 import json
 import random
@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional, List
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from database import (
     get_db, Usuario,
@@ -27,6 +27,13 @@ from auth.router import get_usuario_atual
 from motors.gamificacao import aplicar_xp
 
 router = APIRouter(prefix="/dungeons", tags=["dungeons"])
+
+# Fuso de Brasília: UTC-3
+_TZ_BRASILIA = timezone(timedelta(hours=-3))
+
+def _agora() -> datetime:
+    """Hora atual no fuso de Brasília (UTC-3), sem tzinfo (naive), compatível com _parse_hhmm."""
+    return datetime.now(tz=_TZ_BRASILIA).replace(tzinfo=None)
 
 # ── Auto-migração defensiva ──────────────────────────────────────────────────
 # create_all não adiciona colunas a tabelas já existentes; garante colunas
@@ -320,7 +327,7 @@ def _verificar_no_show(db: Session, d: Dungeon, s: DungeonSessao, usuario: Usuar
     _h_entrada, h_saida = _horario_do_dia(d, s.data)
     if s.status != "PENDENTE" or not h_saida:
         return s
-    agora = datetime.now()
+    agora = _agora()
     prazo = _parse_hhmm(h_saida, s.data)
     if not prazo or agora <= prazo:
         return s
@@ -477,7 +484,7 @@ def listar_dungeons(
         dp = sp.dungeon
         pen = dp.penalidade_entrada_xp or 0
         sp.status        = "FRACASSADA"
-        sp.fracassada_em = datetime.now()
+        sp.fracassada_em = _agora()
         sp.rank_obtido   = "F"
         sp.xp_perdido    = pen
         dp.streak_atual  = 0
@@ -753,7 +760,7 @@ def estado_sessao(
         "sessao": _sessao_to_dict(s),
         "execucoes": [_exec_to_dict(e) for e in execs],
         "relatorio_auto": relatorio_auto,
-        "agora": datetime.now().isoformat(),
+        "agora": _agora().isoformat(),
     }
 
 
@@ -781,10 +788,10 @@ def entrar_dungeon(
     # O portão só se abre NA hora de entrada — nunca antes (regra do Sistema)
     h_abre, _hs = _horario_do_dia(d, hoje)
     abre_em = _parse_hhmm(h_abre, hoje)
-    if abre_em and datetime.now() < abre_em:
+    if abre_em and _agora() < abre_em:
         raise HTTPException(400, f"O portão ainda está selado — abre às {h_abre}")
 
-    agora = datetime.now()
+    agora = _agora()
     
     # Bloqueia entrada se for mais de 15 minutos antes do horário
     if d.hora_entrada:
@@ -877,7 +884,7 @@ def entrar_dungeon(
         "pontual": pontual,
         "atraso_minutos": atraso,
         "eventos_xp": eventos_xp,
-        "agora_server": datetime.now().isoformat(),
+        "agora_server": _agora().isoformat(),
     }
 
 
@@ -899,7 +906,7 @@ def entrar_arquiteto(
 
     d = _get_dungeon(db, dungeon_id, usuario)
     hoje = date.today()
-    agora = datetime.now()
+    agora = _agora()
 
     s = _obter_ou_criar_sessao(db, d, usuario.id, hoje, teste=True)
 
@@ -978,7 +985,7 @@ def heartbeat(
                 "expirados": [], "sussurro": None, "execucoes": [],
                 "relatorio_auto": None}
 
-    agora = datetime.now()
+    agora = _agora()
     ultimo = s.ultimo_heartbeat_em or s.entrada_em or agora
     delta_min = max(0.0, min((agora - ultimo).total_seconds() / 60.0, 5.0))  # cap anti-gap
     s.tempo_total_min = int((s.tempo_total_min or 0) + round(delta_min))
@@ -1128,7 +1135,7 @@ def cumprir_missao(
     if e.status not in ("PENDENTE", "EM_PROGRESSO", "PAUSADA"):
         raise HTTPException(400, f"Missão já finalizada — status: {e.status}")
 
-    agora = datetime.now()
+    agora = _agora()
 
     # Evento com prazo: confere se ainda vale
     if m.natureza in ("EVENTO_ALEATORIO", "BEM_ESTAR") and e.disparada_em:
@@ -1215,7 +1222,7 @@ def iniciar_missao_exec(
         raise HTTPException(400, f"Não é possível iniciar — status: {e.status}")
     if m.natureza == "AGENDADA" and m.hora_inicio:
         inicio = _parse_hhmm(m.hora_inicio, e.sessao.data)
-        if inicio and datetime.now() < inicio:
+        if inicio and _agora() < inicio:
             raise HTTPException(400, f"Esta missão só abre às {m.hora_inicio}")
     e.status = "EM_PROGRESSO"
     db.commit()
@@ -1281,7 +1288,7 @@ def _resolver_sessao(db: Session, d: Dungeon, s: DungeonSessao, usuario: Usuario
     calcula % e rank de clear, credita a recompensa (se credita e não teste).
     Retorna (relatorio, eventos_xp).
     """
-    agora = agora or datetime.now()
+    agora = agora or _agora()
     hoje  = date.today()
 
     # Fecha o tempo da sessão
@@ -1385,7 +1392,7 @@ def _verificar_saida_automatica(db: Session, d: Dungeon, s: DungeonSessao,
     if not h_saida:
         return None
     limite = _parse_hhmm(h_saida, s.data)
-    if not limite or datetime.now() <= limite:
+    if not limite or _agora() <= limite:
         return None
     relatorio, _ev = _resolver_sessao(db, d, s, usuario, agora=limite, credita=True, auto=True)
     return relatorio
@@ -1435,7 +1442,7 @@ def resetar_sessao(
 
     d = _get_dungeon(db, dungeon_id, usuario)
     hoje  = date.today()
-    agora = datetime.now()
+    agora = _agora()
 
     s = db.query(DungeonSessao).filter(
         DungeonSessao.dungeon_id == d.id,
