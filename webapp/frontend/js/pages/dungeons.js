@@ -143,24 +143,36 @@ const Dungeons = {
   _statusInfo(d) {
     const s = d.sessao_hoje;
     const hEntrada = d.hora_entrada_hoje || d.hora_entrada;   // respeita a agenda do dia
+    const hSaida   = d.hora_saida_hoje   || d.hora_saida;
     if (d.folga_hoje)   return { cls: 'FECHADA', txt: '🏖 Trancado — folga programada hoje', btn: false };
     if (!d.devida_hoje) return { cls: 'FECHADA', txt: '🌑 Portão fechado hoje', btn: false };
+
+    // Helper: converte "HH:MM" em objeto Date de hoje
+    const toHoje = hhmm => {
+      if (!hhmm) return null;
+      const [h, m] = hhmm.split(':').map(Number);
+      const d = new Date(); d.setHours(h, m, 0, 0); return d;
+    };
+
+    const now = new Date();
+
+    // Se o horário de SAÍDA já passou e a sessão ainda não foi resolvida → portão perdido
+    const saida = toHoje(hSaida);
+    if (saida && now > saida && (!s || s.status === 'PENDENTE')) {
+      return { cls: 'FRACASSADA', txt: `☠️ Portão perdido — sem check-in até ${hSaida}`, btn: false };
+    }
 
     // Estados da janela: selado (antes da entrada) → aberto (até entrada+tolerância)
     // → aberto com atraso (punição na entrada, até a saída) → no-show (fecha na saída)
     let selado = false, atrasado = false;
     if (hEntrada && (!s || s.status === 'PENDENTE')) {
-      const now = new Date();
-      const [h, m] = hEntrada.split(':').map(Number);
-      const entrada = new Date();
-      entrada.setHours(h, m, 0, 0);
+      const entrada = toHoje(hEntrada);
       if (now < entrada) selado = true;
       else {
         const prazo = new Date(entrada.getTime() + (d.tolerancia_min || 0) * 60000);
         if (now > prazo) atrasado = true;
       }
     }
-    const hSaida = d.hora_saida_hoje || d.hora_saida;
     const txtAberto = atrasado
       ? `⚠ Portão aberto — ATRASO em curso (punição na entrada)${hSaida ? ' · fecha às ' + hSaida : ''}`
       : `🌀 Portão aberto${hEntrada ? ' — atravesse até ' + this._prazoTxt(d) : ' — atravesse'}`;
