@@ -741,6 +741,78 @@
           </div>
         </div>
 
+        <!-- FOOTER SOLO -->
+        <footer style="margin-top:4rem; padding:3rem 2rem 2rem; border-top:1px solid rgba(168,85,247,0.2); background:linear-gradient(180deg, transparent, rgba(15,7,32,0.6)); text-align:center; display:flex; flex-direction:column; align-items:center; gap:1.5rem; width:100%; max-width:100%; box-sizing:border-box; overflow:hidden;">
+          <!-- SVG LOGO -->
+          <div style="width:160px; height:160px; margin:-40px 0 -30px 0; filter:drop-shadow(0 0 10px rgba(168,85,247,0.5)); max-width:100%;">
+            <svg viewBox="0 0 260 260" style="width:100%; height:100%; overflow:hidden; max-width:100%;" class="cq-svg">
+              <defs>
+                <radialGradient id="soloMetalFooter" cx="35%" cy="30%">
+                  <stop offset="0%"  stop-color="#3b0764"/>
+                  <stop offset="35%" stop-color="#1e1b4b"/>
+                  <stop offset="75%" stop-color="#020617"/>
+                  <stop offset="100%" stop-color="#000000"/>
+                </radialGradient>
+                <radialGradient id="soloUVFooter" cx="40%" cy="35%">
+                  <stop offset="0%"  stop-color="#d8b4fe"/>
+                  <stop offset="25%" stop-color="#a855f7"/>
+                  <stop offset="60%" stop-color="#581c87"/>
+                  <stop offset="100%" stop-color="#2e1065"/>
+                </radialGradient>
+                <linearGradient id="soloEdgeFooter" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="#c084fc"/>
+                  <stop offset="50%" stop-color="#7e22ce"/>
+                  <stop offset="100%" stop-color="#3b0764"/>
+                </linearGradient>
+                <filter id="soloGlowFooter" x="-30%" y="-30%" width="160%" height="160%">
+                  <feGaussianBlur stdDeviation="5" result="blur" />
+                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+                <filter id="soloShadowFooter" x="-30%" y="-30%" width="160%" height="160%">
+                  <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#000" flood-opacity="0.9"/>
+                  <feDropShadow dx="0" dy="0" stdDeviation="15" flood-color="#a855f7" flood-opacity="0.4"/>
+                </filter>
+              </defs>
+              
+              <g filter="url(#soloShadowFooter)">
+                <g style="transform-origin: 130px 130px; animation: cq-anel-girar 28s linear infinite reverse;">
+                  <path d="M 130 130 L 200.14460732060405 103.45317224528966 L 231.42221176035218 102.82400026423532 L 204.0204257554822 117.91792356516692 Z M 130 130 L 204.0204257554822 142.08207643483308 L 231.42221176035218 157.17599973576466 L 200.14460732060405 156.54682775471034 Z M 130 130 L 188.062530885771 177.47359800077186 L 204.2462120245875 204.24621202458746 L 177.47359800077186 188.06253088577097 Z M 130 130 L 156.54682775471034 200.14460732060405 L 157.17599973576466 231.42221176035218 L 142.08207643483308 204.0204257554822 Z M 130 130 L 117.91792356516694 204.0204257554822 L 102.82400026423534 231.42221176035218 L 103.45317224528968 200.14460732060405 Z M 130 130 L 82.52640199922817 188.06253088577103 L 55.75378797541255 204.24621202458752 L 71.93746911422903 177.4735980007719 Z M 130 130 L 59.85539267939593 156.54682775471036 L 28.577788239647845 157.17599973576472 L 55.97957424451782 142.08207643483308 Z M 130 130 L 55.979574244517806 117.91792356516696 L 28.577788239647816 102.82400026423537 L 59.85539267939592 103.4531722452897 Z M 130 130 L 71.93746911422897 82.52640199922817 L 55.753787975412465 55.75378797541255 L 82.52640199922811 71.93746911422905 Z M 130 130 L 103.45317224528971 59.85539267939592 L 102.82400026423534 28.57778823964783 L 117.9179235651669 55.97957424451782 Z M 130 130 L 142.08207643483308 55.979574244517806 L 157.17599973576463 28.577788239647816 L 156.54682775471028 59.85539267939592 Z M 130 130 L 177.47359800077186 71.93746911422902 L 204.24621202458746 55.75378797541249 L 188.06253088577097 82.52640199922811 Z" fill="url(#soloMetalFooter)" stroke="#7e22ce" stroke-width="1.5"/>
+                </g>
+                <g class="cq-svg-star">
+                  <path d="M 130 130 L 99.38532541079283 56.08963739909706 L 130 0 L 160.6146745892072 56.08963739909706 Z M 130 130 L 178.70091432069765 66.53173277670119 L 242.583302491977 65 L 209.31558890990482 119.55790462239587 Z M 130 130 L 209.31558890990482 140.44209537760412 L 242.58330249197704 194.99999999999997 L 178.70091432069768 193.4682672232988 Z M 130 130 L 160.6146745892072 203.91036260090294 L 130 260 L 99.38532541079283 203.91036260090294 Z M 130 130 L 81.29908567930238 193.46826722329882 L 17.41669750802299 195.00000000000006 L 50.68441109009517 140.44209537760415 Z M 130 130 L 50.68441109009515 119.55790462239592 L 17.41669750802292 65.00000000000009 L 81.29908567930232 66.5317327767012 Z" fill="url(#soloMetalFooter)" stroke="url(#soloEdgeFooter)" stroke-width="2.5"/>
+                </g>
+                <path d="M 190 130 L 182.15999461960968 143.97622843553611 L 181.96152422706632 160 L 168.18376618407356 168.18376618407356 L 160 181.96152422706632 L 143.97622843553614 182.15999461960968 L 130 190 L 116.02377156446389 182.15999461960968 L 100.00000000000001 181.96152422706632 L 91.81623381592644 168.18376618407356 L 78.0384757729337 160.00000000000003 L 77.84000538039032 143.97622843553614 L 70 130 L 77.8400053803903 116.0237715644639 L 78.03847577293368 100.00000000000001 L 91.81623381592641 91.81623381592645 L 99.99999999999997 78.0384757729337 L 116.02377156446384 77.84000538039032 L 130 70 L 143.9762284355361 77.8400053803903 L 159.99999999999997 78.03847577293365 L 168.18376618407356 91.81623381592642 L 181.96152422706632 99.99999999999997 L 182.15999461960968 116.02377156446383 Z" fill="#020617" stroke="#a855f7" stroke-width="2" filter="url(#soloGlowFooter)"/>
+                
+                <!-- Deep Amethyst Core (Octagon) -->
+                <polygon points="130,75 168,90 185,130 168,170 130,185 92,170 75,130 92,90" fill="url(#soloUVFooter)" stroke="#d8b4fe" stroke-width="2" filter="url(#soloGlowFooter)"/>
+                
+                <!-- Glass Facets for the Amethyst (Hades Underworld Crystal) -->
+                <polygon points="130,75 168,90 130,130 92,90" fill="rgba(255,255,255,0.2)"/>
+                <polygon points="92,90 130,130 75,130" fill="rgba(255,255,255,0.08)"/>
+                
+                <circle cx="130" cy="130" r="100" fill="none" stroke="rgba(216,180,254,.8)" stroke-width="3" stroke-dasharray="35 593" class="cq-svg-brilho"/>
+                
+                <!-- Gothic Crescent Moon + Diamond Core -->
+                <g transform="translate(130, 130)">
+                  <path d="M 0 -24 C -18 -24, -28 -12, -28 4 C -28 20, -18 32, 0 32 C -8 22, -10 10, 0 -4 C 5 -10, 12 -15, 22 -18 C 16 -22, 8 -24, 0 -24 Z" fill="#fff" filter="url(#soloGlowFooter)"/>
+                  <polygon points="12,4 20,-4 28,4 36,12 28,20 20,28 12,20 4,12" fill="#fff" opacity="0.9"/>
+                </g>
+              </g>
+            </svg>
+          </div>
+          <!-- COMPANY NAME -->
+          <div style="font-family:var(--font-title); font-size:2rem; font-weight:700; letter-spacing:6px; color:#fff; text-shadow:0 0 15px rgba(216,180,254,0.8), 0 5px 15px rgba(0,0,0,0.8); text-transform:uppercase; background:linear-gradient(90deg, #d8b4fe, #fff, #d8b4fe); -webkit-background-clip:text; -webkit-text-fill-color:transparent; animation:cq-shimmer 3s linear infinite; background-size:200% auto;">
+            SOLO
+          </div>
+          <div style="font-family:var(--font-section); font-size:0.75rem; color:#9ca3af; letter-spacing:1px; max-width:400px; line-height:1.6;">
+            SISTEMA TÁTICO DE PRODUTIVIDADE S-RANK<br>FORJADO PARA CAÇADORES DE ELITE
+          </div>
+          <div style="width:100%; max-width:600px; height:1px; background:linear-gradient(90deg, transparent, rgba(168,85,247,0.3), transparent); margin:1rem 0;"></div>
+          <div style="font-family:var(--font-section); font-size:0.65rem; color:#6b7280; letter-spacing:2px; text-transform:uppercase;">
+            &copy; 2026 SOLO INC. TODOS OS DIREITOS RESERVADOS.
+          </div>
+        </footer>
+
       </div>
 
       <button id="btn-fab" title="Nova Missao" onclick="if(typeof Lancador!=='undefined')Lancador.open()">+</button>
