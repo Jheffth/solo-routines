@@ -275,6 +275,145 @@ const Jh3ffthFX = {
   }
 };
 
+const DianaFX = {
+  _svgMedalhaDiana(tamanho = 260) {
+    const laminas = [];
+    for(let i=0; i<4; i++){
+        const a = (Math.PI / 2) * i;
+        const cx1 = 130 + 70 * Math.cos(a - Math.PI/4);
+        const cy1 = 130 + 70 * Math.sin(a - Math.PI/4);
+        const cx3 = 130 + 70 * Math.cos(a + Math.PI/4);
+        const cy3 = 130 + 70 * Math.sin(a + Math.PI/4);
+        laminas.push(`M ${cx1} ${cy1} Q ${130+150*Math.cos(a)} ${130+150*Math.sin(a)} ${cx3} ${cy3} Q ${130+90*Math.cos(a)} ${130+90*Math.sin(a)} ${cx1} ${cy1} Z`);
+    }
+    const runas = [];
+    for (let i = 0; i < 24; i++) {
+      const a = (Math.PI / 12) * i;
+      const r1 = 95, r2 = i % 2 === 0 ? 85 : 90;
+      runas.push(`M ${130 + r1 * Math.cos(a)} ${130 + r1 * Math.sin(a)} L ${130 + r2 * Math.cos(a)} ${130 + r2 * Math.sin(a)}`);
+    }
+    return `
+    <svg viewBox="0 0 260 260" width="${tamanho}" height="${tamanho}" style="overflow:visible" class="cq-svg">
+      <defs>
+        <linearGradient id="moonsilver" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#ffffff"/><stop offset="30%" stop-color="#cbd5e1"/><stop offset="70%" stop-color="#64748b"/><stop offset="100%" stop-color="#0f172a"/>
+        </linearGradient>
+        <radialGradient id="moonGlow" cx="50%" cy="50%">
+          <stop offset="0%" stop-color="#ffffff"/><stop offset="30%" stop-color="#bae6fd"/><stop offset="70%" stop-color="#0284c7"/><stop offset="100%" stop-color="#082f49"/>
+        </radialGradient>
+        <linearGradient id="moonEdge" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#ffffff"/><stop offset="50%" stop-color="#7dd3fc"/><stop offset="100%" stop-color="#0369a1"/>
+        </linearGradient>
+        <filter id="moonGlowFilter" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="6" result="blur" />
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <filter id="moonShadow" x="-30%" y="-30%" width="160%" height="160%">
+          <feDropShadow dx="0" dy="12" stdDeviation="10" flood-color="#000" flood-opacity="0.95"/>
+          <feDropShadow dx="0" dy="0" stdDeviation="25" flood-color="#bae6fd" flood-opacity="0.3"/>
+        </filter>
+      </defs>
+      <g filter="url(#moonShadow)">
+        <g style="transform-origin: 130px 130px; animation: cq-anel-girar 30s linear infinite;">
+          <path d="${laminas.join(' ')}" fill="url(#moonsilver)" stroke="url(#moonEdge)" stroke-width="1.5" opacity="0.95"/>
+        </g>
+        <g style="transform-origin: 130px 130px; animation: cq-anel-girar 22s linear infinite reverse;">
+          <circle cx="130" cy="130" r="95" fill="none" stroke="#082f49" stroke-width="8"/>
+          <path d="${runas.join(' ')}" stroke="#7dd3fc" stroke-width="2" filter="url(#moonGlowFilter)" opacity="0.8"/>
+          <circle cx="130" cy="130" r="95" fill="none" stroke="#bae6fd" stroke-width="1.5" stroke-dasharray="4 28"/>
+        </g>
+        <circle cx="130" cy="130" r="80" fill="#0f172a" stroke="url(#moonsilver)" stroke-width="4"/>
+        <g fill="#e2e8f0" opacity="0.8">
+          <circle cx="130" cy="65" r="8"/>
+          <path d="M 175 85 A 8 8 0 1 1 187 97 A 6 6 0 1 0 175 85" />
+          <path d="M 195 130 A 8 8 0 1 1 195 146 A 12 12 0 1 0 195 130" />
+          <path d="M 175 175 A 8 8 0 1 1 187 187 A 6 6 0 1 0 175 175" /> 
+          <circle cx="130" cy="195" r="8" fill="none" stroke="#64748b" stroke-width="2"/>
+          <path d="M 85 175 A 8 8 0 1 0 73 187 A 6 6 0 1 1 85 175" /> 
+          <path d="M 65 130 A 8 8 0 1 0 65 146 A 12 12 0 1 1 65 130" /> 
+          <path d="M 85 85 A 8 8 0 1 0 73 97 A 6 6 0 1 1 85 85" /> 
+        </g>
+        <path d="M 120 90 A 40 40 0 1 1 120 170 A 50 50 0 1 0 120 90 Z" fill="url(#moonGlow)" filter="url(#moonGlowFilter)"/>
+        <path d="M 120 90 A 40 40 0 1 1 120 170 A 50 50 0 1 0 120 90 Z" fill="#ffffff"/>
+        <circle cx="105" cy="130" r="10" fill="url(#moonsilver)" stroke="#ffffff" stroke-width="2"/>
+        <circle cx="105" cy="130" r="5" fill="#0ea5e9" filter="url(#moonGlowFilter)"/>
+        <circle cx="130" cy="130" r="80" fill="none" stroke="#bae6fd" stroke-width="2" stroke-dasharray="20 400" class="cq-svg-brilho"/>
+      </g>
+    </svg>`;
+  },
+  cerimonia() {
+    if (typeof SFX !== 'undefined') SFX.play('conquista');
+    const ov = document.createElement('div');
+    ov.className = 'cq-overlay';
+    ov.style.background = 'radial-gradient(circle at center, rgba(8,47,73,0.95) 0%, rgba(2,6,23,0.98) 100%)';
+    const shimmerStyle = `background: linear-gradient(100deg, #ffffff 20%, #7dd3fc 40%, #ffffff 60%, #7dd3fc 80%); background-size: 220% auto; -webkit-background-clip: text; background-clip: text; color: transparent; animation: cq-shimmer 2.4s linear infinite;`;
+    const raiosLuna = `position:absolute;top:130px;left:50%; width:900px;height:900px;margin:-450px 0 0 -450px; border-radius:50%; background:conic-gradient(from 0deg, transparent 0%, rgba(186,230,253,0.15) 5%, transparent 10%, rgba(255,255,255,0.1) 15%, transparent 20%, rgba(186,230,253,0.15) 25%, transparent 30%, rgba(255,255,255,0.1) 35%, transparent 40%, rgba(186,230,253,0.15) 45%, transparent 50%, rgba(255,255,255,0.1) 55%, transparent 60%, rgba(186,230,253,0.15) 65%, transparent 70%, rgba(255,255,255,0.1) 75%, transparent 80%, rgba(186,230,253,0.15) 85%, transparent 90%, rgba(255,255,255,0.1) 95%, transparent 100%); mask-image: radial-gradient(circle at center, black 0%, transparent 60%); -webkit-mask-image: radial-gradient(circle at center, black 0%, transparent 60%); animation: spin 40s linear infinite reverse; pointer-events:none; z-index:-1;`;
+    ov.innerHTML = `
+      <div class="cq-flash"></div>
+      <div class="cq-palco">
+        <div style="${raiosLuna}"></div>
+        <div class="cq-medalha" style="width:260px;height:260px;margin-bottom:1rem;">${this._svgMedalhaDiana(260)}</div>
+        <div class="cq-textos">
+          <div style="font-family:var(--font-section);font-size:0.85rem;font-weight:700;letter-spacing:4px;color:#bae6fd;text-transform:uppercase;margin-bottom:0.6rem;text-shadow: 0 0 10px rgba(186,230,253,0.5);">🌙 FÚRIA DA LUA MINGUANTE 🌙</div>
+          <div style="font-family:var(--font-title);font-size:2.8rem;text-shadow:0 8px 25px rgba(0,0,0,0.8);letter-spacing:2px; line-height:1.1; ${shimmerStyle}">PAULO</div>
+          <div style="font-family:var(--font-section);font-size:1.1rem;font-weight:700;letter-spacing:6px;color:#e2e8f0;margin-top:0.6rem; text-shadow:0 2px 4px #000;">O MONO DIANA</div>
+          <div style="margin-top:1.5rem;font-family:'Orbitron',monospace;font-size:1.4rem;font-weight:700;color:#7dd3fc;text-shadow:0 0 15px rgba(125,211,252,0.8);letter-spacing:2px;">+1.000.000 MAESTRIA</div>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    setTimeout(() => {
+      const cx = window.innerWidth/2, cy = window.innerHeight/2 - 40;
+      if (typeof Particles !== 'undefined') {
+        Particles.burst(cx, cy, 60, 'rgba(255,255,255,');
+        setTimeout(() => Particles.burst(cx, cy, 40, 'rgba(125,211,252,'), 150);
+        setTimeout(() => Particles.burst(cx, cy, 30, 'rgba(8,47,73,'), 300);
+      }
+    }, 50);
+    setTimeout(() => {
+      if (typeof SFX !== 'undefined') SFX.play('carimbo');
+      ov.classList.add('cq-saindo');
+      this._selo();
+      this._carimbarQuadro();
+      setTimeout(() => ov.remove(), 500);
+    }, 3800);
+  },
+  _selo() {
+    let pilha = document.getElementById('cq-pilha');
+    if (!pilha) { pilha = document.createElement('div'); pilha.id = 'cq-pilha'; document.body.appendChild(pilha); }
+    const el = document.createElement('div');
+    el.className = 'cq-selo';
+    el.style.borderLeft = '4px solid #bae6fd';
+    el.style.background = 'linear-gradient(90deg, rgba(8,47,73,0.95), rgba(2,6,23,0.98))';
+    el.innerHTML = `
+      <div class="cq-selo-ico" style="position:relative;width:40px;height:40px;margin-right:14px;filter:drop-shadow(0 2px 4px rgba(186,230,253,0.5))">${this._svgMedalhaDiana(40)}</div>
+      <div><div class="cq-selo-lbl" style="color:#e0f2fe;font-weight:700;letter-spacing:1px;font-size:0.65rem">FÚRIA DA LUA MINGUANTE</div><div class="cq-selo-nome" style="color:#fff;font-size:1.1rem">PAULO</div></div>
+      <div class="cq-selo-xp" style="color:#7dd3fc;text-shadow:0 0 10px rgba(125,211,252,0.5)">+1M MP</div>`;
+    pilha.appendChild(el);
+    setTimeout(() => { el.classList.add('cq-selo-out'); setTimeout(() => el.remove(), 500); }, 6000);
+  },
+  _carimbarQuadro() {
+    const quadro = document.getElementById('lista-conquistas-recentes');
+    if (!quadro) return;
+    quadro.querySelector('.empty-state')?.remove();
+    if (quadro.innerHTML.includes('PAULO')) return;
+    const card = document.createElement('div');
+    card.className = 'conquista-mini cq-stamp-anim';
+    card.style.cssText = 'background: linear-gradient(135deg, #0f172a 0%, #020617 100%); border: 1px solid #334155; position: relative; overflow: hidden;';
+    card.innerHTML = `
+      <div style="position:absolute; inset:-2px; background:linear-gradient(45deg, #0f172a, #7dd3fc, #0f172a); z-index:0; opacity:0; transition:opacity .3s"></div>
+      <div style="position:absolute; inset:1px; background:#0f172a; border-radius:6px; z-index:1"></div>
+      <div style="position:relative; z-index:2; padding:0.75rem 1rem; display:flex; align-items:center; gap:1rem; width:100%">
+        <div style="flex-shrink:0; width:34px; height:34px; filter:drop-shadow(0 0 5px rgba(186,230,253,0.5)); animation: spin 15s linear infinite">${this._svgMedalhaDiana(34)}</div>
+        <div style="flex:1; min-width:0">
+          <div style="font-family:var(--font-section); font-size:0.55rem; letter-spacing:1px; color:#94a3b8; text-transform:uppercase; margin-bottom:2px">LENDÁRIO</div>
+          <div style="font-family:var(--font-title); font-size:1.05rem; letter-spacing:0.5px; background:linear-gradient(90deg, #ffffff, #7dd3fc); -webkit-background-clip:text; color:transparent; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">O Mono Diana</div>
+        </div>
+        <div style="font-family:'Orbitron',monospace; font-size:0.75rem; color:#bae6fd; font-weight:700">+1M</div>
+      </div>`;
+    quadro.prepend(card);
+  }
+};
+
 const ArquitetoConsole = {
   _aberto: false,
 
@@ -608,6 +747,15 @@ const ArquitetoConsole = {
         onmouseover="this.style.background='rgba(56,189,248,.18)';this.style.boxShadow='0 0 12px rgba(56,189,248,.35)'"
         onmouseout="this.style.background='rgba(56,189,248,.07)';this.style.boxShadow='none'">
         🧪 TESTAR DOMÍNIO DAS HABILIDADES
+      </button>
+      <button onclick="DianaFX.cerimonia()" style="
+        font-family:var(--font-section);font-size:.78rem;font-weight:700;letter-spacing:.06em;
+        padding:.6rem .9rem;border-radius:10px;cursor:pointer;text-align:left;
+        color:#bae6fd;background:rgba(186,230,253,.07);
+        border:1px solid rgba(186,230,253,.35);transition:all .15s"
+        onmouseover="this.style.background='rgba(186,230,253,.18)';this.style.boxShadow='0 0 12px rgba(186,230,253,.35)'"
+        onmouseout="this.style.background='rgba(186,230,253,.07)';this.style.boxShadow='none'">
+        🌙 TESTAR MEDALHA DIANA (PAULO)
       </button>
       ${btn('🏛 Comemorativas (conceder/ocultar)', 'comemorativas()')}
       ${btn('🏅 Cerimônia de Conquista', 'cerimonia()')}
