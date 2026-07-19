@@ -142,6 +142,22 @@ scheduler.add_job(lambda: _job(notificar_noite), 'cron', hour=21, minute=0)
 # ==============================================================================
 @app.on_event("startup")
 async def startup():
+    # 1. Migração agnóstica de banco (SQLite e PostgreSQL)
+    try:
+        from motors.migracao import migrar, verificar_schema
+        migrar()
+        pendencias = verificar_schema()
+        if pendencias:
+            print("=" * 60)
+            print("[STARTUP] 🚨 SCHEMA DESATUALIZADO — colunas ausentes:")
+            for p in pendencias:
+                print(f"          • {p}")
+            print("[STARTUP]    O app PODE FALHAR (ex.: login retornando erro genérico).")
+            print("=" * 60)
+    except Exception as e:
+        print(f"[STARTUP] 🚨 Falha na migração: {e}")
+
+    # 2. Seed
     try:
         criar_tabelas()
         popular_banco()

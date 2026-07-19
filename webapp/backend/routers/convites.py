@@ -25,29 +25,7 @@ router = APIRouter(prefix="/convites", tags=["convites"])
 _ALFABETO = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 
 
-def _auto_migrar():
-    """Cria a tabela de convites e as colunas novas em bancos antigos."""
-    try:
-        from sqlalchemy import text
-        from database import engine, criar_tabelas
-        criar_tabelas()
-        novas = [
-            ("usuarios", "email",        "VARCHAR(200)"),
-            ("convites", "nivel_acesso", "VARCHAR(20) DEFAULT 'User'"),
-            ("convites", "badges",       "TEXT"),
-        ]
-        with engine.connect() as conn:
-            for tabela, col, ddl in novas:
-                cols = [r[1] for r in conn.execute(text(f"PRAGMA table_info({tabela})"))]
-                if cols and col not in cols:
-                    conn.execute(text(f"ALTER TABLE {tabela} ADD COLUMN {col} {ddl}"))
-                    conn.commit()
-                    print(f"[CONVITES] Auto-migração: {tabela}.{col} adicionada.")
-    except Exception as e:
-        print(f"[CONVITES] Auto-migração ignorada: {e}")
-
-
-_auto_migrar()
+# Migração centralizada e agnóstica de banco: motors/migracao.py (roda no startup)
 
 
 def _exige_arquiteto(u: Usuario):

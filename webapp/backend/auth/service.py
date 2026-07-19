@@ -16,10 +16,22 @@ def verificar_senha(senha: str, hash: str) -> bool:
     return pwd_context.verify(senha, hash)
 
 
+class ErroDeBanco(Exception):
+    """Falha de infraestrutura (schema/conexão) — nunca é senha errada."""
+
+
 def autenticar_usuario(db: Session, login: str, senha: str):
-    usuario = db.query(Usuario).filter(
-        Usuario.login == login, Usuario.ativo == True
-    ).first()
+    try:
+        usuario = db.query(Usuario).filter(
+            Usuario.login == login, Usuario.ativo == True
+        ).first()
+    except Exception as e:
+        # Ex.: coluna ausente no Postgres após deploy sem migração.
+        # Sem isto, o erro aparecia como "Login ou senha incorretos".
+        db.rollback()
+        print(f"[AUTH] 🚨 ERRO DE BANCO ao consultar usuário: {e}")
+        raise ErroDeBanco(str(e))
+
     if not usuario:
         return None
     if not verificar_senha(senha, usuario.senha_hash):

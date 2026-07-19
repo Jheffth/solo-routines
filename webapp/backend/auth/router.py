@@ -8,7 +8,7 @@ from typing import Optional
 from database import get_db, Usuario, Convite, Conquista, ConquistaUsuario
 from auth.service import (
     autenticar_usuario, criar_token, decodificar_token,
-    registrar_log, hash_senha
+    registrar_log, hash_senha, ErroDeBanco
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -107,7 +107,15 @@ def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
-    usuario = autenticar_usuario(db, form_data.username, form_data.password)
+    try:
+        usuario = autenticar_usuario(db, form_data.username, form_data.password)
+    except ErroDeBanco as e:
+        # Falha de infraestrutura não pode se disfarçar de senha errada
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Falha no banco de dados — o Sistema não conseguiu validar seu acesso. "
+                   "Verifique os logs do servidor (possível schema desatualizado).",
+        )
     if not usuario:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Login ou senha incorretos")
 

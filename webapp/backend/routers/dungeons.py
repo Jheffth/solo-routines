@@ -35,35 +35,7 @@ def _agora() -> datetime:
     """Hora atual no fuso de Brasília (UTC-3), sem tzinfo (naive), compatível com _parse_hhmm."""
     return datetime.now(tz=_TZ_BRASILIA).replace(tzinfo=None)
 
-# ── Auto-migração defensiva ──────────────────────────────────────────────────
-# create_all não adiciona colunas a tabelas já existentes; garante colunas
-# novas em bancos antigos (SQLite).
-_COLUNAS_NOVAS = [
-    ("dungeon_sessoes", "modo_teste",     "BOOLEAN NOT NULL DEFAULT 0"),
-    ("dungeons",        "agenda_semanal", "TEXT"),
-    ("dungeons",        "folgas",         "TEXT"),
-    ("dungeon_missoes", "dias_semana",    "TEXT"),
-    ("dungeon_missoes", "hora_inicio",    "VARCHAR(5)"),
-    ("dungeon_missoes", "hora_limite",    "VARCHAR(5)"),
-    ("dungeon_missoes", "penalidade_xp",  "INTEGER"),
-    ("dungeon_missao_execucoes", "xp_perdido", "INTEGER NOT NULL DEFAULT 0"),
-]
-
-def _auto_migrar():
-    try:
-        from sqlalchemy import text
-        from database import engine
-        with engine.connect() as conn:
-            for tabela, col, ddl in _COLUNAS_NOVAS:
-                cols = [r[1] for r in conn.execute(text(f"PRAGMA table_info({tabela})"))]
-                if cols and col not in cols:
-                    conn.execute(text(f"ALTER TABLE {tabela} ADD COLUMN {col} {ddl}"))
-                    conn.commit()
-                    print(f"[DUNGEONS] Auto-migração: {tabela}.{col} adicionada.")
-    except Exception as e:
-        print(f"[DUNGEONS] Auto-migração ignorada: {e}")
-
-_auto_migrar()
+# Migração centralizada e agnóstica de banco: motors/migracao.py (roda no startup)
 
 # ── Multiplicadores ──────────────────────────────────────────────────────────
 _MULT_RANK   = {"E": 1.0, "D": 1.1, "C": 1.25, "B": 1.5, "A": 1.75, "S": 2.0}

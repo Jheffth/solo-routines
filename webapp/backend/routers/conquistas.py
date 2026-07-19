@@ -13,29 +13,7 @@ from motors.gamificacao import verificar_conquistas, creditar_bonus, recalcular_
 router = APIRouter(prefix="/conquistas", tags=["conquistas"])
 
 
-# ── Auto-migração defensiva (colunas novas em bancos antigos) ────────────────
-_COLUNAS_NOVAS = [
-    ("conquistas", "exclusiva_arquiteto", "BOOLEAN NOT NULL DEFAULT 0"),
-    ("conquistas", "visivel",             "BOOLEAN NOT NULL DEFAULT 1"),
-]
-
-
-def _auto_migrar():
-    try:
-        from sqlalchemy import text
-        from database import engine
-        with engine.connect() as conn:
-            for tabela, col, ddl in _COLUNAS_NOVAS:
-                cols = [r[1] for r in conn.execute(text(f"PRAGMA table_info({tabela})"))]
-                if cols and col not in cols:
-                    conn.execute(text(f"ALTER TABLE {tabela} ADD COLUMN {col} {ddl}"))
-                    conn.commit()
-                    print(f"[CONQUISTAS] Auto-migração: {tabela}.{col} adicionada.")
-    except Exception as e:
-        print(f"[CONQUISTAS] Auto-migração ignorada: {e}")
-
-
-_auto_migrar()
+# Migração centralizada e agnóstica de banco: motors/migracao.py (roda no startup)
 
 
 def _eh_arquiteto(u: Usuario) -> bool:
