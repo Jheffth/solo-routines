@@ -20,6 +20,8 @@
   <link rel="stylesheet" href="css/ascensao.css">
   <link rel="stylesheet" href="css/missao-card.css">
   <link rel="stylesheet" href="css/forja-missao.css">
+  <link rel="stylesheet" href="css/painel-admin.css">
+  <link rel="stylesheet" href="css/materiais.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -191,14 +193,20 @@
           <a class="nav-item" data-page="loja" id="nav-loja" href="#">
             <span class="nav-icon">&#128717;&#65039;</span><span>Loja do Hunter</span>
           </a>
+          <a class="nav-item" data-page="materiais" id="nav-materiais" href="#">
+            <span class="nav-icon">&#128142;</span><span>Materiais</span>
+          </a>
           <a class="nav-item" data-page="perfil" id="nav-perfil" href="#">
             <span class="nav-icon">&#128202;</span><span>Meu Perfil</span>
           </a>
           <div class="nav-section hidden" id="nav-admin-section">
             <span class="nav-section-label">Sistema</span>
           </div>
+          <a class="nav-item hidden" data-page="sistema" id="nav-sistema" href="#">
+            <span class="nav-icon">&#128737;&#65039;</span><span>Painel do Sistema</span>
+          </a>
           <a class="nav-item hidden" data-page="gerencial" id="nav-gerencial" href="#">
-            <span class="nav-icon">&#9881;&#65039;</span><span>Painel Admin</span>
+            <span class="nav-icon">&#9881;&#65039;</span><span>Configuracoes</span>
           </a>
         </nav>
         <div class="sidebar-user">
@@ -739,6 +747,30 @@
           </div>
         </div>
 
+        <!-- PAGE: MATERIAIS (Casa de Trocas) -->
+        <div class="page hidden" id="page-materiais">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title">&#128142; Materiais</h1>
+              <p class="page-subtitle">A Casa de Trocas &mdash; envie emblemas a outros hunters</p>
+            </div>
+            <button class="btn btn-primary" id="btn-materiais-refresh">&#128260; Atualizar</button>
+          </div>
+          <div id="materiais-conteudo"></div>
+        </div>
+
+        <!-- PAGE: PAINEL DO SISTEMA -->
+        <div class="page hidden" id="page-sistema">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title">&#128737;&#65039; Painel do Sistema</h1>
+              <p class="page-subtitle">Hunters, emblemas e privilegios do Portao</p>
+            </div>
+            <button class="btn btn-primary" id="btn-sistema-refresh">&#128260; Atualizar</button>
+          </div>
+          <div id="painel-admin-conteudo"></div>
+        </div>
+
         <!-- PAGE: GERENCIAL -->
         <div class="page hidden" id="page-gerencial">
           <div class="page-header">
@@ -964,6 +996,8 @@
   <script src="js/pages/loja.js"></script>
   <script src="js/pages/perfil.js"></script>
   <script src="js/pages/gerencial.js"></script>
+  <script src="js/pages/painel-admin.js"></script>
+  <script src="js/pages/materiais.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

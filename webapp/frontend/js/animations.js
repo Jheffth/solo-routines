@@ -297,6 +297,7 @@ const ConquistaFX = {
       jh3ffth:       () => window.Jh3ffthFX?._svgMedalhaArquiteto?.(tam),
       solo:          () => window.SoloFX?._svgMedalhaSolo?.(tam),
       dominio_forja: () => window.ForjaFX?._svgMedalhaForja?.(tam),
+      diana:         () => window.DianaFX?._svgMedalhaDiana?.(tam),
     };
     try { return (codigo && mapa[codigo] && mapa[codigo]()) || null; }
     catch (_) { return null; }

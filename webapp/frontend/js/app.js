@@ -121,6 +121,20 @@ const App = {
     this._bindRecompensa();
   },
 
+  /* Badges recebidas fora da sessão (registro/presente) são celebradas
+     agora — o hunter nunca encontra medalhas caladas no perfil. */
+  async celebrarPendentes() {
+    try {
+      const r = await API.emblemas.pendentes();
+      const novas = r?.novas_conquistas || [];
+      if (!novas.length) return;
+      // pequeno respiro para o app terminar de pintar antes da cerimônia
+      await new Promise(res => setTimeout(res, 900));
+      novas.forEach(c => window.ConquistaFX?.show(c));
+      await API.emblemas.celebradas();          // não repete no próximo login
+    } catch (_) { /* silencioso: celebração nunca pode travar a entrada */ }
+  },
+
   /* Ouve o fim de qualquer celebração (Ascensão/Cerimônia) e recarrega
      os dados da página visível — sem F5, sem piscar a tela. */
   _bindRecompensa() {
@@ -143,6 +157,7 @@ const App = {
         case 'tarefas':   await Tarefas.carregar();   break;
         case 'dungeons':  await Dungeons.carregar();  break;
         case 'loja':      await Loja.carregar();      break;
+        case 'materiais': await Materiais.carregar(); break;
       }
       // A sidebar mostra rank/nível — atualiza sempre
       const u = await API.auth.me();
@@ -199,7 +214,9 @@ const App = {
       case 'dungeons':  await Dungeons.carregar();  break;
       case 'loja':      await Loja.carregar();      break;
       case 'perfil':    await Perfil.carregar();    break;
+      case 'materiais': await Materiais.carregar(); break;
       case 'gerencial': await Gerencial.carregar(); break;
+      case 'sistema':   await PainelAdmin.carregar(); break;
     }
   },
 
@@ -263,11 +280,40 @@ const App = {
     const isAdmin = Auth.isAdmin();
     const navAdminSection = document.getElementById('nav-admin-section');
     const navGerencial    = document.getElementById('nav-gerencial');
+    const navSistema      = document.getElementById('nav-sistema');
+    const isArquiteto     = usuario.nivel_acesso === 'Arquiteto';
     if (navAdminSection) navAdminSection.classList.toggle('hidden', !isAdmin);
-    if (navGerencial)    navGerencial.classList.toggle('hidden', !isAdmin);
+    if (navSistema)      navSistema.classList.toggle('hidden', !isAdmin);
+    // Configurações visuais continuam sendo exclusividade do Arquiteto
+    if (navGerencial)    navGerencial.classList.toggle('hidden', !isArquiteto);
+
+    // Menu do Painel Admin conforme privilégios
+    this._aplicarPrivilegios();
 
     // Mostra pagina inicial
     this._mostrarPaginaInicial();
+
+    // Celebra o que chegou enquanto o hunter estava fora
+    this.celebrarPendentes();
+  },
+
+  /* Consulta o mapa de permissões e ajusta o menu */
+  async _aplicarPrivilegios() {
+    try {
+      const p = await API.emblemas.permissoes();
+      this._perm = p;
+      const secao   = document.getElementById('nav-admin-section');
+      const sistema = document.getElementById('nav-sistema');
+      const config  = document.getElementById('nav-gerencial');
+      if (secao)   secao.classList.toggle('hidden', !p.pode.ver_painel);
+      if (sistema) sistema.classList.toggle('hidden', !p.pode.ver_painel);
+      if (config)  config.classList.toggle('hidden', !p.pode.configurar_sistema);
+    } catch (_) { /* mantém o comportamento atual em caso de falha */ }
+  },
+
+  /* Atalho usado pelas telas: App.pode('gerar_convites') */
+  pode(acao) {
+    return !!this._perm?.pode?.[acao];
   },
 
   _mostrarPaginaInicial() {

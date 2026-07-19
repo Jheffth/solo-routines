@@ -188,6 +188,28 @@ class API {
     badges:  async ()      => API.get('/convites/badges-disponiveis'),
   };
 
+  /* ── Emblemas, hunters e permissões ───────────────────── */
+  static emblemas = {
+    pendentes:     async ()    => API.get('/emblemas/pendentes'),
+    celebradas:    async ()    => API.post('/emblemas/celebradas', {}),
+    colecionaveis: async ()    => API.get('/emblemas/colecionaveis'),
+    presentear:    async (d)   => API.post('/emblemas/presentear', d),
+    recolher:      async (uid, cod) => API.delete(`/emblemas/recolher?usuario_id=${uid}&codigo=${encodeURIComponent(cod)}`),
+    hunters:       async ()    => API.get('/emblemas/hunters'),
+    permissoes:    async ()    => API.get('/emblemas/permissoes'),
+  };
+
+  /* ── Materiais: a Casa de Trocas entre hunters ────────── */
+  static materiais = {
+    inventario:  async ()          => API.get('/materiais/inventario'),
+    hunter:      async (nick)      => API.get('/materiais/hunter/' + encodeURIComponent(nick)),
+    enviar:      async (d)         => API.post('/materiais/enviar', d),
+    historico:   async ()          => API.get('/materiais/historico'),
+    catalogo:    async ()          => API.get('/materiais/catalogo'),
+    definirStatus: async (cod, t)  => API.patch('/materiais/catalogo/' + encodeURIComponent(cod),
+                                                { transferivel: t }),
+  };
+
   /* ── Dungeons ─────────────────────────────────────────── */
   static dungeons = {
     listar:       async ()        => API.get('/dungeons/'),

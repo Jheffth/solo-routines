@@ -46,6 +46,12 @@ def listar_conquistas(
             continue                     # invisível para hunters comuns
         if exclusiva and not visivel:
             continue                     # o Arquiteto escolheu ocultar
+
+        # Emblemas manuais (presentes, colecionáveis, materiais de troca) não
+        # se desbloqueiam jogando — mostrá-los trancados só polui o relicário.
+        # Quem não possui, não vê.
+        if (c.condicao_tipo or "").lower() == "manual" and c.id not in desbloqueadas_map:
+            continue
         saida.append({
             "id":              c.id,
             "codigo":          c.codigo,

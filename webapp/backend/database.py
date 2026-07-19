@@ -57,7 +57,11 @@ class Usuario(Base):
     rotinas         = relationship("Rotina", back_populates="usuario", lazy="dynamic")
     tarefas         = relationship("TarefaDia", back_populates="usuario", lazy="dynamic")
     execucoes       = relationship("Execucao", back_populates="usuario", lazy="dynamic")
-    conquistas      = relationship("ConquistaUsuario", back_populates="usuario", lazy="dynamic")
+    # foreign_keys explícito: ConquistaUsuario tem 2 FKs para usuarios
+    # (o dono da conquista e quem a presenteou)
+    conquistas      = relationship("ConquistaUsuario", back_populates="usuario",
+                                   lazy="dynamic",
+                                   foreign_keys="ConquistaUsuario.usuario_id")
     recompensas_res = relationship("RecompensaUsuario", back_populates="usuario", lazy="dynamic")
 
 
@@ -217,6 +221,11 @@ class Conquista(Base):
     # Comemorativas: exclusivas do Arquiteto (marcos do desenvolvimento)
     exclusiva_arquiteto = Column(Boolean, default=False)
     visivel             = Column(Boolean, default=True)   # o Arquiteto pode ocultá-las
+    # Colecionável: emblema presenteável (nunca conquistado por missão)
+    colecionavel        = Column(Boolean, default=False)
+    # Transferível: circula entre hunters na Casa de Trocas (Materiais).
+    # Quem envia PERDE o emblema — é uma transferência real, não uma cópia.
+    transferivel        = Column(Boolean, default=False)
 
     usuarios         = relationship("ConquistaUsuario", back_populates="conquista", lazy="dynamic")
 
@@ -228,8 +237,13 @@ class ConquistaUsuario(Base):
     usuario_id       = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
     conquista_id     = Column(Integer, ForeignKey("conquistas.id"), nullable=False, index=True)
     desbloqueada_em  = Column(DateTime, default=datetime.utcnow)
+    # Cerimônia: badges concedidas fora da sessão (registro/presente) ficam
+    # pendentes até o hunter entrar e ser celebrado com a devida pompa.
+    celebrada        = Column(Boolean, default=True)
+    presenteada_por  = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    mensagem         = Column(String(300), nullable=True)   # bilhete do remetente
 
-    usuario          = relationship("Usuario", back_populates="conquistas")
+    usuario          = relationship("Usuario", back_populates="conquistas", foreign_keys=[usuario_id])
     conquista        = relationship("Conquista", back_populates="usuarios")
 
 
@@ -435,6 +449,24 @@ class Convite(Base):
     expira_em      = Column(DateTime, nullable=True)      # null = não expira
     revogado       = Column(Boolean, default=False)
     criado_em      = Column(DateTime, default=datetime.utcnow)
+
+
+# ==============================================================================
+# CASA DE TROCAS — registro permanente de materiais que mudaram de mãos
+# ==============================================================================
+# Por que existe: a transferência apaga a posse do remetente e cria a do
+# destinatário. Sem este livro, a história do emblema se perderia a cada troca.
+# Aqui fica a procedência — de quem veio, para quem foi, quando e com que recado.
+class TransferenciaMaterial(Base):
+    __tablename__ = "transferencias_material"
+
+    id             = Column(Integer, primary_key=True, index=True)
+    conquista_id   = Column(Integer, ForeignKey("conquistas.id"), nullable=False, index=True)
+    codigo         = Column(String(50), nullable=False)      # redundante de propósito
+    de_usuario_id  = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    para_usuario_id= Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    mensagem       = Column(String(300), nullable=True)
+    criado_em      = Column(DateTime, default=datetime.utcnow, index=True)
 
 
 # ==============================================================================

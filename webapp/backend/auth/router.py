@@ -199,8 +199,16 @@ def registro(payload: RegistroRequest, db: Session = Depends(get_db)):
 
     concedidas = []
     for q in db.query(Conquista).filter(Conquista.codigo.in_(codigos)).all():
-        db.add(ConquistaUsuario(usuario_id=novo.id, conquista_id=q.id,
-                                desbloqueada_em=datetime.utcnow()))
+        cu = ConquistaUsuario(usuario_id=novo.id, conquista_id=q.id,
+                              desbloqueada_em=datetime.utcnow())
+        # Pendente de cerimônia: o hunter será celebrado ao entrar,
+        # em vez de encontrar as medalhas caladas no perfil.
+        try:
+            cu.celebrada = False
+            cu.presenteada_por = convite.criado_por_id
+        except Exception:
+            pass
+        db.add(cu)
         novo.xp_total = (novo.xp_total or 0) + (q.xp_bonus or 0)
         novo.xp_atual = (novo.xp_atual or 0) + (q.xp_bonus or 0)
         novo.moedas   = (novo.moedas or 0) + (q.moedas_bonus or 0)

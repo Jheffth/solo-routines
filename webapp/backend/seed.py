@@ -57,6 +57,46 @@ CONQUISTAS_PRESENTE = [
 ]
 
 
+# ── Materiais que circulam na Casa de Trocas ─────────────────────────────────
+# Emblemas personalizados podem mudar de dono entre hunters. Conquistas de
+# missão JAMAIS entram aqui — são prova de esforço próprio e não se negociam.
+# O Arquiteto pode ligar/desligar qualquer um destes pelo catálogo.
+# Ficam de fora de propósito: "dominio_habilidades" e "arquiteto_supremo" são
+# marcos do desenvolvimento do Sistema, não colecionáveis. O Arquiteto pode
+# liberá-los a qualquer momento pelo Catálogo, se mudar de ideia.
+TRANSFERIVEIS = {
+    "solo", "jh3ffth", "dominio_forja",
+    "diana", "pioneiro", "aliado",
+}
+
+
+def _sincronizar_transferiveis(db):
+    """
+    Marca o status de circulação. Roda sempre — bancos antigos ganham o status
+    sem precisar de intervenção manual. Só toca no que ainda está desmarcado,
+    então uma decisão do Arquiteto no catálogo nunca é desfeita por um restart.
+
+    Nota importante: circular e ser "exclusiva do Arquiteto" são status que se
+    contradizem. Se o emblema muda de dono, quem o recebe precisa vê-lo — então
+    liberar a circulação também derruba a exclusividade.
+    """
+    try:
+        alvos = (db.query(Conquista)
+                   .filter(Conquista.codigo.in_(TRANSFERIVEIS),
+                           Conquista.transferivel == False).all())
+        for q in alvos:
+            # trava de segurança: mesmo listada, missão não circula
+            if (q.condicao_tipo or "").lower() == "manual":
+                q.transferivel = True
+                q.exclusiva_arquiteto = False
+        if alvos:
+            db.commit()
+            print(f"[SEED] {len(alvos)} materiais liberados para a Casa de Trocas.")
+    except Exception as e:
+        db.rollback()
+        print(f"[SEED] ⚠️ status de troca não aplicado: {e}")
+
+
 def _garantir_conquistas_extra(db):
     """Upsert defensivo: forja as conquistas novas que ainda não existem no banco."""
     existentes = {c[0] for c in db.query(Conquista.codigo).all()}
@@ -107,6 +147,8 @@ def _garantir_conquistas_extra(db):
     if novas:
         db.commit()
         print(f"[SEED] {novas} conquistas forjadas no banco existente.")
+
+    _sincronizar_transferiveis(db)
 
 
 def popular_banco():
@@ -288,6 +330,7 @@ def popular_banco():
             db.add(ConfiguracaoApp(chave=chave, valor=valor))
 
         db.commit()
+        _sincronizar_transferiveis(db)
         print("[SEED] ✅ Dados iniciais criados com sucesso!")
         print("[SEED] Login: admin | Senha: admin123")
     except Exception as e:

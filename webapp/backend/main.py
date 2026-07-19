@@ -22,6 +22,8 @@ from routers.gerencial import router as gerencial_router
 from routers.bot_telegram import router as bot_router
 from routers.dungeons import router as dungeons_router
 from routers.convites import router as convites_router
+from routers.emblemas import router as emblemas_router
+from routers.materiais import router as materiais_router
 
 # ==============================================================================
 # APP
@@ -75,6 +77,8 @@ app.include_router(gerencial_router,     prefix="/api")
 app.include_router(bot_router,           prefix="/api")
 app.include_router(dungeons_router,      prefix="/api")
 app.include_router(convites_router,      prefix="/api")
+app.include_router(emblemas_router,      prefix="/api")
+app.include_router(materiais_router,     prefix="/api")
 
 # ==============================================================================
 # STATIC FILES (FRONTEND)

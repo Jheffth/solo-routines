@@ -33,6 +33,14 @@ COLUNAS = [
     ("usuarios",                  "email",               "VARCHAR(200)",                "VARCHAR(200)"),
     ("convites",                  "nivel_acesso",        "VARCHAR(20) DEFAULT 'User'",  "VARCHAR(20) DEFAULT 'User'"),
     ("convites",                  "badges",              "TEXT",                        "TEXT"),
+    # Cerimônia pendente e presentes
+    ("conquistas_usuario",        "celebrada",           "BOOLEAN NOT NULL DEFAULT 1",  "BOOLEAN NOT NULL DEFAULT TRUE"),
+    ("conquistas_usuario",        "presenteada_por",     "INTEGER",                     "INTEGER"),
+    ("conquistas_usuario",        "mensagem",            "VARCHAR(300)",                "VARCHAR(300)"),
+    # Emblemas colecionáveis
+    ("conquistas",                "colecionavel",        "BOOLEAN NOT NULL DEFAULT 0",  "BOOLEAN NOT NULL DEFAULT FALSE"),
+    # Casa de Trocas (Materiais)
+    ("conquistas",                "transferivel",        "BOOLEAN NOT NULL DEFAULT 0",  "BOOLEAN NOT NULL DEFAULT FALSE"),
 ]
 
 
