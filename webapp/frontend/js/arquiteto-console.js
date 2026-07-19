@@ -450,11 +450,13 @@ const DianaFX = {
     quadro.querySelector('.empty-state')?.remove();
     if (quadro.innerHTML.includes('PAULO')) return;
     const card = document.createElement('div');
-    card.className = 'conquista-mini cq-stamp-anim';
-    card.style.cssText = 'background: linear-gradient(135deg, #0f172a 0%, #020617 100%); border: 1px solid #334155; position: relative; overflow: hidden;';
+    card.className = 'conquista-mini cq-carimbo';
+    card.style.cssText = 'background: linear-gradient(135deg, #0f172a 0%, #020617 100%); border: 1px solid #38bdf8 !important; position: relative; overflow: visible; box-shadow: 0 0 18px rgba(56,189,248,.25);';
     card.innerHTML = `
-      <div style="position:absolute; inset:-2px; background:linear-gradient(45deg, #0f172a, #7dd3fc, #0f172a); z-index:0; opacity:0; transition:opacity .3s"></div>
-      <div style="position:absolute; inset:1px; background:#0f172a; border-radius:6px; z-index:1"></div>
+      <div class="cq-nevoa" style="background: radial-gradient(circle at center, rgba(186,230,253,0.5), rgba(56,189,248,0.18) 45%, transparent 70%);"></div>
+      <div style="position:absolute; inset:1px; background:#0f172a; border-radius:6px; z-index:1; overflow:hidden">
+        <div style="position:absolute; inset:-2px; background:linear-gradient(45deg, #0f172a, #7dd3fc, #0f172a); z-index:0; opacity:0; transition:opacity .3s"></div>
+      </div>
       <div style="position:relative; z-index:2; padding:0.75rem 1rem; display:flex; align-items:center; gap:1rem; width:100%">
         <div style="flex-shrink:0; width:34px; height:34px; filter:drop-shadow(0 0 5px rgba(186,230,253,0.5)); animation: spin 15s linear infinite">${this._svgMedalhaDiana(34)}</div>
         <div style="flex:1; min-width:0">
