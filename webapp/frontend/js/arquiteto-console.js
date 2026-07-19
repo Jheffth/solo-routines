@@ -448,24 +448,57 @@ const DianaFX = {
     const quadro = document.getElementById('lista-conquistas-recentes');
     if (!quadro) return;
     quadro.querySelector('.empty-state')?.remove();
-    if (quadro.innerHTML.includes('PAULO')) return;
+    if (quadro.querySelector('[data-cq-chave="demo-diana"]')) return;
+
     const card = document.createElement('div');
-    card.className = 'conquista-mini cq-carimbo';
-    card.style.cssText = 'background: linear-gradient(135deg, #0f172a 0%, #020617 100%); border: 1px solid #38bdf8 !important; position: relative; overflow: visible; box-shadow: 0 0 18px rgba(56,189,248,.25);';
+    card.className = 'conquista-mini cq-carimbo c-entering c-materializing';
+    card.dataset.cqChave = 'demo-diana';
+    card.style.borderColor = 'rgba(56,189,248,0.4)';
+    card.style.background = 'linear-gradient(90deg, rgba(5,15,30,0.9), rgba(0,5,15,0.95))';
+    card.style.boxShadow = '0 0 15px rgba(56,189,248,0.2) inset, 0 0 8px rgba(56,189,248,0.2)';
+    
     card.innerHTML = `
-      <div class="cq-nevoa" style="background: radial-gradient(circle at center, rgba(186,230,253,0.5), rgba(56,189,248,0.18) 45%, transparent 70%);"></div>
-      <div style="position:absolute; inset:1px; background:#0f172a; border-radius:6px; z-index:1; overflow:hidden">
-        <div style="position:absolute; inset:-2px; background:linear-gradient(45deg, #0f172a, #7dd3fc, #0f172a); z-index:0; opacity:0; transition:opacity .3s"></div>
-      </div>
-      <div style="position:relative; z-index:2; padding:0.75rem 1rem; display:flex; align-items:center; gap:1rem; width:100%">
-        <div style="flex-shrink:0; width:34px; height:34px; filter:drop-shadow(0 0 5px rgba(186,230,253,0.5)); animation: spin 15s linear infinite">${this._svgMedalhaDiana(34)}</div>
-        <div style="flex:1; min-width:0">
-          <div style="font-family:var(--font-section); font-size:0.55rem; letter-spacing:1px; color:#94a3b8; text-transform:uppercase; margin-bottom:2px">LENDÁRIO</div>
-          <div style="font-family:var(--font-title); font-size:1.05rem; letter-spacing:0.5px; background:linear-gradient(90deg, #ffffff, #7dd3fc); -webkit-background-clip:text; color:transparent; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">O Mono Diana</div>
-        </div>
-        <div style="font-family:'Orbitron',monospace; font-size:0.75rem; color:#bae6fd; font-weight:700">+1M</div>
+      <div class="cq-nevoa" style="background: radial-gradient(circle at left, rgba(56,189,248,0.3) 0%, transparent 60%);"></div>
+      
+      <span class="cq-medalhinha" style="width:52px;height:52px;flex-shrink:0;">
+        ${this._svgMedalhaDiana(52)}
+      </span>
+      
+      <div class="conquista-mini-info">
+        <div class="conquista-mini-nome" style="color:#bae6fd; text-shadow:0 0 5px rgba(56,189,248,0.4)">Fúria da Lua Minguante</div>
+        <div class="conquista-mini-desc" style="color:#d1d5db">O Mono Diana — Paulo (+1.000.000 Maestria)</div>
       </div>`;
     quadro.prepend(card);
+    
+    setTimeout(() => { if (typeof SFX !== 'undefined') SFX.play('carimbo'); }, 380);
+  },
+
+  vitrineCustomizada() {
+    let ex = document.getElementById('mc-diana-vitrine');
+    if (ex) { ex.remove(); return; }
+
+    const ov = document.createElement('div');
+    ov.id = 'mc-diana-vitrine';
+    ov.className = 'cq-overlay';
+    ov.style.zIndex = '10000';
+    ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+    ov.innerHTML = `
+      <div style="background: linear-gradient(135deg, #0f172a 0%, #020617 100%); border: 1px solid #38bdf8 !important; position: relative; overflow: visible; box-shadow: 0 0 30px rgba(56,189,248,.35); border-radius: 8px; width: 400px; max-width: 90vw; cursor: default" onclick="event.stopPropagation()">
+        <div class="cq-nevoa" style="background: radial-gradient(circle at center, rgba(186,230,253,0.5), rgba(56,189,248,0.18) 45%, transparent 70%);"></div>
+        <div style="position:absolute; inset:1px; background:#0f172a; border-radius:6px; z-index:1; overflow:hidden">
+          <div style="position:absolute; inset:-2px; background:linear-gradient(45deg, #0f172a, #7dd3fc, #0f172a); z-index:0; opacity:0; transition:opacity .3s"></div>
+        </div>
+        <div style="position:relative; z-index:2; padding:0.75rem 1rem; display:flex; align-items:center; gap:1rem; width:100%">
+          <div style="flex-shrink:0; width:34px; height:34px; filter:drop-shadow(0 0 5px rgba(186,230,253,0.5)); animation: spin 15s linear infinite">${this._svgMedalhaDiana(34)}</div>
+          <div style="flex:1; min-width:0">
+            <div style="font-family:var(--font-section); font-size:0.55rem; letter-spacing:1px; color:#94a3b8; text-transform:uppercase; margin-bottom:2px">LENDÁRIO</div>
+            <div style="font-family:var(--font-title); font-size:1.05rem; letter-spacing:0.5px; background:linear-gradient(90deg, #ffffff, #7dd3fc); -webkit-background-clip:text; color:transparent; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">O Mono Diana</div>
+          </div>
+          <div style="font-family:'Orbitron',monospace; font-size:0.75rem; color:#bae6fd; font-weight:700">+1M</div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(ov);
   }
 };
 
@@ -766,6 +799,15 @@ const ArquitetoConsole = {
         onmouseover="this.style.background='rgba(168,85,247,.18)';this.style.boxShadow='0 0 12px rgba(168,85,247,.35)'"
         onmouseout="this.style.background='rgba(168,85,247,.07)';this.style.boxShadow='none'">
         👁‍🗨 TOGGLE MEDALHA SOLO
+      </button>
+      <button onclick="DianaFX.vitrineCustomizada()" style="
+        font-family:var(--font-section);font-size:.78rem;font-weight:700;letter-spacing:.06em;
+        padding:.6rem .9rem;border-radius:10px;cursor:pointer;text-align:left;
+        color:#bae6fd;background:rgba(186,230,253,.07);
+        border:1px solid rgba(186,230,253,.35);transition:all .15s"
+        onmouseover="this.style.background='rgba(186,230,253,.18)';this.style.boxShadow='0 0 12px rgba(186,230,253,.35)'"
+        onmouseout="this.style.background='rgba(186,230,253,.07)';this.style.boxShadow='none'">
+        🖼 VITRINE: CARTÃO MONO DIANA
       </button>
       <button onclick="window.SoloFX.demoCard()" style="
         font-family:var(--font-section);font-size:.78rem;font-weight:700;letter-spacing:.06em;
