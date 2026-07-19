@@ -277,67 +277,120 @@ const Jh3ffthFX = {
 
 const DianaFX = {
   _svgMedalhaDiana(tamanho = 260) {
+    // 1. Escamas/Lâminas S-Rank (Padrão do Sistema)
     const laminas = [];
-    for(let i=0; i<4; i++){
-        const a = (Math.PI / 2) * i;
-        const cx1 = 130 + 70 * Math.cos(a - Math.PI/4);
-        const cy1 = 130 + 70 * Math.sin(a - Math.PI/4);
-        const cx3 = 130 + 70 * Math.cos(a + Math.PI/4);
-        const cy3 = 130 + 70 * Math.sin(a + Math.PI/4);
-        laminas.push(`M ${cx1} ${cy1} Q ${130+150*Math.cos(a)} ${130+150*Math.sin(a)} ${cx3} ${cy3} Q ${130+90*Math.cos(a)} ${130+90*Math.sin(a)} ${cx1} ${cy1} Z`);
+    for(let i=0; i<8; i++){
+        const a = (Math.PI / 4) * i;
+        const xTip = 130 + 125 * Math.cos(a);
+        const yTip = 130 + 125 * Math.sin(a);
+        const xSide = 130 + 80 * Math.cos(a + Math.PI/12);
+        const ySide = 130 + 80 * Math.sin(a + Math.PI/12);
+        const xBase1 = 130 + 40 * Math.cos(a - Math.PI/6);
+        const yBase1 = 130 + 40 * Math.sin(a - Math.PI/6);
+        const xBase2 = 130 + 40 * Math.cos(a + Math.PI/6);
+        const yBase2 = 130 + 40 * Math.sin(a + Math.PI/6);
+        laminas.push(`M ${xBase1} ${yBase1} L ${xTip} ${yTip} L ${xSide} ${ySide} L ${xBase2} ${yBase2} Z`);
     }
+
+    // 2. Runas do Sistema
     const runas = [];
-    for (let i = 0; i < 24; i++) {
-      const a = (Math.PI / 12) * i;
+    for (let i = 0; i < 36; i++) {
+      const a = (Math.PI / 18) * i;
       const r1 = 95, r2 = i % 2 === 0 ? 85 : 90;
       runas.push(`M ${130 + r1 * Math.cos(a)} ${130 + r1 * Math.sin(a)} L ${130 + r2 * Math.cos(a)} ${130 + r2 * Math.sin(a)}`);
     }
+
+    // 3. Estrela de Prata 
+    const estrelaPrata = [];
+    for(let i=0; i<4; i++){
+        const a = (Math.PI / 2) * i;
+        const xTip = 130 + 115 * Math.cos(a);
+        const yTip = 130 + 115 * Math.sin(a);
+        const xMid1 = 130 + 15 * Math.cos(a + Math.PI/4);
+        const yMid1 = 130 + 15 * Math.sin(a + Math.PI/4);
+        const xMid2 = 130 + 15 * Math.cos(a - Math.PI/4);
+        const yMid2 = 130 + 15 * Math.sin(a - Math.PI/4);
+        estrelaPrata.push(`M 130 130 L ${xMid1} ${yMid1} L ${xTip} ${yTip} L ${xMid2} ${yMid2} Z`);
+    }
+
     return `
     <svg viewBox="0 0 260 260" width="${tamanho}" height="${tamanho}" style="overflow:visible" class="cq-svg">
       <defs>
-        <linearGradient id="moonsilver" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#ffffff"/><stop offset="30%" stop-color="#cbd5e1"/><stop offset="70%" stop-color="#64748b"/><stop offset="100%" stop-color="#0f172a"/>
-        </linearGradient>
-        <radialGradient id="moonGlow" cx="50%" cy="50%">
-          <stop offset="0%" stop-color="#ffffff"/><stop offset="30%" stop-color="#bae6fd"/><stop offset="70%" stop-color="#0284c7"/><stop offset="100%" stop-color="#082f49"/>
+        <!-- Prata Escura / Azul Noturno (Moon Metal) -->
+        <radialGradient id="moonMetal" cx="45%" cy="30%">
+          <stop offset="0%" stop-color="#94a3b8"/>
+          <stop offset="30%" stop-color="#334155"/>
+          <stop offset="70%" stop-color="#0f172a"/>
+          <stop offset="100%" stop-color="#020617"/>
         </radialGradient>
+        
+        <!-- Brilho da Pedra da Lua -->
+        <radialGradient id="moonstoneGlow" cx="50%" cy="50%">
+          <stop offset="0%" stop-color="#ffffff"/>
+          <stop offset="25%" stop-color="#7dd3fc"/>
+          <stop offset="60%" stop-color="#0369a1"/>
+          <stop offset="100%" stop-color="#082f49"/>
+        </radialGradient>
+
         <linearGradient id="moonEdge" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#ffffff"/><stop offset="50%" stop-color="#7dd3fc"/><stop offset="100%" stop-color="#0369a1"/>
+          <stop offset="0%" stop-color="#ffffff"/>
+          <stop offset="50%" stop-color="#38bdf8"/>
+          <stop offset="100%" stop-color="#082f49"/>
         </linearGradient>
-        <filter id="moonGlowFilter" x="-50%" y="-50%" width="200%" height="200%">
+
+        <filter id="moonGlow" x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur stdDeviation="6" result="blur" />
           <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
+
         <filter id="moonShadow" x="-30%" y="-30%" width="160%" height="160%">
           <feDropShadow dx="0" dy="12" stdDeviation="10" flood-color="#000" flood-opacity="0.95"/>
-          <feDropShadow dx="0" dy="0" stdDeviation="25" flood-color="#bae6fd" flood-opacity="0.3"/>
+          <feDropShadow dx="0" dy="0" stdDeviation="25" flood-color="#38bdf8" flood-opacity="0.6"/>
         </filter>
       </defs>
+
       <g filter="url(#moonShadow)">
-        <g style="transform-origin: 130px 130px; animation: cq-anel-girar 30s linear infinite;">
-          <path d="${laminas.join(' ')}" fill="url(#moonsilver)" stroke="url(#moonEdge)" stroke-width="1.5" opacity="0.95"/>
+        
+        <!-- Aro de Lâminas (Giro lento) -->
+        <g style="transform-origin: 130px 130px; animation: cq-anel-girar 28s linear infinite;">
+          <path d="${laminas.join(' ')}" fill="url(#moonMetal)" stroke="url(#moonEdge)" stroke-width="1.5" opacity="0.9"/>
         </g>
-        <g style="transform-origin: 130px 130px; animation: cq-anel-girar 22s linear infinite reverse;">
+        
+        <!-- Runas Místicas (Contra-rotação) -->
+        <g style="transform-origin: 130px 130px; animation: cq-anel-girar 20s linear infinite reverse;">
           <circle cx="130" cy="130" r="95" fill="none" stroke="#082f49" stroke-width="8"/>
-          <path d="${runas.join(' ')}" stroke="#7dd3fc" stroke-width="2" filter="url(#moonGlowFilter)" opacity="0.8"/>
-          <circle cx="130" cy="130" r="95" fill="none" stroke="#bae6fd" stroke-width="1.5" stroke-dasharray="4 28"/>
+          <path d="${runas.join(' ')}" stroke="#38bdf8" stroke-width="2" filter="url(#moonGlow)" opacity="0.8"/>
+          <circle cx="130" cy="130" r="95" fill="none" stroke="#0ea5e9" stroke-width="1.5" stroke-dasharray="8 24"/>
         </g>
-        <circle cx="130" cy="130" r="80" fill="#0f172a" stroke="url(#moonsilver)" stroke-width="4"/>
-        <g fill="#e2e8f0" opacity="0.8">
-          <circle cx="130" cy="65" r="8"/>
-          <path d="M 175 85 A 8 8 0 1 1 187 97 A 6 6 0 1 0 175 85" />
-          <path d="M 195 130 A 8 8 0 1 1 195 146 A 12 12 0 1 0 195 130" />
-          <path d="M 175 175 A 8 8 0 1 1 187 187 A 6 6 0 1 0 175 175" /> 
-          <circle cx="130" cy="195" r="8" fill="none" stroke="#64748b" stroke-width="2"/>
-          <path d="M 85 175 A 8 8 0 1 0 73 187 A 6 6 0 1 1 85 175" /> 
-          <path d="M 65 130 A 8 8 0 1 0 65 146 A 12 12 0 1 1 65 130" /> 
-          <path d="M 85 85 A 8 8 0 1 0 73 97 A 6 6 0 1 1 85 85" /> 
+        
+        <!-- Estrela de Prata -->
+        <g class="cq-svg-star" style="animation-direction: alternate; animation-duration: 4s;">
+          <path d="${estrelaPrata.join(' ')}" fill="none" stroke="#bae6fd" stroke-width="2.5" filter="url(#moonGlow)"/>
+          <path d="${estrelaPrata.join(' ')}" fill="rgba(56,189,248,0.2)"/>
         </g>
-        <path d="M 120 90 A 40 40 0 1 1 120 170 A 50 50 0 1 0 120 90 Z" fill="url(#moonGlow)" filter="url(#moonGlowFilter)"/>
-        <path d="M 120 90 A 40 40 0 1 1 120 170 A 50 50 0 1 0 120 90 Z" fill="#ffffff"/>
-        <circle cx="105" cy="130" r="10" fill="url(#moonsilver)" stroke="#ffffff" stroke-width="2"/>
-        <circle cx="105" cy="130" r="5" fill="#0ea5e9" filter="url(#moonGlowFilter)"/>
-        <circle cx="130" cy="130" r="80" fill="none" stroke="#bae6fd" stroke-width="2" stroke-dasharray="20 400" class="cq-svg-brilho"/>
+
+        <!-- Escudo Pipa Gótico (Padrão S-Rank) -->
+        <polygon points="130,25 200,105 130,235 60,105" fill="url(#moonMetal)" stroke="url(#moonEdge)" stroke-width="3"/>
+        
+        <!-- Gema Moonstone Central -->
+        <polygon points="130,40 180,105 130,215 80,105" fill="url(#moonstoneGlow)" filter="url(#moonGlow)"/>
+        
+        <!-- Facetas de Vidro -->
+        <polygon points="130,40 80,105 130,105" fill="rgba(255,255,255,0.4)"/>
+        <polygon points="130,40 180,105 130,105" fill="rgba(255,255,255,0.1)"/>
+        <polygon points="80,105 130,215 130,105" fill="rgba(0,0,0,0.3)"/>
+        <polygon points="180,105 130,215 130,105" fill="rgba(0,0,0,0.6)"/>
+
+        <!-- Veias de Luz (Bordas) -->
+        <polygon points="130,25 200,105 130,235 60,105" fill="none" stroke="#e0f2fe" stroke-width="2" stroke-dasharray="50 350" class="cq-svg-brilho"/>
+        
+        <!-- Ícone: A Lâmina Crescente da Diana no Centro -->
+        <g transform="translate(130, 115)">
+          <path d="M -15 -35 A 30 30 0 1 1 -15 25 A 35 35 0 1 0 -15 -35 Z" fill="#ffffff" filter="url(#moonGlow)"/>
+          <path d="M -15 -35 A 30 30 0 1 1 -15 25 A 35 35 0 1 0 -15 -35 Z" fill="#ffffff"/>
+          <circle cx="-30" cy="5" r="7" fill="url(#moonMetal)" stroke="#ffffff" stroke-width="1.5"/>
+          <circle cx="-30" cy="5" r="3" fill="#38bdf8" filter="url(#moonGlow)"/>
+        </g>
       </g>
     </svg>`;
   },
