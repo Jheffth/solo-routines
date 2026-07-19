@@ -18,6 +18,8 @@
   <link rel="stylesheet" href="css/status-window.css">
   <link rel="stylesheet" href="css/relicario.css">
   <link rel="stylesheet" href="css/ascensao.css">
+  <link rel="stylesheet" href="css/missao-card.css">
+  <link rel="stylesheet" href="css/forja-missao.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -93,13 +95,30 @@
           <div class="login-logo-icon registro"><span>&#128737;&#65039;</span></div>
         </div>
         <h1 class="login-title">Tornar-se Hunter</h1>
-        <p class="login-subtitle">Cadastro de Novo Hunter</p>
+        <p class="login-subtitle">Somente por convocação</p>
         <form class="login-form" id="form-registro" autocomplete="off">
+          <div class="form-group">
+            <label class="form-label" for="reg-codigo">Código de Convite</label>
+            <div class="input-icon-wrap">
+              <span class="input-icon">&#128220;</span>
+              <input type="text" class="input" id="reg-codigo" placeholder="SOLO-XXXX-XXXX"
+                     autocomplete="off" spellcheck="false" required
+                     style="font-family:'Orbitron',monospace;letter-spacing:.08em;text-transform:uppercase">
+            </div>
+            <div id="reg-codigo-status" style="font-family:var(--font-section);font-size:.7rem;margin-top:.35rem;min-height:1em"></div>
+          </div>
           <div class="form-group">
             <label class="form-label" for="reg-nome">Nome Completo</label>
             <div class="input-icon-wrap">
               <span class="input-icon">&#128100;</span>
               <input type="text" class="input" id="reg-nome" placeholder="Seu nome" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="reg-email">E-mail <span style="opacity:.6">(recuperação de senha)</span></label>
+            <div class="input-icon-wrap">
+              <span class="input-icon">&#9993;&#65039;</span>
+              <input type="email" class="input" id="reg-email" placeholder="seu@email.com" autocomplete="email">
             </div>
           </div>
           <div class="form-group">
@@ -930,6 +949,8 @@
   <script src="js/dialog.js"></script>
   <script src="js/drag-windows.js"></script>
   <script src="js/sfx.js"></script>
+  <script src="js/missao-card.js"></script>
+  <script src="js/forja-missao.js"></script>
   <script src="js/animations.js"></script>
   <script src="js/arquiteto-console.js"></script>
   <script src="js/charts.js"></script>

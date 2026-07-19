@@ -3,7 +3,21 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-SECRET_KEY = os.getenv("SECRET_KEY", "solo-routines-secret-key-2026-change-in-production")
+# ── Chave de assinatura dos tokens ────────────────────────────────
+# NUNCA usar valor fixo no código: quem vê o repositório forja tokens
+# de qualquer usuário (inclusive o Arquiteto). Em produção é obrigatória.
+SECRET_KEY = os.getenv("SECRET_KEY", "").strip()
+if not SECRET_KEY:
+    _AMBIENTE = os.getenv("AMBIENTE", "dev").lower()
+    if _AMBIENTE in ("prod", "producao", "production"):
+        raise RuntimeError(
+            "SECRET_KEY não definida! Configure a variável de ambiente antes de subir em produção."
+        )
+    # Desenvolvimento: gera uma chave efêmera (derruba as sessões a cada boot — é o esperado)
+    import secrets as _secrets
+    SECRET_KEY = _secrets.token_urlsafe(48)
+    print("[CONFIG] ⚠ SECRET_KEY ausente — usando chave temporária de desenvolvimento.")
+    print("[CONFIG]   Defina SECRET_KEY no .env para manter as sessões entre reinícios.")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24h
 

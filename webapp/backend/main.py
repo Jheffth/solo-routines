@@ -21,6 +21,7 @@ from routers.configuracoes import router as configuracoes_router
 from routers.gerencial import router as gerencial_router
 from routers.bot_telegram import router as bot_router
 from routers.dungeons import router as dungeons_router
+from routers.convites import router as convites_router
 
 # ==============================================================================
 # APP
@@ -33,9 +34,22 @@ app = FastAPI(
     redoc_url="/api/redoc",
 )
 
+# CORS: em produção, restrinja aos domínios reais via env CORS_ORIGINS
+# (ex.: CORS_ORIGINS="https://solo.exemplo.com,https://www.solo.exemplo.com")
+_origins_env = os.getenv("CORS_ORIGINS", "").strip()
+_ambiente = os.getenv("AMBIENTE", "dev").lower()
+if _origins_env:
+    _origins = [o.strip() for o in _origins_env.split(",") if o.strip()]
+elif _ambiente in ("prod", "producao", "production"):
+    raise RuntimeError("CORS_ORIGINS não definida em produção — defina os domínios permitidos.")
+else:
+    _origins = ["http://localhost:8000", "http://127.0.0.1:8000",
+                "http://localhost:5500", "http://127.0.0.1:5500"]
+    print(f"[CONFIG] CORS de desenvolvimento: {_origins}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -60,6 +74,7 @@ app.include_router(configuracoes_router, prefix="/api")
 app.include_router(gerencial_router,     prefix="/api")
 app.include_router(bot_router,           prefix="/api")
 app.include_router(dungeons_router,      prefix="/api")
+app.include_router(convites_router,      prefix="/api")
 
 # ==============================================================================
 # STATIC FILES (FRONTEND)

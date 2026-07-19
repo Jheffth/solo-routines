@@ -25,9 +25,9 @@ const Auth = {
     }
   },
 
-  async registro(nome, login, email, senha) {
+  async registro(nome, login, email, senha, codigo) {
     try {
-      const data = await API.auth.registro(nome, login, email, senha);
+      const data = await API.auth.registro(nome, login, senha, codigo, email);
       return { sucesso: true, data };
     } catch (err) {
       return { sucesso: false, erro: err.message };
@@ -216,18 +216,59 @@ Auth.bindRegistro = function() {
   const novoForm = form.cloneNode(true);
   form.parentNode.replaceChild(novoForm, form);
 
+  // Validação do convite ao vivo — o hunter sabe na hora se o código serve
+  const campoCod = document.getElementById('reg-codigo');
+  const statusEl = document.getElementById('reg-codigo-status');
+  if (campoCod && statusEl) {
+    let timer = null;
+    campoCod.addEventListener('input', () => {
+      const cod = campoCod.value.trim().toUpperCase();
+      campoCod.value = cod;
+      clearTimeout(timer);
+      if (cod.length < 8) { statusEl.textContent = ''; return; }
+      statusEl.textContent = 'Verificando...';
+      statusEl.style.color = 'var(--text-muted)';
+      timer = setTimeout(async () => {
+        try {
+          const r = await API.convites.validar(cod);
+          if (r.valido) {
+            const extras = [];
+            if (r.nivel_acesso === 'Admin') extras.push('<b style="color:#fbbf24">⚙️ Conta de Administrador</b>');
+            if (r.badges?.length) extras.push('🎁 ' + r.badges.map(b => b.icone + ' ' + b.titulo).join(' · '));
+            statusEl.innerHTML = `✔ Convocado por <b>${r.convocado_por}</b>` +
+              (extras.length ? `<br><span style="font-size:.66rem">${extras.join('<br>')}</span>` : '');
+            statusEl.style.color = '#34d399';
+          } else {
+            statusEl.textContent = '✕ ' + (r.motivo || 'Convite inválido');
+            statusEl.style.color = '#f87171';
+          }
+        } catch (_) { statusEl.textContent = ''; }
+      }, 450);
+    });
+  }
+
   novoForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const erroEl = document.getElementById('registro-erro');
     const btn    = document.getElementById('btn-criar-hunter');
 
+    const codigo    = document.getElementById('reg-codigo')?.value?.trim().toUpperCase();
     const nome      = document.getElementById('reg-nome')?.value?.trim();
+    const email     = document.getElementById('reg-email')?.value?.trim();
     const login     = document.getElementById('reg-login')?.value?.trim();
     const senha     = document.getElementById('reg-senha')?.value;
     const confirmar = document.getElementById('reg-confirmar')?.value;
 
+    if (!codigo) {
+      if (erroEl) { erroEl.textContent = 'O Sistema é fechado — informe seu código de convite'; erroEl.classList.remove('hidden'); }
+      return;
+    }
     if (!nome || !login || !senha) {
       if (erroEl) { erroEl.textContent = 'Preencha todos os campos'; erroEl.classList.remove('hidden'); }
+      return;
+    }
+    if (!/^[A-Za-z0-9._-]{3,30}$/.test(login)) {
+      if (erroEl) { erroEl.textContent = 'Login: 3 a 30 caracteres (letras, números, . _ -)'; erroEl.classList.remove('hidden'); }
       return;
     }
     if (senha !== confirmar) {
@@ -242,7 +283,7 @@ Auth.bindRegistro = function() {
     if (btn) { btn.disabled = true; btn.querySelector('span').textContent = 'Criando...'; }
     if (erroEl) erroEl.classList.add('hidden');
 
-    const resultado = await Auth.registro(nome, login, '', senha);
+    const resultado = await Auth.registro(nome, login, email, senha, codigo);
 
     if (resultado.sucesso) {
       // Auto-login apos registro

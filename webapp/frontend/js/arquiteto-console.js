@@ -612,6 +612,302 @@ const ArquitetoConsole = {
     ConquistaFX._carimbarQuadro(c);
   },
 
+  /* ── Convites: convocar novos hunters ────────────────── */
+  async convites() {
+    let ex = document.getElementById('arq-convites');
+    if (ex) { ex.remove(); return; }
+    try {
+      const [{ convites, resumo }, badges] = await Promise.all([
+        API.convites.listar(), API.convites.badges(),
+      ]);
+      this._badgesDisp = badges;
+      const el = document.createElement('div');
+      el.id = 'arq-convites';
+      el.style.cssText = `
+        position:fixed;inset:0;z-index:9995;display:flex;align-items:center;justify-content:center;
+        background:rgba(3,3,8,.9);backdrop-filter:blur(7px);padding:1.2rem`;
+
+      const ESTADOS = {
+        DISPONIVEL: ['#34d399', 'rgba(16,185,129,.4)', '◆ Disponível'],
+        USADO:      ['#38bdf8', 'rgba(56,189,248,.4)', '✔ Utilizado'],
+        EXPIRADO:   ['#94a3b8', 'rgba(148,163,184,.3)', '⌛ Expirado'],
+        REVOGADO:   ['#f87171', 'rgba(239,68,68,.35)', '✕ Revogado'],
+      };
+
+      el.innerHTML = `
+        <div style="width:min(620px,100%);max-height:88vh;display:flex;flex-direction:column;
+          background:linear-gradient(170deg,#0d0b18,#07070f 65%);border:1px solid rgba(56,189,248,.45);
+          border-radius:16px;box-shadow:0 0 50px rgba(56,189,248,.2);overflow:hidden">
+
+          <div style="display:flex;align-items:center;gap:.7rem;padding:1.2rem 1.3rem .9rem;border-bottom:1px solid rgba(148,163,184,.12)">
+            <span style="font-size:1.3rem">📜</span>
+            <div style="flex:1">
+              <div style="font-family:var(--font-title);font-size:1.05rem;color:#7dd3fc">O Chamado do Arquiteto</div>
+              <div style="font-family:var(--font-section);font-size:.6rem;letter-spacing:.14em;color:var(--text-muted)">
+                ${resumo.disponiveis} DISPONÍVEIS · ${resumo.usados} CONVOCADOS · ${resumo.total} NO TOTAL</div>
+            </div>
+            <button onclick="document.getElementById('arq-convites').remove()"
+              style="background:none;border:none;color:var(--text-muted);font-size:1.1rem;cursor:pointer">✕</button>
+          </div>
+
+          <div style="padding:.9rem 1.3rem;border-bottom:1px solid rgba(148,163,184,.1)">
+            <div style="display:flex;gap:.5rem;align-items:end;flex-wrap:wrap;margin-bottom:.7rem">
+              <div style="flex:1;min-width:140px">
+                <label style="display:block;font-family:var(--font-section);font-size:.58rem;letter-spacing:.12em;
+                  text-transform:uppercase;color:var(--text-muted);margin-bottom:.25rem">Para quem? (opcional)</label>
+                <input id="conv-nota" placeholder="ex.: para a Diana" style="width:100%;background:rgba(0,0,0,.5);
+                  border:1px solid rgba(148,163,184,.2);border-radius:8px;color:var(--text-primary);
+                  font-family:var(--font-section);font-size:.82rem;padding:.5rem .7rem">
+              </div>
+              <div style="width:86px">
+                <label style="display:block;font-family:var(--font-section);font-size:.58rem;letter-spacing:.12em;
+                  text-transform:uppercase;color:var(--text-muted);margin-bottom:.25rem">Validade</label>
+                <input id="conv-dias" type="number" min="0" value="30" title="0 = não expira"
+                  style="width:100%;background:rgba(0,0,0,.5);border:1px solid rgba(148,163,184,.2);
+                  border-radius:8px;color:var(--text-primary);font-family:'Orbitron',monospace;
+                  font-size:.8rem;padding:.5rem;text-align:center">
+              </div>
+            </div>
+
+            <!-- Tipo de conta -->
+            <label style="display:block;font-family:var(--font-section);font-size:.58rem;letter-spacing:.12em;
+              text-transform:uppercase;color:var(--text-muted);margin-bottom:.3rem">Tipo de conta</label>
+            <div style="display:flex;gap:.5rem;margin-bottom:.7rem">
+              ${[['User','👤 Hunter','Acesso padrão'],['Admin','⚙️ Administrador','Painel Admin liberado']]
+                .map(([id,rot,sub],i) => `
+                <div data-conv-nivel="${id}" onclick="ArquitetoConsole._selNivel('${id}')" style="
+                  flex:1;padding:.5rem .6rem;border-radius:9px;cursor:pointer;text-align:center;
+                  background:${i===0?'rgba(56,189,248,.14)':'rgba(255,255,255,.025)'};
+                  border:1px solid ${i===0?'#38bdf8':'rgba(148,163,184,.18)'};transition:all .2s">
+                  <div style="font-family:var(--font-section);font-size:.75rem;font-weight:700;
+                    color:${i===0?'#7dd3fc':'var(--text-secondary)'}">${rot}</div>
+                  <div style="font-size:.56rem;color:var(--text-dim);margin-top:.1rem">${sub}</div>
+                </div>`).join('')}
+            </div>
+
+            <!-- Badges de presente -->
+            <label style="display:block;font-family:var(--font-section);font-size:.58rem;letter-spacing:.12em;
+              text-transform:uppercase;color:var(--text-muted);margin-bottom:.3rem">
+              Presentes <span style="text-transform:none;letter-spacing:0;opacity:.7">— além de "O Chamado", que é automático</span></label>
+            <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.8rem">
+              ${badges.length ? badges.map(b => `
+                <div data-conv-badge="${b.codigo}" onclick="ArquitetoConsole._selBadge('${b.codigo}')"
+                  title="${b.descricao || ''} (+${b.xp_bonus} XP)" style="
+                  display:flex;align-items:center;gap:.35rem;padding:.35rem .65rem;border-radius:100px;
+                  cursor:pointer;background:rgba(255,255,255,.025);
+                  border:1px solid rgba(148,163,184,.2);transition:all .2s">
+                  <span style="font-size:.9rem">${b.icone}</span>
+                  <span style="font-family:var(--font-section);font-size:.68rem;font-weight:700;
+                    color:var(--text-secondary)">${b.titulo}</span>
+                </div>`).join('')
+                : '<span style="font-size:.65rem;color:var(--text-dim)">Nenhuma badge presenteável cadastrada.</span>'}
+            </div>
+
+            <button onclick="ArquitetoConsole._gerarConvite()" style="
+              width:100%;font-family:var(--font-section);font-size:.78rem;font-weight:700;letter-spacing:.08em;
+              padding:.6rem 1.1rem;border-radius:8px;cursor:pointer;color:#fff;
+              background:linear-gradient(100deg,#0369a1,#0284c7);border:1px solid #38bdf8;
+              box-shadow:0 0 14px rgba(56,189,248,.35)">📜 Convocar Hunter</button>
+          </div>
+
+          <div style="flex:1;overflow-y:auto;padding:.8rem 1.3rem 1.2rem">
+            ${convites.length ? convites.map(cv => {
+              const [cor, borda, rot] = ESTADOS[cv.estado] || ESTADOS.EXPIRADO;
+              return `
+              <div style="display:flex;align-items:center;gap:.7rem;padding:.6rem .8rem;margin-bottom:.5rem;
+                border-radius:11px;background:rgba(255,255,255,.025);border:1px solid ${borda}">
+                <div style="flex:1;min-width:0">
+                  <div style="font-family:'Orbitron',monospace;font-size:.85rem;font-weight:700;color:${cor};letter-spacing:.04em">${cv.codigo}</div>
+                  <div style="font-size:.62rem;color:var(--text-muted);margin-top:.15rem">
+                    ${rot}${cv.nivel_acesso === 'Admin' ? ' · <b style="color:#fbbf24">⚙️ ADMIN</b>' : ''}${cv.nota ? ' · ' + cv.nota : ''}${cv.usado_por ? ' · <b style="color:#7dd3fc">' + cv.usado_por.nome + '</b>' : ''}
+                  </div>
+                  ${cv.badges?.length ? `<div style="font-size:.6rem;color:var(--gold-bright);margin-top:.15rem">
+                    🎁 ${cv.badges.map(b => b.icone + ' ' + b.titulo).join(' · ')}</div>` : ''}
+                </div>
+                ${cv.estado === 'DISPONIVEL' ? `
+                  <button onclick="ArquitetoConsole._copiarConvite('${cv.codigo}')" title="Copiar código"
+                    style="font-size:.75rem;padding:.35rem .6rem;border-radius:7px;cursor:pointer;color:#7dd3fc;
+                    background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.35)">📋</button>
+                  <button onclick="ArquitetoConsole._revogarConvite(${cv.id})" title="Revogar"
+                    style="font-size:.75rem;padding:.35rem .6rem;border-radius:7px;cursor:pointer;color:#f87171;
+                    background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3)">✕</button>` : ''}
+              </div>`;
+            }).join('') : `<div style="text-align:center;padding:2rem 1rem;color:var(--text-muted);font-family:var(--font-section);font-size:.8rem">
+                Nenhum convite ainda.<br><span style="font-size:.68rem;color:var(--text-dim)">Gere um código e envie a quem você quer convocar.</span></div>`}
+          </div>
+
+          <div style="padding:.7rem 1.3rem;border-top:1px solid rgba(148,163,184,.1);font-size:.6rem;
+            color:var(--text-dim);font-family:var(--font-section);line-height:1.6">
+            Quem entrar com o seu código recebe a badge <b style="color:#7dd3fc">O Chamado do Arquiteto</b> (+500 XP).<br>
+            Cada código serve para um único hunter.
+          </div>
+        </div>`;
+      el.addEventListener('click', e => { if (e.target === el) el.remove(); });
+      document.body.appendChild(el);
+    } catch (err) {
+      SoloDialog?.toast?.(err.message || String(err), 'error');
+    }
+  },
+
+  _convNivel: 'User',
+  _convBadges: [],
+
+  _selNivel(id) {
+    this._convNivel = id;
+    document.querySelectorAll('[data-conv-nivel]').forEach(el => {
+      const on = el.dataset.convNivel === id;
+      el.style.background = on ? 'rgba(56,189,248,.14)' : 'rgba(255,255,255,.025)';
+      el.style.borderColor = on ? '#38bdf8' : 'rgba(148,163,184,.18)';
+      el.querySelector('div').style.color = on ? '#7dd3fc' : 'var(--text-secondary)';
+    });
+  },
+
+  _selBadge(cod) {
+    const i = this._convBadges.indexOf(cod);
+    if (i >= 0) this._convBadges.splice(i, 1); else this._convBadges.push(cod);
+    const el = document.querySelector(`[data-conv-badge="${cod}"]`);
+    const on = this._convBadges.includes(cod);
+    if (el) {
+      el.style.background = on ? 'rgba(251,191,36,.16)' : 'rgba(255,255,255,.025)';
+      el.style.borderColor = on ? 'var(--gold-bright)' : 'rgba(148,163,184,.2)';
+      el.style.boxShadow = on ? '0 0 12px rgba(251,191,36,.3)' : 'none';
+      el.querySelectorAll('span')[1].style.color = on ? 'var(--gold-bright)' : 'var(--text-secondary)';
+    }
+  },
+
+  async _gerarConvite() {
+    const nota = document.getElementById('conv-nota')?.value?.trim() || null;
+    const dias = parseInt(document.getElementById('conv-dias')?.value);
+    try {
+      const r = await API.convites.gerar({
+        nota, validade_dias: (isNaN(dias) || dias <= 0) ? null : dias, quantidade: 1,
+        nivel_acesso: this._convNivel,
+        badges: this._convBadges.length ? [...this._convBadges] : null,
+      });
+      this._convBadges = []; this._convNivel = 'User';
+      const cod = r.convites[0].codigo;
+      await this._copiarConvite(cod);
+      if (typeof SFX !== 'undefined') SFX.play('carimbo');
+      document.getElementById('arq-convites')?.remove();
+      this.convites();
+    } catch (err) {
+      SoloDialog?.toast?.(err.message || String(err), 'error');
+    }
+  },
+
+  async _copiarConvite(codigo) {
+    try {
+      await navigator.clipboard.writeText(codigo);
+      SoloDialog?.toast?.(`📋 ${codigo} copiado`, 'success');
+    } catch (_) {
+      SoloDialog?.toast?.(`Código: ${codigo}`, 'info', 6000);
+    }
+  },
+
+  async _revogarConvite(id) {
+    const ok = await SoloDialog.confirm('Revogar este convite? Ele deixa de funcionar imediatamente.',
+      { titulo: 'Revogar Convite', tipo: 'warn', icon: '✕', btnOk: 'Revogar', btnCancel: 'Manter' });
+    if (!ok) return;
+    try {
+      await API.convites.revogar(id);
+      SoloDialog?.toast?.('Convite revogado', 'info');
+      document.getElementById('arq-convites')?.remove();
+      this.convites();
+    } catch (err) {
+      SoloDialog?.toast?.(err.message || String(err), 'error');
+    }
+  },
+
+  /* ── Vitrine do Cartão de Missão (componente real, modo demo) ── */
+  cardMissao() {
+    let ex = document.getElementById('mc-vitrine');
+    if (ex) { ex.remove(); return; }
+
+    const hhmm = (min) => {
+      const d = new Date(Date.now() + min * 60000);
+      return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    };
+
+    // Amostras cobrindo as 4 prioridades (a cor do cartão) e os 4 ranks
+    const amostras = [
+      { id: 9001, titulo: 'O Futuro dos Cards Solo', categoria: 'Trabalho',
+        prioridade: 'CRITICA', dificuldade: 'LENDARIO',
+        xp_recompensa: 500, moedas_recompensa: 50, icone: '💠',
+        hora_inicio: hhmm(-120), hora_fim: hhmm(180), status_hoje: 'PENDENTE' },
+      { id: 9002, titulo: 'Treino de Força — Ciclo A', categoria: 'Saúde',
+        prioridade: 'ALTA', dificuldade: 'DIFICIL',
+        xp_recompensa: 220, moedas_recompensa: 20, icone: '💪',
+        hora_inicio: hhmm(-60), hora_fim: hhmm(25), status_hoje: 'ATIVA' },
+      { id: 9003, titulo: 'Revisar arquitetura do Sistema', categoria: 'Estudo',
+        prioridade: 'MEDIA', dificuldade: 'NORMAL',
+        xp_recompensa: 90, moedas_recompensa: 8, icone: '📚',
+        hora_inicio: hhmm(-200), hora_fim: hhmm(400), status_hoje: 'PAUSADA' },
+      { id: 9004, titulo: 'Preparar o jantar', categoria: 'Casa',
+        prioridade: 'BAIXA', dificuldade: 'FACIL',
+        xp_recompensa: 40, moedas_recompensa: 4, icone: '🍳', status_hoje: 'CONCLUIDA' },
+      { id: 9005, titulo: 'Beber 3L de água', categoria: 'Saúde',
+        prioridade: 'MEDIA', dificuldade: 'FACIL',
+        xp_recompensa: 30, moedas_recompensa: 3, icone: '💧', status_hoje: 'FRACASSADA' },
+    ];
+
+    const el = document.createElement('div');
+    el.id = 'mc-vitrine';
+    el.style.cssText = `
+      position:fixed;inset:0;z-index:9994;display:flex;align-items:center;justify-content:center;
+      background:rgba(3,3,8,.9);backdrop-filter:blur(7px);padding:1.2rem`;
+    el.innerHTML = `
+      <div style="width:min(820px,100%);max-height:90vh;overflow-y:auto;padding:1.4rem 1.5rem;
+        background:linear-gradient(170deg,#0d0b18,#07070f 65%);border:1px solid rgba(168,85,247,.45);
+        border-radius:16px;box-shadow:0 0 50px rgba(168,85,247,.22)">
+        <div style="display:flex;align-items:center;gap:.7rem;margin-bottom:1rem">
+          <span style="font-size:1.2rem">🗂</span>
+          <div style="flex:1">
+            <div style="font-family:var(--font-title);font-size:1rem;color:var(--purple-glow)">Cartão de Missão — proposta</div>
+            <div style="font-family:var(--font-section);font-size:.6rem;letter-spacing:.14em;color:var(--text-muted)">COMPONENTE REAL EM MODO DEMONSTRAÇÃO · OS BOTÕES TRANSITAM DE ESTADO</div>
+          </div>
+          <button onclick="document.getElementById('mc-vitrine').remove()"
+            style="background:none;border:none;color:var(--text-muted);font-size:1.1rem;cursor:pointer">✕</button>
+        </div>
+        <div id="mc-vitrine-lista"></div>
+        <div style="font-size:.62rem;color:var(--text-dim);margin-top:.8rem;font-family:var(--font-section);line-height:1.6">
+          A <b>cor</b> vem da prioridade · o <b>selo de rank</b> vem da dificuldade.<br>
+          Clique em <b>Iniciar</b> para ver a máquina de estados · timer regressivo real.
+        </div>
+      </div>`;
+    el.addEventListener('click', e => { if (e.target === el) el.remove(); });
+    document.body.appendChild(el);
+
+    const lista = document.getElementById('mc-vitrine-lista');
+    MissaoCard.cachear(amostras);
+    lista.innerHTML = amostras.map(m => MissaoCard.html(m)).join('');
+    MissaoCard.montar(lista, { demo: true });
+  },
+
+  /* Vitrine do novo Lançador (componente real, modo demonstração) */
+  forjaMissao() {
+    if (typeof ForjaMissao === 'undefined') {
+      SoloDialog?.toast?.('ForjaMissao não carregado', 'error');
+      return;
+    }
+    ForjaMissao.abrir({ demo: true });
+  },
+
+  /* Liga/desliga o banner cosmético na Janela de Status */
+  banner() {
+    const janela = document.getElementById('hunter-card') || document.getElementById('perfil-window');
+    if (!janela) {
+      SoloDialog?.toast?.('Abra o Dashboard ou o Perfil primeiro', 'warn');
+      return;
+    }
+    if (janela.dataset.banner) {
+      delete janela.dataset.banner;
+      SoloDialog?.toast?.('🚫 Banner removido', 'info');
+    } else {
+      janela.dataset.banner = 'monarca';
+      SoloDialog?.toast?.('🖼 Banner "O Monarca" equipado', 'success');
+    }
+  },
+
   /* Insígnias com arte própria (mesmo mapa usado no perfil) */
   _insignia(codigo, tam = 44) {
     const mapa = {
@@ -769,122 +1065,150 @@ const ArquitetoConsole = {
     el.id = 'arq-console';
     el.style.cssText = `
       position:fixed;right:1.2rem;top:4.5rem;z-index:9990;display:none;
-      flex-direction:column;gap:.45rem;width:270px;padding:1rem 1.1rem 1.2rem;
+      flex-direction:column;gap:.15rem;width:290px;padding:.9rem 1rem 1rem;
       background:linear-gradient(170deg,#1a1206,#0d0d1a 60%);
       border:1px solid rgba(251,191,36,.55);border-radius:16px;
       box-shadow:0 0 40px rgba(251,191,36,.25), 0 18px 50px rgba(0,0,0,.6);`;
+    /* ── Helpers de UI do painel ── */
+    const CORES = {
+      ouro:     ['var(--gold-bright)', '251,191,36'],
+      roxo:     ['#d8b4fe',            '168,85,247'],
+      violeta:  ['#c4b5fd',            '139,92,246'],
+      ciano:    ['#67e8f9',            '34,211,238'],
+      cinza:    ['#94a3b8',            '148,163,184'],
+      vermelho: ['#f87171',            '239,68,68'],
+    };
+    const bt = (rotulo, acao, tom = 'ouro', tracejado = false) => {
+      const [cor, rgb] = CORES[tom] || CORES.ouro;
+      const chamada = acao.includes('(') && !acao.startsWith('window.') && !acao.startsWith('if(')
+        ? `ArquitetoConsole.${acao}` : acao;
+      return `
+      <button onclick="${chamada}" style="
+        font-family:var(--font-section);font-size:.73rem;font-weight:700;letter-spacing:.04em;
+        padding:.5rem .75rem;border-radius:9px;cursor:pointer;text-align:left;
+        color:${cor};background:rgba(${rgb},.06);
+        border:1px ${tracejado ? 'dashed' : 'solid'} rgba(${rgb},.32);transition:all .15s"
+        onmouseover="this.style.background='rgba(${rgb},.18)';this.style.boxShadow='0 0 10px rgba(${rgb},.3)'"
+        onmouseout="this.style.background='rgba(${rgb},.06)';this.style.boxShadow='none'">
+        ${rotulo}
+      </button>`;
+    };
+    const sec = (id, titulo, aberta, botoes, extra = '') => `
+      <div class="arq-sec" data-sec="${id}">
+        <button class="arq-sec-cab" data-arq-sec="${id}" style="
+          display:flex;align-items:center;gap:.4rem;width:100%;
+          font-family:var(--font-section);font-size:.6rem;font-weight:700;
+          letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);
+          background:none;border:none;cursor:pointer;padding:.45rem .2rem .3rem;text-align:left">
+          <span class="arq-sec-seta" style="transition:transform .2s;display:inline-block;${aberta ? 'transform:rotate(90deg)' : ''}">▸</span>
+          <span style="flex:1">${titulo}</span>
+        </button>
+        <div class="arq-sec-corpo" style="display:${aberta ? 'flex' : 'none'};flex-direction:column;gap:.3rem;padding-bottom:.35rem">
+          ${botoes.join('')}${extra}
+        </div>
+      </div>`;
+
     el.innerHTML = `
-      <div id="arq-console-handle" style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem;cursor:grab;user-select:none" title="Arraste para mover">
+      <div id="arq-console-handle" style="display:flex;align-items:center;gap:.5rem;padding-bottom:.5rem;margin-bottom:.2rem;border-bottom:1px solid rgba(251,191,36,.2);cursor:grab;user-select:none" title="Arraste para mover">
         <span style="font-size:1.1rem">⚒</span>
         <div style="flex:1">
           <div style="font-family:var(--font-title);font-size:.85rem;color:var(--gold-bright)">Forja de Testes</div>
-          <div style="font-family:var(--font-section);font-size:.58rem;letter-spacing:.14em;color:var(--text-muted)">SÓ O ARQUITETO VÊ · NADA É SALVO</div>
+          <div style="font-family:var(--font-section);font-size:.56rem;letter-spacing:.14em;color:var(--text-muted)">SÓ O ARQUITETO VÊ · NADA É SALVO</div>
         </div>
         <button onclick="ArquitetoConsole.fechar()" style="color:var(--text-muted);cursor:pointer;font-size:1rem;background:none;border:none">✕</button>
       </div>
-      <button onclick="window.Jh3ffthFX.toggle()" style="
-        font-family:var(--font-section);font-size:.78rem;font-weight:700;letter-spacing:.06em;
-        padding:.6rem .9rem;border-radius:10px;cursor:pointer;text-align:left;
-        color:#fca5a5;background:rgba(239,68,68,.07);
-        border:1px solid rgba(239,68,68,.35);transition:all .15s"
-        onmouseover="this.style.background='rgba(239,68,68,.18)';this.style.boxShadow='0 0 12px rgba(239,68,68,.35)'"
-        onmouseout="this.style.background='rgba(239,68,68,.07)';this.style.boxShadow='none'">
-        👁‍🗨 TOGGLE MEDALHA JH3FFTH
-      </button>
-      <button onclick="window.SoloFX.toggle()" style="
-        font-family:var(--font-section);font-size:.78rem;font-weight:700;letter-spacing:.06em;
-        padding:.6rem .9rem;border-radius:10px;cursor:pointer;text-align:left;
-        color:#d8b4fe;background:rgba(168,85,247,.07);
-        border:1px solid rgba(168,85,247,.35);transition:all .15s"
-        onmouseover="this.style.background='rgba(168,85,247,.18)';this.style.boxShadow='0 0 12px rgba(168,85,247,.35)'"
-        onmouseout="this.style.background='rgba(168,85,247,.07)';this.style.boxShadow='none'">
-        👁‍🗨 TOGGLE MEDALHA SOLO
-      </button>
-      <button onclick="DianaFX.vitrineCustomizada()" style="
-        font-family:var(--font-section);font-size:.78rem;font-weight:700;letter-spacing:.06em;
-        padding:.6rem .9rem;border-radius:10px;cursor:pointer;text-align:left;
-        color:#bae6fd;background:rgba(186,230,253,.07);
-        border:1px solid rgba(186,230,253,.35);transition:all .15s"
-        onmouseover="this.style.background='rgba(186,230,253,.18)';this.style.boxShadow='0 0 12px rgba(186,230,253,.35)'"
-        onmouseout="this.style.background='rgba(186,230,253,.07)';this.style.boxShadow='none'">
-        🖼 VITRINE: CARTÃO MONO DIANA
-      </button>
-      <button onclick="window.SoloFX.demoCard()" style="
-        font-family:var(--font-section);font-size:.78rem;font-weight:700;letter-spacing:.06em;
-        padding:.6rem .9rem;border-radius:10px;cursor:pointer;text-align:left;
-        color:#94a3b8;background:rgba(100,116,139,.07);
-        border:1px dashed rgba(100,116,139,.35);transition:all .15s"
-        onmouseover="this.style.background='rgba(100,116,139,.18)';this.style.boxShadow='0 0 12px rgba(100,116,139,.35)'"
-        onmouseout="this.style.background='rgba(100,116,139,.07)';this.style.boxShadow='none'">
-        🧪 TESTAR CARD DE ROTINA
-      </button>
-      <button onclick="window.SoloFX.demoLauncher()" style="
-        font-family:var(--font-section);font-size:.78rem;font-weight:700;letter-spacing:.06em;
-        padding:.6rem .9rem;border-radius:10px;cursor:pointer;text-align:left;
-        color:#94a3b8;background:rgba(100,116,139,.07);
-        border:1px dashed rgba(100,116,139,.35);transition:all .15s"
-        onmouseover="this.style.background='rgba(100,116,139,.18)';this.style.boxShadow='0 0 12px rgba(100,116,139,.35)'"
-        onmouseout="this.style.background='rgba(100,116,139,.07)';this.style.boxShadow='none'">
-        🧪 TESTAR LANÇADOR DE MISSÕES
-      </button>
-      <button onclick="window.ForjaFX.demo()" style="
-        font-family:var(--font-section);font-size:.78rem;font-weight:700;letter-spacing:.06em;
-        padding:.6rem .9rem;border-radius:10px;cursor:pointer;text-align:left;
-        color:#10b981;background:rgba(16,185,129,.07);
-        border:1px dashed rgba(16,185,129,.35);transition:all .15s"
-        onmouseover="this.style.background='rgba(16,185,129,.18)';this.style.boxShadow='0 0 12px rgba(16,185,129,.35)'"
-        onmouseout="this.style.background='rgba(16,185,129,.07)';this.style.boxShadow='none'">
-        🧪 TESTAR DOMÍNIO DA FORJA
-      </button>
-      <button onclick="ArquitetoConsole.dominioHabilidades()" style="
-        font-family:var(--font-section);font-size:.78rem;font-weight:700;letter-spacing:.06em;
-        padding:.6rem .9rem;border-radius:10px;cursor:pointer;text-align:left;
-        color:#38bdf8;background:rgba(56,189,248,.07);
-        border:1px dashed rgba(56,189,248,.35);transition:all .15s"
-        onmouseover="this.style.background='rgba(56,189,248,.18)';this.style.boxShadow='0 0 12px rgba(56,189,248,.35)'"
-        onmouseout="this.style.background='rgba(56,189,248,.07)';this.style.boxShadow='none'">
-        🧪 TESTAR DOMÍNIO DAS HABILIDADES
-      </button>
-      <button onclick="DianaFX.cerimonia()" style="
-        font-family:var(--font-section);font-size:.78rem;font-weight:700;letter-spacing:.06em;
-        padding:.6rem .9rem;border-radius:10px;cursor:pointer;text-align:left;
-        color:#bae6fd;background:rgba(186,230,253,.07);
-        border:1px solid rgba(186,230,253,.35);transition:all .15s"
-        onmouseover="this.style.background='rgba(186,230,253,.18)';this.style.boxShadow='0 0 12px rgba(186,230,253,.35)'"
-        onmouseout="this.style.background='rgba(186,230,253,.07)';this.style.boxShadow='none'">
-        🌙 TESTAR MEDALHA DIANA (PAULO)
-      </button>
-      ${btn('🏛 Comemorativas (conceder/ocultar)', 'comemorativas()')}
-      ${btn('🏅 Cerimônia de Conquista', 'cerimonia()')}
-      ${btn('🎞 Fila — 3 cerimônias seguidas', 'fila3()')}
-      ${btn('✨ Ascensão (1 nível)', 'levelup()')}
-      ${btn('🌌 Ascensão múltipla (+11 níveis)', 'ascensaoMultipla()')}
-      ${btn('🎬 Sequência: Ascensão → Cerimônia', 'sequenciaCompleta()')}
-      ${btn('🔧 Sincronizar meu nível (reparo)', 'sincronizarNivel()')}
-      ${btn('💥 Explosão de partículas', 'explosao()')}
-      ${btn('⚔️ Sparks + XP Float', 'xpfloat()')}
-      ${btn('📜 Selo + carimbo no quadro', 'selo()')}
-      <div style="font-family:var(--font-section);font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin-top:.3rem">Sons</div>
-      <div style="display:flex;gap:.4rem">
-        ${btn('<div style="font-size:1.1rem;margin-bottom:.2rem">🎺</div>conquista', "som('conquista')").replace('text-align:left', 'flex:1;text-align:center;padding:.5rem .2rem;line-height:1.2').replace('padding:.6rem .9rem;', '')}
-        ${btn('<div style="font-size:1.1rem;margin-bottom:.2rem">🔨</div>carimbo', "som('carimbo')").replace('text-align:left', 'flex:1;text-align:center;padding:.5rem .2rem;line-height:1.2').replace('padding:.6rem .9rem;', '')}
-        ${btn('<div style="font-size:1.1rem;margin-bottom:.2rem">🌟</div>levelup', "som('levelup')").replace('text-align:left', 'flex:1;text-align:center;padding:.5rem .2rem;line-height:1.2').replace('padding:.6rem .9rem;', '')}
+
+      <div id="arq-console-corpo" style="display:flex;flex-direction:column;gap:.3rem;overflow-y:auto;max-height:min(72vh,620px);padding-right:.25rem;margin-right:-.25rem">
+
+        ${sec('propostas', '🗂 Propostas de Interface', true, [
+          bt('Cartão de Missão',        'cardMissao()',   'roxo'),
+          bt('Forja de Missões',        'forjaMissao()',  'roxo'),
+          bt('Banner "O Monarca"',      'banner()',       'roxo'),
+        ])}
+
+        ${sec('hunters', '📜 Hunters & Convites', false, [
+          bt('Convocar hunters (convites)', 'convites()', 'ciano'),
+        ])}
+
+        ${sec('conquistas', '🏅 Conquistas & Cerimônias', false, [
+          bt('Comemorativas (conceder/ocultar)', 'comemorativas()', 'ouro'),
+          bt('Cerimônia de Conquista',           'cerimonia()',     'ouro'),
+          bt('Fila — 3 cerimônias seguidas',     'fila3()',         'ouro'),
+          bt('Selo + carimbo no quadro',         'selo()',          'ouro'),
+        ])}
+
+        ${sec('ascensao', '✨ Ascensão & Nível', false, [
+          bt('Ascensão (1 nível)',            'levelup()',           'violeta'),
+          bt('Ascensão múltipla (+11)',       'ascensaoMultipla()',  'violeta'),
+          bt('Sequência: Ascensão → Cerimônia','sequenciaCompleta()', 'violeta'),
+          bt('Sincronizar meu nível (reparo)','sincronizarNivel()',  'ciano'),
+        ])}
+
+        ${sec('efeitos', '💥 Efeitos Avulsos', false, [
+          bt('Explosão de partículas', 'explosao()', 'ciano'),
+          bt('Sparks + XP Float',      'xpfloat()',  'ciano'),
+        ])}
+
+        ${sec('gemini', '🧪 Protótipos (Gemini)', false, [
+          bt('Medalha JH3FFTH',       'window.Jh3ffthFX.toggle()', 'cinza', true),
+          bt('Medalha SOLO',          'window.SoloFX.toggle()',    'cinza', true),
+          bt('Card de Rotina',        'window.SoloFX.demoCard()',  'cinza', true),
+          bt('Lançador de Missões',   'window.SoloFX.demoLauncher()', 'cinza', true),
+          bt('Domínio da Forja',      'window.ForjaFX.demo()',     'cinza', true),
+          bt('Domínio das Habilidades','ArquitetoConsole.dominioHabilidades()', 'cinza', true),
+        ])}
+
+        ${sec('sons', '🔊 Sons', false, [], `
+          <div style="display:flex;gap:.35rem">
+            ${['conquista','carimbo','levelup'].map((s,i) => `
+              <button onclick="ArquitetoConsole.som('${s}')" style="
+                flex:1;font-family:var(--font-section);font-size:.62rem;font-weight:700;
+                padding:.45rem .2rem;border-radius:8px;cursor:pointer;text-align:center;line-height:1.3;
+                color:var(--gold-bright);background:rgba(251,191,36,.07);
+                border:1px solid rgba(251,191,36,.3);transition:all .15s"
+                onmouseover="this.style.background='rgba(251,191,36,.2)'"
+                onmouseout="this.style.background='rgba(251,191,36,.07)'">
+                <div style="font-size:.95rem">${['🎺','🔨','🌟'][i]}</div>${s}
+              </button>`).join('')}
+          </div>`)}
+
+        ${sec('perigo', '☠ Zona de Perigo', false, [
+          bt('Resetar Progresso (zera tudo)',
+             'if(window.__resetPerfilArquiteto)window.__resetPerfilArquiteto();else SoloDialog.toast(\'Abra o Dashboard primeiro\',\'warn\')',
+             'vermelho', true),
+        ])}
       </div>
-      <div style="font-family:var(--font-section);font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin-top:.5rem">Zona de Perigo</div>
-      <button onclick="if(window.__resetPerfilArquiteto)window.__resetPerfilArquiteto();else SoloDialog.toast('Abra o Dashboard primeiro','warn')" style="
-        font-family:var(--font-section);font-size:.75rem;font-weight:700;letter-spacing:.06em;
-        padding:.55rem .9rem;border-radius:10px;cursor:pointer;text-align:left;
-        color:#f87171;background:rgba(239,68,68,.07);
-        border:1px solid rgba(239,68,68,.4);transition:all .15s"
-        onmouseover="this.style.background='rgba(239,68,68,.2)';this.style.boxShadow='0 0 12px rgba(239,68,68,.4)'"
-        onmouseout="this.style.background='rgba(239,68,68,.07)';this.style.boxShadow='none'">
-        ↺ Resetar Progresso (zera tudo)
-      </button>
-      <div style="font-size:.6rem;color:var(--text-dim);margin-top:.4rem;font-family:var(--font-section)">
-        Atalho: Ctrl+Alt+A · ou duplo-clique no badge ★ Arquiteto ★
+
+      <div style="font-size:.56rem;color:var(--text-dim);padding-top:.5rem;margin-top:.2rem;border-top:1px solid rgba(251,191,36,.15);font-family:var(--font-section)">
+        Ctrl+Alt+A · duplo-clique no badge ★ Arquiteto ★
       </div>`;
     document.body.appendChild(el);
     this._tornarArrastavel(el);
+    this._bindSecoes(el);
+  },
+
+  /* Seções recolhíveis — lembra o que ficou aberto */
+  _bindSecoes(el) {
+    let abertas = [];
+    try { abertas = JSON.parse(localStorage.getItem('arq_secoes') || '["propostas"]'); }
+    catch (_) { abertas = ['propostas']; }
+
+    el.querySelectorAll('.arq-sec').forEach(sec => {
+      const id = sec.dataset.sec;
+      const corpo = sec.querySelector('.arq-sec-corpo');
+      const seta = sec.querySelector('.arq-sec-seta');
+      const abrir = (on) => {
+        corpo.style.display = on ? 'flex' : 'none';
+        seta.style.transform = on ? 'rotate(90deg)' : '';
+      };
+      abrir(abertas.includes(id));
+      sec.querySelector('.arq-sec-cab').addEventListener('click', () => {
+        const on = corpo.style.display === 'none';
+        abrir(on);
+        abertas = on ? [...new Set([...abertas, id])] : abertas.filter(x => x !== id);
+        try { localStorage.setItem('arq_secoes', JSON.stringify(abertas)); } catch (_) {}
+      });
+    });
   },
 
   /* ── Arrastável (mouse e toque), com posição lembrada ──── */

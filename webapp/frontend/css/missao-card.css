@@ -1,0 +1,268 @@
+/* ============================================================
+   missao-card.css — Cartão de Missão (Sistema)
+   Componente de produção: classes + tokens, zero inline.
+   Estados: PENDENTE · ATIVA · PAUSADA · CONCLUIDA · FRACASSADA · CANCELADA
+   ============================================================ */
+
+.mc {
+  --mc-cor: var(--purple-glow);          /* trocada por JS conforme o rank */
+  --mc-cor-suave: rgba(168,85,247,.14);
+  position: relative;
+  display: flex;
+  gap: 1.1rem;
+  padding: 1rem 1.2rem;
+  margin-bottom: .7rem;
+  border-radius: 14px;
+  background:
+    radial-gradient(120% 140% at 0% 0%, var(--mc-cor-suave), transparent 55%),
+    linear-gradient(145deg, #0b0916, #06060d);
+  border: 1px solid rgba(148,163,184,.12);
+  border-left: 3px solid var(--mc-cor);
+  overflow: hidden;
+  transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+}
+.mc:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--mc-cor) 45%, transparent);
+  box-shadow: 0 8px 26px rgba(0,0,0,.5), 0 0 20px var(--mc-cor-suave);
+}
+
+/* Fio de energia no topo (só quando em curso) */
+.mc-fio {
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--mc-cor), #fff, var(--mc-cor), transparent);
+  background-size: 200% 100%;
+  opacity: 0;
+  transition: opacity .3s;
+}
+.mc.st-ativa .mc-fio { opacity: 1; animation: mc-fio 2.4s linear infinite; }
+@keyframes mc-fio { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* ── Sigilo (ícone cinético) ─────────────────────────────── */
+.mc-sigilo {
+  position: relative;
+  width: 62px; height: 62px;
+  flex-shrink: 0;
+  border-radius: 13px;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(150deg, var(--mc-cor-suave), rgba(0,0,0,.45));
+  border: 1px solid color-mix(in srgb, var(--mc-cor) 30%, transparent);
+  box-shadow: inset 0 0 18px rgba(0,0,0,.6);
+}
+.mc-sigilo svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.mc-sigilo-anel { transform-origin: 50px 50px; animation: mc-girar 14s linear infinite; }
+.mc-sigilo-arco { transform-origin: 50px 50px; animation: mc-girar 4.5s linear infinite; }
+@keyframes mc-girar { to { transform: rotate(360deg); } }
+.mc-sigilo-ico {
+  position: relative; z-index: 2;
+  font-size: 1.35rem;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,.8));
+}
+.mc.st-concluida .mc-sigilo-anel,
+.mc.st-concluida .mc-sigilo-arco,
+.mc.st-cancelada .mc-sigilo-anel,
+.mc.st-cancelada .mc-sigilo-arco { animation: none; }
+
+/* ── Corpo ───────────────────────────────────────────────── */
+.mc-corpo { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.mc-topo { display: flex; align-items: flex-start; gap: 1rem; }
+.mc-titulo {
+  flex: 1; min-width: 0;
+  font-family: var(--font-title);
+  font-size: 1.05rem;
+  color: var(--text-primary);
+  line-height: 1.25;
+  letter-spacing: .02em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.mc-prazo {
+  flex-shrink: 0;
+  display: flex; align-items: center; gap: .35rem;
+  font-family: 'Orbitron', monospace;
+  font-size: .72rem;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.mc-prazo .lbl { font-family: var(--font-section); color: var(--mc-cor); letter-spacing: .1em; }
+.mc-prazo.urgente { color: var(--red-crit); animation: mc-pulsar 1.2s ease-in-out infinite; }
+.mc-prazo.vencido { color: var(--red-crit); opacity: .8; }
+@keyframes mc-pulsar { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
+
+/* ── Chips ───────────────────────────────────────────────── */
+.mc-chips { display: flex; align-items: center; gap: .45rem; flex-wrap: wrap; margin-top: .5rem; }
+.mc-chip {
+  font-family: var(--font-section);
+  font-size: .62rem; font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase;
+  padding: .2rem .6rem;
+  border-radius: 100px;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+.mc-chip-prior { color: var(--mc-cor); background: var(--mc-cor-suave); }
+.mc-chip-rank  { color: #d8b4fe; border-color: rgba(168,85,247,.45); background: rgba(168,85,247,.1); }
+.mc-chip-status { color: var(--text-muted); border-color: rgba(148,163,184,.3); background: rgba(148,163,184,.06); }
+.mc-chip-cat { color: var(--text-secondary); border-color: rgba(148,163,184,.22); }
+.mc-div { width: 1px; height: 13px; background: rgba(148,163,184,.22); }
+.mc-premio {
+  font-family: var(--font-section);
+  font-size: .78rem; font-weight: 700;
+  color: var(--gold-bright);
+  text-shadow: 0 0 8px rgba(251,191,36,.35);
+  white-space: nowrap;
+}
+.mc-premio .moeda { color: var(--cyan-glow); text-shadow: 0 0 8px rgba(34,211,238,.35); }
+
+/* ── Barra de progresso da janela ────────────────────────── */
+.mc-barra {
+  height: 3px;
+  margin-top: .7rem;
+  border-radius: 2px;
+  background: rgba(255,255,255,.05);
+  overflow: hidden;
+}
+.mc-barra-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 2px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--mc-cor) 60%, #000), var(--mc-cor), #fff);
+  background-size: 200% 100%;
+  box-shadow: 0 0 8px var(--mc-cor);
+  transition: width .8s ease;
+}
+.mc.st-ativa .mc-barra-fill { animation: mc-fio 2.6s linear infinite; }
+
+/* ── Ações (máquina de estados) ──────────────────────────── */
+.mc-acoes {
+  display: flex; justify-content: flex-end; align-items: center;
+  gap: .5rem; flex-wrap: wrap;
+  margin-top: .8rem;
+}
+.mc-btn {
+  display: inline-flex; align-items: center; gap: .4rem;
+  font-family: var(--font-section);
+  font-size: .72rem; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase;
+  padding: .45rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid;
+  transition: all .18s ease;
+  white-space: nowrap;
+}
+.mc-btn:disabled { opacity: .45; cursor: not-allowed; }
+.mc-btn:active { transform: scale(.96); }
+
+.mc-btn-iniciar {
+  color: #e9d5ff;
+  background: linear-gradient(100deg, rgba(46,16,101,.9), rgba(30,27,75,.9));
+  border-color: rgba(126,34,206,.7);
+  box-shadow: inset 0 0 12px rgba(168,85,247,.15);
+}
+.mc-btn-iniciar:hover {
+  background: linear-gradient(100deg, #3b0764, #581c87);
+  box-shadow: inset 0 0 18px rgba(168,85,247,.4), 0 0 16px rgba(168,85,247,.35);
+}
+.mc-btn-concluir {
+  color: #fff;
+  background: linear-gradient(100deg, #3b0764, #581c87);
+  border-color: #d8b4fe;
+  box-shadow: inset 0 0 16px rgba(168,85,247,.45), 0 0 14px rgba(168,85,247,.35);
+}
+.mc-btn-concluir:hover {
+  background: linear-gradient(100deg, #581c87, #7e22ce);
+  box-shadow: inset 0 0 22px rgba(216,180,254,.7), 0 0 24px rgba(168,85,247,.7);
+}
+.mc-btn-neutro {
+  color: var(--text-secondary);
+  background: rgba(31,41,55,.7);
+  border-color: rgba(75,85,99,.7);
+}
+.mc-btn-neutro:hover { background: #374151; color: #fff; }
+.mc-btn-perigo {
+  color: #fca5a5;
+  background: linear-gradient(100deg, rgba(63,0,15,.85), rgba(33,0,8,.85));
+  border-color: rgba(159,18,57,.7);
+}
+.mc-btn-perigo:hover { background: #70001a; box-shadow: inset 0 0 14px rgba(225,29,72,.45); }
+
+/* Extinguir — poder do Arquiteto (dourado, discreto até o hover) */
+.mc-btn-extinguir {
+  color: var(--gold-bright);
+  background: rgba(251,191,36,.06);
+  border-color: rgba(251,191,36,.35);
+  padding: .45rem .7rem;
+  font-size: .85rem;
+  line-height: 1;
+  opacity: .55;
+}
+.mc-btn-extinguir:hover {
+  opacity: 1;
+  color: #fff;
+  background: linear-gradient(100deg, rgba(120,53,15,.9), rgba(63,0,15,.9));
+  border-color: var(--gold-bright);
+  box-shadow: 0 0 16px rgba(251,191,36,.5), inset 0 0 12px rgba(239,68,68,.3);
+  transform: scale(1.06);
+}
+
+/* Dissolução ao extinguir */
+.mc-extinguindo {
+  pointer-events: none;
+  animation: mc-dissolver .7s cubic-bezier(.4,0,.7,.2) forwards;
+}
+@keyframes mc-dissolver {
+  0%   { opacity: 1; transform: scale(1) translateX(0); filter: blur(0) brightness(1); }
+  25%  { opacity: 1; transform: scale(1.02); filter: blur(0) brightness(2.2); }
+  100% { opacity: 0; transform: scale(.92) translateX(40px); filter: blur(8px) brightness(.3);
+         margin-bottom: -80px; }
+}
+
+/* ── Estados do cartão ───────────────────────────────────── */
+.mc.st-ativa      { border-color: color-mix(in srgb, var(--mc-cor) 40%, transparent); }
+.mc.st-pausada    { opacity: .82; }
+.mc.st-pausada .mc-sigilo-anel,
+.mc.st-pausada .mc-sigilo-arco { animation-play-state: paused; }
+
+.mc.st-concluida {
+  border-left-color: var(--green-done);
+  background: linear-gradient(145deg, rgba(6,26,20,.9), #06060d);
+}
+.mc.st-concluida .mc-titulo { color: var(--text-muted); text-decoration: line-through; }
+.mc.st-concluida .mc-sigilo { border-color: rgba(16,185,129,.4); }
+
+.mc.st-fracassada {
+  border-left-color: var(--red-crit);
+  background: linear-gradient(145deg, rgba(30,6,6,.9), #06060d);
+}
+.mc.st-fracassada .mc-titulo { color: #9ca3af; }
+
+.mc.st-cancelada { opacity: .55; border-left-color: rgba(100,116,139,.6); }
+.mc.st-cancelada .mc-titulo { color: var(--text-muted); }
+
+/* Selo de desfecho (canto direito) */
+.mc-selo {
+  display: inline-flex; align-items: center; gap: .35rem;
+  font-family: var(--font-section);
+  font-size: .72rem; font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase;
+  padding: .4rem .9rem;
+  border-radius: 8px;
+}
+.mc-selo-ok    { color: #34d399; background: rgba(16,185,129,.1);  border: 1px solid rgba(16,185,129,.35); }
+.mc-selo-falha { color: #f87171; background: rgba(239,68,68,.08);  border: 1px solid rgba(239,68,68,.3); }
+.mc-selo-neutro{ color: var(--text-muted); background: rgba(148,163,184,.06); border: 1px solid rgba(148,163,184,.2); }
+
+/* ── Responsivo ──────────────────────────────────────────── */
+@media (max-width: 620px) {
+  .mc { gap: .8rem; padding: .85rem .9rem; }
+  .mc-sigilo { width: 50px; height: 50px; }
+  .mc-titulo { font-size: .95rem; white-space: normal; }
+  .mc-topo { flex-direction: column; gap: .3rem; }
+  .mc-acoes { justify-content: stretch; }
+  .mc-acoes .mc-btn { flex: 1; justify-content: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mc-sigilo-anel, .mc-sigilo-arco, .mc-fio, .mc-barra-fill, .mc-prazo.urgente { animation: none !important; }
+}

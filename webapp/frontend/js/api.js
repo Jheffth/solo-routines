@@ -126,8 +126,8 @@ class API {
       return data;
     },
 
-    registro: async (nome, login, senha) =>
-      API.post('/auth/registro', { nome, login, senha }),
+    registro: async (nome, login, senha, codigo, email) =>
+      API.post('/auth/registro', { nome, login, senha, codigo, email: email || null }),
 
     me: async () => API.get('/auth/me'),
 
@@ -177,6 +177,15 @@ class API {
     concluirRotina: async (rotinaId) => API.post('/execucoes/rotina', { rotina_id: rotinaId }),
     historico:      async (periodo = 'semana') => API.get('/execucoes/historico?periodo=' + periodo),
     heatmap:        async () => API.get('/execucoes/heatmap'),
+  };
+
+  /* ── Convites (Arquiteto) ─────────────────────────────── */
+  static convites = {
+    listar:  async ()      => API.get('/convites/'),
+    gerar:   async (d)     => API.post('/convites/', d),
+    revogar: async (id)    => API.delete('/convites/' + id),
+    validar: async (cod)   => API.get('/convites/validar/' + encodeURIComponent(cod)),
+    badges:  async ()      => API.get('/convites/badges-disponiveis'),
   };
 
   /* ── Dungeons ─────────────────────────────────────────── */

@@ -35,6 +35,27 @@ CONQUISTAS_ARQUITETO = [
      "O selo da empresa — sistema tático de produtividade S-Rank", "🌌", "#a855f7", 7500, 1500),
 ]
 
+# ── O Chamado do Arquiteto ───────────────────────────────────────────────────
+# Concedida automaticamente a quem entra pelo convite do Arquiteto.
+# Visível para o próprio hunter (não é exclusiva do Arquiteto).
+CONQUISTA_CHAMADO = (
+    "chamado_arquiteto", "O Chamado do Arquiteto",
+    "Você foi convocado pessoalmente para o Sistema", "📜", "#38bdf8", 500, 100,
+    "manual", 0,
+)
+
+# ── Badges presenteáveis ─────────────────────────────────────────────────────
+# O Arquiteto pode anexar qualquer uma destas a um convite.
+# Não desbloqueiam sozinhas (condicao_tipo = "manual").
+CONQUISTAS_PRESENTE = [
+    ("diana",        "O Mono Diana",
+     "Presente do Arquiteto — maestria reconhecida", "🌙", "#bae6fd", 1000, 200),
+    ("pioneiro",     "Pioneiro do Sistema",
+     "Entrou quando o Sistema ainda era jovem", "🌱", "#34d399", 750, 150),
+    ("aliado",       "Aliado de Confiança",
+     "Convocado por laço pessoal do Arquiteto", "🤝", "#f59e0b", 600, 120),
+]
+
 
 def _garantir_conquistas_extra(db):
     """Upsert defensivo: forja as conquistas novas que ainda não existem no banco."""
@@ -48,6 +69,26 @@ def _garantir_conquistas_extra(db):
                 condicao_tipo=cond_t, condicao_valor=cond_v,
             ))
             novas += 1
+    # O Chamado do Arquiteto (não é exclusiva — quem recebe, exibe)
+    cod, tit, desc, ico, cor, xp_b, mc_b, cond_t, cond_v = CONQUISTA_CHAMADO
+    if cod not in existentes:
+        db.add(Conquista(
+            codigo=cod, titulo=tit, descricao=desc, icone=ico, cor=cor,
+            xp_bonus=xp_b, moedas_bonus=mc_b,
+            condicao_tipo=cond_t, condicao_valor=cond_v,
+        ))
+        novas += 1
+
+    # Badges presenteáveis (anexáveis a convites)
+    for cod, tit, desc, ico, cor, xp_b, mc_b in CONQUISTAS_PRESENTE:
+        if cod not in existentes:
+            db.add(Conquista(
+                codigo=cod, titulo=tit, descricao=desc, icone=ico, cor=cor,
+                xp_bonus=xp_b, moedas_bonus=mc_b,
+                condicao_tipo="manual", condicao_valor=0,
+            ))
+            novas += 1
+
     # Comemorativas do Arquiteto
     for cod, tit, desc, ico, cor, xp_b, mc_b in CONQUISTAS_ARQUITETO:
         if cod not in existentes:
@@ -196,7 +237,8 @@ def popular_banco():
             ("despertar_semana",     "Despertar Semanal",      "Complete todas rotinas por 4 semanas","💪", "#ec4899", 600, 120,"semanas_perfeitas", 4),
             ("colecao_moedas",       "Tesoureiro de Mana",     "Acumule 1000 Mana Coins",            "💰", "#f59e0b", 250, 50, "moedas_acumuladas", 1000),
         ]
-        for cod, tit, desc, ico, cor, xp_b, mc_b, cond_t, cond_v in conquistas_data + CONQUISTAS_EXTRA:
+        _presentes = [(c[0], c[1], c[2], c[3], c[4], c[5], c[6], "manual", 0) for c in CONQUISTAS_PRESENTE]
+        for cod, tit, desc, ico, cor, xp_b, mc_b, cond_t, cond_v in conquistas_data + CONQUISTAS_EXTRA + [CONQUISTA_CHAMADO] + _presentes:
             db.add(Conquista(
                 codigo=cod, titulo=tit, descricao=desc, icone=ico, cor=cor,
                 xp_bonus=xp_b, moedas_bonus=mc_b,

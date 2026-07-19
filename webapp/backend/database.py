@@ -26,6 +26,7 @@ class Usuario(Base):
     id              = Column(Integer, primary_key=True, index=True)
     nome            = Column(String(100), nullable=False)
     login           = Column(String(50), unique=True, nullable=False, index=True)
+    email           = Column(String(200), nullable=True, index=True)  # recuperação de senha
     senha_hash      = Column(String(200), nullable=False)
     avatar_url      = Column(String(500), nullable=True)   # foto de perfil ou URL
 
@@ -414,6 +415,26 @@ class DungeonMissaoExecucao(Base):
 
     missao                 = relationship("DungeonMissao", back_populates="execucoes")
     sessao                 = relationship("DungeonSessao", back_populates="missao_execucoes")
+
+
+# ==============================================================================
+# CONVITES — o Chamado do Arquiteto
+# Cadastro é fechado: só entra quem tem um código válido.
+# ==============================================================================
+class Convite(Base):
+    __tablename__ = "convites"
+
+    id             = Column(Integer, primary_key=True, index=True)
+    codigo         = Column(String(20), unique=True, nullable=False, index=True)
+    criado_por_id  = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    nota           = Column(String(200), nullable=True)   # "para o João", etc.
+    nivel_acesso   = Column(String(20), default="User")   # User | Admin (a conta nasce assim)
+    badges         = Column(Text, nullable=True)          # JSON: ["diana","solo"] — presentes anexados
+    usado_por_id   = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    usado_em       = Column(DateTime, nullable=True)
+    expira_em      = Column(DateTime, nullable=True)      # null = não expira
+    revogado       = Column(Boolean, default=False)
+    criado_em      = Column(DateTime, default=datetime.utcnow)
 
 
 # ==============================================================================
