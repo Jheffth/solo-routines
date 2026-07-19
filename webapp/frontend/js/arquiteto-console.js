@@ -1104,6 +1104,8 @@ const ArquitetoConsole = {
           bt('Lançador de Missões',   'window.SoloFX.demoLauncher()', 'cinza', true),
           bt('Domínio da Forja',      'window.ForjaFX.demo()',     'cinza', true),
           bt('Domínio das Habilidades','ArquitetoConsole.dominioHabilidades()', 'cinza', true),
+          bt('Medalha Diana (Foice)', 'window.DianaFX.cerimonia()', 'ciano', true),
+          bt('Vitrine: Mono Diana',   'window.DianaFX.vitrineCustomizada()', 'ciano', true),
         ])}
 
         ${sec('sons', '🔊 Sons', false, [], `
