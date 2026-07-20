@@ -1,0 +1,242 @@
+/* ============================================================
+   sala-poderes.css — A Sala de Poderes do Arquiteto
+   Vermelho e âmbar: aqui as ações desfazem estado.
+   ============================================================ */
+
+.sp-aviso {
+  display: flex; align-items: center; gap: .8rem;
+  padding: .8rem 1rem; margin-bottom: 1rem;
+  border-radius: 12px;
+  font-family: var(--font-section); font-size: .76rem; line-height: 1.6;
+  color: var(--text-secondary);
+  background: linear-gradient(100deg, rgba(239,68,68,.09), transparent);
+  border: 1px solid rgba(239,68,68,.28);
+}
+.sp-aviso-ico {
+  font-size: 1.4rem; color: var(--gold-bright); flex-shrink: 0;
+  text-shadow: 0 0 12px rgba(251,191,36,.6);
+}
+
+.sp-abas { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.sp-aba {
+  font-family: var(--font-section); font-size: .76rem; font-weight: 700;
+  padding: .5rem 1rem; border-radius: 10px; cursor: pointer;
+  color: var(--text-secondary);
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(148,163,184,.16);
+  transition: all .2s;
+}
+.sp-aba:hover { color: #fff; border-color: rgba(251,191,36,.5); }
+.sp-aba.on {
+  color: #fff; border-color: var(--gold-bright);
+  background: rgba(251,191,36,.14);
+  box-shadow: 0 0 14px rgba(251,191,36,.25);
+}
+
+.sp-secao-lbl {
+  font-family: var(--font-section); font-size: .6rem; font-weight: 700;
+  letter-spacing: .18em; text-transform: uppercase;
+  color: var(--text-muted); margin-bottom: .6rem;
+}
+
+/* ── Escolha do alvo ───────────────────────────────────── */
+.sp-alvos {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: .5rem; margin-bottom: 1.2rem;
+}
+.sp-alvo {
+  display: flex; align-items: center; gap: .6rem; text-align: left;
+  padding: .55rem .7rem; border-radius: 12px; cursor: pointer;
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(148,163,184,.14);
+  color: var(--text-primary);
+  transition: all .2s;
+}
+.sp-alvo:hover { border-color: rgba(251,191,36,.45); transform: translateY(-2px); }
+.sp-alvo.on {
+  border-color: var(--gold-bright);
+  background: rgba(251,191,36,.12);
+  box-shadow: 0 0 18px rgba(251,191,36,.25);
+}
+.sp-alvo.protegido { opacity: .6; }
+.sp-alvo.protegido:hover { border-color: rgba(148,163,184,.3); transform: none; }
+.sp-alvo-av {
+  width: 34px; height: 34px; flex-shrink: 0; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+  font-size: .95rem;
+  background: linear-gradient(135deg, var(--purple-main), var(--blue-mana));
+}
+.sp-alvo-av img { width: 100%; height: 100%; object-fit: cover; }
+.sp-alvo-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.sp-alvo-nome {
+  font-family: var(--font-section); font-size: .82rem; font-weight: 700;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sp-alvo-cargo {
+  font-family: var(--font-section); font-size: .58rem;
+  letter-spacing: .1em; text-transform: uppercase;
+}
+.sp-escudo { flex-shrink: 0; font-size: .85rem; opacity: .8; }
+
+/* ── Dossiê ────────────────────────────────────────────── */
+.sp-dossie { display: flex; flex-direction: column; gap: .7rem; }
+.sp-cabeca {
+  display: flex; align-items: center; gap: .9rem;
+  padding: .9rem 1rem; border-radius: 14px;
+  background: linear-gradient(150deg, rgba(251,191,36,.08), rgba(0,0,0,.28));
+  border: 1px solid rgba(251,191,36,.28);
+}
+.sp-cabeca-av {
+  width: 54px; height: 54px; flex-shrink: 0; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+  font-size: 1.4rem;
+  background: linear-gradient(135deg, var(--purple-main), var(--blue-mana));
+  border: 2px solid rgba(251,191,36,.4);
+}
+.sp-cabeca-av img { width: 100%; height: 100%; object-fit: cover; }
+.sp-cabeca-nome {
+  display: flex; align-items: center; gap: .45rem; flex-wrap: wrap;
+  font-family: var(--font-section); font-size: 1.02rem; font-weight: 700;
+  color: var(--text-primary);
+}
+.sp-tag {
+  font-family: var(--font-section); font-size: .55rem; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase;
+  padding: .14rem .55rem; border-radius: 100px;
+  color: #7dd3fc; border: 1px solid rgba(56,189,248,.4); background: rgba(56,189,248,.1);
+}
+.sp-tag-off { color: #f87171; border-color: rgba(239,68,68,.4); background: rgba(239,68,68,.1); }
+.sp-cabeca-sub { font-size: .68rem; color: var(--text-muted); margin-top: .15rem; }
+.sp-cabeca-stats {
+  display: flex; gap: .8rem; flex-wrap: wrap; margin-top: .3rem;
+  font-family: 'Orbitron', monospace; font-size: .62rem; color: var(--text-secondary);
+}
+
+/* ── Blocos de poder ───────────────────────────────────── */
+.sp-poder {
+  padding: .9rem 1rem; border-radius: 14px;
+  background: rgba(255,255,255,.025);
+  border: 1px solid rgba(148,163,184,.13);
+}
+.sp-poder-cab {
+  display: flex; align-items: center; gap: .5rem;
+  font-family: var(--font-section); font-size: .78rem; font-weight: 700;
+  letter-spacing: .04em; color: var(--text-primary);
+  margin-bottom: .7rem;
+}
+.sp-poder-corpo { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.sp-poder-nota {
+  font-family: var(--font-section); font-size: .66rem;
+  color: var(--text-dim); margin-top: .6rem;
+}
+.sp-select, .sp-input {
+  padding: .5rem .7rem; border-radius: 9px;
+  background: rgba(0,0,0,.5);
+  border: 1px solid rgba(148,163,184,.2);
+  color: var(--text-primary);
+  font-family: var(--font-section); font-size: .8rem;
+}
+.sp-input { width: 140px; }
+.sp-select:focus, .sp-input:focus { outline: none; border-color: var(--gold-bright); }
+.sp-btn {
+  font-family: var(--font-section); font-size: .76rem; font-weight: 700;
+  padding: .5rem .95rem; border-radius: 9px; cursor: pointer;
+  color: #fff;
+  background: rgba(56,189,248,.14);
+  border: 1px solid rgba(56,189,248,.45);
+  transition: all .2s;
+}
+.sp-btn:hover:not(:disabled) { background: rgba(56,189,248,.28); transform: translateY(-1px); }
+.sp-btn:disabled { opacity: .45; cursor: wait; }
+.sp-btn.destrutivo {
+  background: rgba(239,68,68,.13);
+  border-color: rgba(239,68,68,.45);
+  color: #fca5a5;
+}
+.sp-btn.destrutivo:hover:not(:disabled) {
+  background: rgba(239,68,68,.3); color: #fff;
+  box-shadow: 0 0 16px rgba(239,68,68,.35);
+}
+
+/* ── Emblemas do hunter ────────────────────────────────── */
+.sp-badges { display: flex; flex-direction: column; gap: .4rem; }
+.sp-badge {
+  display: flex; align-items: center; gap: .7rem;
+  padding: .45rem .6rem; border-radius: 11px;
+  background: rgba(255,255,255,.025);
+  border: 1px solid rgba(148,163,184,.1);
+}
+.sp-badge-med { flex-shrink: 0; display: flex; align-items: center; }
+.sp-badge-info { flex: 1; min-width: 0; }
+.sp-badge-nome {
+  font-family: var(--font-section); font-size: .8rem; font-weight: 700;
+  color: var(--text-primary);
+}
+.sp-badge-sub { font-size: .64rem; color: var(--text-muted); margin-top: .1rem; }
+.sp-btn-x {
+  flex-shrink: 0; width: 26px; height: 26px; border-radius: 7px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .75rem; color: #fca5a5;
+  background: rgba(239,68,68,.1);
+  border: 1px solid rgba(239,68,68,.3);
+  transition: all .2s;
+}
+.sp-btn-x:hover:not(:disabled) {
+  background: rgba(239,68,68,.35); color: #fff;
+  box-shadow: 0 0 12px rgba(239,68,68,.45);
+}
+.sp-btn-x:disabled { opacity: .4; cursor: wait; }
+
+/* ── Inviolável ────────────────────────────────────────── */
+.sp-protegido {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 1.2rem 1.3rem; border-radius: 14px;
+  font-family: var(--font-section); font-size: .82rem; line-height: 1.7;
+  color: var(--text-secondary);
+  background: linear-gradient(140deg, rgba(251,191,36,.09), rgba(0,0,0,.25));
+  border: 1px dashed rgba(251,191,36,.4);
+}
+.sp-protegido-ico {
+  font-size: 2.2rem; flex-shrink: 0;
+  filter: drop-shadow(0 0 14px rgba(251,191,36,.65));
+}
+
+/* ── Livro de Decretos ─────────────────────────────────── */
+.sp-log { display: flex; flex-direction: column; gap: .5rem; }
+.sp-log-item {
+  display: flex; gap: .8rem;
+  padding: .7rem .9rem; border-radius: 12px;
+  background: rgba(255,255,255,.025);
+  border-left: 3px solid rgba(56,189,248,.5);
+}
+.sp-log-item.destrutivo { border-left-color: rgba(239,68,68,.6); }
+.sp-log-ico { font-size: 1.1rem; flex-shrink: 0; }
+.sp-log-info { min-width: 0; flex: 1; }
+.sp-log-titulo {
+  font-family: var(--font-section); font-size: .82rem; font-weight: 700;
+  color: var(--text-primary);
+}
+.sp-log-alvo { color: var(--gold-bright); font-weight: 400; }
+.sp-log-detalhe { font-size: .7rem; color: var(--text-secondary); margin-top: .15rem; }
+.sp-log-motivo {
+  font-size: .68rem; color: var(--text-secondary);
+  font-style: italic; margin-top: .15rem; opacity: .85;
+}
+.sp-log-rodape {
+  font-family: 'Orbitron', monospace; font-size: .58rem;
+  color: var(--text-dim); margin-top: .3rem;
+}
+.sp-mini-log { display: flex; flex-direction: column; gap: .3rem; }
+.sp-mini-log-item {
+  display: flex; justify-content: space-between; gap: .8rem; flex-wrap: wrap;
+  font-family: var(--font-section); font-size: .68rem;
+  color: var(--text-secondary);
+  padding: .35rem .5rem; border-radius: 8px;
+  background: rgba(255,255,255,.02);
+}
+.sp-quando { color: var(--text-dim); font-size: .62rem; white-space: nowrap; }
+
+.sp-vazio {
+  text-align: center; padding: 2rem 1rem;
+  font-family: var(--font-section); font-size: .8rem; color: var(--text-muted);
+}

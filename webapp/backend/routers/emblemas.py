@@ -224,7 +224,10 @@ def hunters(
             q = db.query(Conquista).filter(Conquista.id == cu.conquista_id).first()
             if q:
                 badges.append({"codigo": q.codigo, "titulo": q.titulo, "icone": q.icone,
-                               "pendente": not bool(getattr(cu, "celebrada", True))})
+                               "pendente": not bool(getattr(cu, "celebrada", True)),
+                               # conquistada por esforço próprio → não se revoga
+                               "de_missao": (q.condicao_tipo or "").lower() != "manual",
+                               "xp_bonus": q.xp_bonus or 0})
         convite = db.query(Convite).filter(Convite.usado_por_id == u.id).first()
         item = {
             "id": u.id, "nome": u.nome, "login": u.login,

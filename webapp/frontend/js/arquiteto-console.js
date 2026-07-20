@@ -1021,6 +1021,7 @@ const ArquitetoConsole = {
       ciano:    ['#67e8f9',            '34,211,238'],
       cinza:    ['#94a3b8',            '148,163,184'],
       vermelho: ['#f87171',            '239,68,68'],
+      rosa:     ['#ff6ec4',            '255,46,154'],   // insígnias Evelynn
     };
     const bt = (rotulo, acao, tom = 'ouro', tracejado = false) => {
       const [cor, rgb] = CORES[tom] || CORES.ouro;
@@ -1102,6 +1103,12 @@ const ArquitetoConsole = {
           bt('Domínio das Habilidades','dominioHabilidades()', 'cinza', true),
           bt('Medalha Diana (Foice)', 'window.DianaFX.cerimonia()', 'ciano', true),
           bt('Vitrine: Mono Diana',   'window.DianaFX.vitrineCustomizada()', 'ciano', true),
+        ])}
+
+        ${sec('insignias', '🎖 Insígnias com arte própria', false, [
+          bt('Cerimônia: Mono Evelynn', 'window.EvelynnFX.cerimonia()', 'rosa', true),
+          bt('Vitrine: Mono Evelynn',   'vitrineInsignia("mono_evelynn")', 'rosa', true),
+          bt('Vitrine: todas as artes', 'vitrineInsignia()', 'ciano', true),
         ])}
 
         ${sec('sons', '🔊 Sons', false, [], `
@@ -2020,6 +2027,67 @@ const ForjaFX = {
 
   /* API pública do ensaio (convenção: onclick nunca chama método `_privado`) */
   demo() { return this._cerimonia(); },
+};
+
+/* ── Vitrine das insígnias ────────────────────────────────────────────────
+   Lê o REGISTRO do ConquistaFX, não uma lista escrita à mão. Toda arte
+   nova que se registrar aparece aqui sozinha, em três tamanhos, para
+   conferir leitura e simetria sem precisar conceder a badge a ninguém. */
+ArquitetoConsole.vitrineInsignia = function (codigo) {
+  const velha = document.getElementById('arq-vitrine-insignia');
+  if (velha) { velha.remove(); if (codigo === undefined) return; }
+
+  const reg = window.ConquistaFX?._insignias || {};
+  const codigos = codigo ? [codigo] : Object.keys(reg);
+  if (!codigos.length) { SoloDialog?.toast?.('Nenhuma insígnia registrada', 'info'); return; }
+
+  const cx = document.createElement('div');
+  cx.id = 'arq-vitrine-insignia';
+  cx.style.cssText = `position:fixed;inset:0;z-index:9996;display:flex;align-items:center;
+    justify-content:center;background:rgba(3,3,8,.9);backdrop-filter:blur(7px);padding:1.2rem`;
+
+  const arte = (cod, tam) => {
+    const svg = window.ConquistaFX?._insigniaCustom?.(cod, tam);
+    return svg || `<span style="font-size:${tam * .5}px;opacity:.4">🎖</span>`;
+  };
+
+  cx.innerHTML = `
+    <div style="width:min(720px,100%);max-height:88vh;overflow-y:auto;padding:1.5rem;
+      background:linear-gradient(170deg,#1a0b2e,#0a0714 65%);
+      border:1px solid rgba(255,46,154,.45);border-radius:18px;
+      box-shadow:0 0 60px rgba(255,46,154,.25)">
+      <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:1.2rem">
+        <span style="font-size:1.2rem">🎖</span>
+        <div style="flex:1">
+          <div style="font-family:var(--font-title);font-size:1rem;color:#ff6ec4">
+            Vitrine das Insígnias</div>
+          <div style="font-family:var(--font-section);font-size:.6rem;letter-spacing:.14em;
+            color:var(--text-muted)">CERIMÔNIA · MATERIAIS · CHIP — OS TRÊS TAMANHOS REAIS</div>
+        </div>
+        <button onclick="document.getElementById('arq-vitrine-insignia').remove()"
+          style="background:none;border:none;color:var(--text-muted);font-size:1.1rem;
+          cursor:pointer">✕</button>
+      </div>
+      ${codigos.map(cod => `
+        <div style="display:flex;align-items:center;gap:1.4rem;padding:1rem;margin-bottom:.7rem;
+          border-radius:14px;background:rgba(255,255,255,.03);
+          border:1px solid rgba(255,46,154,.22)">
+          <div style="display:flex;align-items:center;justify-content:center;width:150px;
+            height:150px;flex-shrink:0">${arte(cod, 140)}</div>
+          <div style="display:flex;align-items:center;justify-content:center;width:92px;
+            height:92px;flex-shrink:0">${arte(cod, 92)}</div>
+          <div style="display:flex;align-items:center;justify-content:center;width:34px;
+            height:34px;flex-shrink:0">${arte(cod, 30)}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:var(--font-section);font-size:.9rem;font-weight:700;
+              color:var(--text-primary)">${cod}</div>
+            <div style="font-family:var(--font-section);font-size:.66rem;
+              color:var(--text-muted);margin-top:.2rem">arte própria registrada</div>
+          </div>
+        </div>`).join('')}
+    </div>`;
+  cx.addEventListener('click', e => { if (e.target === cx) cx.remove(); });
+  document.body.appendChild(cx);
 };
 
 document.addEventListener('DOMContentLoaded', () => ArquitetoConsole.init());

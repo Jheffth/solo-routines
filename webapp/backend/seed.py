@@ -54,6 +54,9 @@ CONQUISTAS_PRESENTE = [
      "Entrou quando o Sistema ainda era jovem", "🌱", "#34d399", 750, 150),
     ("aliado",       "Aliado de Confiança",
      "Convocado por laço pessoal do Arquiteto", "🤝", "#f59e0b", 600, 120),
+    # Legado — insígnia com arte própria (js/badges/mono-evelynn.js)
+    ("mono_evelynn", "Mono Evelynn",
+     "Legado — o abraço da agonia", "💜", "#ff2e9a", 2500, 500),
 ]
 
 
@@ -66,7 +69,7 @@ CONQUISTAS_PRESENTE = [
 # liberá-los a qualquer momento pelo Catálogo, se mudar de ideia.
 TRANSFERIVEIS = {
     "solo", "jh3ffth", "dominio_forja",
-    "diana", "pioneiro", "aliado",
+    "diana", "pioneiro", "aliado", "mono_evelynn",
 }
 
 

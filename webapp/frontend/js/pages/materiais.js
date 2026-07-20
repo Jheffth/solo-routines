@@ -59,6 +59,11 @@ const Materiais = {
     const cont = document.getElementById('materiais-conteudo');
 
     cont.innerHTML = `
+      <!-- A Forja vem ANTES de tudo: é a primeira coisa que o Arquiteto
+           faz na página, e na largura em que as colunas empilham ela
+           ficava enterrada no fim do scroll. -->
+      ${this._podeForjar ? this._blocoForja() : ''}
+
       <div class="mt-layout">
 
         <!-- ── COLUNA ESQUERDA: o envio ─────────────────── -->
@@ -103,7 +108,6 @@ const Materiais = {
 
         <!-- ── COLUNA DIREITA: o que é seu para sempre ──── -->
         <div class="mt-coluna">
-          ${this._podeForjar ? this._blocoForja() : ''}
           ${this._presos.length ? `
             <div class="mt-bloco">
               <div class="mt-lbl">Conquistados <span class="mt-op">— não circulam</span></div>
@@ -142,7 +146,7 @@ const Materiais = {
             <button class="mt-forja-item ${m.no_inventario ? 'tem' : ''}"
                     data-mt-forjar="${m.codigo}"
                     title="${m.no_inventario ? 'Já está no seu inventário' : 'Forjar ' + m.titulo}">
-              <span class="mt-forja-med">${this._medalha(m, 40)}</span>
+              <span class="mt-forja-med">${this._medalha(m, 58)}</span>
               <span class="mt-forja-nome">${m.titulo}</span>
               <span class="mt-forja-acao">${m.no_inventario ? '✓' : '+'}</span>
             </button>`).join('')}

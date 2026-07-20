@@ -34,9 +34,11 @@ const PainelAdmin = {
     const cont = document.getElementById('painel-admin-conteudo');
     const abas = [
       { id: 'hunters',  ico: '👥', txt: 'Hunters',  on: this.pode('ver_hunters') },
-      { id: 'emblemas', ico: '🎖', txt: 'Emblemas', on: this.pode('enviar_emblemas') },
+      // Recolher emblema é poder de Arquiteto — não de Administrador comum.
+      { id: 'emblemas', ico: '🎖', txt: 'Recolher', on: !!this._perm?.eh_arquiteto },
       { id: 'convites', ico: '📜', txt: 'Convites', on: this.pode('gerar_convites') },
       { id: 'catalogo', ico: '💠', txt: 'Catálogo', on: !!this._perm?.eh_arquiteto },
+      { id: 'poderes',  ico: '⟁', txt: 'Poderes',  on: !!this._perm?.eh_arquiteto },
       { id: 'sistema',  ico: '⚙️', txt: 'Sistema',  on: this.pode('configurar_sistema') },
     ].filter(a => a.on);
 
@@ -68,6 +70,7 @@ const PainelAdmin = {
        emblemas: () => this._abaEmblemas(),
        convites: () => this._abaConvites(),
        catalogo: () => this._abaCatalogo(),
+       poderes:  () => SalaPoderes.carregar(document.getElementById('pa-corpo')),
        sistema:  () => this._abaSistema() }[this._aba] || (() => {}))();
   },
 
@@ -113,125 +116,219 @@ const PainelAdmin = {
                   <span>🎖 ${h.badges.length}</span>
                 </div>
                 ${h.badges.length ? `<div class="pa-hunter-badges">
-                  ${h.badges.map(b => `<span title="${b.titulo}${b.pendente ? ' (aguardando cerimônia)' : ''}"
-                    class="${b.pendente ? 'pend' : ''}">${b.icone}</span>`).join('')}
+                  ${h.badges.map(b => this._chipBadge(h, b)).join('')}
                 </div>` : ''}
               </div>
-              ${this.pode('enviar_emblemas') ? `
-              <button class="pa-btn-mini" title="Enviar emblema"
-                onclick="PainelAdmin._presentearRapido(${h.id}, '${h.nome.replace(/'/g, "\\'")}')">🎖</button>` : ''}
             </div>`).join('')}
         </div>`;
+
+      el.querySelectorAll('[data-pa-revogar]').forEach(b =>
+        b.addEventListener('click', () => this._revogarBadge(b)));
     } catch (err) {
       el.innerHTML = `<div class="pa-vazio">⚠️ ${err.message || err}</div>`;
     }
   },
 
-  /* ══════════════ EMBLEMAS ══════════════ */
-  async _abaEmblemas() {
-    const el = document.getElementById('pa-corpo');
-    el.innerHTML = '<div class="loading-spinner-wrap"><div class="loading-spinner"></div></div>';
-    try {
-      const [cols, { hunters }] = await Promise.all([
-        API.emblemas.colecionaveis(), API.emblemas.hunters(),
-      ]);
-      this._colecionaveis = cols;
-      this._hunters = hunters;
-      this._selecionados.clear();
+  /* Um emblema na linha do hunter, em medalha de verdade.
+     O ✕ só existe nos personalizados: o que o hunter conquistou com o
+     próprio progresso não é do Arquiteto para tirar. */
+  _chipBadge(h, b) {
+    const medalha = (typeof ConquistaFX !== 'undefined' && ConquistaFX.miniMedalha)
+      ? ConquistaFX.miniMedalha(b, 30)
+      : `<span>${b.icone || '🎖'}</span>`;
+    const revogavel = !b.de_missao && this._perm?.eh_arquiteto && !h.inviolavel;
+    const titulo = `${b.titulo}`
+      + (b.de_missao ? ' — conquistado pelo hunter' : ' — personalizado')
+      + (b.pendente ? ' · aguardando cerimônia' : '');
 
-      el.innerHTML = `
-        <div class="pa-nota">
-          Emblemas <b>colecionáveis</b> são presentes — nunca se conquistam por missão.
-          Quem receber será celebrado com a Cerimônia ao entrar no Sistema.
-        </div>
-
-        <div class="pa-secao-lbl">1. Escolha o emblema</div>
-        <div class="pa-emblemas">
-          ${cols.length ? cols.map(e => `
-            <div class="pa-emblema" data-pa-emb="${e.codigo}">
-              <div class="pa-emblema-ico">${e.icone}</div>
-              <div class="pa-emblema-nome">${e.titulo}</div>
-              <div class="pa-emblema-desc">${e.descricao || ''}</div>
-              <div class="pa-emblema-bonus">+${e.xp_bonus} XP · +${e.moedas_bonus} 🪙</div>
-            </div>`).join('')
-            : '<div class="pa-vazio">Nenhum emblema colecionável cadastrado.</div>'}
-        </div>
-
-        <div class="pa-secao-lbl">2. Escolha os hunters</div>
-        <div class="pa-hunters-sel">
-          ${hunters.map(h => `
-            <div class="pa-hunter-chip" data-pa-hunter="${h.id}">
-              <span>${h.avatar_url ? `<img src="${h.avatar_url}" alt="">` : '🛡️'}</span>
-              <span>${h.nome}</span>
-            </div>`).join('')}
-        </div>
-
-        <div class="pa-secao-lbl">3. Bilhete (opcional)</div>
-        <input id="pa-msg" class="pa-input" maxlength="200"
-               placeholder="Uma mensagem que ele verá na cerimônia...">
-
-        <button class="pa-btn-enviar" id="pa-enviar" disabled>🎖 Enviar Emblema</button>`;
-
-      el.querySelectorAll('[data-pa-emb]').forEach(x =>
-        x.addEventListener('click', () => {
-          el.querySelectorAll('[data-pa-emb]').forEach(y => y.classList.remove('on'));
-          x.classList.add('on');
-          this._embSel = x.dataset.paEmb;
-          this._atualizarEnvio();
-        }));
-      el.querySelectorAll('[data-pa-hunter]').forEach(x =>
-        x.addEventListener('click', () => {
-          const id = parseInt(x.dataset.paHunter);
-          if (this._selecionados.has(id)) { this._selecionados.delete(id); x.classList.remove('on'); }
-          else { this._selecionados.add(id); x.classList.add('on'); }
-          this._atualizarEnvio();
-        }));
-      document.getElementById('pa-enviar').addEventListener('click', () => this._enviarEmblema());
-    } catch (err) {
-      el.innerHTML = `<div class="pa-vazio">⚠️ ${err.message || err}</div>`;
-    }
+    return `<span class="pa-badge-chip ${b.pendente ? 'pend' : ''} ${b.de_missao ? 'ganha' : ''}"
+                  title="${titulo}">
+      ${medalha}
+      ${revogavel ? `<button class="pa-badge-x" title="Recolher ${b.titulo}"
+        data-pa-revogar="${b.codigo}" data-pa-hid="${h.id}"
+        data-pa-hnome="${(h.nome || '').replace(/"/g, '&quot;')}"
+        data-pa-btitulo="${(b.titulo || '').replace(/"/g, '&quot;')}"
+        data-pa-bxp="${b.xp_bonus || 0}">✕</button>` : ''}
+    </span>`;
   },
 
-  _atualizarEnvio() {
-    const btn = document.getElementById('pa-enviar');
-    if (!btn) return;
-    const n = this._selecionados.size;
-    btn.disabled = !(this._embSel && n);
-    btn.textContent = n ? `🎖 Enviar para ${n} hunter${n > 1 ? 's' : ''}` : '🎖 Enviar Emblema';
-  },
+  async _revogarBadge(btn) {
+    const { paRevogar: codigo, paHid: hid, paHnome: nome,
+            paBtitulo: titulo, paBxp: xp } = btn.dataset;
 
-  async _enviarEmblema() {
-    const btn = document.getElementById('pa-enviar');
+    const texto = `Recolher <b>${titulo}</b> de <b>${nome}</b>.`
+      + (Number(xp) > 0 ? `<br>O bônus de <b>${Number(xp).toLocaleString('pt-BR')} XP</b>`
+                        + ` também será desfeito e o nível recalculado.` : '')
+      + `<br><br>Fica registrado no Livro de Decretos.`;
+
+    const ok = typeof SoloDialog !== 'undefined' && SoloDialog.confirm
+      ? await SoloDialog.confirm(texto, {
+          icon: '🎖', titulo: 'Recolher emblema', tipo: 'warn',
+          btnOk: 'Recolher', btnCancel: 'Voltar' })
+      : true;
+    if (!ok) return;
+
     btn.disabled = true;
     try {
-      const r = await API.emblemas.presentear({
-        usuario_ids: [...this._selecionados],
-        codigo: this._embSel,
-        mensagem: document.getElementById('pa-msg')?.value?.trim() || null,
+      const r = await API.arquiteto.revogarBadge({
+        usuario_id: parseInt(hid), codigo,
+        motivo: 'Recolhido pelo Registro de Hunters',
       });
-      const nomes = r.enviados.map(e => e.nome).join(', ');
-      SoloDialog?.toast?.(nomes ? `🎖 ${r.emblema} enviado para ${nomes}` : 'Nenhum envio novo', 'success');
-      if (r.ignorados?.length) {
-        SoloDialog?.toast?.(`${r.ignorados.length} ignorado(s): já possuíam`, 'info');
-      }
       if (typeof SFX !== 'undefined') SFX.play('carimbo');
-      this._abaEmblemas();
+      SoloDialog?.toast?.(r.detalhe || 'Emblema recolhido', 'success');
+      this._abaHunters();
     } catch (err) {
       SoloDialog?.toast?.(err.message || String(err), 'error');
       btn.disabled = false;
     }
   },
 
-  async _presentearRapido(id, nome) {
-    this._aba = 'emblemas';
-    this._render();
-    setTimeout(() => {
+  /* ══════════════ EMBLEMAS — RECOLHER ══════════════
+     Esta guia REVOGA. O envio vive na Casa de Trocas (página Materiais);
+     ter dois caminhos para dar a mesma badge só criaria confusão.
+     Aqui é o inverso: escolhe o hunter, vê o que ele tem de personalizado
+     e recolhe. O que ele conquistou sozinho não aparece — não é do
+     Arquiteto para tirar. */
+  async _abaEmblemas() {
+    const el = document.getElementById('pa-corpo');
+    el.innerHTML = '<div class="loading-spinner-wrap"><div class="loading-spinner"></div></div>';
+    try {
+      const { hunters } = await API.emblemas.hunters();
+      this._hunters = hunters;
       this._selecionados.clear();
-      this._selecionados.add(id);
-      document.querySelector(`[data-pa-hunter="${id}"]`)?.classList.add('on');
-      this._atualizarEnvio();
-      SoloDialog?.toast?.(`Escolha o emblema para ${nome}`, 'info');
-    }, 400);
+
+      el.innerHTML = `
+        <div class="pa-nota pa-nota-alerta">
+          Aqui você <b>recolhe</b> emblemas personalizados. O bônus de XP é desfeito
+          e o nível recalculado. Para <b>enviar</b>, use a página
+          <b>💠 Materiais</b>.
+        </div>
+
+        <div class="pa-secao-lbl">1. Escolha o hunter</div>
+        <div class="pa-hunters-sel">
+          ${hunters.map(h => `
+            <div class="pa-hunter-chip ${h.inviolavel ? 'travado' : ''}"
+                 data-pa-alvo="${h.id}">
+              <span>${h.avatar_url ? `<img src="${h.avatar_url}" alt="">` : '🛡️'}</span>
+              <span>${h.nome}</span>
+              ${h.inviolavel ? '<span title="Inviolável">🛡</span>' : ''}
+            </div>`).join('')}
+        </div>
+
+        <div id="pa-recolher"></div>`;
+
+      el.querySelectorAll('[data-pa-alvo]').forEach(x =>
+        x.addEventListener('click', () => {
+          el.querySelectorAll('[data-pa-alvo]').forEach(y => y.classList.remove('on'));
+          x.classList.add('on');
+          this._verEmblemasDo(parseInt(x.dataset.paAlvo));
+        }));
+    } catch (err) {
+      el.innerHTML = `<div class="pa-vazio">⚠️ ${err.message || err}</div>`;
+    }
+  },
+
+  _verEmblemasDo(id) {
+    const alvo = document.getElementById('pa-recolher');
+    const h = this._hunters.find(x => x.id === id);
+    if (!h || !alvo) return;
+    this._alvoSel = h;
+    this._selecionados.clear();
+
+    if (h.inviolavel) {
+      alvo.innerHTML = `<div class="pa-nota pa-nota-alerta" style="margin-top:1rem">
+        🛡 <b>${h.nome}</b> é inviolável — nenhum emblema dele pode ser recolhido.
+      </div>`;
+      return;
+    }
+
+    const medalha = b => (typeof ConquistaFX !== 'undefined' && ConquistaFX.miniMedalha)
+      ? ConquistaFX.miniMedalha(b, 64)
+      : `<span style="font-size:34px">${b.icone || '🎖'}</span>`;
+
+    const pessoais = (h.badges || []).filter(b => !b.de_missao);
+    const ganhas   = (h.badges || []).length - pessoais.length;
+
+    alvo.innerHTML = `
+      <div class="pa-secao-lbl">2. Emblemas de ${h.nome} — ${pessoais.length} recolhível(is)</div>
+      ${pessoais.length ? `
+        <div class="pa-emblemas">
+          ${pessoais.map(b => `
+            <div class="pa-emblema pa-emblema-rev" data-pa-rev="${b.codigo}"
+                 title="${b.titulo}">
+              <div class="pa-emblema-med">${medalha(b)}</div>
+              <div class="pa-emblema-nome">${b.titulo}</div>
+              <div class="pa-emblema-bonus">
+                ${b.xp_bonus ? '−' + Number(b.xp_bonus).toLocaleString('pt-BR') + ' XP' : 'sem bônus'}
+              </div>
+              ${b.pendente ? '<div class="pa-emblema-desc">aguardando cerimônia</div>' : ''}
+            </div>`).join('')}
+        </div>
+        <button class="pa-btn-recolher" id="pa-recolher-btn" disabled>Selecione o que recolher</button>`
+        : '<div class="pa-vazio">Nenhum emblema personalizado com este hunter.</div>'}
+      ${ganhas ? `<div class="pa-nota" style="margin-top:.9rem">
+        ${ganhas} conquistado(s) pelo próprio progresso não aparece(m) aqui — são dele.
+      </div>` : ''}`;
+
+    alvo.querySelectorAll('[data-pa-rev]').forEach(x =>
+      x.addEventListener('click', () => {
+        const cod = x.dataset.paRev;
+        if (this._selecionados.has(cod)) { this._selecionados.delete(cod); x.classList.remove('on'); }
+        else { this._selecionados.add(cod); x.classList.add('on'); }
+        this._atualizarRecolher();
+      }));
+    document.getElementById('pa-recolher-btn')
+      ?.addEventListener('click', () => this._recolherEmblemas());
+  },
+
+  _atualizarRecolher() {
+    const btn = document.getElementById('pa-recolher-btn');
+    if (!btn) return;
+    const n = this._selecionados.size;
+    btn.disabled = !n;
+    btn.textContent = n
+      ? `Recolher ${n} emblema${n > 1 ? 's' : ''} de ${this._alvoSel.nome}`
+      : 'Selecione o que recolher';
+  },
+
+  async _recolherEmblemas() {
+    const btn = document.getElementById('pa-recolher-btn');
+    const h   = this._alvoSel;
+    const cods = [...this._selecionados];
+    const pessoais = (h.badges || []).filter(b => cods.includes(b.codigo));
+    const nomes = pessoais.map(b => b.titulo).join(', ');
+    const xp = pessoais.reduce((t, b) => t + (b.xp_bonus || 0), 0);
+
+    const texto = `Recolher <b>${nomes}</b> de <b>${h.nome}</b>.`
+      + (xp ? `<br>Isso desfaz <b>${xp.toLocaleString('pt-BR')} XP</b> e recalcula o nível dele.` : '')
+      + `<br><br>Fica registrado no Livro de Decretos.`;
+    const ok = typeof SoloDialog !== 'undefined' && SoloDialog.confirm
+      ? await SoloDialog.confirm(texto, {
+          icon: '🎖', titulo: 'Recolher emblemas', tipo: 'warn',
+          btnOk: 'Recolher', btnCancel: 'Voltar' })
+      : true;
+    if (!ok) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Recolhendo...';
+    // Um decreto por emblema: o Livro fica com o histórico item a item.
+    const feitos = [], falhos = [];
+    for (const codigo of cods) {
+      try {
+        await API.arquiteto.revogarBadge({
+          usuario_id: h.id, codigo,
+          motivo: 'Recolhido pelo Painel do Sistema',
+        });
+        feitos.push(codigo);
+      } catch (err) {
+        falhos.push(`${codigo}: ${err.message || err}`);
+      }
+    }
+    if (feitos.length && typeof SFX !== 'undefined') SFX.play('carimbo');
+    if (feitos.length) SoloDialog?.toast?.(
+      `${feitos.length} emblema(s) recolhido(s) de ${h.nome}`, 'success');
+    falhos.forEach(f => SoloDialog?.toast?.(f, 'error'));
+    await this._abaEmblemas();
   },
 
   /* ══════════════ CONVITES ══════════════ */

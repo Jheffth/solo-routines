@@ -470,6 +470,27 @@ class TransferenciaMaterial(Base):
 
 
 # ==============================================================================
+# LIVRO DE DECRETOS — auditoria de todo poder exercido pelo Arquiteto
+# ==============================================================================
+# Por que existe: revogar cargo, badge ou acesso apaga um estado do Sistema.
+# Sem registro, ninguém — nem o próprio Arquiteto meses depois — saberia o que
+# foi tirado de quem, quando e por quê. Poder sem rastro é poder que se perde.
+class RegistroPoder(Base):
+    __tablename__ = "registro_poderes"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    poder         = Column(String(50), nullable=False, index=True)  # ex: "revogar_cargo"
+    arquiteto_id  = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    arquiteto_nome= Column(String(100), nullable=True)   # preservado se a conta sumir
+    alvo_id       = Column(Integer, ForeignKey("usuarios.id"), nullable=True, index=True)
+    alvo_nome     = Column(String(100), nullable=True)
+    detalhe       = Column(String(300), nullable=True)   # o que exatamente mudou
+    antes         = Column(String(200), nullable=True)   # estado anterior (reversão manual)
+    motivo        = Column(String(300), nullable=True)
+    criado_em     = Column(DateTime, default=datetime.utcnow, index=True)
+
+
+# ==============================================================================
 # CONFIGURAÇÕES DO APP (Logo, Fontes, Tema)
 # ==============================================================================
 class ConfiguracaoApp(Base):

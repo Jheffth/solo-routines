@@ -211,6 +211,20 @@ class API {
                                                 { transferivel: t }),
   };
 
+  /* ── Sala de Poderes do Arquiteto ─────────────────────── */
+  static arquiteto = {
+    poderes:         async ()    => API.get('/arquiteto/poderes'),
+    dossie:          async (id)  => API.get('/arquiteto/hunter/' + id),
+    decretos:        async ()    => API.get('/arquiteto/decretos'),
+    revogarBadge:    async (d)   => API.post('/arquiteto/revogar/badge', d),
+    revogarCargo:    async (d)   => API.post('/arquiteto/revogar/cargo', d),
+    concederCargo:   async (d)   => API.post('/arquiteto/conceder/cargo', d),
+    revogarAcesso:   async (d)   => API.post('/arquiteto/revogar/acesso', d),
+    restaurarAcesso: async (d)   => API.post('/arquiteto/restaurar/acesso', d),
+    revogarXp:       async (d)   => API.post('/arquiteto/revogar/xp', d),
+    revogarConvite:  async (d)   => API.post('/arquiteto/revogar/convite', d),
+  };
+
   /* ── Dungeons ─────────────────────────────────────────── */
   static dungeons = {
     listar:       async ()        => API.get('/dungeons/'),

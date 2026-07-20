@@ -1,0 +1,38 @@
+/* ============================================================
+   badges.css — animação das insígnias com arte própria
+
+   O movimento das medalhas do Sistema segue um princípio:
+   as CAMADAS EXTERNAS giram, o ROSTO fica parado.
+
+   Camadas radiais (lâminas, runas, espinhos) podem girar à
+   vontade: como são construídas por repetição em torno do
+   centro, giram sem desequilibrar. Já o núcleo — o coração, os
+   olhos, os louros — fica fixo e sempre no eixo, senão a
+   medalha parece tonta em vez de viva.
+
+   Velocidades diferentes e sentidos opostos por camada é o que
+   dá a sensação de profundidade, como um planeta com anéis.
+   ============================================================ */
+
+/* A origem em 130px 130px é o centro do viewBox (0 0 260 260) e também
+   o centro de cada camada, porque todas nascem de repetição radial.
+   Em px, não em %, para não depender do transform-box do navegador. */
+.ev-lashers,
+.ev-runas,
+.ev-espinhos { transform-origin: 130px 130px; }
+
+.ev-lashers  { animation: cq-anel-girar 42s linear infinite; }
+.ev-runas    { animation: cq-anel-girar 26s linear infinite reverse; }
+.ev-espinhos { animation: cq-anel-girar 64s linear infinite; }
+
+/* Pulso do aro: brilha no lugar, sem girar — mantém o eixo intacto */
+.ev-pulso { animation: ev-respirar 3.4s ease-in-out infinite; }
+@keyframes ev-respirar {
+  0%, 100% { opacity: .45; }
+  50%      { opacity: 1; }
+}
+
+/* Quem prefere menos movimento não perde a medalha, só o giro */
+@media (prefers-reduced-motion: reduce) {
+  .ev-lashers, .ev-runas, .ev-espinhos, .ev-pulso { animation: none; }
+}

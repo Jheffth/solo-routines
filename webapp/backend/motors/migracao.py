@@ -39,6 +39,7 @@ COLUNAS = [
     ("conquistas_usuario",        "mensagem",            "VARCHAR(300)",                "VARCHAR(300)"),
     # Emblemas colecionáveis
     ("conquistas",                "colecionavel",        "BOOLEAN NOT NULL DEFAULT 0",  "BOOLEAN NOT NULL DEFAULT FALSE"),
+    # Sala de Poderes — a tabela registro_poderes nasce pelo criar_tabelas()
     # Casa de Trocas (Materiais)
     ("conquistas",                "transferivel",        "BOOLEAN NOT NULL DEFAULT 0",  "BOOLEAN NOT NULL DEFAULT FALSE"),
 ]

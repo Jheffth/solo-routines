@@ -226,10 +226,17 @@
   font-family: var(--font-section); font-size: .7rem; line-height: 1.6;
   color: var(--text-muted); margin: -.4rem 0 .8rem;
 }
-.mt-forja-grade { display: flex; flex-direction: column; gap: .4rem; }
+/* Faixa horizontal no topo: todas as medalhas visíveis de uma vez,
+   sem precisar rolar a página para achar a Forja. */
+.mt-forja-grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(122px, 1fr));
+  gap: .55rem;
+}
 .mt-forja-item {
-  display: flex; align-items: center; gap: .6rem; width: 100%;
-  padding: .45rem .6rem; border-radius: 11px; cursor: pointer; text-align: left;
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: .35rem;
+  padding: .75rem .5rem .6rem; border-radius: 13px; cursor: pointer;
   background: rgba(255,255,255,.03);
   border: 1px solid rgba(148,163,184,.14);
   color: var(--text-primary);
@@ -238,19 +245,23 @@
 .mt-forja-item:hover:not(:disabled) {
   border-color: var(--gold-bright);
   background: rgba(251,191,36,.1);
-  transform: translateX(3px);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0,0,0,.35);
 }
 .mt-forja-item:disabled { opacity: .5; cursor: wait; }
-.mt-forja-med { flex-shrink: 0; display: flex; align-items: center; }
+.mt-forja-med {
+  flex-shrink: 0; height: 58px;
+  display: flex; align-items: center; justify-content: center;
+}
 .mt-forja-nome {
-  flex: 1; min-width: 0;
-  font-family: var(--font-section); font-size: .78rem; font-weight: 700;
+  font-family: var(--font-section); font-size: .72rem; font-weight: 700;
+  line-height: 1.25; text-align: center;
 }
 .mt-forja-acao {
-  flex-shrink: 0;
-  width: 22px; height: 22px; border-radius: 50%;
+  position: absolute; top: .4rem; right: .45rem;
+  width: 20px; height: 20px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-size: .8rem; font-weight: 700;
+  font-size: .78rem; font-weight: 700;
   color: #0b0b12; background: var(--gold-bright);
   box-shadow: 0 0 10px rgba(251,191,36,.5);
 }

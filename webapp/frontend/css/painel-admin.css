@@ -93,8 +93,32 @@
   display: flex; gap: .8rem; flex-wrap: wrap; margin-top: .3rem;
   font-family: 'Orbitron', monospace; font-size: .62rem; color: var(--text-secondary);
 }
-.pa-hunter-badges { display: flex; gap: .25rem; margin-top: .35rem; font-size: 1rem; }
-.pa-hunter-badges .pend { opacity: .45; filter: grayscale(.6); }
+.pa-hunter-badges {
+  display: flex; gap: .4rem; flex-wrap: wrap;
+  margin-top: .45rem; font-size: 1rem;
+}
+.pa-badge-chip {
+  position: relative; display: inline-flex; align-items: center;
+  padding: 2px; border-radius: 50%;
+  transition: transform .2s;
+}
+.pa-badge-chip:hover { transform: scale(1.1); }
+/* Conquistada pelo hunter: fica à mostra, mas sem alça para o Arquiteto */
+.pa-badge-chip.ganha { opacity: .8; }
+.pa-badge-chip.pend  { opacity: .5; filter: grayscale(.5); }
+.pa-badge-x {
+  position: absolute; top: -5px; right: -5px;
+  width: 16px; height: 16px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .55rem; line-height: 1; cursor: pointer;
+  color: #fff; background: #b91c1c;
+  border: 1px solid rgba(248,113,113,.8);
+  opacity: 0; transform: scale(.5);
+  transition: opacity .18s, transform .18s;
+}
+.pa-badge-chip:hover .pa-badge-x { opacity: 1; transform: scale(1); }
+.pa-badge-x:hover { background: #ef4444; box-shadow: 0 0 10px rgba(239,68,68,.7); }
+.pa-badge-x:disabled { opacity: .5; cursor: wait; }
 .pa-btn-mini {
   flex-shrink: 0; font-size: 1rem;
   padding: .5rem .7rem; border-radius: 9px; cursor: pointer;
@@ -143,6 +167,42 @@
 .pa-emblema-bonus {
   font-family: 'Orbitron', monospace; font-size: .62rem;
   color: var(--gold-bright); margin-top: .3rem;
+}
+
+/* Modo recolher: a seleção é vermelha, não dourada — o gesto é o oposto */
+.pa-emblema-med {
+  height: 64px; display: flex; align-items: center; justify-content: center;
+}
+.pa-emblema-rev:hover { border-color: rgba(239,68,68,.5); }
+.pa-emblema-rev.on {
+  border-color: #ef4444;
+  background: linear-gradient(165deg, rgba(239,68,68,.16), rgba(0,0,0,.32));
+  box-shadow: 0 0 22px rgba(239,68,68,.3);
+}
+.pa-emblema-rev.on .pa-emblema-bonus { color: #fca5a5; }
+.pa-nota-alerta {
+  background: rgba(239,68,68,.06);
+  border-color: rgba(239,68,68,.3);
+}
+.pa-hunter-chip.travado { opacity: .55; }
+.pa-btn-recolher {
+  width: 100%; margin-top: 1.2rem;
+  font-family: var(--font-section); font-size: .85rem; font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase;
+  padding: .75rem 1.2rem; border-radius: 11px; cursor: pointer;
+  color: #fff;
+  background: linear-gradient(100deg, #7f1d1d, #b91c1c);
+  border: 1px solid rgba(239,68,68,.7);
+  box-shadow: 0 0 20px rgba(239,68,68,.25);
+  transition: all .2s;
+}
+.pa-btn-recolher:hover:not(:disabled) {
+  transform: translateY(-2px); box-shadow: 0 0 32px rgba(239,68,68,.5);
+}
+.pa-btn-recolher:disabled {
+  opacity: .4; cursor: not-allowed;
+  background: rgba(255,255,255,.05); border-color: rgba(148,163,184,.2);
+  box-shadow: none;
 }
 
 .pa-hunters-sel { display: flex; gap: .45rem; flex-wrap: wrap; }
