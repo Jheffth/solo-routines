@@ -204,6 +204,7 @@ class API {
     inventario:  async ()          => API.get('/materiais/inventario'),
     hunter:      async (nick)      => API.get('/materiais/hunter/' + encodeURIComponent(nick)),
     enviar:      async (d)         => API.post('/materiais/enviar', d),
+    forjar:      async (codigo)    => API.post('/materiais/forjar', { codigo }),
     historico:   async ()          => API.get('/materiais/historico'),
     catalogo:    async ()          => API.get('/materiais/catalogo'),
     definirStatus: async (cod, t)  => API.patch('/materiais/catalogo/' + encodeURIComponent(cod),

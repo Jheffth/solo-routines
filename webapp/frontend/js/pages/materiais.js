@@ -31,9 +31,11 @@ const Materiais = {
     cont.innerHTML = '<div class="loading-spinner-wrap"><div class="loading-spinner"></div></div>';
     try {
       const inv = await API.materiais.inventario();
-      this._enviaveis = inv.enviaveis || [];
-      this._presos    = inv.presos    || [];
-      this._limite    = inv.limite_por_envio || 10;
+      this._enviaveis  = inv.enviaveis || [];
+      this._presos     = inv.presos    || [];
+      this._limite     = inv.limite_por_envio || 10;
+      this._podeForjar = !!inv.pode_forjar;
+      this._forjaveis  = inv.forjaveis || [];
       this._sel.clear();
       this._destino = null;
       this._render();
@@ -81,8 +83,9 @@ const Materiais = {
                 ${this._enviaveis.map(m => this._cardMaterial(m, true)).join('')}
               </div>` : `
               <div class="mt-vazio-suave">
-                Você ainda não possui materiais que circulam.<br>
-                Emblemas personalizados chegam por convite, presente ou troca.
+                ${this._podeForjar
+                  ? 'Inventário vazio — use a <b>Forja do Arquiteto</b> ao lado para gerar o que quiser enviar.'
+                  : 'Você ainda não possui materiais que circulam.<br>Emblemas personalizados chegam por convite, presente ou troca.'}
               </div>`}
           </div>
 
@@ -100,6 +103,7 @@ const Materiais = {
 
         <!-- ── COLUNA DIREITA: o que é seu para sempre ──── -->
         <div class="mt-coluna">
+          ${this._podeForjar ? this._blocoForja() : ''}
           ${this._presos.length ? `
             <div class="mt-bloco">
               <div class="mt-lbl">Conquistados <span class="mt-op">— não circulam</span></div>
@@ -119,6 +123,47 @@ const Materiais = {
 
     this._bind();
     this._atualizarBotao();
+  },
+
+  /* ── Forja do Arquiteto ────────────────────────────────────────────
+     Ele não precisa possuir para enviar: basta o material existir e
+     circular. Aqui ele estoca o inventário com um clique; e no envio,
+     o backend forja sozinho o que faltar. */
+  _blocoForja() {
+    return `
+      <div class="mt-bloco mt-forja">
+        <div class="mt-lbl mt-lbl-arq">⟁ Forja do Arquiteto</div>
+        <div class="mt-forja-nota">
+          Gere qualquer material que circula. Ao enviar, a forja repõe sozinha —
+          você pode mandar o mesmo emblema para quantos hunters quiser.
+        </div>
+        <div class="mt-forja-grade">
+          ${this._forjaveis.map(m => `
+            <button class="mt-forja-item ${m.no_inventario ? 'tem' : ''}"
+                    data-mt-forjar="${m.codigo}"
+                    title="${m.no_inventario ? 'Já está no seu inventário' : 'Forjar ' + m.titulo}">
+              <span class="mt-forja-med">${this._medalha(m, 40)}</span>
+              <span class="mt-forja-nome">${m.titulo}</span>
+              <span class="mt-forja-acao">${m.no_inventario ? '✓' : '+'}</span>
+            </button>`).join('')}
+        </div>
+      </div>`;
+  },
+
+  async _forjar(codigo, btn) {
+    btn.disabled = true;
+    try {
+      const r = await API.materiais.forjar(codigo);
+      if (typeof SFX !== 'undefined') SFX.play('carimbo');
+      SoloDialog?.toast?.(
+        r.ja_possui ? r.detalhe : `⟁ ${r.titulo} forjado no seu inventário`,
+        r.ja_possui ? 'info' : 'success');
+      if (!r.ja_possui) await this.carregar();
+      else btn.disabled = false;
+    } catch (err) {
+      SoloDialog?.toast?.(err.message || String(err), 'error');
+      btn.disabled = false;
+    }
   },
 
   _cardMaterial(m, enviavel) {
@@ -165,6 +210,9 @@ const Materiais = {
         }
         this._atualizarBotao();
       }));
+
+    document.querySelectorAll('[data-mt-forjar]').forEach(b =>
+      b.addEventListener('click', () => this._forjar(b.dataset.mtForjar, b)));
 
     document.getElementById('mt-btn')?.addEventListener('click', () => this._enviar());
   },

@@ -95,8 +95,20 @@ def inventario(
             item["veio_de"] = de.nome if de else None
         (enviaveis if q.transferivel else presos).append(item)
 
+    # O Arquiteto forja o que quiser: devolvemos o que existe para circular,
+    # marcando o que já está no inventário dele.
+    forjaveis = []
+    if _eh_arquiteto(usuario):
+        tenho = {m["codigo"] for m in enviaveis}
+        forjaveis = [{**_material(q), "no_inventario": q.codigo in tenho}
+                     for q in db.query(Conquista)
+                                .filter(Conquista.transferivel == True)
+                                .order_by(Conquista.titulo.asc()).all()]
+
     return {"enviaveis": enviaveis, "presos": presos,
-            "limite_por_envio": LIMITE_POR_ENVIO}
+            "limite_por_envio": LIMITE_POR_ENVIO,
+            "pode_forjar": _eh_arquiteto(usuario),
+            "forjaveis": forjaveis}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -177,9 +189,22 @@ def enviar(
                    .filter(ConquistaUsuario.usuario_id == usuario.id,
                            ConquistaUsuario.conquista_id == q.id).first())
         if not posse:
-            recusados.append({"codigo": codigo, "titulo": q.titulo,
-                              "motivo": "você não possui este material"})
-            continue
+            # Privilégio do Arquiteto: ele forja o material na hora do envio.
+            # Não precisa estocar antes — se o emblema existe e circula, ele
+            # pode criar quantos quiser e mandar para quem quiser.
+            if _eh_arquiteto(usuario):
+                posse = ConquistaUsuario(
+                    usuario_id      = usuario.id,
+                    conquista_id    = q.id,
+                    desbloqueada_em = datetime.utcnow(),
+                    celebrada       = True,      # forja não se celebra
+                )
+                db.add(posse)
+                db.flush()
+            else:
+                recusados.append({"codigo": codigo, "titulo": q.titulo,
+                                  "motivo": "você não possui este material"})
+                continue
 
         ja_tem = (db.query(ConquistaUsuario)
                     .filter(ConquistaUsuario.usuario_id == alvo.id,
@@ -219,6 +244,54 @@ def enviar(
 
     return {"ok": True, "para": {"id": alvo.id, "nome": alvo.nome, "login": alvo.login},
             "enviados": enviados, "recusados": recusados}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# FORJA — privilégio do Arquiteto
+# ══════════════════════════════════════════════════════════════════════════════
+class ForjaPayload(BaseModel):
+    codigo: str
+
+
+@router.post("/forjar")
+def forjar(
+    payload: ForjaPayload,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_atual),
+):
+    """
+    O Arquiteto cria uma cópia do material no próprio inventário.
+
+    Se o emblema existe e circula, ele pode gerar quantos quiser — a cada
+    envio o material sai das mãos dele e a forja repõe. O bônus de XP NÃO é
+    creditado: material forjado é matéria-prima para presentear, não conquista.
+    """
+    if not _eh_arquiteto(usuario):
+        raise HTTPException(403, "Somente o Arquiteto pode forjar materiais")
+
+    q = db.query(Conquista).filter(Conquista.codigo == payload.codigo).first()
+    if not q:
+        raise HTTPException(404, "Material não encontrado")
+    if not q.transferivel:
+        raise HTTPException(400,
+            "Este emblema não circula — libere-o no Catálogo antes de forjar")
+
+    ja = (db.query(ConquistaUsuario)
+            .filter(ConquistaUsuario.usuario_id == usuario.id,
+                    ConquistaUsuario.conquista_id == q.id).first())
+    if ja:
+        return {"ok": True, "ja_possui": True, "codigo": q.codigo,
+                "titulo": q.titulo,
+                "detalhe": "O material já está no seu inventário — envie-o para forjar outro"}
+
+    db.add(ConquistaUsuario(
+        usuario_id      = usuario.id,
+        conquista_id    = q.id,
+        desbloqueada_em = datetime.utcnow(),
+        celebrada       = True,      # forja do Arquiteto não dispara cerimônia
+    ))
+    db.commit()
+    return {"ok": True, "ja_possui": False, "codigo": q.codigo, "titulo": q.titulo}
 
 
 # ══════════════════════════════════════════════════════════════════════════════

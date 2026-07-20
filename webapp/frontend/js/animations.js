@@ -289,18 +289,54 @@ const ConquistaFX = {
     this._reduzido ? this._versaoCalma(c) : this._cerimonia(c);
   },
 
-  /* Insígnias com arte própria — desenhadas no arquiteto-console.js.
-     Quando a conquista tem uma, ela substitui a medalha padrão em TODOS
-     os lugares: cerimônia, selo lateral, carimbo e grade do perfil. */
+  /* ── Registro de insígnias com arte própria ──────────────────────────
+     Cada badge desenhada à mão se inscreve aqui uma única vez e passa a
+     valer em TODOS os lugares: cerimônia, selo lateral, carimbo, grade do
+     perfil, Materiais e catálogo. Badges novas só precisam chamar
+     ConquistaFX.registrarInsignia('codigo', tam => svg) — nada mais. */
+  _insignias: {
+    // Ponte de compatibilidade: as artes moram no arquiteto-console.js e
+    // se registram sozinhas ao carregar. Este mapa é o plano B caso a
+    // ordem dos scripts mude.
+    jh3ffth:       tam => window.Jh3ffthFX?._svgMedalhaArquiteto?.(tam),
+    solo:          tam => window.SoloFX?._svgMedalhaSolo?.(tam),
+    dominio_forja: tam => window.ForjaFX?._svgMedalhaForja?.(tam),
+    diana:         tam => window.DianaFX?._svgMedalhaDiana?.(tam),
+  },
+
+  registrarInsignia(codigo, desenhar) {
+    if (codigo && typeof desenhar === 'function') this._insignias[codigo] = desenhar;
+  },
+
+  /* ── IDs únicos por instância ────────────────────────────────────────
+     ARMADILHA: os SVGs trazem <defs> com ids fixos (soloUV, cqOuro...).
+     Com duas medalhas na mesma página os ids colidem e o navegador resolve
+     url(#id) para a PRIMEIRA ocorrência — que pode estar num container
+     oculto. O resultado é a medalha sair sem pintura: invisível.
+     Aqui cada instância ganha um sufixo próprio e o problema deixa de
+     existir para qualquer badge, inclusive as que ainda serão criadas. */
+  _seqSvg: 0,
+  _idsUnicos(svg) {
+    if (!svg || typeof svg !== 'string') return svg;
+    const selo = `i${++this._seqSvg}`;
+    const ids = new Set();
+    svg.replace(/\sid="([^"]+)"/g, (_, id) => { ids.add(id); return ''; });
+    if (!ids.size) return svg;
+    ids.forEach(id => {
+      const esc = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      svg = svg.replace(new RegExp(`\\sid="${esc}"`, 'g'), ` id="${id}-${selo}"`)
+               .replace(new RegExp(`url\\(#${esc}\\)`, 'g'), `url(#${id}-${selo})`)
+               .replace(new RegExp(`href="#${esc}"`, 'g'), `href="#${id}-${selo}"`);
+    });
+    return svg;
+  },
+
+  /* Arte própria da conquista, quando existe. Substitui a medalha padrão. */
   _insigniaCustom(codigo, tam) {
-    const mapa = {
-      jh3ffth:       () => window.Jh3ffthFX?._svgMedalhaArquiteto?.(tam),
-      solo:          () => window.SoloFX?._svgMedalhaSolo?.(tam),
-      dominio_forja: () => window.ForjaFX?._svgMedalhaForja?.(tam),
-      diana:         () => window.DianaFX?._svgMedalhaDiana?.(tam),
-    };
-    try { return (codigo && mapa[codigo] && mapa[codigo]()) || null; }
-    catch (_) { return null; }
+    try {
+      const desenhar = codigo && this._insignias[codigo];
+      return desenhar ? (this._idsUnicos(desenhar(tam)) || null) : null;
+    } catch (_) { return null; }
   },
 
   /* Medalha em miniatura — para os selos permanentes (quadro/perfil) */
@@ -310,7 +346,7 @@ const ConquistaFX = {
       return `<span class="cq-medalhinha" style="width:${tamanho}px;height:${tamanho}px">${custom}</span>`;
     }
     return `<span class="cq-medalhinha" style="width:${tamanho}px;height:${tamanho}px">
-      ${this._svgMedalha(tamanho)}
+      ${this._idsUnicos(this._svgMedalha(tamanho))}
       <span class="cq-medalhinha-ico" style="font-size:${Math.round(tamanho * 0.3)}px">${c.icone || '🏆'}</span>
     </span>`;
   },

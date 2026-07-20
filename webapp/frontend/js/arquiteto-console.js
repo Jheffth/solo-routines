@@ -856,15 +856,10 @@ const ArquitetoConsole = {
     }
   },
 
-  /* Insígnias com arte própria (mesmo mapa usado no perfil) */
+  /* Insígnias com arte própria — fonte única: o registro do ConquistaFX.
+     Não duplicar o mapa aqui: badge nova se registra num lugar só. */
   _insignia(codigo, tam = 44) {
-    const mapa = {
-      jh3ffth:       () => window.Jh3ffthFX?._svgMedalhaArquiteto?.(tam),
-      solo:          () => window.SoloFX?._svgMedalhaSolo?.(tam),
-      dominio_forja: () => window.ForjaFX?._svgMedalhaForja?.(tam),
-      diana:         () => window.DianaFX?._svgMedalhaDiana?.(tam),
-    };
-    try { return (mapa[codigo] && mapa[codigo]()) || null; }
+    try { return window.ConquistaFX?._insigniaCustom?.(codigo, tam) || null; }
     catch (_) { return null; }
   },
 
@@ -2033,3 +2028,21 @@ window.Jh3ffthFX = Jh3ffthFX;
 window.SoloFX = SoloFX;
 window.ForjaFX = ForjaFX;
 window.DianaFX = DianaFX;
+
+/* ── Inscrição das artes no renderizador único ────────────────────────────
+   Toda badge desenhada à mão se declara aqui, UMA vez. A partir deste
+   ponto ela aparece sozinha na cerimônia, no selo, no carimbo, no perfil,
+   no relicário, na Casa de Trocas e no catálogo — sem tocar em mais nada.
+
+   Para acrescentar uma badge nova no futuro, basta uma linha:
+       ConquistaFX.registrarInsignia('codigo_da_badge', tam => SuaFX._svg(tam));
+   Se o código não estiver aqui, ela cai na medalha premium padrão do
+   Sistema (nunca no emoji). */
+(function registrarInsignias() {
+  const reg = window.ConquistaFX?.registrarInsignia?.bind(window.ConquistaFX);
+  if (!reg) return;
+  reg('jh3ffth',       tam => Jh3ffthFX._svgMedalhaArquiteto(tam));
+  reg('solo',          tam => SoloFX._svgMedalhaSolo(tam));
+  reg('dominio_forja', tam => ForjaFX._svgMedalhaForja(tam));
+  reg('diana',         tam => DianaFX._svgMedalhaDiana(tam));
+})();

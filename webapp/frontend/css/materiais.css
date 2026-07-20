@@ -213,6 +213,52 @@
   font-style: italic; margin-top: .18rem; opacity: .85;
 }
 
+/* ── Forja do Arquiteto ────────────────────────────────── */
+.mt-forja {
+  background: linear-gradient(155deg, rgba(251,191,36,.07), rgba(0,0,0,.28));
+  border-color: rgba(251,191,36,.28);
+}
+.mt-lbl-arq {
+  color: var(--gold-bright);
+  text-shadow: 0 0 10px rgba(251,191,36,.45);
+}
+.mt-forja-nota {
+  font-family: var(--font-section); font-size: .7rem; line-height: 1.6;
+  color: var(--text-muted); margin: -.4rem 0 .8rem;
+}
+.mt-forja-grade { display: flex; flex-direction: column; gap: .4rem; }
+.mt-forja-item {
+  display: flex; align-items: center; gap: .6rem; width: 100%;
+  padding: .45rem .6rem; border-radius: 11px; cursor: pointer; text-align: left;
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(148,163,184,.14);
+  color: var(--text-primary);
+  transition: all .2s;
+}
+.mt-forja-item:hover:not(:disabled) {
+  border-color: var(--gold-bright);
+  background: rgba(251,191,36,.1);
+  transform: translateX(3px);
+}
+.mt-forja-item:disabled { opacity: .5; cursor: wait; }
+.mt-forja-med { flex-shrink: 0; display: flex; align-items: center; }
+.mt-forja-nome {
+  flex: 1; min-width: 0;
+  font-family: var(--font-section); font-size: .78rem; font-weight: 700;
+}
+.mt-forja-acao {
+  flex-shrink: 0;
+  width: 22px; height: 22px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .8rem; font-weight: 700;
+  color: #0b0b12; background: var(--gold-bright);
+  box-shadow: 0 0 10px rgba(251,191,36,.5);
+}
+.mt-forja-item.tem .mt-forja-acao {
+  color: #34d399; background: rgba(52,211,153,.15);
+  box-shadow: none; border: 1px solid rgba(52,211,153,.4);
+}
+
 /* ── Estados vazios ────────────────────────────────────── */
 .mt-vazio {
   text-align: center; padding: 2.5rem 1rem;
