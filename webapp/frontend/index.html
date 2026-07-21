@@ -24,6 +24,7 @@
   <link rel="stylesheet" href="css/materiais.css">
   <link rel="stylesheet" href="css/sala-poderes.css">
   <link rel="stylesheet" href="css/badges.css">
+  <link rel="stylesheet" href="css/hunter-publico.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -56,9 +57,45 @@
     <div id="login-screen">
       <div class="login-mist"></div>
       <div class="login-card">
-        <div class="login-logo-wrap">
-          <div class="login-logo-icon"><span>&#9876;&#65039;</span></div>
-        </div>
+          <div class="login-logo-icon">
+            <svg viewBox="0 0 120 120" width="72" height="72" xmlns="http://www.w3.org/2000/svg" style="overflow:visible;filter:drop-shadow(0 0 18px rgba(168,85,247,0.8)) drop-shadow(0 0 40px rgba(168,85,247,0.4))">
+              <defs>
+                <radialGradient id="lg-gem-grad" cx="40%" cy="30%">
+                  <stop offset="0%" stop-color="#e9d5ff"/>
+                  <stop offset="35%" stop-color="#a855f7"/>
+                  <stop offset="100%" stop-color="#3b0764"/>
+                </radialGradient>
+                <radialGradient id="lg-star-grad" cx="50%" cy="50%">
+                  <stop offset="0%" stop-color="#7c3aed"/>
+                  <stop offset="100%" stop-color="#1e0a3c"/>
+                </radialGradient>
+                <filter id="lg-glow">
+                  <feGaussianBlur stdDeviation="3" result="blur"/>
+                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+              </defs>
+
+              <!-- Estrela gótica de 8 pontas (a insignia do Sistema) -->
+              <g style="transform-origin:60px 60px; animation: cq-anel-girar 24s linear infinite reverse;">
+                <path d="M60 8 L67 42 L96 20 L74 49 L108 56 L74 63 L96 92 L67 70 L60 104 L53 70 L24 92 L46 63 L12 56 L46 49 L24 20 L53 42 Z"
+                  fill="url(#lg-star-grad)" stroke="#7c3aed" stroke-width="1.5" opacity="0.7"/>
+              </g>
+
+              <!-- Anel intermediário -->
+              <circle cx="60" cy="60" r="32" fill="none" stroke="#a855f7" stroke-width="1.5"
+                stroke-dasharray="6 10" opacity="0.6"
+                style="transform-origin:60px 60px; animation: cq-anel-girar 12s linear infinite;"/>
+
+              <!-- Gema central -->
+              <circle cx="60" cy="60" r="22" fill="url(#lg-gem-grad)" filter="url(#lg-glow)"/>
+              <!-- Faceta de vidro -->
+              <path d="M60 38 A22 22 0 0 1 82 60 L60 60 Z" fill="rgba(255,255,255,0.25)"/>
+              <!-- Letra S gravada na gema -->
+              <text x="60" y="67" text-anchor="middle"
+                font-family="'Cinzel','Georgia',serif" font-size="22" font-weight="900"
+                fill="#ffffff" filter="url(#lg-glow)" letter-spacing="1">S</text>
+            </svg>
+          </div>
         <h1 class="login-title">Solo Routines</h1>
         <p class="login-subtitle">Sistema de Missoes</p>
         <p class="login-desc">Prove seu valor. Evolua todos os dias.<br>O sistema te observa, Hunter.</p>
@@ -253,9 +290,9 @@
             </div>
             <div class="sys-plate-actions">
               <span id="sys-dungeon-chip" class="sys-chip-dungeon" style="display:none"></span>
-              <button class="sys-btn-missao" id="btn-nova-missao">
-                <span>+ Nova Missão</span>
-              </button>
+              <!-- A busca mora aqui: o "+ Nova Missão" saiu porque já existe
+                   em Rotinas, Tarefas, Dungeons e no botão flutuante. -->
+              <div class="bh-wrap" id="busca-hunters"></div>
             </div>
           </div>
           <!-- ═══ JANELA DE STATUS DO HUNTER ═══ -->
@@ -749,6 +786,11 @@
           </div>
         </div>
 
+        <!-- PAGE: HUNTER (perfil público) -->
+        <div class="page hidden" id="page-hunter">
+          <div id="hunter-publico-conteudo"></div>
+        </div>
+
         <!-- PAGE: MATERIAIS (Casa de Trocas) -->
         <div class="page hidden" id="page-materiais">
           <div class="page-header">
@@ -1003,6 +1045,8 @@
   <script src="js/pages/painel-admin.js"></script>
   <script src="js/pages/materiais.js"></script>
   <script src="js/pages/sala-poderes.js"></script>
+  <script src="js/pages/hunter-publico.js"></script>
+  <script src="js/busca-hunters.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
