@@ -48,6 +48,29 @@ const HunterPublico = {
     return { txt: `visto há ${m} ${m === 1 ? 'mês' : 'meses'}`, classe: 'sumido' };
   },
 
+  /* A aura falha em SILÊNCIO se auras.js não tiver carregado — e silêncio
+     é o pior jeito de errar: a tela fica igual e ninguém sabe por quê.
+     Aqui o motivo vai para o console. */
+  _aura(h) {
+    if (!h.arquiteto) return '';
+    if (!window.Auras) {
+      console.warn('[AURA] auras.js não carregou. Confira se o arquivo está sendo '
+        + 'servido em js/auras.js (aba Network) e reinicie o backend se ele '
+        + 'serve o frontend.');
+      return '';
+    }
+    if (!Auras.existe('arquiteto')) {
+      console.warn('[AURA] auras.js carregou, mas a aura "arquiteto" não se '
+        + 'registrou. Registradas:', Object.keys(Auras._registro));
+      return '';
+    }
+    // bloco() já vem com posicionamento e animação embutidos: não depende
+    // de css/auras.css ter chegado ao navegador.
+    const bloco = Auras.bloco('arquiteto', 212);
+    if (!bloco) { console.warn('[AURA] o desenho voltou vazio.'); return ''; }
+    return bloco;
+  },
+
   _RARIDADE: {
     lendaria: { nome: 'Lendária', cor: '#fbbf24' },
     epica:    { nome: 'Épica',    cor: '#a855f7' },
@@ -113,6 +136,7 @@ const HunterPublico = {
 
       <div class="hp-cartao ${h.arquiteto ? 'arquiteto' : ''}">
         <div class="hp-hex-wrap">
+          ${this._aura(h)}
           <div class="hp-hex-ring"></div>
           <div class="hp-hex">
             ${h.avatar_url ? `<img src="${h.avatar_url}" alt="${h.nome}">` : '🛡️'}
@@ -173,10 +197,15 @@ const HunterPublico = {
           : this._vazioSecao(h, 'presentes')}
       </div>
 
-      ${!h.eu_mesmo ? `
+      ${h.eu_mesmo ? `
+        <div class="hp-espelho">
+          👁 É assim que os outros hunters veem você.
+          <button class="hp-espelho-link" id="hp-editar">Editar minha ficha</button>
+        </div>`
+      : `
         <div class="hp-acoes">
           <button class="hp-acao" id="hp-enviar">💠 Enviar material para ${h.nome}</button>
-        </div>` : ''}`;
+        </div>`}`;
 
     // A busca é remontada a cada perfil (o innerHTML acima a apagou).
     // 'voltarPara' aponta para o dashboard: navegar de perfil em perfil
@@ -185,10 +214,14 @@ const HunterPublico = {
       placeholder: 'Procurar outro hunter...', voltarPara: 'dashboard',
     });
 
+    window.BadgeCard?.ligarTodos('#hunter-publico-conteudo [data-bc]', reliquias);
+
     document.getElementById('hp-btn-voltar')
       ?.addEventListener('click', () => App.navigate(this._voltarPara));
     document.getElementById('hp-enviar')
       ?.addEventListener('click', () => this._irParaTrocas(h.login));
+    document.getElementById('hp-editar')
+      ?.addEventListener('click', () => App.navigate('perfil'));
   },
 
   /* ── Feitos do Sistema ────────────────────────────────────────────
@@ -233,7 +266,13 @@ const HunterPublico = {
   _reliquiaMaior(reliquias) {
     if (!reliquias.length) return '';
     const PESO = { lendaria: 4, epica: 3, rara: 2, comum: 1 };
-    const maior = [...reliquias].sort((a, b) =>
+    // Se o hunter fixou um altar, o destaque sai de lá: a escolha do dono
+    // vale mais que o cálculo de raridade.
+    const fixadas = this._dados.fixadas || [];
+    const pool = fixadas.length
+      ? reliquias.filter(r => fixadas.includes(r.codigo))
+      : reliquias;
+    const maior = [...(pool.length ? pool : reliquias)].sort((a, b) =>
       (PESO[b.raridade] || 1) - (PESO[a.raridade] || 1) ||
       (b.em || '').localeCompare(a.em || ''))[0];
 
@@ -274,8 +313,7 @@ const HunterPublico = {
     // 2.500 XP ficava no mesmo quadradinho cinza de uma Comum de 50.
     return `
       <div class="hp-reliquia rar-${r.raridade || 'comum'}"
-           style="--rar-cor:${rar.cor}"
-           title="${r.titulo}${r.descricao ? ' — ' + r.descricao : ''}">
+           style="--rar-cor:${rar.cor}" data-bc="${r.codigo}">
         <div class="hp-reliquia-med">${this._medalha(r)}</div>
         <div class="hp-reliquia-nome">${r.titulo}</div>
         <div class="hp-reliquia-rar">${rar.nome}</div>

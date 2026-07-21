@@ -101,21 +101,38 @@ const Dashboard = {
     const cont = document.getElementById('dash-relicario');
     if (!cont) return;
     try {
-      const lista = await API.conquistas.listar();
-      const desb = (lista || []).filter(c => c.desbloqueada).sort((a, b) => {
+      const [lista, altar] = await Promise.all([
+        API.conquistas.listar(),
+        API.perfil.reliquias().catch(() => ({ fixadas: [] })),
+      ]);
+      const todas = (lista || []).filter(c => c.desbloqueada).sort((a, b) => {
         if (a.desbloqueada_em && b.desbloqueada_em) return new Date(b.desbloqueada_em) - new Date(a.desbloqueada_em);
         return 0;
-      }).slice(0, 8);   // cabe a coleção completa de comemorativas
+      });
+
+      // Cinco, e só cinco: a sexta quebrava a linha e ficava órfã.
+      // O hunter escolhe quais; sem escolha, as mais recentes.
+      const fixadas = (altar.fixadas || [])
+        .map(cod => todas.find(c => c.codigo === cod)).filter(Boolean);
+      const desb = (fixadas.length ? fixadas : todas).slice(0, 5);
       if (!desb.length) {
         cont.innerHTML = `<span class="hunter-relicario-lbl">Nenhuma relíquia ainda — cumpra missões</span>`;
         return;
       }
       const medalha = c => (typeof ConquistaFX !== 'undefined' && ConquistaFX.miniMedalha)
         ? ConquistaFX.miniMedalha(c, 34) : (c.icone || '🏆');
-      cont.innerHTML = `<span class="hunter-relicario-lbl">Relíquias</span>` +
-        desb.map(c => `<span class="hunter-reliquia" title="${c.titulo}${c.descricao ? ' — ' + c.descricao : ''}">${medalha(c)}</span>`).join('');
+      // Sem `title`: quem conta a história da relíquia agora é o
+      // BadgeCard, não a caixinha cinza do sistema operacional.
+      cont.innerHTML = `<span class="hunter-relicario-lbl">Relíquias</span>`
+        + desb.map(c => `<span class="hunter-reliquia" data-bc="${c.codigo}">${medalha(c)}</span>`).join('')
+        + (todas.length > 1
+            ? `<button class="hunter-relicario-editar" id="dash-altar"
+                 title="Escolher quais relíquias exibir">✎</button>` : '');
       cont.querySelectorAll('.hunter-reliquia').forEach(el =>
         el.addEventListener('click', () => window.App && App.navigate('perfil')));
+      document.getElementById('dash-altar')?.addEventListener('click', () =>
+        window.AltarReliquias?.abrir(() => this._renderRelicario()));
+      window.BadgeCard?.ligarTodos('#dash-relicario [data-bc]', desb);
     } catch (_) { /* silencioso */ }
   },
 
@@ -285,9 +302,16 @@ const Dashboard = {
       const sb = document.getElementById('sidebar-avatar');
       if (sb) sb.innerHTML = `<img src="${dados.avatar_url}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
     }
-    // Aura de chamas do Arquiteto no hexágono
+    // Aura do Arquiteto — a SVG simétrica, a mesma da vitrine pública.
+    // A antiga `chamas-arquiteto` era um borrão de CSS assimétrico e
+    // ficou só como resquício; aqui ela é substituída, não somada.
     if (dados.nivel_acesso === 'Arquiteto') {
-      document.querySelector('.hunter-hex-wrap')?.classList.add('chamas-arquiteto');
+      const hex = document.querySelector('#hunter-card .hunter-hex-wrap');
+      if (hex && window.Auras?.existe('arquiteto')) {
+        hex.classList.remove('chamas-arquiteto');
+        hex.querySelector('.aura-wrap')?.remove();
+        hex.insertAdjacentHTML('afterbegin', Auras.bloco('arquiteto', 168));
+      }
     }
 
     // Botão Editar Perfil

@@ -642,32 +642,7 @@
   max-width: 100% !important;
 }
 
-/* ─── FAB ─── */
-#btn-fab {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--purple-main), #9f46f7);
-  border: none;
-  color: white;
-  font-size: 1.8rem;
-  font-weight: 300;
-  cursor: pointer;
-  z-index: 500;
-  box-shadow: 0 6px 20px rgba(124,58,237,.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all .25s ease;
-  line-height: 1;
-}
-#btn-fab:hover {
-  transform: scale(1.1) rotate(45deg);
-  box-shadow: 0 8px 30px rgba(124,58,237,.7);
-}
+/* O FAB foi removido — ver comentário no index.html */
 
 /* ─── HEATMAP ─── */
 .heatmap-wrap {
@@ -878,7 +853,6 @@
   .grid-4 { grid-template-columns: 1fr 1fr; }
   .tabs { width: 100%; overflow-x: auto; }
   .page-header { flex-direction: column; align-items: flex-start; }
-  #btn-fab { bottom: 1.25rem; right: 1.25rem; }
   .hunter-stats-row { gap: .75rem; }
 }
 @media (max-width: 400px) {

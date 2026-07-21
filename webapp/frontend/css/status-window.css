@@ -299,6 +299,27 @@
 .hunter-xp-val {
   font-family: 'Orbitron', monospace; font-size: .74rem;
   color: var(--gold-bright); font-variant-numeric: tabular-nums;
+  /* O valor nunca quebra: sem isto o "XP" caía órfão na linha de baixo. */
+  white-space: nowrap; flex-shrink: 0;
+}
+
+/* Em tela estreita o rótulo longo ocupava duas linhas e empurrava tudo.
+   Encurta para caber numa só. */
+@media (max-width: 560px) {
+  .hunter-xp-top { gap: .6rem; }
+  .hunter-xp-lbl {
+    font-size: .58rem; letter-spacing: .1em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .hunter-xp-lbl::after { content: ''; }
+}
+@media (max-width: 420px) {
+  /* Espaço de verdade não existe: troca o texto por um rótulo curto. */
+  .hunter-xp-lbl { font-size: 0; }
+  .hunter-xp-lbl::after {
+    content: 'Próximo nível';
+    font-size: .6rem; letter-spacing: .1em;
+  }
 }
 .hunter-xp-track {
   position: relative;

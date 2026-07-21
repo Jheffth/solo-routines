@@ -1,0 +1,64 @@
+/* ============================================================
+   auras.css — movimento das auras
+
+   Princípio: a aura RESPIRA, não gira.
+
+   Escala a partir do centro e variação de opacidade preservam a
+   simetria em qualquer quadro da animação. Rotação de camadas em
+   sentidos opostos, não: cada uma leva o próprio eixo de espelho
+   junto, os eixos deixam de coincidir e a figura desequilibra —
+   medido em 27,6 de desvio contra 0,03 parada.
+
+   As três camadas respiram em ritmos e fases diferentes. É isso
+   que dá vida sem quebrar o eixo.
+   ============================================================ */
+
+.aura-wrap {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 0;
+  line-height: 0;
+}
+/* `max-width: none` anula a regra global `img, svg { max-width: 100% }`
+   do design-system.css, que colapsava a aura para largura zero. */
+.aura-svg { display: block; overflow: visible; max-width: none; }
+
+/* Todas as origens no centro do viewBox (300 × 300) */
+.aura-halo, .aura-arder, .aura-arder2, .aura-brasas {
+  transform-origin: 150px 150px;
+}
+
+.aura-arder  { animation: aura-respirar-a 3.4s ease-in-out infinite; }
+.aura-arder2 { animation: aura-respirar-b 2.3s ease-in-out infinite; }
+.aura-brasas { animation: aura-cintilar   1.7s ease-in-out infinite; }
+.aura-halo   { animation: aura-halo       5s   ease-in-out infinite; }
+
+@keyframes aura-respirar-a {
+  0%, 100% { transform: scale(1);     opacity: .92; }
+  50%      { transform: scale(1.075); opacity: 1;   }
+}
+@keyframes aura-respirar-b {
+  0%, 100% { transform: scale(1.05);  opacity: .78; }
+  50%      { transform: scale(.955);  opacity: 1;   }
+}
+@keyframes aura-cintilar {
+  0%, 100% { transform: scale(1);     opacity: .35; }
+  50%      { transform: scale(1.11);  opacity: .8;  }
+}
+@keyframes aura-halo {
+  0%, 100% { transform: scale(1);     opacity: .7;  }
+  50%      { transform: scale(1.09);  opacity: 1;   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aura-halo, .aura-arder, .aura-arder2, .aura-brasas { animation: none; }
+}
+
+/* A aura fica ATRÁS do hexágono.
+   NÃO declarar `position` aqui: o anel e o selo de rank já são
+   `absolute` no hunter-publico.css, e reescrevê-los como `relative`
+   jogava os dois de volta para o fluxo — o selo do rank saía do canto
+   do hexágono e ia flutuar ao lado do avatar. Só o z-index. */
+.hp-hex-wrap > .aura-wrap { z-index: 0; }

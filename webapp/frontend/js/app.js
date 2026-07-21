@@ -80,6 +80,12 @@ const App = {
     //     busca de hunters. O botão flutuante e os de cada página seguem
     //     ligados pelo lancador.js, que trata #btn-fab e #btn-nova-rotina.)
 
+    // 7b. Atalho da ficha de edição para a vitrine pública
+    document.getElementById('btn-ver-vitrine')?.addEventListener('click', () => {
+      const login = this._usuario?.login || Auth._usuario?.login;
+      if (login) window.HunterPublico?.abrir(login, 'perfil');
+    });
+
     // 8. Bind link-ir-registro e link-ir-login
     document.getElementById('link-ir-registro')?.addEventListener('click', (e) => {
       e.preventDefault();
@@ -268,9 +274,9 @@ const App = {
       if (usuario.nivel_acesso === 'Arquiteto') {
         rankEl.innerHTML = `<span style="color:#fbbf24;font-weight:700;text-shadow:0 0 8px rgba(251,191,36,.6)">★ Arquiteto ★</span>`;
         if (avEl) { avEl.style.border = '2px solid #fbbf24'; avEl.style.boxShadow = '0 0 16px rgba(251,191,36,.5)'; }
-        // Aura de chamas vivas do Arquiteto
-        avEl?.classList.add('chamas-arquiteto');
-        document.getElementById('dash-avatar')?.classList.add('chamas-arquiteto');
+        // O avatar da sidebar é pequeno demais para a aura: ali a moldura
+        // dourada já basta. A aura entra nos hexágonos grandes (dashboard,
+        // perfil e vitrine), aplicada por cada tela.
       } else {
         rankEl.textContent = `${usuario.classe || 'E-Rank'} — Nv.${usuario.nivel_atual || 1}`;
       }

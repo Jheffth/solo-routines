@@ -139,9 +139,11 @@
 .hp-voltar:hover { color: #fff; border-color: var(--purple-glow); transform: translateX(-3px); }
 
 .hp-cartao {
-  position: relative; overflow: hidden;
+  /* Sem `overflow: hidden`: ele recortava a aura do Arquiteto, que é
+     maior que o hexágono. O border-radius já contém o fundo sozinho. */
+  position: relative;
   display: flex; align-items: center; gap: 1.6rem; flex-wrap: wrap;
-  padding: 1.6rem 1.8rem; border-radius: 18px;
+  padding: 1.9rem 1.8rem; border-radius: 18px;
   background:
     radial-gradient(120% 160% at 8% 20%,
       color-mix(in srgb, var(--rank-cor) 18%, transparent), transparent 60%),
@@ -164,7 +166,11 @@
   display: flex; align-items: center; justify-content: center;
 }
 .hp-hex {
-  width: 112px; height: 112px; position: relative; z-index: 2;
+  /* flex-shrink:0 é defesa: se a aura entrar como item de flex (por
+     exemplo se o CSS dela nao chegar), o hexagono nao pode ser
+     esmagado junto. */
+  width: 112px; height: 112px; flex-shrink: 0;
+  position: relative; z-index: 2;
   display: flex; align-items: center; justify-content: center;
   font-size: 2.8rem; overflow: hidden;
   background: linear-gradient(150deg, var(--purple-main), var(--blue-mana));
@@ -420,6 +426,35 @@
   transition: all .2s;
 }
 .hp-acao:hover { transform: translateY(-2px); box-shadow: 0 0 30px rgba(168,85,247,.55); }
+.hp-acao-mini { font-size: .74rem; padding: .5rem .9rem; white-space: nowrap; }
+
+/* Marca "você" na lista de busca */
+.bh-eu {
+  font-family: var(--font-section); font-size: .52rem; font-weight: 700;
+  font-style: normal; letter-spacing: .12em; text-transform: uppercase;
+  padding: .1rem .4rem; margin-left: .35rem; border-radius: 100px;
+  color: #7dd3fc; border: 1px solid rgba(56,189,248,.4); background: rgba(56,189,248,.1);
+}
+
+/* Quando você olha a própria vitrine */
+.hp-espelho {
+  display: flex; align-items: center; gap: .8rem; flex-wrap: wrap;
+  padding: .85rem 1.1rem; border-radius: 12px;
+  font-family: var(--font-section); font-size: .78rem;
+  color: var(--text-secondary);
+  background: rgba(56,189,248,.06);
+  border: 1px dashed rgba(56,189,248,.28);
+}
+.hp-espelho-link {
+  margin-left: auto;
+  font-family: var(--font-section); font-size: .74rem; font-weight: 700;
+  padding: .4rem .85rem; border-radius: 9px; cursor: pointer;
+  color: #7dd3fc;
+  background: rgba(56,189,248,.1);
+  border: 1px solid rgba(56,189,248,.4);
+  transition: all .2s;
+}
+.hp-espelho-link:hover { background: rgba(56,189,248,.24); color: #fff; }
 
 .hp-vazio {
   text-align: center; padding: 3rem 1rem;

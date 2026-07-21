@@ -287,6 +287,8 @@ class API {
   /* ── Perfil ──────────────────────────────────────────── */
   static perfil = {
     get: async () => API.get('/perfil/'),
+    reliquias: async ()          => API.get('/perfil/reliquias'),
+    definirReliquias: async (c)  => API.put('/perfil/reliquias', { codigos: c }),
     uploadAvatar: async (formData) => {
       const res = await fetch(API.BASE + '/perfil/avatar', {
         method: 'POST',

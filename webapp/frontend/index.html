@@ -25,6 +25,9 @@
   <link rel="stylesheet" href="css/sala-poderes.css">
   <link rel="stylesheet" href="css/badges.css">
   <link rel="stylesheet" href="css/hunter-publico.css">
+  <link rel="stylesheet" href="css/auras.css">
+  <link rel="stylesheet" href="css/badge-card.css">
+  <link rel="stylesheet" href="css/altar-reliquias.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -693,6 +696,13 @@
               </div>
               <div class="sys-plate-line"></div>
             </div>
+            <div class="sys-plate-actions">
+              <!-- Esta ficha é a de edição. A vitrine que os outros veem é
+                   outra tela — sem este atalho, não havia como conferi-la. -->
+              <button class="hp-acao hp-acao-mini" id="btn-ver-vitrine">
+                &#128065; Ver minha vitrine
+              </button>
+            </div>
           </div>
 
           <div id="perfil-content">
@@ -928,7 +938,9 @@
 
       </div>
 
-      <button id="btn-fab" title="Nova Missao" onclick="if(typeof Lancador!=='undefined')Lancador.open()">+</button>
+      <!-- O botão flutuante foi removido: cobria os cristais de status em
+           telas estreitas e duplicava caminhos que já existem em cada
+           página (Nova Rotina, Nova Missão, Forjar Portão). -->
 
     </div>
   </div>
@@ -992,9 +1004,13 @@
   <script src="js/missao-card.js"></script>
   <script src="js/forja-missao.js"></script>
   <script src="js/animations.js"></script>
+  <script src="js/auras.js"></script>
   <script src="js/arquiteto-console.js"></script>
   <!-- Insígnias com arte própria: cada arquivo se registra sozinho -->
   <script src="js/badges/mono-evelynn.js"></script>
+  <script src="js/badges/jh3ffth.js"></script>
+  <script src="js/badge-card.js"></script>
+  <script src="js/altar-reliquias.js"></script>
   <script src="js/charts.js"></script>
   <script src="js/pages/lancador.js"></script>
   <script src="js/pages/dashboard.js"></script>

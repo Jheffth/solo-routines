@@ -141,7 +141,8 @@ const BuscaHunters = {
             <i class="bh-ponto"></i>
           </span>
           <span class="bh-info">
-            <span class="bh-nome">${h.nome}</span>
+            <span class="bh-nome">${h.nome}
+              ${h.eu_mesmo ? '<i class="bh-eu">você</i>' : ''}</span>
             <span class="bh-sub">@${h.login} · ${h.classe || 'E-Rank'} — Nv.${h.nivel_atual || 1}</span>
           </span>
           <span class="bh-seta">→</span>

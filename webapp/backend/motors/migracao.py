@@ -42,6 +42,8 @@ COLUNAS = [
     # Sala de Poderes — a tabela registro_poderes nasce pelo criar_tabelas()
     # Casa de Trocas (Materiais)
     ("conquistas",                "transferivel",        "BOOLEAN NOT NULL DEFAULT 0",  "BOOLEAN NOT NULL DEFAULT FALSE"),
+    # Altar de relíquias escolhidas pelo hunter
+    ("usuarios",                  "reliquias_fixadas",   "TEXT",                        "TEXT"),
 ]
 
 

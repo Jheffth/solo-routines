@@ -52,6 +52,9 @@ class Usuario(Base):
     ativo           = Column(Boolean, default=True)
     criado_em       = Column(DateTime, default=datetime.utcnow)
     ultimo_acesso   = Column(DateTime, nullable=True)
+    # Relíquias do altar: JSON com os códigos que o hunter escolheu exibir
+    # na Janela de Status e no topo da vitrine. Vazio = as mais recentes.
+    reliquias_fixadas = Column(Text, nullable=True)
 
     # Relacionamentos
     rotinas         = relationship("Rotina", back_populates="usuario", lazy="dynamic")

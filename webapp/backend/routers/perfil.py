@@ -4,13 +4,14 @@ Router de Perfil — dados detalhados para gráficos e histórico.
 import os
 import uuid
 import io
+import json
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from datetime import date, timedelta
 from collections import defaultdict
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, field_validator
+from typing import Optional, List
 
 from database import (
     get_db, Usuario, Execucao, Rotina, TarefaDia,
@@ -324,3 +325,79 @@ def perfil_completo(
         "conquistas":        conquistas_lista,
         "resgates_recentes": resgates_lista,
     }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ALTAR DE RELÍQUIAS — o hunter escolhe quais 5 aparecem
+# ══════════════════════════════════════════════════════════════════════════════
+# Antes, a Janela de Status mostrava as mais recentes e quebrava a linha quando
+# passavam de cinco. Além de feio, tirava do hunter a decisão sobre o que exibir
+# — e numa vitrine o que se mostra importa tanto quanto o que se tem.
+LIMITE_ALTAR = 5
+
+
+class AltarPayload(BaseModel):
+    codigos: List[str]
+
+    @field_validator("codigos")
+    @classmethod
+    def _limite(cls, v):
+        v = [c for c in (v or []) if c]
+        if len(v) > LIMITE_ALTAR:
+            raise ValueError(f"O altar comporta no máximo {LIMITE_ALTAR} relíquias")
+        if len(set(v)) != len(v):
+            raise ValueError("Relíquia repetida no altar")
+        return v
+
+
+def ler_altar(usuario: Usuario) -> List[str]:
+    """Lê a lista salva. Nunca explode por JSON corrompido."""
+    try:
+        dados = json.loads(usuario.reliquias_fixadas or "[]")
+        return [c for c in dados if isinstance(c, str)][:LIMITE_ALTAR]
+    except Exception:
+        return []
+
+
+@router.get("/reliquias")
+def reliquias(
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_atual),
+):
+    """Tudo que o hunter possui + o que ele escolheu fixar."""
+    posses = (db.query(ConquistaUsuario, Conquista)
+                .join(Conquista, Conquista.id == ConquistaUsuario.conquista_id)
+                .filter(ConquistaUsuario.usuario_id == usuario.id)
+                .order_by(ConquistaUsuario.desbloqueada_em.desc()).all())
+
+    acervo = [{
+        "codigo": q.codigo, "titulo": q.titulo, "descricao": q.descricao,
+        "icone": q.icone, "cor": q.cor,
+        "xp_bonus": q.xp_bonus or 0, "moedas_bonus": q.moedas_bonus or 0,
+        "de_missao": (q.condicao_tipo or "").lower() != "manual",
+        "desbloqueada_em": cu.desbloqueada_em.isoformat() if cu.desbloqueada_em else None,
+    } for cu, q in posses]
+
+    fixadas = [c for c in ler_altar(usuario) if any(a["codigo"] == c for a in acervo)]
+    return {"acervo": acervo, "fixadas": fixadas, "limite": LIMITE_ALTAR}
+
+
+@router.put("/reliquias")
+def definir_reliquias(
+    payload: AltarPayload,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_atual),
+):
+    """Só entra no altar o que o hunter realmente possui."""
+    if payload.codigos:
+        possui = {q.codigo for q in (
+            db.query(Conquista)
+              .join(ConquistaUsuario, ConquistaUsuario.conquista_id == Conquista.id)
+              .filter(ConquistaUsuario.usuario_id == usuario.id).all())}
+        faltando = [c for c in payload.codigos if c not in possui]
+        if faltando:
+            raise HTTPException(400, f"Você não possui: {', '.join(faltando)}")
+
+    usuario.reliquias_fixadas = json.dumps(payload.codigos)
+    db.commit()
+    return {"ok": True, "fixadas": payload.codigos}

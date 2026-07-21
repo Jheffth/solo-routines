@@ -74,8 +74,10 @@ const Perfil = {
         <div class="hunter-window-body">
 
           <!-- Hexágono de rank (clicável: troca a foto) -->
-          <div class="hunter-hex-wrap ${isArquiteto ? 'chamas-arquiteto' : ''}"
+          <div class="hunter-hex-wrap"
                id="perfil-avatar-click" title="Clique para trocar a foto" style="cursor:pointer">
+            ${isArquiteto && window.Auras?.existe('arquiteto')
+              ? Auras.bloco('arquiteto', 168) : ''}
             <div class="hunter-hex-ring"></div>
             <div class="hunter-hex">${avatarHtml}</div>
             <div class="hunter-hex-rank">${letra}</div>

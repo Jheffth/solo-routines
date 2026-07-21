@@ -19,6 +19,7 @@ Três decisões que sustentam isso:
 
   3. CONTA SUSPENSA NÃO APARECE. Nem na busca, nem por link direto.
 """
+import json
 from datetime import datetime
 from typing import Optional
 
@@ -33,6 +34,15 @@ router = APIRouter(prefix="/hunters", tags=["hunters"])
 
 LIMITE_BUSCA = 8
 MIN_TERMO    = 2
+
+
+def _ler_altar(u: Usuario) -> list:
+    """Relíquias que o hunter fixou. JSON corrompido nunca derruba a vitrine."""
+    try:
+        dados = json.loads(getattr(u, "reliquias_fixadas", None) or "[]")
+        return [c for c in dados if isinstance(c, str)][:5]
+    except Exception:
+        return []
 
 
 def _presenca(ultimo_acesso) -> str:
@@ -84,12 +94,14 @@ def buscar(
     if len(termo) < MIN_TERMO:
         return {"resultados": [], "termo": termo}
 
+    # O próprio hunter APARECE nos resultados. Ele estava excluído aqui, e o
+    # efeito colateral foi tirar dele o único caminho para a própria vitrine:
+    # não dava para ver como os outros o veem.
     padrao = f"{termo}%"
     linhas = (db.query(Usuario.id, Usuario.nome, Usuario.login, Usuario.avatar_url,
                        Usuario.classe, Usuario.titulo, Usuario.nivel_atual,
                        Usuario.ultimo_acesso)
                 .filter(Usuario.ativo == True,
-                        Usuario.id != usuario.id,          # não se procura sozinho
                         or_(Usuario.login.ilike(padrao), Usuario.nome.ilike(padrao)))
                 .order_by(Usuario.nome.asc())
                 .limit(LIMITE_BUSCA).all())
@@ -99,6 +111,7 @@ def buscar(
         "avatar_url": r.avatar_url, "classe": r.classe,
         "titulo": r.titulo, "nivel_atual": r.nivel_atual,
         "presenca": _presenca(r.ultimo_acesso),
+        "eu_mesmo": r.id == usuario.id,
     } for r in linhas]}
 
 
@@ -196,6 +209,9 @@ def perfil_publico(
                 if h.ultimo_acesso else None),
         },
         "feitos": feitos,
+        # O altar que ELE escolheu — a vitrine respeita a decisão do dono.
+        "fixadas": [c for c in _ler_altar(h)
+                    if any(r["codigo"] == c for r in reliquias)],
         "reliquias": reliquias,
         "resumo": {
             "total": len(reliquias),
