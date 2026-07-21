@@ -78,12 +78,17 @@ const Auras = {
 
          Camadas em velocidades e sentidos diferentes: e a defasagem
          entre elas que da a sensacao de fogo vivo em vez de disco
-         girando. ATENCAO: comentario dentro de template literal —
-         nada de crase aqui, quebra o arquivo inteiro. */
-         ARMADILHA #1 DO PROJETO, de novo: girar e pulsar mexem os dois
-         em transform. Declaradas juntas, a segunda anula a primeira e a
-         camada so pulsa. Por isso cada camada tem DOIS grupos aninhados:
-         o de fora gira, o de dentro respira. */
+         girando.
+
+         ARMADILHA #1 DO PROJETO: girar e pulsar mexem os dois em
+         transform. Declaradas juntas, a segunda anula a primeira. Por
+         isso cada camada tem DOIS grupos aninhados: o de fora gira, o
+         de dentro respira.
+
+         ATENCAO: comentario dentro de template literal — nada de crase
+         aqui dentro, e um unico par de abre-fecha de comentario. Um
+         fecha sobrando joga texto solto no CSS, o navegador descarta as
+         regras seguintes e a aura se espalha pela tela. */
       .aura-r1, .aura-r2, .aura-r3 { transform-origin: 150px 150px; }
       .aura-r1 { animation: aura-girar 46s linear infinite; }
       .aura-r2 { animation: aura-girar 31s linear infinite reverse; }
@@ -125,6 +130,33 @@ const Auras = {
   },
 
   existe(id) { return !!this._registro[id]; },
+
+  /* ── Trava contra CSS quebrado ────────────────────────────────────
+     O estilo viaja dentro do SVG, e CSS malformado NAO gera erro: o
+     navegador descarta as regras a partir do ponto ruim, em silencio.
+     Foi assim que um fecha-comentario sobrando derrubou o
+     transform-origin das camadas e espalhou a aura pela tela, sem uma
+     linha sequer no console. Este conferidor existe para nao repetir.
+     (E sim: escrever o simbolo de fecha-comentario aqui dentro fecharia
+     este proprio comentario. Por isso ele esta descrito por extenso.) */
+  conferirEstilo() {
+    const css = this._estilo().replace(/<\/?style>/g, '');
+    const erros = [];
+    const abre = (css.match(/\/\*/g) || []).length;
+    const fecha = (css.match(/\*\//g) || []).length;
+    if (abre !== fecha) erros.push(`comentários ${abre}/${fecha}`);
+
+    const limpo = css.replace(/\/\*[\s\S]*?\*\//g, '');
+    const chaves = (limpo.match(/{/g) || []).length - (limpo.match(/}/g) || []).length;
+    if (chaves !== 0) erros.push(`chaves desbalanceadas (${chaves})`);
+
+    const solto = limpo.split('\n').map(l => l.trim()).filter(l =>
+      l && !l.startsWith('.') && !l.startsWith('@') && !l.startsWith('}')
+      && !l.includes('{') && !l.includes(':') && !l.includes('}'));
+    if (solto.length) erros.push(`texto solto: "${solto[0].slice(0, 40)}"`);
+
+    return erros;
+  },
 
   /* Mesma armadilha das medalhas: <defs> com ids fixos colidem quando
      há duas auras na página, e o navegador resolve url(#id) para a
@@ -228,20 +260,25 @@ Auras.registrar('arquiteto', function (tam) {
       <!-- Vazado no miolo: ali fica o hexágono. Cheio, virava um
            borrão escuro em volta do avatar. -->
       <radialGradient id="auraHalo" cx="50%" cy="50%">
-        <stop offset="0%"   stop-color="#fbbf24" stop-opacity="0"/>
-        <stop offset="42%"  stop-color="#fbbf24" stop-opacity="0"/>
-        <stop offset="58%"  stop-color="#fbbf24" stop-opacity=".22"/>
-        <stop offset="74%"  stop-color="#f97316" stop-opacity=".14"/>
-        <stop offset="100%" stop-color="#a855f7" stop-opacity="0"/>
+        <stop offset="0%"   stop-color="#fff4c8" stop-opacity="0"/>
+        <stop offset="46%"  stop-color="#fff4c8" stop-opacity="0"/>
+        <stop offset="56%"  stop-color="#fff4c8" stop-opacity=".30"/>
+        <stop offset="72%"  stop-color="#fbbf24" stop-opacity=".18"/>
+        <stop offset="100%" stop-color="#f97316" stop-opacity="0"/>
       </radialGradient>
       <!-- Calor: laranja no miolo sangrando para magenta e roxo nas
            bordas. É a mistura que a aura de CSS antiga acertava. -->
+      <!-- O miolo fica LIMPO até 44%: ali entra o hexágono. Laranja
+           translúcido sobre fundo preto vira barro, e o resultado era
+           um anel sujo em volta do avatar. O brilho começa onde as
+           chamas começam. -->
       <radialGradient id="auraCalor" cx="50%" cy="50%">
-        <stop offset="0%"   stop-color="#fff4c8" stop-opacity="0"/>
-        <stop offset="34%"  stop-color="#fbbf24" stop-opacity=".34"/>
-        <stop offset="56%"  stop-color="#f97316" stop-opacity=".30"/>
-        <stop offset="76%"  stop-color="#d946ef" stop-opacity=".18"/>
-        <stop offset="100%" stop-color="#7c3aed" stop-opacity="0"/>
+        <stop offset="0%"   stop-color="#fbbf24" stop-opacity="0"/>
+        <stop offset="44%"  stop-color="#fbbf24" stop-opacity="0"/>
+        <stop offset="58%"  stop-color="#fcd34d" stop-opacity=".50"/>
+        <stop offset="74%"  stop-color="#fb923c" stop-opacity=".38"/>
+        <stop offset="88%"  stop-color="#e879f9" stop-opacity=".20"/>
+        <stop offset="100%" stop-color="#a855f7" stop-opacity="0"/>
       </radialGradient>
       <filter id="auraFundir" x="-60%" y="-60%" width="220%" height="220%">
         <feGaussianBlur stdDeviation="16"/>
@@ -332,6 +369,12 @@ Auras.diagnostico = function () {
 
   diz('auras.js carregado', 'sim');
   diz('auras registradas', Object.keys(Auras._registro).join(', ') || '(nenhuma)');
+
+  // O CSS viaja dentro do SVG. Um comentário mal fechado ali derruba as
+  // regras seguintes em silêncio — e a aura se espalha pela tela, sem
+  // nenhum erro no console. Já aconteceu; agora é conferido.
+  const problemas = Auras.conferirEstilo();
+  diz('css embutido', problemas.length ? 'QUEBRADO: ' + problemas.join('; ') : 'íntegro');
 
   const folha = [...document.styleSheets].some(s =>
     (s.href || '').includes('auras.css'));
