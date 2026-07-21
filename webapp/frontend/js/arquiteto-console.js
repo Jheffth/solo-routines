@@ -131,14 +131,16 @@ const Jh3ffthFX = {
         <!-- Veias de Hades (Luz correndo pelas bordas do escudo) -->
         <polygon points="130,25 200,105 130,235 60,105" fill="none" stroke="#fca5a5" stroke-width="2" stroke-dasharray="50 350" class="cq-svg-brilho"/>
         
-        <!-- O Olho Demoniaco do Arquiteto -->
+        <!-- O Núcleo Geométrico do Arquiteto (Simétrico) -->
         <g transform="translate(130, 105)">
-          <path d="M -35 0 C -15 -20, 15 -20, 35 0 C 15 20, -15 20, -35 0 Z" fill="#000" stroke="#fca5a5" stroke-width="2"/>
-          <circle cx="0" cy="0" r="11" fill="#ef4444" filter="url(#bloodGlow)"/>
-          <circle cx="0" cy="0" r="11" fill="#fff"/>
-          <path d="M 0 -8 L 4 0 L 0 8 L -4 0 Z" fill="#450a0a"/> 
+          <!-- Losango externo negro com borda rubi -->
+          <polygon points="0,-30 25,0 0,30 -25,0" fill="#000" stroke="#fca5a5" stroke-width="2"/>
+          <!-- Losango interno brilhante -->
+          <polygon points="0,-15 12,0 0,15 -12,0" fill="#fff" filter="url(#bloodGlow)"/>
+          <polygon points="0,-15 12,0 0,15 -12,0" fill="#fff" opacity="0.9"/>
+          <!-- Fenda central escura para manter o estilo afiado -->
+          <polygon points="0,-8 3,0 0,8 -3,0" fill="#450a0a"/>
         </g>
-
       </g>
     </svg>`;
   },
@@ -1109,6 +1111,7 @@ const ArquitetoConsole = {
           bt('Cerimônia: Mono Evelynn', 'window.EvelynnFX.cerimonia()', 'rosa', true),
           bt('Vitrine: Mono Evelynn',   'vitrineInsignia("mono_evelynn")', 'rosa', true),
           bt('Vitrine: todas as artes', 'vitrineInsignia()', 'ciano', true),
+          bt('Vitrine: auras',          'window.Auras.vitrine()', 'ouro', true),
         ])}
 
         ${sec('sons', '🔊 Sons', false, [], `
