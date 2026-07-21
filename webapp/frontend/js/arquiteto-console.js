@@ -131,15 +131,17 @@ const Jh3ffthFX = {
         <!-- Veias de Hades (Luz correndo pelas bordas do diamante) -->
         <polygon points="130,30 230,130 130,230 30,130" fill="none" stroke="#fca5a5" stroke-width="2" stroke-dasharray="50 350" class="cq-svg-brilho"/>
         
-        <!-- O Núcleo Geométrico do Arquiteto (Simétrico e Centralizado) -->
+        <!-- O Grande Núcleo do Arquiteto (Simétrico e Centralizado) -->
         <g transform="translate(130, 130)">
-          <!-- Losango externo negro com borda rubi -->
-          <polygon points="0,-30 25,0 0,30 -25,0" fill="#000" stroke="#fca5a5" stroke-width="2"/>
-          <!-- Losango interno brilhante -->
-          <polygon points="0,-15 12,0 0,15 -12,0" fill="#fff" filter="url(#bloodGlow)"/>
-          <polygon points="0,-15 12,0 0,15 -12,0" fill="#fff" opacity="0.9"/>
-          <!-- Fenda central escura para manter o estilo afiado -->
-          <polygon points="0,-8 3,0 0,8 -3,0" fill="#450a0a"/>
+          <!-- Armação de Energia (Grade do Arquiteto) -->
+          <polygon points="0,-45 45,0 0,45 -45,0" fill="none" stroke="#fca5a5" stroke-width="3" filter="url(#bloodGlow)"/>
+          
+          <!-- Cristal Maior Brilhante -->
+          <polygon points="0,-30 30,0 0,30 -30,0" fill="#fff" filter="url(#bloodGlow)"/>
+          <polygon points="0,-30 30,0 0,30 -30,0" fill="#fff" opacity="0.95"/>
+          
+          <!-- Cortes Estruturais (Visão Top-down de uma Pirâmide/Octaedro) -->
+          <path d="M 0 -30 L 30 0 L 0 30 L -30 0 Z M -30 0 L 30 0 M 0 -30 L 0 30" fill="none" stroke="#991b1b" stroke-width="2"/>
         </g>
       </g>
     </svg>`;
