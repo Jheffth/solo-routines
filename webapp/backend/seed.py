@@ -75,26 +75,47 @@ TRANSFERIVEIS = {
 
 def _sincronizar_transferiveis(db):
     """
-    Marca o status de circulação. Roda sempre — bancos antigos ganham o status
-    sem precisar de intervenção manual. Só toca no que ainda está desmarcado,
-    então uma decisão do Arquiteto no catálogo nunca é desfeita por um restart.
+    Garante o estado correto dos materiais que circulam. Roda sempre.
 
-    Nota importante: circular e ser "exclusiva do Arquiteto" são status que se
-    contradizem. Se o emblema muda de dono, quem o recebe precisa vê-lo — então
-    liberar a circulação também derruba a exclusividade.
+    ARMADILHA JÁ PAGA — não reintroduzir: a primeira versão desta função
+    filtrava por `transferivel == False` para ser idempotente. O efeito
+    colateral foi que, quando a regra "circular derruba a exclusividade"
+    entrou depois, ela nunca alcançou os emblemas JÁ marcados como
+    transferíveis — solo e jh3ffth continuaram exclusivos do Arquiteto e
+    sumiam do perfil de quem os recebia.
+
+    A lição: idempotência se faz comparando o estado desejado com o atual,
+    campo a campo, e não pulando registros já tocados. Por isso aqui a
+    função varre todos os alvos e reconcilia cada invariante.
     """
     try:
-        alvos = (db.query(Conquista)
-                   .filter(Conquista.codigo.in_(TRANSFERIVEIS),
-                           Conquista.transferivel == False).all())
-        for q in alvos:
-            # trava de segurança: mesmo listada, missão não circula
-            if (q.condicao_tipo or "").lower() == "manual":
+        mudou = 0
+
+        # 1. O que está na lista e é manual deve circular
+        for q in db.query(Conquista).filter(Conquista.codigo.in_(TRANSFERIVEIS)).all():
+            if (q.condicao_tipo or "").lower() != "manual":
+                continue                      # missão não circula, nem listada
+            if not q.transferivel:
                 q.transferivel = True
+                mudou += 1
+
+        # A sessão do projeto usa autoflush=False (database.py). Sem este
+        # flush, a consulta do passo 2 leria o estado ANTERIOR e não veria
+        # o que acabou de ser marcado aqui em cima.
+        db.flush()
+
+        # 2. INVARIANTE: o que circula não pode ser exclusivo do Arquiteto.
+        #    Se o emblema muda de dono, quem recebe precisa enxergá-lo.
+        #    Vale para qualquer transferível, inclusive os liberados à mão
+        #    pelo Catálogo em versões antigas.
+        for q in db.query(Conquista).filter(Conquista.transferivel == True).all():
+            if getattr(q, "exclusiva_arquiteto", False):
                 q.exclusiva_arquiteto = False
-        if alvos:
+                mudou += 1
+
+        if mudou:
             db.commit()
-            print(f"[SEED] {len(alvos)} materiais liberados para a Casa de Trocas.")
+            print(f"[SEED] {mudou} ajuste(s) nos materiais da Casa de Trocas.")
     except Exception as e:
         db.rollback()
         print(f"[SEED] ⚠️ status de troca não aplicado: {e}")

@@ -266,6 +266,7 @@ const Dashboard = {
     // Relicário + chip de dungeon (extras da Janela de Status)
     this._renderRelicario();
     this._renderChipDungeon();
+    window.BuscaHunters?.montar();   // idempotente: só monta uma vez
 
     // Sidebar rank
     const sbRank = document.getElementById('sidebar-rank');

@@ -1,5 +1,5 @@
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -80,7 +80,37 @@ def get_usuario_atual(
     usuario = db.query(Usuario).filter(Usuario.login == login, Usuario.ativo == True).first()
     if not usuario:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuário não encontrado")
+    _marcar_presenca(db, usuario)
     return usuario
+
+
+# Quanto tempo esperar antes de regravar a presença. Sem esta folga
+# escreveríamos no banco a CADA requisição autenticada — dezenas de writes
+# por minuto por hunter, só para mover um relógio alguns segundos.
+JANELA_PRESENCA = timedelta(minutes=3)
+
+
+def _marcar_presenca(db: Session, usuario: Usuario) -> None:
+    """
+    Mantém `ultimo_acesso` fiel à realidade.
+
+    Antes ele só era gravado no login. Como o token dura horas, quem passava
+    o dia dentro do app aparecia como "visto há 8 horas" enquanto estava
+    online naquele instante — o recurso mentiria justamente sobre quem mais
+    usa o Sistema.
+
+    Nunca deixa a requisição quebrar por causa disto: presença é cortesia,
+    não pode derrubar uma chamada legítima.
+    """
+    agora = datetime.utcnow()
+    anterior = usuario.ultimo_acesso
+    if anterior and (agora - anterior) < JANELA_PRESENCA:
+        return
+    try:
+        usuario.ultimo_acesso = agora
+        db.commit()
+    except Exception:
+        db.rollback()
 
 
 # Hierarquia: Arquiteto > Criador > Admin > User

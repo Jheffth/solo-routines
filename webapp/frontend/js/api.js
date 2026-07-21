@@ -211,6 +211,12 @@ class API {
                                                 { transferivel: t }),
   };
 
+  /* ── Hunters: busca e perfil público ──────────────────── */
+  static hunters = {
+    buscar: async (q)     => API.get('/hunters/buscar?q=' + encodeURIComponent(q)),
+    perfil: async (login) => API.get('/hunters/' + encodeURIComponent(login)),
+  };
+
   /* ── Sala de Poderes do Arquiteto ─────────────────────── */
   static arquiteto = {
     poderes:         async ()    => API.get('/arquiteto/poderes'),

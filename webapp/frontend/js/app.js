@@ -76,10 +76,9 @@ const App = {
       Modal.fechar();
     });
 
-    // 7. Bind botao nova missao (FAB e header)
-    document.getElementById('btn-nova-missao')?.addEventListener('click', () => {
-      if (typeof Lancador !== 'undefined') Lancador.abrir('ROTINA');
-    });
+    // 7. (o "+ Nova Missão" do cabeçalho saiu — o lugar dele agora é a
+    //     busca de hunters. O botão flutuante e os de cada página seguem
+    //     ligados pelo lancador.js, que trata #btn-fab e #btn-nova-rotina.)
 
     // 8. Bind link-ir-registro e link-ir-login
     document.getElementById('link-ir-registro')?.addEventListener('click', (e) => {
@@ -215,6 +214,10 @@ const App = {
       case 'loja':      await Loja.carregar();      break;
       case 'perfil':    await Perfil.carregar();    break;
       case 'materiais': await Materiais.carregar(); break;
+      // 'hunter' não recarrega sozinho: quem abre é HunterPublico.abrir(login),
+      // que já sabe de quem é o perfil. Navegar para cá sem login mostraria
+      // uma tela vazia — por isso não há chamada aqui.
+      case 'hunter':    break;
       case 'gerencial': await Gerencial.carregar(); break;
       case 'sistema':   await PainelAdmin.carregar(); break;
     }

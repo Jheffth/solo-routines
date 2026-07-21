@@ -1,0 +1,444 @@
+/* ============================================================
+   hunter-publico.css — vitrine do hunter + busca
+   ============================================================ */
+
+/* ── Busca no cabeçalho da página inicial ──────────────────
+   Compacta de propósito: ocupa o canto onde ficava o botão de
+   nova missão, sem virar uma faixa atravessando o painel.
+   Ao focar, ganha um pouco de largura — o resultado aparece
+   numa lista flutuante, então o campo não precisa ser grande. */
+.bh-wrap { position: relative; width: 210px; max-width: 100%; }
+.bh-campo {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .45rem .7rem; border-radius: 10px;
+  background: rgba(0,0,0,.4);
+  border: 1px solid rgba(148,163,184,.18);
+  transition: border-color .2s, box-shadow .2s;
+}
+.bh-wrap:focus-within { width: 260px; }
+.bh-wrap { transition: width .25s cubic-bezier(.34,1.2,.64,1); }
+.bh-campo:focus-within {
+  border-color: var(--purple-glow);
+  box-shadow: 0 0 0 3px rgba(124,58,237,.14);
+}
+.bh-lupa { font-size: .82rem; opacity: .6; flex-shrink: 0; }
+.bh-input {
+  flex: 1; min-width: 0; background: none; border: none; outline: none;
+  color: var(--text-primary);
+  font-family: var(--font-section); font-size: .82rem;
+}
+.bh-input::placeholder { color: var(--text-dim); }
+.bh-limpar {
+  flex-shrink: 0; background: none; border: none; cursor: pointer;
+  color: var(--text-muted); font-size: .75rem; padding: 0 .2rem;
+}
+.bh-limpar:hover { color: #fff; }
+
+/* Ancorada no <body> e posicionada por JS: escapa do clip-path da placa */
+.bh-resultados {
+  position: fixed; z-index: 3000;
+  max-height: 340px; overflow-y: auto;
+  padding: .35rem; border-radius: 12px;
+  background: linear-gradient(170deg, #14142a, #0b0b16);
+  border: 1px solid rgba(124,58,237,.35);
+  box-shadow: 0 16px 44px rgba(0,0,0,.6);
+  animation: bh-surgir .18s ease both;
+}
+@keyframes bh-surgir { from { opacity: 0; transform: translateY(-5px); } }
+.bh-item {
+  display: flex; align-items: center; gap: .6rem; width: 100%;
+  padding: .5rem .6rem; border-radius: 9px; cursor: pointer; text-align: left;
+  background: none; border: none; color: var(--text-primary);
+  transition: background .15s;
+}
+.bh-item:hover { background: rgba(124,58,237,.2); }
+.bh-av {
+  position: relative;
+  width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .85rem;
+  background: linear-gradient(135deg, var(--purple-main), var(--blue-mana));
+}
+.bh-av img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.bh-ponto {
+  position: absolute; bottom: -1px; right: -1px;
+  width: 9px; height: 9px; border-radius: 50%;
+  border: 2px solid #0b0b16;
+  background: var(--presenca-cor, #64748b);
+}
+
+/* ── Presença: uma cor por faixa ────────────────────────
+   online   = agora (< 5 min)   recente = < 1h
+   hoje     = < 24h             ausente = < 7 dias
+   sumido   = mais que isso, ou nunca entrou */
+.pr-online  { --presenca-cor: #34d399; }
+.pr-recente { --presenca-cor: #a3e635; }
+.pr-hoje    { --presenca-cor: #fbbf24; }
+.pr-ausente { --presenca-cor: #94a3b8; }
+.pr-sumido  { --presenca-cor: #64748b; }
+
+.hp-presenca {
+  display: inline-flex; align-items: center; gap: .35rem;
+  font-family: var(--font-section); font-size: .64rem;
+  letter-spacing: .06em; color: var(--presenca-cor, #64748b);
+}
+.hp-ponto {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--presenca-cor, #64748b);
+  box-shadow: 0 0 6px var(--presenca-cor, #64748b);
+}
+/* Só quem está online agora pulsa — senão a tela inteira pisca */
+.hp-presenca.pr-online .hp-ponto,
+.bh-item .bh-av.pr-online .bh-ponto {
+  animation: hp-pulso 2s ease-in-out infinite;
+}
+@keyframes hp-pulso {
+  0%, 100% { opacity: 1;  transform: scale(1); }
+  50%      { opacity: .5; transform: scale(.82); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hp-presenca.pr-online .hp-ponto,
+  .bh-item .bh-av.pr-online .bh-ponto { animation: none; }
+}
+.bh-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.bh-nome {
+  font-family: var(--font-section); font-size: .82rem; font-weight: 700;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.bh-sub { font-size: .64rem; color: var(--text-muted); }
+.bh-seta { flex-shrink: 0; color: var(--text-dim); font-size: .8rem; }
+.bh-carregando, .bh-vazio {
+  padding: .8rem; text-align: center;
+  font-family: var(--font-section); font-size: .74rem; color: var(--text-muted);
+}
+
+/* ── Vitrine do hunter ─────────────────────────────────────
+   O contêiner tem largura máxima: sem isso, em telas largas o
+   cartão vira uma faixa de 2.000px com o conteúdo espremido
+   num canto e um deserto no meio. */
+#hunter-publico-conteudo {
+  max-width: 1180px;
+  margin: 0 auto;
+  --rank-cor: #a855f7;   /* trocado pelo JS conforme o rank */
+}
+
+.hp-topo {
+  display: flex; align-items: center; gap: .8rem; flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.hp-busca { width: 230px; flex-shrink: 0; margin-left: auto; }
+
+.hp-voltar {
+  font-family: var(--font-section); font-size: .78rem; font-weight: 700;
+  padding: .45rem .9rem; border-radius: 9px; cursor: pointer;
+  color: var(--text-secondary);
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(148,163,184,.2);
+  transition: all .2s;
+}
+.hp-voltar:hover { color: #fff; border-color: var(--purple-glow); transform: translateX(-3px); }
+
+.hp-cartao {
+  position: relative; overflow: hidden;
+  display: flex; align-items: center; gap: 1.6rem; flex-wrap: wrap;
+  padding: 1.6rem 1.8rem; border-radius: 18px;
+  background:
+    radial-gradient(120% 160% at 8% 20%,
+      color-mix(in srgb, var(--rank-cor) 18%, transparent), transparent 60%),
+    linear-gradient(140deg, rgba(255,255,255,.03), rgba(0,0,0,.34));
+  border: 1px solid color-mix(in srgb, var(--rank-cor) 40%, transparent);
+  box-shadow: 0 0 46px color-mix(in srgb, var(--rank-cor) 12%, transparent);
+}
+/* Navegadores sem color-mix continuam com um cartão apresentável */
+@supports not (color: color-mix(in srgb, red, blue)) {
+  .hp-cartao {
+    background: linear-gradient(140deg, rgba(124,58,237,.14), rgba(0,0,0,.32));
+    border-color: rgba(124,58,237,.32);
+  }
+}
+
+/* ── Hexágono de rank — a assinatura visual do Sistema ─── */
+.hp-hex-wrap {
+  position: relative; flex-shrink: 0;
+  width: 140px; height: 140px;
+  display: flex; align-items: center; justify-content: center;
+}
+.hp-hex {
+  width: 112px; height: 112px; position: relative; z-index: 2;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.8rem; overflow: hidden;
+  background: linear-gradient(150deg, var(--purple-main), var(--blue-mana));
+  clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+}
+.hp-hex img { width: 100%; height: 100%; object-fit: cover; }
+.hp-hex-ring {
+  position: absolute; inset: 0;
+  background: conic-gradient(from 0deg,
+    transparent 0%, var(--rank-cor) 12%, transparent 30%,
+    transparent 50%, var(--rank-cor) 62%, transparent 80%);
+  clip-path: polygon(50% 0%, 96% 25%, 96% 75%, 50% 100%, 4% 75%, 4% 25%);
+  animation: cq-anel-girar 6s linear infinite;
+  filter: blur(1px);
+}
+.hp-hex-rank {
+  position: absolute; bottom: 2px; right: 2px; z-index: 3;
+  width: 42px; height: 42px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-title); font-size: 1.25rem; font-weight: 900;
+  color: var(--rank-cor);
+  background: #07070f;
+  border: 2px solid var(--rank-cor);
+  clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+  text-shadow: 0 0 10px var(--rank-cor);
+}
+
+.hp-identidade { flex: 1; min-width: 220px; }
+.hp-nome {
+  display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+  font-family: var(--font-title); font-size: 1.6rem; color: var(--text-primary);
+}
+.hp-coroa {
+  color: var(--gold-bright); font-size: 1.1rem;
+  text-shadow: 0 0 12px rgba(251,191,36,.8);
+}
+.hp-selo-eu {
+  font-family: var(--font-section); font-size: .55rem; font-weight: 700;
+  letter-spacing: .14em; text-transform: uppercase;
+  padding: .16rem .55rem; border-radius: 100px;
+  color: #7dd3fc; border: 1px solid rgba(56,189,248,.4); background: rgba(56,189,248,.1);
+}
+.hp-titulo {
+  font-family: var(--font-section); font-size: .84rem; font-style: italic;
+  color: var(--text-secondary); margin-top: .1rem;
+}
+.hp-linha-rank { display: flex; align-items: center; gap: .7rem; margin-top: .5rem; flex-wrap: wrap; }
+.hp-rank {
+  font-family: var(--font-section); font-size: .68rem; font-weight: 700;
+  letter-spacing: .1em;
+  padding: .22rem .7rem; border-radius: 100px;
+  color: var(--rank-cor);
+  border: 1px solid color-mix(in srgb, var(--rank-cor) 55%, transparent);
+  background: color-mix(in srgb, var(--rank-cor) 12%, transparent);
+}
+.hp-nick { font-family: 'Orbitron', monospace; font-size: .68rem; color: var(--text-muted); }
+
+.hp-xp { margin-top: .9rem; max-width: 460px; }
+.hp-xp-lbl {
+  display: flex; justify-content: space-between; gap: .8rem; flex-wrap: wrap;
+  font-family: var(--font-section); font-size: .6rem;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted);
+  margin-bottom: .3rem;
+}
+.hp-xp-barra {
+  height: 9px; border-radius: 100px; overflow: hidden;
+  background: rgba(0,0,0,.5); border: 1px solid rgba(148,163,184,.14);
+}
+.hp-xp-preenche {
+  height: 100%; border-radius: 100px;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--rank-cor) 65%, #000), var(--rank-cor));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--rank-cor) 60%, transparent);
+  transition: width .6s cubic-bezier(.34,1.2,.64,1);
+}
+
+.hp-numeros { display: flex; gap: .6rem; flex-wrap: wrap; }
+.hp-num {
+  min-width: 78px; text-align: center;
+  padding: .6rem .7rem; border-radius: 12px;
+  background: rgba(0,0,0,.3);
+  border: 1px solid color-mix(in srgb, var(--rank-cor) 22%, rgba(148,163,184,.14));
+}
+.hp-num .v {
+  font-family: 'Orbitron', monospace; font-size: 1.15rem; font-weight: 700;
+  color: var(--text-primary);
+}
+.hp-num .k {
+  font-family: var(--font-section); font-size: .55rem;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--text-muted);
+  margin-top: .15rem;
+}
+
+/* ── Feitos do Sistema ─────────────────────────────────── */
+.hp-feitos {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: .6rem; margin: 1rem 0 1.4rem;
+}
+.hp-feito {
+  display: flex; align-items: center; gap: .7rem;
+  padding: .8rem 1rem; border-radius: 13px;
+  background: linear-gradient(140deg, rgba(255,255,255,.035), rgba(0,0,0,.26));
+  border: 1px solid color-mix(in srgb, var(--rank-cor) 18%, rgba(148,163,184,.14));
+}
+.hp-feito-ico { font-size: 1.2rem; flex-shrink: 0; opacity: .9; }
+.hp-feito-txt { display: flex; flex-direction: column; min-width: 0; }
+.hp-feito-txt b {
+  font-family: 'Orbitron', monospace; font-size: 1.05rem; font-weight: 700;
+  color: var(--text-primary); line-height: 1.2;
+}
+.hp-feito-txt span {
+  font-family: var(--font-section); font-size: .62rem;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted);
+  margin-top: .1rem;
+}
+
+/* ── A Relíquia Maior ──────────────────────────────────── */
+.hp-maior {
+  position: relative; overflow: hidden;
+  display: flex; align-items: center; gap: 1.8rem; flex-wrap: wrap;
+  padding: 1.6rem 1.8rem; margin-bottom: 1.6rem;
+  border-radius: 18px;
+  background:
+    radial-gradient(90% 140% at 14% 50%,
+      color-mix(in srgb, var(--rar-cor) 20%, transparent), transparent 62%),
+    linear-gradient(140deg, rgba(255,255,255,.03), rgba(0,0,0,.36));
+  border: 1px solid color-mix(in srgb, var(--rar-cor) 45%, transparent);
+  box-shadow: 0 0 40px color-mix(in srgb, var(--rar-cor) 14%, transparent);
+}
+.hp-maior-halo {
+  position: absolute; left: 6%; top: 50%; transform: translateY(-50%);
+  width: 230px; height: 230px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle,
+    color-mix(in srgb, var(--rar-cor) 26%, transparent), transparent 68%);
+  filter: blur(26px);
+  animation: hp-halo 5s ease-in-out infinite;
+}
+@keyframes hp-halo {
+  0%, 100% { opacity: .55; transform: translateY(-50%) scale(1); }
+  50%      { opacity: 1;   transform: translateY(-50%) scale(1.12); }
+}
+.hp-maior-med {
+  position: relative; z-index: 1; flex-shrink: 0;
+  width: 168px; height: 168px;
+  display: flex; align-items: center; justify-content: center;
+}
+.hp-maior-txt { position: relative; z-index: 1; flex: 1; min-width: 220px; }
+.hp-maior-lbl {
+  font-family: var(--font-section); font-size: .58rem; font-weight: 700;
+  letter-spacing: .24em; text-transform: uppercase;
+  color: var(--rar-cor); margin-bottom: .3rem;
+}
+.hp-maior-nome {
+  font-family: var(--font-title); font-size: 1.75rem; line-height: 1.15;
+  color: var(--text-primary);
+}
+.hp-maior-desc {
+  font-family: var(--font-section); font-size: .82rem; line-height: 1.6;
+  color: var(--text-secondary); margin-top: .4rem; max-width: 46ch;
+}
+.hp-maior-rodape {
+  display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin-top: .8rem;
+}
+.hp-maior-rar {
+  font-family: var(--font-section); font-size: .58rem; font-weight: 700;
+  letter-spacing: .16em; text-transform: uppercase;
+  padding: .24rem .7rem; border-radius: 100px;
+  color: var(--rar-cor);
+  border: 1px solid color-mix(in srgb, var(--rar-cor) 55%, transparent);
+  background: color-mix(in srgb, var(--rar-cor) 12%, transparent);
+}
+.hp-maior-tipo, .hp-maior-data {
+  font-family: var(--font-section); font-size: .64rem; color: var(--text-dim);
+}
+.hp-maior-data::before { content: '· '; }
+@media (prefers-reduced-motion: reduce) { .hp-maior-halo { animation: none; } }
+@media (max-width: 640px) {
+  .hp-maior { flex-direction: column; text-align: center; }
+  .hp-maior-txt { min-width: 0; }
+  .hp-maior-rodape { justify-content: center; }
+  .hp-maior-halo { left: 50%; transform: translate(-50%, -50%); }
+}
+
+/* ── Relicário ─────────────────────────────────────────── */
+.hp-secao { margin-bottom: 1.4rem; }
+.hp-secao-lbl {
+  font-family: var(--font-section); font-size: .62rem; font-weight: 700;
+  letter-spacing: .18em; text-transform: uppercase;
+  color: var(--text-muted); margin-bottom: .7rem;
+}
+/* Medalhas maiores: eram 62px dentro de cartões de 145px — muita
+   moldura para pouca joia, e a joia é a melhor coisa da tela. */
+.hp-grade {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(146px, 1fr)); gap: .7rem;
+}
+/* A raridade pinta a moldura, o fundo e o brilho — é a língua do
+   prestígio. Sem ela, uma Lendária e uma Comum eram o mesmo quadrado. */
+.hp-reliquia {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center;
+  padding: .9rem .5rem .7rem; border-radius: 14px;
+  background: radial-gradient(ellipse at 50% 0%,
+    color-mix(in srgb, var(--rar-cor, #94a3b8) 16%, transparent), rgba(0,0,0,.3));
+  border: 1px solid color-mix(in srgb, var(--rar-cor, #94a3b8) 42%, transparent);
+  transition: transform .22s cubic-bezier(.34,1.4,.64,1),
+              box-shadow .22s, border-color .22s;
+}
+.hp-reliquia:hover {
+  transform: translateY(-5px);
+  border-color: var(--rar-cor, #94a3b8);
+  box-shadow: 0 8px 26px color-mix(in srgb, var(--rar-cor, #94a3b8) 30%, transparent);
+}
+.hp-reliquia-rar {
+  margin-top: .2rem;
+  font-family: var(--font-section); font-size: .55rem; font-weight: 700;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: var(--rar-cor, #94a3b8);
+}
+/* A Lendária não fica parada: respira devagar, para o olho ir nela */
+.hp-reliquia.rar-lendaria {
+  box-shadow: 0 0 22px color-mix(in srgb, var(--rar-cor) 22%, transparent);
+  animation: hp-lendaria 3.6s ease-in-out infinite;
+}
+@keyframes hp-lendaria {
+  0%, 100% { box-shadow: 0 0 18px color-mix(in srgb, var(--rar-cor) 18%, transparent); }
+  50%      { box-shadow: 0 0 34px color-mix(in srgb, var(--rar-cor) 42%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hp-reliquia.rar-lendaria { animation: none; }
+}
+.hp-reliquia-med {
+  height: 88px; display: flex; align-items: center; justify-content: center;
+}
+.hp-reliquia-nome {
+  margin-top: .5rem; text-align: center; line-height: 1.25;
+  font-family: var(--font-section); font-size: .72rem; font-weight: 700;
+  color: var(--text-primary);
+}
+.hp-reliquia-data {
+  font-family: 'Orbitron', monospace; font-size: .56rem;
+  color: var(--text-dim); margin-top: .2rem;
+}
+
+.hp-acoes { display: flex; gap: .6rem; flex-wrap: wrap; }
+.hp-acao {
+  font-family: var(--font-section); font-size: .82rem; font-weight: 700;
+  letter-spacing: .06em;
+  padding: .7rem 1.2rem; border-radius: 11px; cursor: pointer;
+  color: #fff;
+  background: linear-gradient(100deg, #6d28d9, #a855f7);
+  border: 1px solid var(--purple-glow);
+  box-shadow: 0 0 18px rgba(124,58,237,.3);
+  transition: all .2s;
+}
+.hp-acao:hover { transform: translateY(-2px); box-shadow: 0 0 30px rgba(168,85,247,.55); }
+
+.hp-vazio {
+  text-align: center; padding: 3rem 1rem;
+  font-family: var(--font-section); font-size: .9rem; color: var(--text-muted);
+}
+.hp-vazio-ico { font-size: 2.4rem; margin-bottom: .6rem; opacity: .6; }
+.hp-vazio .hp-voltar { margin-top: 1.2rem; }
+.hp-vazio-suave {
+  text-align: center; padding: 1.6rem;
+  font-family: var(--font-section); font-size: .8rem; color: var(--text-dim);
+  border: 1px dashed rgba(148,163,184,.16); border-radius: 12px;
+}
+
+@media (max-width: 640px) {
+  .hp-cartao { flex-direction: column; align-items: center; text-align: center; }
+  .hp-identidade { min-width: 0; width: 100%; }
+  .hp-nome, .hp-linha-rank { justify-content: center; }
+  .hp-numeros { width: 100%; }
+  .hp-num { flex: 1; min-width: 0; }
+  .hp-hex-wrap { width: 116px; height: 116px; }
+  .hp-hex { width: 94px; height: 94px; font-size: 2.2rem; }
+}

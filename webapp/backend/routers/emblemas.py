@@ -217,18 +217,34 @@ def hunters(
     from database import Convite
     arq = eh_arquiteto(usuario)
     usuarios = db.query(Usuario).order_by(Usuario.criado_em.desc()).all()
+
+    # ── Carga em lote — NÃO voltar a consultar dentro do laço ──────────────
+    # Esta rota já custou 10.006 consultas para 2.000 hunters (um N+1: uma
+    # busca de posses por usuário, mais uma de conquista por posse, mais uma
+    # de convite). Agora são três consultas no total, independentemente de
+    # quantos hunters existam. Ao mexer aqui, mantenha tudo fora do laço.
+    posses = (db.query(ConquistaUsuario, Conquista)
+                .join(Conquista, Conquista.id == ConquistaUsuario.conquista_id)
+                .all())
+    badges_por_usuario = {}
+    for cu, q in posses:
+        badges_por_usuario.setdefault(cu.usuario_id, []).append({
+            "codigo": q.codigo, "titulo": q.titulo, "icone": q.icone,
+            "pendente": not bool(getattr(cu, "celebrada", True)),
+            # conquistada por esforço próprio → não se revoga
+            "de_missao": (q.condicao_tipo or "").lower() != "manual",
+            "xp_bonus": q.xp_bonus or 0,
+        })
+
+    convite_por_usuario = {
+        cv.usado_por_id: cv.codigo
+        for cv in db.query(Convite).filter(Convite.usado_por_id.isnot(None)).all()
+    }
+
     saida = []
     for u in usuarios:
-        badges = []
-        for cu in db.query(ConquistaUsuario).filter(ConquistaUsuario.usuario_id == u.id).all():
-            q = db.query(Conquista).filter(Conquista.id == cu.conquista_id).first()
-            if q:
-                badges.append({"codigo": q.codigo, "titulo": q.titulo, "icone": q.icone,
-                               "pendente": not bool(getattr(cu, "celebrada", True)),
-                               # conquistada por esforço próprio → não se revoga
-                               "de_missao": (q.condicao_tipo or "").lower() != "manual",
-                               "xp_bonus": q.xp_bonus or 0})
-        convite = db.query(Convite).filter(Convite.usado_por_id == u.id).first()
+        badges = badges_por_usuario.get(u.id, [])
+        convite = convite_por_usuario.get(u.id)
         item = {
             "id": u.id, "nome": u.nome, "login": u.login,
             "nivel_acesso": u.nivel_acesso, "ativo": u.ativo,
@@ -239,7 +255,7 @@ def hunters(
             "criado_em": u.criado_em.isoformat() if u.criado_em else None,
             "ultimo_acesso": u.ultimo_acesso.isoformat() if u.ultimo_acesso else None,
             "badges": badges,
-            "convite": convite.codigo if convite else None,
+            "convite": convite,
         }
         # Dados sensíveis só para o Arquiteto
         if arq:
