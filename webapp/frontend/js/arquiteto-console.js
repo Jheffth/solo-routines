@@ -116,23 +116,23 @@ const Jh3ffthFX = {
           <path d="${estrelaSangue.join(' ')}" fill="rgba(220,38,38,0.2)"/>
         </g>
 
-        <!-- Escudo Pipa Gótico (O Núcleo da Armadura) -->
-        <polygon points="130,25 200,105 130,235 60,105" fill="url(#sapuriMetal)" stroke="url(#sapuriEdge)" stroke-width="3"/>
+        <!-- Escudo de Diamante Gótico (O Núcleo da Armadura - Simétrico) -->
+        <polygon points="130,30 230,130 130,230 30,130" fill="url(#sapuriMetal)" stroke="url(#sapuriEdge)" stroke-width="3"/>
         
-        <!-- Gema de Rubi Central -->
-        <polygon points="130,40 180,105 130,215 80,105" fill="url(#rubyGlow)" filter="url(#bloodGlow)"/>
+        <!-- Gema de Rubi Central (Simétrica) -->
+        <polygon points="130,45 215,130 130,215 45,130" fill="url(#rubyGlow)" filter="url(#bloodGlow)"/>
         
         <!-- Facetas de Vidro 3D do Rubi -->
-        <polygon points="130,40 80,105 130,105" fill="rgba(255,255,255,0.3)"/>
-        <polygon points="130,40 180,105 130,105" fill="rgba(255,255,255,0.05)"/>
-        <polygon points="80,105 130,215 130,105" fill="rgba(0,0,0,0.4)"/>
-        <polygon points="180,105 130,215 130,105" fill="rgba(0,0,0,0.7)"/>
+        <polygon points="130,45 45,130 130,130" fill="rgba(255,255,255,0.3)"/>
+        <polygon points="130,45 215,130 130,130" fill="rgba(255,255,255,0.05)"/>
+        <polygon points="45,130 130,215 130,130" fill="rgba(0,0,0,0.4)"/>
+        <polygon points="215,130 130,215 130,130" fill="rgba(0,0,0,0.7)"/>
 
-        <!-- Veias de Hades (Luz correndo pelas bordas do escudo) -->
-        <polygon points="130,25 200,105 130,235 60,105" fill="none" stroke="#fca5a5" stroke-width="2" stroke-dasharray="50 350" class="cq-svg-brilho"/>
+        <!-- Veias de Hades (Luz correndo pelas bordas do diamante) -->
+        <polygon points="130,30 230,130 130,230 30,130" fill="none" stroke="#fca5a5" stroke-width="2" stroke-dasharray="50 350" class="cq-svg-brilho"/>
         
-        <!-- O Núcleo Geométrico do Arquiteto (Simétrico) -->
-        <g transform="translate(130, 105)">
+        <!-- O Núcleo Geométrico do Arquiteto (Simétrico e Centralizado) -->
+        <g transform="translate(130, 130)">
           <!-- Losango externo negro com borda rubi -->
           <polygon points="0,-30 25,0 0,30 -25,0" fill="#000" stroke="#fca5a5" stroke-width="2"/>
           <!-- Losango interno brilhante -->
