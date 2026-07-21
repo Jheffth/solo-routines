@@ -57,45 +57,65 @@
     <div id="login-screen">
       <div class="login-mist"></div>
       <div class="login-card">
-          <div class="login-logo-icon">
-            <svg viewBox="0 0 120 120" width="72" height="72" xmlns="http://www.w3.org/2000/svg" style="overflow:visible;filter:drop-shadow(0 0 18px rgba(168,85,247,0.8)) drop-shadow(0 0 40px rgba(168,85,247,0.4))">
+        <div class="login-logo-wrap" style="display:flex;justify-content:center;margin-bottom:.5rem">
+          <div class="login-logo-icon" style="display:flex;align-items:center;justify-content:center;width:90px;height:90px">
+            <svg viewBox="0 0 260 260" width="88" height="88" style="overflow:visible;filter:drop-shadow(0 0 16px rgba(168,85,247,0.9)) drop-shadow(0 0 40px rgba(168,85,247,0.4))" class="cq-svg">
               <defs>
-                <radialGradient id="lg-gem-grad" cx="40%" cy="30%">
-                  <stop offset="0%" stop-color="#e9d5ff"/>
-                  <stop offset="35%" stop-color="#a855f7"/>
+                <radialGradient id="lgn-soloMetal" cx="35%" cy="30%">
+                  <stop offset="0%"   stop-color="#3b0764"/>
+                  <stop offset="35%"  stop-color="#1e1b4b"/>
+                  <stop offset="75%"  stop-color="#020617"/>
+                  <stop offset="100%" stop-color="#000000"/>
+                </radialGradient>
+                <radialGradient id="lgn-soloUV" cx="40%" cy="35%">
+                  <stop offset="0%"   stop-color="#d8b4fe"/>
+                  <stop offset="25%"  stop-color="#a855f7"/>
+                  <stop offset="60%"  stop-color="#581c87"/>
+                  <stop offset="100%" stop-color="#2e1065"/>
+                </radialGradient>
+                <linearGradient id="lgn-soloEdge" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%"   stop-color="#c084fc"/>
+                  <stop offset="50%"  stop-color="#7e22ce"/>
                   <stop offset="100%" stop-color="#3b0764"/>
-                </radialGradient>
-                <radialGradient id="lg-star-grad" cx="50%" cy="50%">
-                  <stop offset="0%" stop-color="#7c3aed"/>
-                  <stop offset="100%" stop-color="#1e0a3c"/>
-                </radialGradient>
-                <filter id="lg-glow">
-                  <feGaussianBlur stdDeviation="3" result="blur"/>
+                </linearGradient>
+                <filter id="lgn-soloGlow" x="-30%" y="-30%" width="160%" height="160%">
+                  <feGaussianBlur stdDeviation="5" result="blur"/>
                   <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
                 </filter>
+                <filter id="lgn-soloShadow" x="-30%" y="-30%" width="160%" height="160%">
+                  <feDropShadow dx="0" dy="8"  stdDeviation="6"  flood-color="#000"    flood-opacity="0.9"/>
+                  <feDropShadow dx="0" dy="0"  stdDeviation="15" flood-color="#a855f7" flood-opacity="0.5"/>
+                </filter>
               </defs>
-
-              <!-- Estrela gótica de 8 pontas (a insignia do Sistema) -->
-              <g style="transform-origin:60px 60px; animation: cq-anel-girar 24s linear infinite reverse;">
-                <path d="M60 8 L67 42 L96 20 L74 49 L108 56 L74 63 L96 92 L67 70 L60 104 L53 70 L24 92 L46 63 L12 56 L46 49 L24 20 L53 42 Z"
-                  fill="url(#lg-star-grad)" stroke="#7c3aed" stroke-width="1.5" opacity="0.7"/>
+              <g filter="url(#lgn-soloShadow)">
+                <!-- Espinhos externos girando -->
+                <g style="transform-origin:130px 130px;animation:cq-anel-girar 28s linear infinite reverse">
+                  <path d="M 130 130 L 123.5 58.3 L 107.5 119.0 L 130 130 Z M 130 130 L 155.3 66.0 L 119.7 118.2 L 130 130 Z M 130 130 L 188.8 90.5 L 136.3 125.6 L 130 130 Z M 130 130 L 211.3 116.3 L 145.3 131.8 L 130 130 Z M 130 130 L 214.5 148.0 L 144.4 135.6 L 130 130 Z M 130 130 L 196.1 178.0 L 134.7 138.5 L 130 130 Z M 130 130 L 160.5 199.4 L 120.2 141.4 L 130 130 Z M 130 130 L 113.7 205.8 L 104.7 143.3 L 130 130 Z M 130 130 L 62.9 190.3 L 112.9 141.6 L 130 130 Z M 130 130 L 38.2 165.0 L 110.7 136.8 L 130 130 Z M 130 130 L 32.5 133.2 L 111.3 131.7 L 130 130 Z M 130 130 L 51.1 100.9 L 116.4 125.5 L 130 130 Z"
+                    fill="url(#lgn-soloMetal)" stroke="#7e22ce" stroke-width="1.5"/>
+                </g>
+                <!-- Asas principais -->
+                <path d="M 130 130 L 97.1 55.3 L 130 0 L 162.9 55.3 Z M 130 130 L 204.7 97.1 L 260 130 L 204.7 162.9 Z M 130 130 L 162.9 204.7 L 130 260 L 97.1 204.7 Z M 130 130 L 55.3 162.9 L 0 130 L 55.3 97.1 Z M 130 130 L 182.2 75.3 L 204.7 15.3 L 154.7 57.8 Z M 130 130 L 184.7 184.7 L 244.7 207.2 L 202.2 157.2 Z M 130 130 L 75.3 184.7 L 55.3 244.7 L 97.8 202.2 Z M 130 130 L 77.8 75.3 L 15.3 52.8 L 57.8 102.8 Z"
+                  fill="url(#lgn-soloMetal)" stroke="url(#lgn-soloEdge)" stroke-width="2.5"/>
+                <!-- Anel central -->
+                <circle cx="130" cy="130" r="57" fill="#020617" stroke="#a855f7" stroke-width="2" filter="url(#lgn-soloGlow)"/>
+                <!-- Octógono ametista -->
+                <polygon points="130,75 168,90 185,130 168,170 130,185 92,170 75,130 92,90"
+                  fill="url(#lgn-soloUV)" stroke="#d8b4fe" stroke-width="2" filter="url(#lgn-soloGlow)"/>
+                <!-- Facetas de vidro -->
+                <polygon points="130,75 168,90 130,130 92,90" fill="rgba(255,255,255,0.2)"/>
+                <polygon points="92,90 130,130 75,130"        fill="rgba(255,255,255,0.08)"/>
+                <!-- Brilho externo pulsante -->
+                <circle cx="130" cy="130" r="100" fill="none" stroke="rgba(216,180,254,.8)" stroke-width="3" stroke-dasharray="35 593" class="cq-svg-brilho"/>
+                <!-- Lua crescente + diamante -->
+                <g transform="translate(130,130)">
+                  <path d="M 0 -24 C -18 -24, -28 -12, -28 4 C -28 20, -18 32, 0 32 C -8 22, -10 10, 0 -4 C 5 -10, 12 -15, 22 -18 C 16 -22, 8 -24, 0 -24 Z"
+                    fill="#fff" filter="url(#lgn-soloGlow)"/>
+                  <polygon points="12,4 20,-4 28,4 36,12 28,20 20,28 12,20 4,12" fill="#fff" opacity="0.9"/>
+                </g>
               </g>
-
-              <!-- Anel intermediário -->
-              <circle cx="60" cy="60" r="32" fill="none" stroke="#a855f7" stroke-width="1.5"
-                stroke-dasharray="6 10" opacity="0.6"
-                style="transform-origin:60px 60px; animation: cq-anel-girar 12s linear infinite;"/>
-
-              <!-- Gema central -->
-              <circle cx="60" cy="60" r="22" fill="url(#lg-gem-grad)" filter="url(#lg-glow)"/>
-              <!-- Faceta de vidro -->
-              <path d="M60 38 A22 22 0 0 1 82 60 L60 60 Z" fill="rgba(255,255,255,0.25)"/>
-              <!-- Letra S gravada na gema -->
-              <text x="60" y="67" text-anchor="middle"
-                font-family="'Cinzel','Georgia',serif" font-size="22" font-weight="900"
-                fill="#ffffff" filter="url(#lg-glow)" letter-spacing="1">S</text>
             </svg>
           </div>
+        </div>
         <h1 class="login-title">Solo Routines</h1>
         <p class="login-subtitle">Sistema de Missoes</p>
         <p class="login-desc">Prove seu valor. Evolua todos os dias.<br>O sistema te observa, Hunter.</p>
