@@ -1,0 +1,264 @@
+/* ============================================================
+   buddylist.css — A Guilda (drawer lateral de amigos)
+
+   Reaproveita as classes de presença .pr-online|recente|hoje|
+   ausente|sumido de hunter-publico.css (elas definem apenas a
+   variável --presenca-cor). Aqui NÃO se redefine cor de presença.
+   Só variáveis do design-system para o resto da paleta.
+   ============================================================ */
+
+/* Raiz ocupa a tela inteira só para hospedar o fundo escurecido e
+   o drawer; sem eventos quando escondida (hidden cuida disso). */
+.bl-raiz {
+  position: fixed; inset: 0; z-index: 4000;
+  display: flex; justify-content: flex-end;
+  font-family: var(--font-section);
+}
+
+.bl-fundo {
+  position: absolute; inset: 0;
+  background: rgba(4, 4, 12, .55);
+  opacity: 0; transition: opacity .25s ease;
+}
+.bl-raiz.bl-on .bl-fundo { opacity: 1; }
+
+/* O painel entra deslizando pela direita. */
+.bl-drawer {
+  position: relative;
+  width: 340px; max-width: 92vw; height: 100%;
+  display: flex; flex-direction: column;
+  background: linear-gradient(185deg, #14142a, #0b0b16 60%, #08080f);
+  border-left: 1px solid rgba(124, 58, 237, .38);
+  box-shadow: -18px 0 50px rgba(0, 0, 0, .6);
+  transform: translateX(102%);
+  transition: transform .28s cubic-bezier(.34, 1.06, .64, 1);
+}
+.bl-raiz.bl-on .bl-drawer { transform: translateX(0); }
+
+/* ── Cabeçalho ─────────────────────────────────────────── */
+.bl-cab {
+  display: flex; align-items: center; gap: .6rem;
+  padding: 1rem 1.1rem .85rem;
+  border-bottom: 1px solid rgba(148, 163, 184, .14);
+}
+.bl-cab-tit {
+  font-family: var(--font-title); font-size: 1.15rem; letter-spacing: .05em;
+  color: var(--text-primary);
+}
+.bl-cab-total {
+  min-width: 20px; height: 20px; padding: 0 .35rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: .66rem; font-weight: 700; line-height: 1;
+  color: #fff; border-radius: 100px;
+  background: linear-gradient(120deg, #6d28d9, var(--purple-glow));
+  box-shadow: 0 0 10px rgba(168, 85, 247, .5);
+}
+.bl-cab-x {
+  margin-left: auto; flex-shrink: 0;
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); font-size: .95rem; padding: .2rem .35rem;
+  border-radius: 8px; transition: color .18s, background .18s;
+}
+.bl-cab-x:hover { color: #fff; background: rgba(255, 255, 255, .06); }
+
+/* ── Adicionar amigo ───────────────────────────────────── */
+.bl-add { padding: .8rem 1rem .4rem; }
+.bl-add-campo {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .5rem .7rem; border-radius: 10px;
+  background: rgba(0, 0, 0, .4);
+  border: 1px solid rgba(148, 163, 184, .18);
+  transition: border-color .2s, box-shadow .2s;
+}
+.bl-add-campo:focus-within {
+  border-color: var(--purple-glow);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, .14);
+}
+.bl-add-lupa { font-size: .8rem; opacity: .6; flex-shrink: 0; }
+.bl-add-input {
+  flex: 1; min-width: 0; background: none; border: none; outline: none;
+  color: var(--text-primary); font-family: var(--font-section); font-size: .84rem;
+}
+.bl-add-input::placeholder { color: var(--text-dim); }
+.bl-add-limpar {
+  flex-shrink: 0; background: none; border: none; cursor: pointer;
+  color: var(--text-muted); font-size: .74rem; padding: 0 .2rem;
+}
+.bl-add-limpar:hover { color: #fff; }
+
+.bl-add-res {
+  margin-top: .45rem; padding: .3rem;
+  border-radius: 11px; overflow: hidden;
+  background: rgba(0, 0, 0, .35);
+  border: 1px solid rgba(124, 58, 237, .28);
+  animation: bl-surgir .16s ease both;
+}
+.bl-res-item {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .45rem .5rem; border-radius: 9px;
+}
+.bl-res-item + .bl-res-item { border-top: 1px solid rgba(148, 163, 184, .08); }
+.bl-res-msg {
+  padding: .7rem; text-align: center; font-size: .74rem; color: var(--text-muted);
+}
+
+/* ── Corpo rolável ─────────────────────────────────────── */
+.bl-corpo {
+  flex: 1; min-height: 0; overflow-y: auto;
+  padding: .5rem .7rem 1.2rem;
+}
+.bl-corpo::-webkit-scrollbar { width: 8px; }
+.bl-corpo::-webkit-scrollbar-thumb {
+  background: rgba(124, 58, 237, .3); border-radius: 100px;
+}
+
+.bl-secao { margin-top: .8rem; }
+.bl-secao-cab {
+  display: flex; align-items: center; gap: .5rem;
+  padding: 0 .35rem .35rem;
+}
+.bl-secao-tit {
+  font-size: .64rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--text-muted);
+}
+.bl-secao-n {
+  font-size: .58rem; font-weight: 700; line-height: 1;
+  min-width: 16px; height: 16px; padding: 0 .3rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--text-secondary);
+  background: rgba(148, 163, 184, .12); border-radius: 100px;
+}
+
+/* ── Linha de amigo / pedido ───────────────────────────── */
+.bl-linha {
+  display: flex; align-items: center; gap: .65rem;
+  padding: .5rem .55rem; border-radius: 11px;
+  cursor: pointer; text-align: left;
+  transition: background .15s;
+}
+.bl-linha:hover,
+.bl-linha:focus-visible { background: rgba(124, 58, 237, .16); outline: none; }
+.bl-linha-pedido,
+.bl-linha-enviado { cursor: default; }
+.bl-linha-pedido:hover,
+.bl-linha-enviado:hover { background: transparent; }
+
+/* Avatar + pontinho de presença. A cor sai de --presenca-cor,
+   herdada das classes .pr-* de hunter-publico.css. */
+.bl-av {
+  position: relative; flex-shrink: 0;
+  width: 34px; height: 34px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .95rem;
+  background: linear-gradient(135deg, var(--purple-main), var(--blue-mana));
+}
+.bl-av img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.bl-ponto {
+  position: absolute; bottom: -1px; right: -1px;
+  width: 10px; height: 10px; border-radius: 50%;
+  border: 2px solid #0b0b16;
+  background: var(--presenca-cor, #64748b);
+}
+/* Só quem está online pulsa — senão o painel inteiro pisca. */
+.bl-av.pr-online .bl-ponto { animation: bl-pulso 2s ease-in-out infinite; }
+@keyframes bl-pulso {
+  0%, 100% { opacity: 1;  transform: scale(1); }
+  50%      { opacity: .5; transform: scale(.8); }
+}
+
+.bl-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.bl-nome {
+  font-size: .86rem; font-weight: 700; color: var(--text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.bl-sub {
+  font-size: .64rem; color: var(--text-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* Quando a sub-linha carrega uma classe pr-*, ela ganha a cor da presença */
+.bl-sub.pr-online, .bl-sub.pr-recente, .bl-sub.pr-hoje,
+.bl-sub.pr-ausente, .bl-sub.pr-sumido { color: var(--presenca-cor); }
+
+/* Badge de não-lidas */
+.bl-nl {
+  flex-shrink: 0;
+  min-width: 19px; height: 19px; padding: 0 .32rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: .62rem; font-weight: 700; line-height: 1; color: #fff;
+  border-radius: 100px;
+  background: linear-gradient(120deg, #6d28d9, var(--purple-glow));
+  box-shadow: 0 0 8px rgba(168, 85, 247, .5);
+}
+
+/* ✕ de remover, discreto até o hover na linha */
+.bl-x {
+  flex-shrink: 0; background: none; border: none; cursor: pointer;
+  color: var(--text-dim); font-size: .78rem; padding: .15rem .3rem;
+  border-radius: 7px; opacity: 0; transition: opacity .15s, color .15s, background .15s;
+}
+.bl-linha:hover .bl-x,
+.bl-linha:focus-within .bl-x { opacity: 1; }
+.bl-x:hover { color: #fca5a5; background: rgba(239, 68, 68, .12); }
+
+/* ── Botões de pedido (aceitar / recusar / adicionar) ──── */
+.bl-pedido-acoes { display: flex; gap: .35rem; flex-shrink: 0; }
+.bl-bt {
+  font-family: var(--font-section); font-size: .78rem; font-weight: 700;
+  cursor: pointer; border-radius: 8px; padding: .3rem .5rem;
+  border: 1px solid transparent; transition: all .16s;
+  line-height: 1;
+}
+.bl-bt-sim {
+  color: #6ee7b7; background: rgba(16, 185, 129, .12);
+  border-color: rgba(16, 185, 129, .4); min-width: 30px;
+}
+.bl-bt-sim:hover { background: rgba(16, 185, 129, .28); color: #fff; }
+.bl-bt-nao {
+  color: #fca5a5; background: rgba(239, 68, 68, .1);
+  border-color: rgba(239, 68, 68, .34); min-width: 30px;
+}
+.bl-bt-nao:hover { background: rgba(239, 68, 68, .26); color: #fff; }
+.bl-bt-add {
+  flex-shrink: 0; white-space: nowrap;
+  color: #fff;
+  background: linear-gradient(100deg, #6d28d9, var(--purple-glow));
+  border-color: var(--purple-glow);
+  box-shadow: 0 0 12px rgba(124, 58, 237, .28);
+}
+.bl-bt-add:hover { transform: translateY(-1px); box-shadow: 0 0 20px rgba(168, 85, 247, .5); }
+
+.bl-selo-eu {
+  font-size: .5rem; font-weight: 700; font-style: normal;
+  letter-spacing: .12em; text-transform: uppercase;
+  padding: .08rem .35rem; margin-left: .3rem; border-radius: 100px;
+  color: #7dd3fc; border: 1px solid rgba(56, 189, 248, .4); background: rgba(56, 189, 248, .1);
+}
+
+/* ── Vazios e carregando ───────────────────────────────── */
+.bl-nada {
+  padding: .5rem .55rem; font-size: .72rem; color: var(--text-dim);
+}
+.bl-vazio {
+  padding: 2.4rem 1.2rem; text-align: center;
+  font-size: .84rem; line-height: 1.6; color: var(--text-muted);
+}
+.bl-vazio-ico { font-size: 2.2rem; margin-bottom: .5rem; opacity: .6; }
+
+.bl-spinner {
+  display: flex; justify-content: center; padding: 2.4rem 0;
+}
+.bl-spinner i {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 3px solid rgba(124, 58, 237, .25);
+  border-top-color: var(--purple-glow);
+  animation: bl-girar .8s linear infinite;
+}
+@keyframes bl-girar { to { transform: rotate(360deg); } }
+
+@keyframes bl-surgir { from { opacity: 0; transform: translateY(-5px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .bl-av.pr-online .bl-ponto,
+  .bl-spinner i,
+  .bl-drawer, .bl-fundo, .bl-add-res { animation: none; transition: none; }
+}

@@ -302,17 +302,12 @@ const Dashboard = {
       const sb = document.getElementById('sidebar-avatar');
       if (sb) sb.innerHTML = `<img src="${dados.avatar_url}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
     }
-    // Aura do Arquiteto — a SVG simétrica, a mesma da vitrine pública.
-    // A antiga `chamas-arquiteto` era um borrão de CSS assimétrico e
-    // ficou só como resquício; aqui ela é substituída, não somada.
-    if (dados.nivel_acesso === 'Arquiteto') {
-      const hex = document.querySelector('#hunter-card .hunter-hex-wrap');
-      if (hex && window.Auras?.existe('arquiteto')) {
-        hex.classList.remove('chamas-arquiteto');
-        hex.querySelector('.aura-wrap')?.remove();
-        hex.insertAdjacentHTML('afterbegin', Auras.bloco('arquiteto', 168));
-      }
-    }
+    // Aura por cargo: fogo para o Arquiteto, selo azul para Admin.
+    // Quem decide qual é o próprio Auras — esta tela só entrega o
+    // hexágono e o cargo.
+    window.Auras?.aplicar(
+      document.querySelector('#hunter-card .hunter-hex-wrap'),
+      dados.nivel_acesso, 168);
 
     // Botão Editar Perfil
     const btnEdit = document.getElementById('dash-btn-editar-perfil');

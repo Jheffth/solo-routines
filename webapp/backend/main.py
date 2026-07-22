@@ -26,6 +26,7 @@ from routers.emblemas import router as emblemas_router
 from routers.materiais import router as materiais_router
 from routers.arquiteto import router as arquiteto_router
 from routers.hunters import router as hunters_router
+from routers.social import router as social_router
 
 # ==============================================================================
 # APP
@@ -83,6 +84,7 @@ app.include_router(emblemas_router,      prefix="/api")
 app.include_router(materiais_router,     prefix="/api")
 app.include_router(arquiteto_router,     prefix="/api")
 app.include_router(hunters_router,       prefix="/api")
+app.include_router(social_router,        prefix="/api")
 
 # ==============================================================================
 # STATIC FILES (FRONTEND)

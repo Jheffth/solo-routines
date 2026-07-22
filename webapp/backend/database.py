@@ -1,6 +1,6 @@
 from sqlalchemy import (
     create_engine, Column, Integer, String, Float, Date, DateTime,
-    Boolean, Text, ForeignKey, JSON, text
+    Boolean, Text, ForeignKey, JSON, text, UniqueConstraint
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
@@ -491,6 +491,46 @@ class RegistroPoder(Base):
     antes         = Column(String(200), nullable=True)   # estado anterior (reversão manual)
     motivo        = Column(String(300), nullable=True)
     criado_em     = Column(DateTime, default=datetime.utcnow, index=True)
+
+
+# ==============================================================================
+# SOCIAL — BuddyList (amizades) e Chat (mensagens 1-a-1)
+# ==============================================================================
+# Amizade com pedido + aceite: uma linha por relação, do solicitante para o
+# alvo. Guardamos SEMPRE o par ordenado (menor_id, maior_id) para que
+# (A→B) e (B→A) nunca virem duas linhas — a relação é única, indiferente de
+# quem pediu. O campo `solicitante_id` lembra quem enviou, para o outro lado
+# ver "fulano quer ser seu amigo".
+class Amizade(Base):
+    __tablename__ = "amizades"
+
+    id             = Column(Integer, primary_key=True, index=True)
+    # Par ordenado: usuario_a < usuario_b sempre. Garante unicidade da relação.
+    usuario_a_id   = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    usuario_b_id   = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    solicitante_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    # pendente → aceita | recusada. Recusada fica no banco para bloquear
+    # reenvio imediato de spam; pode ser limpa depois.
+    status         = Column(String(20), default="pendente", index=True)
+    criado_em      = Column(DateTime, default=datetime.utcnow)
+    respondido_em  = Column(DateTime, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("usuario_a_id", "usuario_b_id", name="uq_amizade_par"),
+    )
+
+
+# Mensagem de chat 1-a-1. `lida_em` nulo = ainda não lida (alimenta o
+# contador de não-lidas na BuddyList e no menu).
+class Mensagem(Base):
+    __tablename__ = "mensagens"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    de_id         = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    para_id       = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    corpo         = Column(String(2000), nullable=False)
+    criado_em     = Column(DateTime, default=datetime.utcnow, index=True)
+    lida_em       = Column(DateTime, nullable=True)
 
 
 # ==============================================================================

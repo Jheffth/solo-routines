@@ -52,21 +52,24 @@ const HunterPublico = {
      é o pior jeito de errar: a tela fica igual e ninguém sabe por quê.
      Aqui o motivo vai para o console. */
   _aura(h) {
-    if (!h.arquiteto) return '';
+    // A aura da vitrine vem do rótulo de posto que o backend manda
+    // ('arquiteto' | 'admin' | null) — não mais fixa em Arquiteto. Fallback
+    // no campo antigo para não sumir caso o backend não tenha reiniciado.
+    const id = h.aura || (h.arquiteto ? 'arquiteto' : null);
+    if (!id) return '';
     if (!window.Auras) {
       console.warn('[AURA] auras.js não carregou. Confira se o arquivo está sendo '
         + 'servido em js/auras.js (aba Network) e reinicie o backend se ele '
         + 'serve o frontend.');
       return '';
     }
-    if (!Auras.existe('arquiteto')) {
-      console.warn('[AURA] auras.js carregou, mas a aura "arquiteto" não se '
-        + 'registrou. Registradas:', Object.keys(Auras._registro));
+    if (!Auras.existe(id)) {
+      console.warn(`[AURA] aura "${id}" não registrada. Registradas:`,
+        Object.keys(Auras._registro));
       return '';
     }
-    // bloco() já vem com posicionamento e animação embutidos: não depende
-    // de css/auras.css ter chegado ao navegador.
-    const bloco = Auras.bloco('arquiteto', 212);
+    // bloco() já vem com posicionamento e animação embutidos.
+    const bloco = Auras.bloco(id, 212);
     if (!bloco) { console.warn('[AURA] o desenho voltou vazio.'); return ''; }
     return bloco;
   },

@@ -534,6 +534,18 @@ ul, ol {
   gap: 0.25rem;
 }
 
+/* Contador de não-lidas no item "Amigos" do menu */
+.nav-badge {
+  margin-left: auto;
+  min-width: 18px; height: 18px; padding: 0 5px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 100px;
+  font-family: 'Orbitron', monospace; font-size: .62rem; font-weight: 700;
+  color: #fff; background: #dc2626;
+  box-shadow: 0 0 10px rgba(220,38,38,.6);
+}
+.nav-badge.hidden { display: none; }
+
 .nav-item {
   display: flex;
   align-items: center;

@@ -36,6 +36,16 @@ LIMITE_BUSCA = 8
 MIN_TERMO    = 2
 
 
+def _aura_cargo(nivel_acesso: str):
+    """Mapeia o cargo para o id da aura. Mesma tabela do frontend."""
+    n = (nivel_acesso or "").lower()
+    if n == "arquiteto":
+        return "arquiteto"
+    if n in ("admin", "criador"):
+        return "admin"
+    return None
+
+
 def _ler_altar(u: Usuario) -> list:
     """Relíquias que o hunter fixou. JSON corrompido nunca derruba a vitrine."""
     try:
@@ -194,9 +204,12 @@ def perfil_publico(
             "xp_total": h.xp_total,
             "xp_atual": h.xp_atual, "xp_proximo_nivel": h.xp_proximo_nivel,
             "streak_atual": h.streak_atual, "streak_max": h.streak_max,
-            # O Arquiteto é figura pública do Sistema. Já quem é Admin,
-            # não: privilégio não é informação de vitrine.
             "arquiteto": h.nivel_acesso == "Arquiteto",
+            # Aura de posto, exibida a todos por decisão do dono do Sistema.
+            # Rótulo GROSSO de propósito ('arquiteto' | 'admin' | None): a
+            # vitrine ganha o brilho sem publicar o nivel_acesso cru nem
+            # distinguir Admin de Criador — só o que a aura precisa saber.
+            "aura": _aura_cargo(h.nivel_acesso),
             "desde": h.criado_em.isoformat() if h.criado_em else None,
             "dias_no_sistema": dias,
             "eu_mesmo": h.id == usuario.id,

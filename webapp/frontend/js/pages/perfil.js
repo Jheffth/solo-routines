@@ -76,8 +76,10 @@ const Perfil = {
           <!-- Hexágono de rank (clicável: troca a foto) -->
           <div class="hunter-hex-wrap"
                id="perfil-avatar-click" title="Clique para trocar a foto" style="cursor:pointer">
-            ${isArquiteto && window.Auras?.existe('arquiteto')
-              ? Auras.bloco('arquiteto', 168) : ''}
+            ${(() => {
+              const id = window.Auras?.porCargo?.(dados.nivel_acesso);
+              return id ? Auras.bloco(id, 168) : '';
+            })()}
             <div class="hunter-hex-ring"></div>
             <div class="hunter-hex">${avatarHtml}</div>
             <div class="hunter-hex-rank">${letra}</div>

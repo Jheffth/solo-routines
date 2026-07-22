@@ -102,9 +102,15 @@ const Auras = {
       .aura-halo   { animation: aura-halo-pulso 5s ease-in-out infinite; }
       .aura-calor  { animation: aura-calor 6.5s ease-in-out infinite; }
       @keyframes aura-girar { to { transform: rotate(360deg); } }
+      /* PERFORMANCE: o calor tem blur de 16px. Animar a escala obrigaria
+         o navegador a re-rasterizar esse borrao a cada quadro — o caso
+         mais caro de filtro SVG. Animando so a opacidade, o borrao e
+         calculado UMA vez e a variacao roda no compositor, de graca. A
+         pulsacao de tamanho se perde, mas num halo difuso ninguem nota.
+         (Nada de crase neste comentario: ele vive num template literal.) */
       @keyframes aura-calor {
-        0%,100% { opacity:.5;  transform: scale(1);    }
-        50%     { opacity:.95; transform: scale(1.14); }
+        0%,100% { opacity:.45; }
+        50%     { opacity:.95; }
       }
       @keyframes aura-respirar-a {
         0%,100% { transform: scale(1);     opacity:.92; }
@@ -130,6 +136,27 @@ const Auras = {
   },
 
   existe(id) { return !!this._registro[id]; },
+
+  /* Qual aura cabe a cada cargo. Um lugar só decide isso — assim uma
+     tela nova não precisa reescrever a regra, e mudar a política de
+     cargos não vira caça a `if` espalhado pelo projeto. */
+  porCargo(nivelAcesso) {
+    const n = (nivelAcesso || '').toLowerCase();
+    if (n === 'arquiteto') return 'arquiteto';
+    if (n === 'admin' || n === 'criador') return 'admin';
+    return null;
+  },
+
+  /* Desenha a aura do cargo direto no hexágono, trocando a anterior. */
+  aplicar(hexWrap, nivelAcesso, tam = 168) {
+    if (!hexWrap) return false;
+    hexWrap.classList.remove('chamas-arquiteto');   // resquício da aura antiga
+    hexWrap.querySelector('.aura-wrap')?.remove();
+    const id = this.porCargo(nivelAcesso);
+    if (!id || !this.existe(id)) return false;
+    hexWrap.insertAdjacentHTML('afterbegin', this.bloco(id, tam));
+    return true;
+  },
 
   /* ── Trava contra CSS quebrado ────────────────────────────────────
      O estilo viaja dentro do SVG, e CSS malformado NAO gera erro: o
@@ -376,9 +403,11 @@ Auras.diagnostico = function () {
   const problemas = Auras.conferirEstilo();
   diz('css embutido', problemas.length ? 'QUEBRADO: ' + problemas.join('; ') : 'íntegro');
 
+  // auras.css foi removido de propósito: o estilo viaja embutido no SVG.
+  // Se a folha reaparecer, alguém a ressuscitou sem necessidade.
   const folha = [...document.styleSheets].some(s =>
     (s.href || '').includes('auras.css'));
-  diz('css/auras.css carregou', folha ? 'sim' : 'NAO (usando estilo embutido)');
+  diz('estilo', folha ? 'folha externa (obsoleta) + embutido' : 'embutido (correto)');
 
   const wrap = document.querySelector('.aura-wrap');
   if (!wrap) {
@@ -413,5 +442,92 @@ Auras.diagnostico = function () {
   }
   console.log('%c[AURA] diagnostico\n' + L.join('\n'), 'font-family:monospace');
 };
+
+/* ══════════════════════════════════════════════════════════════════
+   AURA DO ADMINISTRADOR — "O Selo do Guardião"
+
+   Deliberadamente o oposto da do Arquiteto. Lá é fogo: quente,
+   orgânico, chamas que respiram. Aqui é selo: frio, geométrico,
+   lâminas retas e um anel de guarda tracejado girando devagar.
+
+   A diferença não é enfeite. Se os dois cargos usassem fogo
+   dourado, a aura deixaria de dizer quem é quem — que é a única
+   função dela. Arquiteto cria; Administrador guarda.
+   ══════════════════════════════════════════════════════════════════ */
+Auras.registrar('admin', function (tam) {
+  const C = 150;
+
+  /* Lâminas retas, sem curva: o Guardião não arde, ele corta. */
+  const lamina = (ang, alcance, largura) => {
+    const base = C - 66, ponta = base - alcance, ombro = base - alcance * 0.34;
+    return `<polygon points="150,${base} ${150 - largura},${ombro}
+              150,${ponta} ${150 + largura},${ombro}"
+            transform="rotate(${ang} ${C} ${C})" fill="url(#adLamina)"
+            stroke="#e0f2fe" stroke-width=".8" stroke-opacity=".55"/>`;
+  };
+  const grandes = [0, 60, 120, 180, 240, 300].map(a => lamina(a, 74, 15)).join('');
+  const medias  = [30, 90, 150, 210, 270, 330].map(a => lamina(a, 44, 9)).join('');
+
+  /* Marcas de guarda: 24 traços curtos, como escala de instrumento */
+  const marcas = [];
+  for (let i = 0; i < 24; i++) {
+    const a = (Math.PI / 12) * i;
+    const r2 = i % 2 === 0 ? 92 : 97;
+    marcas.push(`M ${C + 102 * Math.cos(a)} ${C + 102 * Math.sin(a)}
+                 L ${C + r2 * Math.cos(a)} ${C + r2 * Math.sin(a)}`);
+  }
+
+  return `
+  <svg viewBox="0 0 300 300" width="${tam}" height="${tam}"
+       class="aura-svg" aria-hidden="true" focusable="false"
+       style="display:block;overflow:visible;max-width:none;width:${tam}px;height:${tam}px">
+    ${Auras._estilo()}
+    <defs>
+      <linearGradient id="adLamina" x1="0.5" y1="0" x2="0.5" y2="1">
+        <stop offset="0%"   stop-color="#e0f2fe"/>
+        <stop offset="26%"  stop-color="#38bdf8"/>
+        <stop offset="68%"  stop-color="#1d4ed8"/>
+        <stop offset="100%" stop-color="#0b1a3a"/>
+      </linearGradient>
+      <radialGradient id="adCalor" cx="50%" cy="50%">
+        <stop offset="0%"   stop-color="#38bdf8" stop-opacity="0"/>
+        <stop offset="44%"  stop-color="#38bdf8" stop-opacity="0"/>
+        <stop offset="58%"  stop-color="#7dd3fc" stop-opacity=".42"/>
+        <stop offset="76%"  stop-color="#3b82f6" stop-opacity=".30"/>
+        <stop offset="90%"  stop-color="#818cf8" stop-opacity=".16"/>
+        <stop offset="100%" stop-color="#4338ca" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="adHalo" cx="50%" cy="50%">
+        <stop offset="0%"   stop-color="#e0f2fe" stop-opacity="0"/>
+        <stop offset="46%"  stop-color="#e0f2fe" stop-opacity="0"/>
+        <stop offset="56%"  stop-color="#e0f2fe" stop-opacity=".26"/>
+        <stop offset="74%"  stop-color="#38bdf8" stop-opacity=".16"/>
+        <stop offset="100%" stop-color="#1d4ed8" stop-opacity="0"/>
+      </radialGradient>
+      <filter id="adFundir" x="-60%" y="-60%" width="220%" height="220%">
+        <feGaussianBlur stdDeviation="15"/>
+      </filter>
+      <filter id="adGlow" x="-40%" y="-40%" width="180%" height="180%">
+        <feGaussianBlur stdDeviation="3.4"/>
+      </filter>
+    </defs>
+
+    <circle cx="150" cy="150" r="132" fill="url(#adCalor)"
+            class="aura-calor" filter="url(#adFundir)"/>
+    <circle cx="150" cy="150" r="118" fill="url(#adHalo)" class="aura-halo"/>
+
+    <!-- Anel de guarda: tracejado, gira devagar e no sentido único -->
+    <g class="aura-r1">
+      <circle cx="150" cy="150" r="102" fill="none" stroke="#38bdf8"
+              stroke-width="1.6" stroke-opacity=".7"
+              stroke-dasharray="14 12" filter="url(#adGlow)"/>
+      <path d="${marcas.join(' ')}" stroke="#7dd3fc" stroke-width="1.5"
+            stroke-opacity=".75"/>
+    </g>
+
+    <g class="aura-r2"><g class="aura-arder"  filter="url(#adGlow)">${grandes}</g></g>
+    <g class="aura-r3"><g class="aura-arder2">${medias}</g></g>
+  </svg>`;
+});
 
 window.Auras = Auras;

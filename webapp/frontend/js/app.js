@@ -304,6 +304,37 @@ const App = {
 
     // Celebra o que chegou enquanto o hunter estava fora
     this.celebrarPendentes();
+
+    // BuddyList: liga o botão do menu e o contador global de não-lidas
+    this._bindAmigos();
+  },
+
+  /* Botão "Amigos" abre a BuddyList (drawer), e um polling leve mantém o
+     badge do menu com o total de não-lidas + pedidos. Uma vez só. */
+  _bindAmigos() {
+    if (this._amigosBound) return;
+    this._amigosBound = true;
+
+    document.getElementById('nav-amigos')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.BuddyList?.alternar();
+    });
+
+    const badge = document.getElementById('nav-amigos-badge');
+    const pintar = async () => {
+      try {
+        const n = await API.social.novidades();
+        const total = (n.total_nao_lidas || 0) + (n.pedidos_recebidos || 0);
+        if (!badge) return;
+        badge.textContent = total > 99 ? '99+' : total;
+        badge.classList.toggle('hidden', total === 0);
+      } catch (_) { /* silencioso: contador é cortesia */ }
+    };
+    pintar();
+    // Polling do menu roda a cada 15s — mais folgado que o da BuddyList
+    // aberta (5s), já que aqui é só o numerozinho.
+    clearInterval(this._amigosTimer);
+    this._amigosTimer = setInterval(pintar, 15000);
   },
 
   /* Consulta o mapa de permissões e ajusta o menu */

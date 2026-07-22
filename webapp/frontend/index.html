@@ -25,9 +25,10 @@
   <link rel="stylesheet" href="css/sala-poderes.css">
   <link rel="stylesheet" href="css/badges.css">
   <link rel="stylesheet" href="css/hunter-publico.css">
-  <link rel="stylesheet" href="css/auras.css">
   <link rel="stylesheet" href="css/badge-card.css">
   <link rel="stylesheet" href="css/altar-reliquias.css">
+  <link rel="stylesheet" href="css/buddylist.css">
+  <link rel="stylesheet" href="css/chat.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -201,6 +202,12 @@
           </a>
           <a class="nav-item" data-page="materiais" id="nav-materiais" href="#">
             <span class="nav-icon">&#128142;</span><span>Materiais</span>
+          </a>
+          <!-- Amigos: abre a BuddyList (drawer), não navega para uma página.
+               O badge de não-lidas é preenchido pelo app via polling. -->
+          <a class="nav-item" id="nav-amigos" href="#">
+            <span class="nav-icon">&#128101;</span><span>Amigos</span>
+            <span class="nav-badge hidden" id="nav-amigos-badge">0</span>
           </a>
           <a class="nav-item" data-page="perfil" id="nav-perfil" href="#">
             <span class="nav-icon">&#128202;</span><span>Meu Perfil</span>
@@ -1011,6 +1018,8 @@
   <script src="js/badges/jh3ffth.js"></script>
   <script src="js/badge-card.js"></script>
   <script src="js/altar-reliquias.js"></script>
+  <script src="js/buddylist.js"></script>
+  <script src="js/chat.js"></script>
   <script src="js/charts.js"></script>
   <script src="js/pages/lancador.js"></script>
   <script src="js/pages/dashboard.js"></script>

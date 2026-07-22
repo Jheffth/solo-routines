@@ -212,6 +212,18 @@ class API {
   };
 
   /* ── Hunters: busca e perfil público ──────────────────── */
+  /* ── Social: BuddyList + Chat ─────────────────────────── */
+  static social = {
+    amigos:    async ()             => API.get('/social/amigos'),
+    pedir:     async (login)        => API.post('/social/pedir', { login }),
+    responder: async (id, aceitar)  => API.post('/social/responder', { amizade_id: id, aceitar }),
+    remover:   async (login)        => API.delete('/social/amigo/' + encodeURIComponent(login)),
+    conversa:  async (login, antesDe) => API.get('/social/conversa/' + encodeURIComponent(login)
+                                          + (antesDe ? '?antes_de=' + encodeURIComponent(antesDe) : '')),
+    enviar:    async (login, corpo) => API.post('/social/enviar', { login, corpo }),
+    novidades: async ()             => API.get('/social/novidades'),
+  };
+
   static hunters = {
     buscar: async (q)     => API.get('/hunters/buscar?q=' + encodeURIComponent(q)),
     perfil: async (login) => API.get('/hunters/' + encodeURIComponent(login)),
