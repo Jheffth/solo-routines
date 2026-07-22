@@ -671,140 +671,210 @@
 .chip-normal  { background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.3);color:#a78bfa; }
 .chip-baixa   { background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.3);color:var(--cyan-skill); }
 
-/* ── STAT CARD (dashboard) — Premium Glass Cards ── */
+/* ── STAT CARD (dashboard) — Placas de Rodovia ── */
+
+/* ── Animações de energia ── */
+@keyframes electric-red {
+  0%,100% { box-shadow: 0 0 8px #ef4444, 0 0 20px rgba(239,68,68,.4), inset 0 0 30px rgba(239,68,68,.06); border-color: rgba(239,68,68,.55); }
+  20%      { box-shadow: 0 0 3px #ef4444, 0 0 8px rgba(239,68,68,.2),  inset 0 0 10px rgba(239,68,68,.02); border-color: rgba(239,68,68,.25); }
+  40%      { box-shadow: 0 0 16px #ef4444,0 0 40px rgba(239,68,68,.6), inset 0 0 50px rgba(239,68,68,.1);  border-color: rgba(239,68,68,.8); }
+  70%      { box-shadow: 0 0 6px #ef4444, 0 0 12px rgba(239,68,68,.3), inset 0 0 20px rgba(239,68,68,.04); border-color: rgba(239,68,68,.4); }
+}
+@keyframes electric-gold {
+  0%,100% { box-shadow: 0 0 8px #f59e0b, 0 0 20px rgba(245,158,11,.4), inset 0 0 30px rgba(245,158,11,.06); border-color: rgba(245,158,11,.5); }
+  30%      { box-shadow: 0 0 3px #f59e0b, 0 0 8px rgba(245,158,11,.2),  inset 0 0 10px rgba(245,158,11,.02); border-color: rgba(245,158,11,.2); }
+  55%      { box-shadow: 0 0 20px #f59e0b,0 0 50px rgba(245,158,11,.7), inset 0 0 60px rgba(245,158,11,.12); border-color: rgba(245,158,11,.9); }
+}
+@keyframes electric-cyan {
+  0%,100% { box-shadow: 0 0 8px #06b6d4, 0 0 20px rgba(6,182,212,.4),  inset 0 0 30px rgba(6,182,212,.06); border-color: rgba(6,182,212,.5); }
+  25%      { box-shadow: 0 0 3px #06b6d4, 0 0 8px rgba(6,182,212,.2),   inset 0 0 10px rgba(6,182,212,.02); border-color: rgba(6,182,212,.2); }
+  60%      { box-shadow: 0 0 18px #06b6d4,0 0 45px rgba(6,182,212,.65), inset 0 0 55px rgba(6,182,212,.1);  border-color: rgba(6,182,212,.85); }
+}
+@keyframes spark-float {
+  0%   { transform: translateY(0)   scaleY(1)   opacity(1); }
+  100% { transform: translateY(-18px) scaleY(.4) opacity(0); }
+}
+@keyframes plaque-bob-up {
+  0%,100% { transform: translateY(0); box-shadow: 0 10px 25px rgba(0,0,0,0.4); }
+  50%      { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(0,0,0,0.5); }
+}
+@keyframes plaque-bob-mid {
+  0%,100% { transform: translateY(0); box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
+  50%      { transform: translateY(-2px); box-shadow: 0 12px 25px rgba(0,0,0,0.4); }
+}
+@keyframes plaque-bob-down {
+  0%,100% { transform: translateY(0); box-shadow: 0 10px 25px rgba(0,0,0,0.4); }
+  50%      { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(0,0,0,0.5); }
+}
+
+/* Container */
 .stat-plaques {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.4rem;
+  padding: 0.5rem 0.5rem;
+  overflow: visible;
 }
 
+/* Placa base */
 .stat-plaque {
   position: relative;
-  border-radius: 12px;
-  padding: 1.15rem 1.25rem 1.15rem 1.5rem;
+  border-radius: 8px;
+  padding: 1rem 1.2rem 1rem 1.5rem;
   display: flex;
   align-items: center;
-  gap: 1.25rem;
-  overflow: hidden;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s;
-  background: rgba(15, 15, 20, 0.5);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255,255,255, 0.04);
-  cursor: pointer;
+  gap: 1rem;
+  overflow: visible;        /* deixa o glow vazar */
+  cursor: default;
+  border: 1px solid transparent;
+  /* transform e animação definidos por variante */
 }
 
-/* Hover Lift */
-.stat-plaque:hover {
-  transform: translateY(-4px);
-}
-
-/* Subtle inner glow and diagonal shine */
+/* Pattern diagonal (hatching de estrada) */
 .stat-plaque::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 40%, rgba(255,255,255,0.01) 100%);
+  border-radius: inherit;
+  background-image: repeating-linear-gradient(
+    -48deg,
+    rgba(255,255,255,.03) 0px,
+    rgba(255,255,255,.03) 1px,
+    transparent 1px,
+    transparent 12px
+  );
   pointer-events: none;
-  z-index: 0;
+  z-index: 1;
 }
 
+/* Pino de suporte (imita parafuso de placa de rodovia) */
+.stat-plaque::after {
+  content: '';
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  background: #0d0d1a;
+  box-shadow: 0 0 6px currentColor;
+  opacity: .7;
+  z-index: 5;
+}
+
+/* Filhos acima dos pseudo-elementos */
 .stat-plaque > * { position: relative; z-index: 2; }
 
-/* ── Variante 1: Missões Hoje — Rubi ── */
+/* ── Placa 1: MISSÕES HOJE — Chamas Vermelhas — inclinada para cima ── */
 .stat-plaque--missoes {
-  border-left: 3px solid rgba(239, 68, 68, 0.8);
-}
-.stat-plaque--missoes:hover {
-  box-shadow: 0 10px 30px -8px rgba(239, 68, 68, 0.25), inset 0 0 24px rgba(239, 68, 68, 0.08);
-  border-color: rgba(239, 68, 68, 0.2);
-  border-left-color: #ef4444;
-}
-.stat-plaque--missoes .stat-plaque-icon {
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(153, 27, 27, 0.2));
-  border: 1px solid rgba(239, 68, 68, 0.25);
+  background: linear-gradient(112deg, #200808 0%, #3d1010 35%, #2a0c0c 70%, #1a0808 100%);
+  border: 1px solid rgba(239,68,68,.55);
   color: #fca5a5;
-  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.15);
+  animation: electric-red 2.8s ease-in-out infinite, plaque-bob-up 4s ease-in-out infinite;
+  transform-origin: right center;
 }
-.stat-plaque--missoes .stat-value { color: #fff; }
-.stat-plaque--missoes .stat-label { color: rgba(252, 165, 165, 0.75); }
+.stat-plaque--missoes::after { color: #ef4444; }
+.stat-plaque--missoes .stat-plaque-icon {
+  background: rgba(239,68,68,.18);
+  border: 1px solid rgba(239,68,68,.4);
+  color: #f87171;
+}
+.stat-plaque--missoes .stat-value { color: #fca5a5; text-shadow: 0 0 12px rgba(239,68,68,.6); }
+.stat-plaque--missoes .stat-label { color: rgba(252,165,165,.6); }
+.stat-plaque--missoes .stat-plaque-accent {
+  background: linear-gradient(180deg, transparent, #ef4444 30%, #ff6b6b 50%, #ef4444 70%, transparent);
+  box-shadow: 0 0 12px #ef4444, 0 0 4px #fff;
+  animation: electric-red 1.4s ease-in-out infinite;
+}
 
-/* ── Variante 2: Total Concluídas — Ouro ── */
+/* ── Placa 2: TOTAL CONCLUÍDAS — Elétrico Dourado — levemente inclinada ── */
 .stat-plaque--total {
-  border-left: 3px solid rgba(245, 158, 11, 0.8);
-}
-.stat-plaque--total:hover {
-  box-shadow: 0 10px 30px -8px rgba(245, 158, 11, 0.25), inset 0 0 24px rgba(245, 158, 11, 0.08);
-  border-color: rgba(245, 158, 11, 0.2);
-  border-left-color: #f59e0b;
-}
-.stat-plaque--total .stat-plaque-icon {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(146, 64, 14, 0.2));
-  border: 1px solid rgba(245, 158, 11, 0.25);
+  background: linear-gradient(108deg, #1a1200 0%, #302000 40%, #221800 70%, #160f00 100%);
+  border: 1px solid rgba(245,158,11,.5);
   color: #fde68a;
-  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.15);
+  animation: electric-gold 3.3s ease-in-out infinite 0.6s, plaque-bob-mid 4.5s ease-in-out infinite 0.8s;
+  transform-origin: center center;
 }
-.stat-plaque--total .stat-value { color: #fff; }
-.stat-plaque--total .stat-label { color: rgba(253, 230, 138, 0.75); }
+.stat-plaque--total::after { color: #f59e0b; }
+.stat-plaque--total .stat-plaque-icon {
+  background: rgba(245,158,11,.18);
+  border: 1px solid rgba(245,158,11,.4);
+  color: #fbbf24;
+}
+.stat-plaque--total .stat-value { color: #fde68a; text-shadow: 0 0 12px rgba(245,158,11,.7); }
+.stat-plaque--total .stat-label { color: rgba(253,230,138,.55); }
+.stat-plaque--total .stat-plaque-accent {
+  background: linear-gradient(180deg, transparent, #f59e0b 30%, #fcd34d 50%, #f59e0b 70%, transparent);
+  box-shadow: 0 0 12px #f59e0b, 0 0 4px #fff8;
+  animation: electric-gold 1.65s ease-in-out infinite;
+}
 
-/* ── Variante 3: Rotinas Ativas — Ciano ── */
+/* ── Placa 3: ROTINAS ATIVAS — Elétrico Ciano — inclinada para baixo ── */
 .stat-plaque--rotinas {
-  border-left: 3px solid rgba(6, 182, 212, 0.8);
-}
-.stat-plaque--rotinas:hover {
-  box-shadow: 0 10px 30px -8px rgba(6, 182, 212, 0.25), inset 0 0 24px rgba(6, 182, 212, 0.08);
-  border-color: rgba(6, 182, 212, 0.2);
-  border-left-color: #06b6d4;
-}
-.stat-plaque--rotinas .stat-plaque-icon {
-  background: linear-gradient(135deg, rgba(6, 182, 212, 0.25), rgba(22, 78, 99, 0.2));
-  border: 1px solid rgba(6, 182, 212, 0.25);
+  background: linear-gradient(104deg, #001818 0%, #002828 38%, #001d1d 68%, #001010 100%);
+  border: 1px solid rgba(6,182,212,.5);
   color: #a5f3fc;
-  box-shadow: 0 4px 16px rgba(6, 182, 212, 0.15);
+  animation: electric-cyan 2.5s ease-in-out infinite 1.2s, plaque-bob-down 3.8s ease-in-out infinite 1.5s;
+  transform-origin: right center;
 }
-.stat-plaque--rotinas .stat-value { color: #fff; }
-.stat-plaque--rotinas .stat-label { color: rgba(165, 243, 252, 0.75); }
+.stat-plaque--rotinas::after { color: #06b6d4; }
+.stat-plaque--rotinas .stat-plaque-icon {
+  background: rgba(6,182,212,.18);
+  border: 1px solid rgba(6,182,212,.4);
+  color: #22d3ee;
+}
+.stat-plaque--rotinas .stat-value { color: #a5f3fc; text-shadow: 0 0 12px rgba(6,182,212,.7); }
+.stat-plaque--rotinas .stat-label { color: rgba(165,243,252,.55); }
+.stat-plaque--rotinas .stat-plaque-accent {
+  background: linear-gradient(180deg, transparent, #06b6d4 30%, #67e8f9 50%, #06b6d4 70%, transparent);
+  box-shadow: 0 0 12px #06b6d4, 0 0 4px #fff6;
+  animation: electric-cyan 1.25s ease-in-out infinite;
+}
 
-
-/* Ícone da placa — chanfrado Premium */
+/* Ícone da placa — chanfrado */
 .stat-plaque-icon {
-  width: 48px;
-  height: 48px;
+  width: 42px;
+  height: 42px;
   flex-shrink: 0;
-  border-radius: 12px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-  clip-path: polygon(8px 0%, 100% 0%, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0% 100%, 0% 8px);
+  clip-path: polygon(6px 0%,100% 0%,100% calc(100% - 6px),calc(100% - 6px) 100%,0% 100%,0% 6px);
+  transition: box-shadow .2s;
 }
-.stat-plaque:hover .stat-plaque-icon {
-  transform: scale(1.1) rotate(5deg);
-}
-.stat-plaque-icon svg { stroke: currentColor; width: 24px; height: 24px; }
+.stat-plaque-icon svg { stroke: currentColor; }
 
 /* Valor numérico */
 .stat-plaque .stat-value {
-  font-family: var(--font-title);
+  font-family: var(--font-section);
   font-size: 1.85rem;
-  font-weight: 700;
-  line-height: 1.1;
+  font-weight: 800;
+  line-height: 1;
   letter-spacing: -.02em;
-  transition: color 0.3s;
 }
 
 /* Rótulo */
 .stat-plaque .stat-label {
   font-family: var(--font-section);
-  font-size: 0.7rem;
-  letter-spacing: 0.15em;
+  font-size: .67rem;
+  letter-spacing: .1em;
   text-transform: uppercase;
-  margin-top: 0.2rem;
-  font-weight: 600;
+  margin-top: .28rem;
 }
 
-/* Esconde elementos legados */
-.stat-plaque-accent { display: none; }
+/* Barra de acento na borda esquerda */
+.stat-plaque-accent {
+  position: absolute;
+  left: 0;
+  top: 12%;
+  height: 76%;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  z-index: 3;
+}
 
 
 
