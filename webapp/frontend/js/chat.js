@@ -74,6 +74,7 @@ const Chat = {
     // continua batendo no servidor com a janela fechada.
     this._pararPolling();
     this._mostrarDigitando(false);
+    this._fecharMenuBolha();   // não deixa o menu flutuante órfão no body
     if (this._win) {
       this._win.hidden = true;
       this._win.classList.remove('ch-visivel');
@@ -135,10 +136,69 @@ const Chat = {
       this._talvezDigitando();
     });
 
-    // Delegação: cabeçalho carrega o botão de fechar (é re-renderizado).
+    // Delegação: o cabeçalho é re-renderizado a cada poll, então os botões
+    // dele são tratados por delegação, não por bind direto.
     this._cab.addEventListener('click', (e) => {
       if (e.target.closest('.ch-fechar')) this.fechar();
+      else if (e.target.closest('.ch-limpar')) this._limparConversa();
     });
+
+    this._instalarArrasto();
+  },
+
+  /* ── Janela arrastável ────────────────────────────────────────────
+     Segura o cabeçalho e arrasta. Ao começar, troca a ancoragem de
+     right/bottom para left/top (senão o arrasto brigaria com o CSS).
+     O cabeçalho é re-renderizado a cada poll, mas o CONTÊINER `_cab`
+     persiste — então basta ligar o mousedown nele uma vez. */
+  _instalarArrasto() {
+    const iniciar = (px, py) => {
+      const r = this._win.getBoundingClientRect();
+      // Fixa a posição atual em left/top e solta o right/bottom.
+      this._win.style.left   = r.left + 'px';
+      this._win.style.top    = r.top + 'px';
+      this._win.style.right  = 'auto';
+      this._win.style.bottom = 'auto';
+      this._dragDX = px - r.left;
+      this._dragDY = py - r.top;
+      this._win.classList.add('ch-arrastando');
+    };
+    const mover = (px, py) => {
+      const w = this._win.offsetWidth, h = this._win.offsetHeight;
+      let x = px - this._dragDX, y = py - this._dragDY;
+      // Não deixa sumir da tela: mantém uma margem visível.
+      x = Math.max(8 - w + 60, Math.min(x, window.innerWidth - 60));
+      y = Math.max(8, Math.min(y, window.innerHeight - 40));
+      this._win.style.left = x + 'px';
+      this._win.style.top  = y + 'px';
+    };
+    const soltar = () => {
+      this._win.classList.remove('ch-arrastando');
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', soltar);
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', soltar);
+    };
+    const onMove = (e) => mover(e.clientX, e.clientY);
+    const onTouchMove = (e) => {
+      if (!e.touches[0]) return;
+      mover(e.touches[0].clientX, e.touches[0].clientY);
+      e.preventDefault();
+    };
+
+    this._cab.addEventListener('mousedown', (e) => {
+      if (e.target.closest('button')) return;   // clique em ✕/🧹 não arrasta
+      iniciar(e.clientX, e.clientY);
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', soltar);
+      e.preventDefault();
+    });
+    this._cab.addEventListener('touchstart', (e) => {
+      if (e.target.closest('button') || !e.touches[0]) return;
+      iniciar(e.touches[0].clientX, e.touches[0].clientY);
+      document.addEventListener('touchmove', onTouchMove, { passive: false });
+      document.addEventListener('touchend', soltar);
+    }, { passive: true });
   },
 
   /* ── Cabeçalho ────────────────────────────────────────────── */
@@ -157,6 +217,7 @@ const Chat = {
           '<i class="ch-ponto-txt"></i>' + this._esc(pres.txt) +
         '</div>' +
       '</div>' +
+      '<button type="button" class="ch-limpar" aria-label="Limpar conversa" title="Limpar conversa (só para você)">🧹</button>' +
       '<button type="button" class="ch-fechar" aria-label="Fechar conversa">✕</button>';
   },
 
@@ -284,6 +345,13 @@ const Chat = {
       // rolou para cima lendo o histórico, não o arrancamos de lá.
       if (novas && perto) this._irAoFim();
 
+      // Reconcilia lápides: mensagens que o outro apagou PARA TODOS têm id
+      // antigo, então o poll leve não as traz como "novas". A lista
+      // r.apagadas diz quais viraram lápide — convertemos as bolhas na hora.
+      if (Array.isArray(r.apagadas)) {
+        r.apagadas.forEach((id) => this._virarLapide(id));
+      }
+
       // Som com o chat ABERTO. Não colide com o poll global (app.js): lá o
       // som toca quando as não-lidas SOBEM, o que só acontece com o chat
       // fechado. Aqui a conversa está aberta e já marcou como lida, então
@@ -390,12 +458,17 @@ const Chat = {
           el.remove();
           this._ids.delete(tmpId);
         } else {
-          el.dataset.id = m.id;
+          // RECRIA a bolha com o id REAL. Trocar só o dataset.id não bastava:
+          // o gatilho ⋮ do menu só é criado para ids numéricos, e a bolha
+          // otimista nasceu com "tmp-N" — sem ele. Por isso o ⋮ não aparecia
+          // nas mensagens que EU enviei até recarregar a página.
           this._ids.delete(tmpId);
           this._ids.add(m.id);
-          el.classList.remove('ch-pendente');
-          const hora = el.querySelector('.ch-hora');
-          if (hora) hora.textContent = this._hora(m.quando);
+          const nova = this._bolha({
+            id: m.id, de_mim: true, corpo: corpo,
+            quando: m.quando, lida: false, apagada: false,
+          });
+          el.replaceWith(nova);
         }
       } else if (m) {
         this._ids.delete(tmpId);
@@ -416,6 +489,24 @@ const Chat = {
     div.className = 'ch-bolha ' + (msg.de_mim ? 'ch-minha' : 'ch-dele');
     div.dataset.id = msg.id;
 
+    // Lápide: apagada para todos. Sem texto, sem menu — só o registro de
+    // que ali houve uma mensagem.
+    if (msg.apagada) {
+      div.classList.add('ch-apagada');
+      const t = document.createElement('div');
+      t.className = 'ch-texto ch-texto-apagada';
+      t.textContent = '🚫 mensagem apagada';
+      div.appendChild(t);
+      const meta = document.createElement('div');
+      meta.className = 'ch-meta';
+      const hora = document.createElement('span');
+      hora.className = 'ch-hora';
+      hora.textContent = this._hora(msg.quando);
+      meta.appendChild(hora);
+      div.appendChild(meta);
+      return div;
+    }
+
     const corpo = document.createElement('div');
     corpo.className = 'ch-texto';
     corpo.textContent = msg.corpo || '';   // textContent: nunca injeta HTML do outro
@@ -427,9 +518,121 @@ const Chat = {
     hora.textContent = this._hora(msg.quando);
     meta.appendChild(hora);
 
+    // Gatilho do menu de exclusão. Só nas mensagens reais (não nas
+    // otimistas "tmp-", que ainda não existem no servidor).
+    const idReal = typeof msg.id === 'number';
+    if (idReal) {
+      const trig = document.createElement('button');
+      trig.className = 'ch-msg-menu';
+      trig.type = 'button';
+      trig.setAttribute('aria-label', 'Opções da mensagem');
+      trig.textContent = '⋮';
+      trig.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        this._menuBolha(msg, trig);
+      });
+      div.appendChild(trig);
+    }
+
     div.appendChild(corpo);
     div.appendChild(meta);
     return div;
+  },
+
+  /* Menu flutuante de uma bolha: apagar para mim / para todos.
+     Ancorado no <body> para escapar de qualquer clip-path da janela. */
+  _menuBolha(msg, ancora) {
+    this._fecharMenuBolha();
+    const menu = document.createElement('div');
+    menu.className = 'ch-menu-msg';
+    menu.id = 'ch-menu-msg';
+
+    const opt = (txt, perigo, fn) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'ch-menu-item' + (perigo ? ' perigo' : '');
+      b.textContent = txt;
+      b.addEventListener('click', (e) => { e.stopPropagation(); this._fecharMenuBolha(); fn(); });
+      return b;
+    };
+
+    menu.appendChild(opt('Apagar para mim', false, () => this._apagar(msg.id, 'mim')));
+    // "Para todos" só nas MINHAS mensagens — ninguém apaga a do outro.
+    if (msg.de_mim) {
+      menu.appendChild(opt('Apagar para todos', true, () => this._apagar(msg.id, 'todos')));
+    }
+
+    document.body.appendChild(menu);
+    const r = ancora.getBoundingClientRect();
+    const mw = menu.offsetWidth, mh = menu.offsetHeight;
+    let top = r.bottom + 4, left = r.right - mw;
+    if (top + mh > window.innerHeight - 8) top = r.top - mh - 4;
+    left = Math.max(8, Math.min(left, window.innerWidth - mw - 8));
+    menu.style.top = top + 'px';
+    menu.style.left = left + 'px';
+
+    // Fecha ao clicar fora
+    this._fecharMenuFn = (e) => { if (!menu.contains(e.target)) this._fecharMenuBolha(); };
+    setTimeout(() => document.addEventListener('click', this._fecharMenuFn), 0);
+  },
+
+  _fecharMenuBolha() {
+    document.getElementById('ch-menu-msg')?.remove();
+    if (this._fecharMenuFn) {
+      document.removeEventListener('click', this._fecharMenuFn);
+      this._fecharMenuFn = null;
+    }
+  },
+
+  /* Converte uma bolha já renderizada em lápide, se ainda não for. Usado
+     na reconciliação do poll quando o OUTRO apagou para todos. */
+  _virarLapide(id) {
+    const el = this._lista.querySelector('[data-id="' + id + '"]');
+    if (!el || el.classList.contains('ch-apagada')) return;
+    const nova = this._bolha({ id, de_mim: el.classList.contains('ch-minha'),
+                               apagada: true, quando: null });
+    el.replaceWith(nova);
+  },
+
+  async _apagar(id, escopo) {
+    try {
+      await API.social.apagarMsg(id, escopo);
+      const el = this._lista.querySelector('[data-id="' + id + '"]');
+      if (escopo === 'todos') {
+        // Vira lápide na hora do MEU lado; o outro reconcilia no próximo poll.
+        this._virarLapide(id);
+      } else {
+        // Some só da minha vista.
+        if (el) el.remove();
+        this._ids.delete(id);
+      }
+    } catch (err) {
+      this._aviso(err && err.message ? err.message : 'Não foi possível apagar.');
+    }
+  },
+
+  async _limparConversa() {
+    if (!this._login) return;
+    const nome = (this._com && this._com.nome) || 'este hunter';
+    // typeof, NÃO window.SoloDialog: SoloDialog é um const de topo, então
+    // não vira propriedade do window. Checar window.SoloDialog dava undefined
+    // e o fallback ": true" limpava SEM pedir confirmação.
+    const ok = (typeof SoloDialog !== 'undefined' && SoloDialog.confirm)
+      ? await SoloDialog.confirm(
+          'Isto limpa a conversa com <b>' + nome + '</b> só do SEU lado. '
+          + 'O outro continua vendo tudo.',
+          { icon: '🧹', titulo: 'Limpar conversa', tipo: 'warn',
+            btnOk: 'Limpar', btnCancel: 'Voltar' })
+      : false;   // sem diálogo disponível, NÃO limpa em silêncio
+    if (!ok) return;
+    try {
+      await API.social.limpar(this._login);
+      this._ids.clear();
+      this._lista.innerHTML = '';
+      this._placeholder('Conversa limpa. Novas mensagens aparecem aqui.');
+    } catch (err) {
+      this._aviso(err && err.message ? err.message : 'Não foi possível limpar.');
+    }
   },
 
   _appendMsg(msg) {

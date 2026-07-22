@@ -531,6 +531,13 @@ class Mensagem(Base):
     corpo         = Column(String(2000), nullable=False)
     criado_em     = Column(DateTime, default=datetime.utcnow, index=True)
     lida_em       = Column(DateTime, nullable=True)
+    # Exclusão. Cada lado esconde por si:
+    #   oculta_de   → o remetente apagou da SUA vista (ou limpou o chat).
+    #   oculta_para → o destinatário apagou da vista dele.
+    # apagada_todos → o remetente apagou PARA OS DOIS; vira lápide "apagada".
+    oculta_de     = Column(Boolean, default=False)
+    oculta_para   = Column(Boolean, default=False)
+    apagada_todos = Column(Boolean, default=False)
 
 
 # ==============================================================================

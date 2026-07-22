@@ -109,6 +109,19 @@ def _sou_amigo(db: Session, eu: Usuario, outro: Usuario) -> bool:
     return bool(rel and rel.status == "aceita")
 
 
+def _visivel_para(uid: int):
+    """
+    Condição SQL: a mensagem NÃO está oculta para o hunter `uid`.
+    Cada lado esconde por si — quem enviou olha `oculta_de`, quem recebeu
+    olha `oculta_para`. Mensagem apagada-para-todos continua "visível" aqui
+    (vira lápide na serialização); quem some é só a oculta individual.
+    """
+    return and_(
+        ~and_(Mensagem.de_id == uid,   Mensagem.oculta_de == True),
+        ~and_(Mensagem.para_id == uid, Mensagem.oculta_para == True),
+    )
+
+
 def _limpar_digitando(agora: Optional[datetime] = None) -> None:
     """
     Descarta heartbeats vencidos (> janela). Chamado a cada consulta/registro,
@@ -164,9 +177,11 @@ def amigos(
                                      .filter(Usuario.id.in_(outros_ids)).all()}
 
     # Contador de não-lidas: UMA query agregada. Nunca um laço por conversa.
+    # Ignora o que eu limpei (oculta_para) — chat limpo não pinga como novo.
     nao_lidas_rows = (db.query(Mensagem.de_id, func.count(Mensagem.id))
                         .filter(Mensagem.para_id == usuario.id,
-                                Mensagem.lida_em.is_(None))
+                                Mensagem.lida_em.is_(None),
+                                Mensagem.oculta_para == False)
                         .group_by(Mensagem.de_id).all())
     nao_lidas = {de_id: cnt for de_id, cnt in nao_lidas_rows}
 
@@ -361,7 +376,8 @@ def conversa(
         and_(Mensagem.de_id == usuario.id, Mensagem.para_id == alvo.id),
         and_(Mensagem.de_id == alvo.id,   Mensagem.para_id == usuario.id),
     )
-    q = db.query(Mensagem).filter(entre_nos)
+    # Esconde da minha vista o que eu apaguei/limpei. O outro lado não muda.
+    q = db.query(Mensagem).filter(entre_nos, _visivel_para(usuario.id))
 
     if apos_id is not None:
         # Poll leve: só o que é mais novo que o último id conhecido.
@@ -386,31 +402,51 @@ def conversa(
         linhas = linhas[:limite]
         linhas.reverse()
 
-    # Marca como lidas as recebidas desse hunter — mas SÓ ESCREVE NO BANCO SE
-    # houver algo a marcar. Antes, o commit rodava a cada poll de 4s mesmo sem
-    # nada novo: uma transação de escrita por poll, por conversa aberta, num
-    # banco remoto. Era o principal motivo da lentidão.
-    marcadas = db.query(Mensagem).filter(
-        Mensagem.de_id == alvo.id,
-        Mensagem.para_id == usuario.id,
-        Mensagem.lida_em.is_(None),
-    ).update({Mensagem.lida_em: datetime.utcnow()}, synchronize_session=False)
-    if marcadas:
-        db.commit()
+    # Marca como lidas as recebidas desse hunter — mas só ENCOSTA no banco
+    # quando há o que marcar. Antes, todo poll de 4s rodava um UPDATE + commit
+    # mesmo sem novidade: uma escrita por poll, por conversa aberta, num banco
+    # remoto. Era o principal motivo da lentidão.
+    #
+    #   • No poll leve (apos_id): só há o que marcar se o lote novo trouxe
+    #     mensagem do interlocutor. Sem isso, nem o UPDATE roda — o poll
+    #     ocioso vira leitura pura.
+    #   • Na abertura: marca tudo que estava por ler (conditional commit).
+    if apos_id is not None:
+        precisa_marcar = any(m.de_id == alvo.id for m in linhas)
     else:
-        db.rollback()   # não deixa a transação aberta segurando conexão
+        precisa_marcar = True
 
+    # SERIALIZAR ANTES DE MARCAR/COMMITAR. Um db.commit() expira todos os
+    # objetos da sessão (expire_on_commit padrão do SQLAlchemy); se o laço
+    # abaixo rodasse DEPOIS do commit, cada `m.corpo`/`m.id` recarregaria a
+    # linha do banco — 40 mensagens viravam 40 queries (o N+1 que travava
+    # a abertura do chat). Lendo os dados agora, com os objetos frescos, a
+    # abertura cai de ~47 para ~6 queries.
     mensagens = []
     for m in linhas:
         de_mim = m.de_id == usuario.id
+        apagada = bool(m.apagada_todos)
         mensagens.append({
             "id":     m.id,
             "de_mim": de_mim,
-            "corpo":  m.corpo,
+            # Apagada para todos não devolve o texto — vira lápide no cliente.
+            "corpo":  None if apagada else m.corpo,
+            "apagada": apagada,
             "quando": m.criado_em.isoformat() if m.criado_em else None,
-            # As minhas: lida = o outro já leu? As recebidas: acabamos de marcar.
+            # As minhas: lida = o outro já leu? As recebidas: viram lidas agora.
             "lida":   (m.lida_em is not None) if de_mim else True,
         })
+
+    if precisa_marcar:
+        marcadas = db.query(Mensagem).filter(
+            Mensagem.de_id == alvo.id,
+            Mensagem.para_id == usuario.id,
+            Mensagem.lida_em.is_(None),
+        ).update({Mensagem.lida_em: datetime.utcnow()}, synchronize_session=False)
+        if marcadas:
+            db.commit()
+        else:
+            db.rollback()
 
     return {
         "com": {
@@ -431,6 +467,13 @@ def conversa(
         },
         "mensagens": mensagens,
         "ha_mais":   ha_mais,
+        # Ids que viraram lápide (apagada para todos). O poll leve só traz
+        # mensagens NOVAS; sem esta lista, uma mensagem antiga que o outro
+        # acabou de apagar só apareceria como apagada ao reabrir. O cliente
+        # reconcilia: qualquer bolha com id daqui vira lápide na hora.
+        # Query enxuta — só ids, e apagadas costumam ser poucas.
+        "apagadas": [mid for (mid,) in db.query(Mensagem.id)
+                     .filter(entre_nos, Mensagem.apagada_todos == True).all()],
     }
 
 
@@ -484,9 +527,74 @@ def enviar(
         "id":     msg.id,
         "de_mim": True,
         "corpo":  msg.corpo,
+        "apagada": False,
         "quando": msg.criado_em.isoformat() if msg.criado_em else None,
         "lida":   False,
     }}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# EXCLUSÃO — apagar mensagem (para mim / para todos) e limpar conversa
+# ══════════════════════════════════════════════════════════════════════════════
+@router.delete("/mensagem/{mensagem_id}")
+def apagar_mensagem(
+    mensagem_id: int,
+    escopo: str = Query("mim", description="'mim' esconde só da minha vista; 'todos' apaga para os dois"),
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_atual),
+):
+    """
+    'mim'   → esconde a mensagem só da MINHA vista (o outro continua vendo).
+    'todos' → apaga para os dois; vira lápide "mensagem apagada". Só o AUTOR
+              pode apagar para todos — ninguém apaga a mensagem alheia.
+    """
+    msg = db.query(Mensagem).filter(Mensagem.id == mensagem_id).first()
+    if not msg or usuario.id not in (msg.de_id, msg.para_id):
+        raise HTTPException(404, "Mensagem não encontrada")
+
+    escopo = (escopo or "mim").lower()
+    if escopo == "todos":
+        if msg.de_id != usuario.id:
+            raise HTTPException(403, "Você só pode apagar para todos as SUAS mensagens")
+        msg.apagada_todos = True
+    else:
+        # Esconde do lado de quem pediu.
+        if msg.de_id == usuario.id:
+            msg.oculta_de = True
+        else:
+            msg.oculta_para = True
+
+    db.commit()
+    return {"ok": True, "id": mensagem_id, "escopo": escopo}
+
+
+@router.post("/limpar/{login}")
+def limpar_conversa(
+    login: str,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_atual),
+):
+    """
+    Limpa a conversa SÓ DO MEU LADO. O outro hunter continua com tudo.
+    Duas escritas em lote: escondo as que eu enviei (oculta_de) e as que
+    recebi (oculta_para). Nada de laço.
+    """
+    alvo = _por_login(db, login, apenas_ativos=False)
+    if not alvo:
+        raise HTTPException(404, "Hunter não encontrado")
+
+    enviadas = db.query(Mensagem).filter(
+        Mensagem.de_id == usuario.id, Mensagem.para_id == alvo.id,
+        Mensagem.oculta_de == False,
+    ).update({Mensagem.oculta_de: True}, synchronize_session=False)
+
+    recebidas = db.query(Mensagem).filter(
+        Mensagem.de_id == alvo.id, Mensagem.para_id == usuario.id,
+        Mensagem.oculta_para == False,
+    ).update({Mensagem.oculta_para: True}, synchronize_session=False)
+
+    db.commit()
+    return {"ok": True, "limpas": int(enviadas + recebidas)}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -504,7 +612,8 @@ def novidades(
     """
     linhas = (db.query(Mensagem.de_id, func.count(Mensagem.id))
                 .filter(Mensagem.para_id == usuario.id,
-                        Mensagem.lida_em.is_(None))
+                        Mensagem.lida_em.is_(None),
+                        Mensagem.oculta_para == False)
                 .group_by(Mensagem.de_id).all())
     por_id = {de_id: int(cnt) for de_id, cnt in linhas}
 

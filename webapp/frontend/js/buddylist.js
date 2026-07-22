@@ -38,6 +38,7 @@ const BuddyList = {
     // força reflow para a transição de entrada valer
     void this._raiz.offsetWidth;
     this._raiz.classList.add('bl-on');
+    if (this._aba) this._aba.classList.add('bl-aba-oculta');   // recolhe a aba
     document.addEventListener('keydown', this._onEsc);
     this.carregar();
     this._iniciarPolling();
@@ -49,6 +50,7 @@ const BuddyList = {
     this._pararPolling();
     clearTimeout(this._buscaTimer);
     document.removeEventListener('keydown', this._onEsc);
+    if (this._aba) this._aba.classList.remove('bl-aba-oculta');  // aba reaparece
     if (this._raiz) {
       this._raiz.classList.remove('bl-on');
       // esconde depois da transição (guarda o estado atual num closure)
@@ -58,6 +60,37 @@ const BuddyList = {
   },
 
   alternar() { this._aberto ? this.fechar() : this.abrir(); },
+
+  /* ── Aba de recolhimento (alça fixa na borda direita) ────────────
+     Fica sempre visível quando o drawer está fechado; clicar nela
+     abre a Guilda. Some enquanto o drawer está aberto (o X do drawer
+     recolhe de volta). Mostra o contador de não-lidas. */
+  montarAba() {
+    if (this._aba) return;
+    const a = document.createElement('button');
+    a.type = 'button';
+    a.className = 'bl-aba';
+    a.id = 'buddylist-aba';
+    a.setAttribute('aria-label', 'Abrir a Guilda (amigos)');
+    a.innerHTML =
+      '<span class="bl-aba-ico">👥</span>' +
+      '<span class="bl-aba-txt">Amigos</span>' +
+      '<span class="bl-aba-badge" data-bl-aba-badge hidden>0</span>';
+    a.addEventListener('click', () => this.alternar());
+    document.body.appendChild(a);
+    this._aba = a;
+    if (this._aberto) a.classList.add('bl-aba-oculta');
+  },
+
+  /* Atualiza o número na aba (chamado pelo poll global do app). */
+  badgeAba(total) {
+    if (!this._aba) return;
+    const b = this._aba.querySelector('[data-bl-aba-badge]');
+    if (!b) return;
+    b.textContent = total > 99 ? '99+' : total;
+    b.hidden = !(total > 0);
+    this._aba.classList.toggle('bl-aba-alerta', total > 0);
+  },
 
   /* ── Construção do drawer (uma única vez) ──────────────── */
   _montar() {

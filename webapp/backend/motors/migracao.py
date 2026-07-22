@@ -44,8 +44,11 @@ COLUNAS = [
     ("conquistas",                "transferivel",        "BOOLEAN NOT NULL DEFAULT 0",  "BOOLEAN NOT NULL DEFAULT FALSE"),
     # Altar de relíquias escolhidas pelo hunter
     ("usuarios",                  "reliquias_fixadas",   "TEXT",                        "TEXT"),
-    # Social (amizades e mensagens) — as tabelas nascem via criar_tabelas();
-    # nada de colunas novas em tabelas antigas aqui.
+    # Social (amizades e mensagens) — as tabelas nascem via criar_tabelas().
+    # Exclusão de mensagens (adicionadas depois da tabela existir):
+    ("mensagens",                 "oculta_de",           "BOOLEAN NOT NULL DEFAULT 0",  "BOOLEAN NOT NULL DEFAULT FALSE"),
+    ("mensagens",                 "oculta_para",         "BOOLEAN NOT NULL DEFAULT 0",  "BOOLEAN NOT NULL DEFAULT FALSE"),
+    ("mensagens",                 "apagada_todos",       "BOOLEAN NOT NULL DEFAULT 0",  "BOOLEAN NOT NULL DEFAULT FALSE"),
 ]
 
 

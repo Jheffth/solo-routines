@@ -228,6 +228,8 @@ class API {
     enviar:    async (login, corpo) => API.post('/social/enviar', { login, corpo }),
     novidades: async ()             => API.get('/social/novidades'),
     digitando: async (login)        => API.post('/social/digitando', { login }),
+    apagarMsg: async (id, escopo)   => API.delete('/social/mensagem/' + id + '?escopo=' + (escopo || 'mim')),
+    limpar:    async (login)        => API.post('/social/limpar/' + encodeURIComponent(login), {}),
   };
 
   static hunters = {

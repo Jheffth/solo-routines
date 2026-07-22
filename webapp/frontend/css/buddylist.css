@@ -14,6 +14,39 @@
   display: flex; justify-content: flex-end;
   font-family: var(--font-section);
 }
+
+/* ── Aba de recolhimento (alça na borda direita) ──────────────── */
+.bl-aba {
+  position: fixed; z-index: 3900;
+  right: 0; top: 38%;
+  display: flex; flex-direction: column; align-items: center; gap: .2rem;
+  padding: .7rem .4rem;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-family: var(--font-section); font-size: .58rem;
+  letter-spacing: .1em; text-transform: uppercase;
+  background: linear-gradient(180deg, rgba(124,58,237,.35), rgba(56,189,248,.22));
+  border: 1px solid rgba(124,58,237,.5); border-right: none;
+  border-radius: 12px 0 0 12px;
+  box-shadow: -4px 0 18px rgba(0,0,0,.45);
+  transition: transform .2s, background .2s, opacity .25s;
+}
+.bl-aba:hover { background: linear-gradient(180deg, rgba(124,58,237,.5), rgba(56,189,248,.32)); transform: translateX(-2px); color: #fff; }
+.bl-aba-ico { font-size: 1.15rem; }
+.bl-aba-txt { writing-mode: vertical-rl; transform: rotate(180deg); font-weight: 700; }
+/* Recolhida: desliza para fora da borda quando o drawer está aberto. */
+.bl-aba-oculta { transform: translateX(110%); opacity: 0; pointer-events: none; }
+.bl-aba-badge {
+  min-width: 17px; height: 17px; padding: 0 4px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 100px;
+  font-family: 'Orbitron', monospace; font-size: .58rem; font-weight: 700;
+  color: #fff; background: #dc2626;
+  box-shadow: 0 0 8px rgba(220,38,38,.6);
+}
+.bl-aba-badge[hidden] { display: none; }
+.bl-aba-alerta { border-color: #f87171; box-shadow: -4px 0 18px rgba(0,0,0,.45), 0 0 14px rgba(220,38,38,.4); }
+@media (prefers-reduced-motion: reduce) { .bl-aba { transition: none; } }
 /* BUGFIX: display:flex sobrescreve o atributo [hidden] nativo — forçamos o sumiço */
 .bl-raiz[hidden] { display: none !important; }
 

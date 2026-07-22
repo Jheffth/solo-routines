@@ -320,30 +320,52 @@ const App = {
       window.BuddyList?.alternar();
     });
 
+    // Aba de recolhimento fixa na borda direita.
+    window.BuddyList?.montarAba();
+
     const badge = document.getElementById('nav-amigos-badge');
-    // Lembra quantas não-lidas havia na última checagem, para tocar o som
-    // SÓ quando o número SOBE (mensagem nova chegou), não a cada poll.
-    // Começa em null: a primeira checagem não toca — evita som ao logar
-    // com mensagens já pendentes.
+    // Lembra o estado anterior para reagir só ao que MUDA:
+    //  • total de não-lidas sobe → toca o som.
+    //  • a contagem de um hunter sobe → abre o chat dele.
+    // Começam null: a primeira checagem só fixa a linha de base (sem som
+    // nem abrir chat ao logar com mensagens já pendentes).
     this._ultimasNaoLidas = null;
+    this._ultimasPorHunter = null;
 
     const pintar = async () => {
       try {
         const n = await API.social.novidades();
         const naoLidas = n.total_nao_lidas || 0;
         const total = naoLidas + (n.pedidos_recebidos || 0);
+        const porHunter = n.por_hunter || {};
 
-        // Som de mensagem nova: toca quando o total de não-lidas aumenta.
-        // Com o chat aberto, a leitura marca como lida e o total não sobe,
-        // então não toca — que é o certo (você já está vendo).
+        // Som quando o total de não-lidas aumenta. Com o chat aberto, a
+        // leitura marca como lida e o total não sobe — então não toca.
         if (this._ultimasNaoLidas !== null && naoLidas > this._ultimasNaoLidas) {
           window.SFX?.play('mensagem');
         }
-        this._ultimasNaoLidas = naoLidas;
 
-        if (!badge) return;
-        badge.textContent = total > 99 ? '99+' : total;
-        badge.classList.toggle('hidden', total === 0);
+        // Abre o chat de quem MANDOU algo novo. Compara a contagem por
+        // hunter com a checagem anterior; quem subiu, ganha a janela — a
+        // menos que a conversa dele já esteja aberta (o chat dela cuida).
+        if (this._ultimasPorHunter !== null && window.Chat) {
+          for (const login of Object.keys(porHunter)) {
+            const antes = this._ultimasPorHunter[login] || 0;
+            if (porHunter[login] > antes && window.Chat._login !== login) {
+              window.Chat.abrir(login);
+              break;
+            }
+          }
+        }
+
+        this._ultimasNaoLidas = naoLidas;
+        this._ultimasPorHunter = porHunter;
+
+        window.BuddyList?.badgeAba(total);
+        if (badge) {
+          badge.textContent = total > 99 ? '99+' : total;
+          badge.classList.toggle('hidden', total === 0);
+        }
       } catch (_) { /* silencioso: contador é cortesia */ }
     };
     pintar();
