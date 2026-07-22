@@ -454,14 +454,24 @@
                   <h3 style="font-family:var(--font-section);font-size:.95rem;font-weight:700;color:var(--text-primary);margin:0">Extrato de Missões</h3>
                   <span class="chip" id="rotinas-count" style="font-size:.65rem">0</span>
                 </div>
-                <button onclick="App.navigate('rotinas')" style="
-                  font-family:var(--font-section);font-size:.65rem;padding:.25rem .7rem;border-radius:.4rem;
-                  border:1px solid rgba(124,58,237,.3);background:rgba(124,58,237,.08);
-                  color:var(--purple-glow);cursor:pointer;transition:.2s"
-                  onmouseover="this.style.background='rgba(124,58,237,.2)'"
-                  onmouseout="this.style.background='rgba(124,58,237,.08)'">
-                  ⚔️ Ver Rotinas
-                </button>
+                <div style="display:flex;gap:.5rem;align-items:center">
+                  <button id="btn-nova-rotina-dash" onclick="if(window.Rotinas){App.navigate('rotinas');setTimeout(()=>Rotinas.abrirFormulario(),200);}else{App.navigate('rotinas');}" style="
+                    font-family:var(--font-section);font-size:.65rem;padding:.25rem .75rem;border-radius:.4rem;
+                    border:1px solid rgba(168,85,247,.5);background:linear-gradient(100deg,rgba(124,58,237,.25),rgba(168,85,247,.15));
+                    color:#d8b4fe;cursor:pointer;transition:.2s;font-weight:700;letter-spacing:.05em"
+                    onmouseover="this.style.background='linear-gradient(100deg,rgba(124,58,237,.45),rgba(168,85,247,.3))';this.style.boxShadow='0 0 12px rgba(168,85,247,.3)'"
+                    onmouseout="this.style.background='linear-gradient(100deg,rgba(124,58,237,.25),rgba(168,85,247,.15))';this.style.boxShadow='none'">
+                    + Nova Rotina
+                  </button>
+                  <button onclick="App.navigate('rotinas')" style="
+                    font-family:var(--font-section);font-size:.65rem;padding:.25rem .7rem;border-radius:.4rem;
+                    border:1px solid rgba(124,58,237,.3);background:rgba(124,58,237,.08);
+                    color:var(--purple-glow);cursor:pointer;transition:.2s"
+                    onmouseover="this.style.background='rgba(124,58,237,.2)'"
+                    onmouseout="this.style.background='rgba(124,58,237,.08)'">
+                    ⚔️ Ver Rotinas
+                  </button>
+                </div>
               </div>
 
               <!-- Barra de filtros -->
