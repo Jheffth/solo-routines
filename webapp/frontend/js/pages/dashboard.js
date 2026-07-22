@@ -441,7 +441,7 @@ const Dashboard = {
     if (ocultar) lista = lista.filter(r => !FINAIS.includes(r.status_hoje || 'PENDENTE'));
 
     if (!lista.length) {
-      cont.innerHTML = '<div class="empty-state"><div class="empty-icon">\uD83D\uDCCB</div><div>Nenhuma miss\u00E3o encontrada com esses filtros</div></div>';
+      cont.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><div>Nenhuma missão encontrada com esses filtros</div></div>';
       return;
     }
 
@@ -453,17 +453,14 @@ const Dashboard = {
     );
 
     if (!temFiltro) {
-      // Sem filtro: ATIVA → PENDENTE/PAUSADA → FINAIS; dentro de cada grupo por criado_em desc
       const ORD = { ATIVA: 0, PENDENTE: 1, PAUSADA: 1, CANCELADA: 2, FRACASSADA: 2, CONCLUIDA: 2 };
       lista = [...lista].sort((a, b) => {
         const sa = ORD[a.status_hoje || 'PENDENTE'] ?? 1;
         const sb = ORD[b.status_hoje || 'PENDENTE'] ?? 1;
         if (sa !== sb) return sa - sb;
-        // dentro do grupo: mais recentes primeiro
         return (b.criado_em || '').localeCompare(a.criado_em || '');
       });
     } else {
-      // Com filtro: mantém a ordem retornada pela API (status_hoje agrupado)
       const ORD = { ATIVA: 0, PENDENTE: 1, PAUSADA: 2, CANCELADA: 3, FRACASSADA: 4, CONCLUIDA: 5 };
       lista = [...lista].sort((a, b) => {
         const sa = ORD[a.status_hoje || 'PENDENTE'] ?? 9;
@@ -472,11 +469,33 @@ const Dashboard = {
       });
     }
 
-    cont.innerHTML = lista.map(r => this._buildRotinaDashCard(r)).join('');
-    this._bindRotinaDashCards(cont);
+    // ── Normaliza campo status_hoje → status (MissaoCard usa .status_hoje ou .status) ──
+    lista.forEach(r => { if (!r.status) r.status = r.status_hoje || 'PENDENTE'; });
+
+    // ── Usa o MissaoCard (mesmo componente da página de Rotinas) ──
+    if (typeof MissaoCard !== 'undefined') {
+      MissaoCard.cachear(lista);
+      cont.innerHTML = '<div style="display:flex;flex-direction:column;gap:.9rem">'
+        + lista.map(r => MissaoCard.html(r)).join('')
+        + '</div>';
+      MissaoCard.montar(cont, {
+        onMudou: () => this.carregarExtrato(),
+        onAcao: (acao, id, m) => {
+          if (acao === 'editar')  { if (window.Rotinas) Rotinas.abrirFormulario(m); }
+          if (acao === 'excluir') { if (window.Rotinas) Rotinas.confirmarExcluir(m); }
+        },
+      });
+    } else {
+      // Fallback se MissaoCard ainda não estiver carregado
+      cont.innerHTML = lista.map(r => this._buildRotinaDashCard(r)).join('');
+      this._bindRotinaDashCards(cont);
+    }
+
     this._iniciarTimerDash();
     this._iniciarAutoCheckDash();
   },
+
+
 
   renderRotinasHoje(lista) {
     this._rodinasHojeLista = lista || [];
