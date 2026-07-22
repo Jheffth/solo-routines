@@ -105,6 +105,13 @@ const MissaoCard = {
           'title="Extinguir (Arquiteto) — apaga a missão e estorna todo o XP que ela já deu"')
       : '';
 
+    // Editar / Excluir: ações discretas delegadas à página (onAcao),
+    // presentes em QUALQUER estado. Não competem com Iniciar/Concluir.
+    // 'excluir' é a exclusão NORMAL — diferente do 'extinguir' do Arquiteto.
+    const gerir =
+      b('editar',  'mc-btn-editar',  '✏️', 'title="Editar missão"') +
+      b('excluir', 'mc-btn-excluir', '🗑', 'title="Excluir missão"');
+
     let acoes;
     switch (status) {
       case 'PENDENTE':
@@ -134,7 +141,7 @@ const MissaoCard = {
       default:
         acoes = '';
     }
-    return acoes + extinguir;
+    return acoes + gerir + extinguir;
   },
 
   /* ── HTML de um cartão ─────────────────────────────────── */
@@ -188,6 +195,7 @@ const MissaoCard = {
   montar(container, opts = {}) {
     if (!container) return;
     this._onMudou = opts.onMudou || null;
+    this._onAcao  = opts.onAcao || null;
     this._demo    = !!opts.demo;
 
     if (!container.dataset.mcBound) {
@@ -222,6 +230,11 @@ const MissaoCard = {
     }, 1000);
   },
 
+  /* Encerra o timer de prazo na hora (a página chama ao sair da tela). */
+  pararTimer() {
+    if (this._timer) { clearInterval(this._timer); this._timer = null; }
+  },
+
   /* Guarda os dados para o timer (chame ao renderizar a lista) */
   cachear(missoes) {
     this._cache = {};
@@ -230,6 +243,12 @@ const MissaoCard = {
 
   /* ── Execução das ações contra a API real ──────────────── */
   async _executar(acao, id, btn) {
+    // Editar / Excluir (normal): o card não resolve — delega à página.
+    // NÃO toca a API. (Não confundir com 'extinguir', do Arquiteto.)
+    if (acao === 'editar' || acao === 'excluir') {
+      this._onAcao && this._onAcao(acao, id, this._cache?.[id]);
+      return;
+    }
     // Extinguir é irreversível: confirma ANTES de qualquer coisa
     if (acao === 'extinguir') return this._extinguir(id);
     if (this._demo) return this._demoTransicao(acao, id);

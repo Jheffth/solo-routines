@@ -206,6 +206,31 @@
   transform: scale(1.06);
 }
 
+/* Editar / Excluir — gestão discreta (delegada à página).
+   Ícones pequenos e apagados; não competem com Iniciar/Concluir. */
+.mc-btn-editar,
+.mc-btn-excluir {
+  padding: .4rem .55rem;
+  font-size: .82rem;
+  line-height: 1;
+  color: var(--text-muted);
+  background: rgba(148,163,184,.05);
+  border-color: rgba(148,163,184,.2);
+  opacity: .5;
+}
+.mc-btn-editar:hover {
+  opacity: 1;
+  color: #e9d5ff;
+  background: rgba(168,85,247,.12);
+  border-color: rgba(168,85,247,.5);
+}
+.mc-btn-excluir:hover {
+  opacity: 1;
+  color: #fca5a5;
+  background: rgba(239,68,68,.1);
+  border-color: rgba(239,68,68,.5);
+}
+
 /* Dissolução ao extinguir */
 .mc-extinguindo {
   pointer-events: none;
