@@ -22,6 +22,39 @@ const SFX = {
     return this._ctx;
   },
 
+  /* ── Desbloqueio do áudio ─────────────────────────────────────────────
+     Navegadores barram áudio que não nasce de um gesto do usuário. Os sons
+     de clique (conquista, level-up) escapam porque tocam logo após um
+     clique. Mas o som de MENSAGEM chega sozinho, por um timer — e aí o
+     AudioContext fica suspenso e o som não sai.
+
+     Solução: no PRIMEIRO gesto da sessão (clique ou tecla), criamos e
+     "acordamos" o contexto e tocamos um buffer mudo. A partir daí ele fica
+     rodando e qualquer som posterior (inclusive vindo de timer) toca. */
+  _instalarDesbloqueio() {
+    if (this._desbloqueioInstalado) return;
+    this._desbloqueioInstalado = true;
+    const desbloquear = () => {
+      try {
+        const ctx = this._audioCtx();
+        if (ctx) {
+          // buffer de 1 amostra, silencioso: o "aperto de zero" que
+          // convence o navegador de que houve intenção de tocar.
+          const src = ctx.createBufferSource();
+          src.buffer = ctx.createBuffer(1, 1, 22050);
+          src.connect(ctx.destination);
+          src.start(0);
+        }
+      } catch (_) { /* silencioso */ }
+      window.removeEventListener('pointerdown', desbloquear);
+      window.removeEventListener('keydown', desbloquear);
+      window.removeEventListener('touchstart', desbloquear);
+    };
+    window.addEventListener('pointerdown', desbloquear);
+    window.addEventListener('keydown', desbloquear);
+    window.addEventListener('touchstart', desbloquear);
+  },
+
   /* Toca um som pelo nome. Arquivo em /sounds/ tem prioridade. */
   play(nome) {
     if (!this.enabled) return;
@@ -131,3 +164,7 @@ const SFX = {
 };
 
 window.SFX = SFX;
+
+// Arma o desbloqueio de áudio no primeiro gesto — essencial para os sons
+// que chegam sozinhos (mensagem nova), que de outro modo seriam barrados.
+SFX._instalarDesbloqueio();

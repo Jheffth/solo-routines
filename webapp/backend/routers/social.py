@@ -331,14 +331,22 @@ def remover(
 def conversa(
     login: str,
     antes_de: Optional[str] = Query(None, description="ISO: carrega mensagens anteriores a este instante"),
+    apos_id: Optional[int] = Query(None, description="poll leve: só mensagens com id maior que este"),
     limite: int = Query(LIMITE_MSG, ge=1, le=LIMITE_MAX),
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(get_usuario_atual),
 ):
     """
     Abre a conversa com um amigo. Só amigo aceito conversa → 403 caso contrário.
-    Abrir a conversa MARCA como lidas todas as mensagens recebidas desse hunter.
+    Abrir a conversa MARCA como lidas as mensagens recebidas desse hunter.
     Devolve a página em ordem cronológica (mais antiga primeiro).
+
+    Dois modos:
+      • sem `apos_id`  → abertura/paginação: devolve uma página de `limite`
+        mensagens (com `antes_de` para carregar mais antigas).
+      • com `apos_id`  → POLL LEVE: devolve só o que chegou depois do id que o
+        cliente já tem. Payload minúsculo em vez de reenviar 40 mensagens a
+        cada 4 segundos.
     """
     alvo = _por_login(db, login, apenas_ativos=True)
     if not alvo:
@@ -355,30 +363,42 @@ def conversa(
     )
     q = db.query(Mensagem).filter(entre_nos)
 
-    if antes_de:
-        try:
-            marco = datetime.fromisoformat(antes_de.replace("Z", "+00:00"))
-            if marco.tzinfo is not None:
-                marco = marco.replace(tzinfo=None)
-            q = q.filter(Mensagem.criado_em < marco)
-        except (ValueError, TypeError):
-            pass  # marco inválido: ignora o filtro, devolve a página mais recente
+    if apos_id is not None:
+        # Poll leve: só o que é mais novo que o último id conhecido.
+        linhas = (q.filter(Mensagem.id > apos_id)
+                    .order_by(Mensagem.id.asc()).limit(LIMITE_MAX).all())
+        ha_mais = False
+    else:
+        if antes_de:
+            try:
+                marco = datetime.fromisoformat(antes_de.replace("Z", "+00:00"))
+                if marco.tzinfo is not None:
+                    marco = marco.replace(tzinfo=None)
+                q = q.filter(Mensagem.criado_em < marco)
+            except (ValueError, TypeError):
+                pass  # marco inválido: ignora o filtro, devolve a página mais recente
 
-    # Buscamos a página mais recente (desc) + 1 para saber se "há mais",
-    # e devolvemos em ordem cronológica.
-    linhas = (q.order_by(Mensagem.criado_em.desc(), Mensagem.id.desc())
-                .limit(limite + 1).all())
-    ha_mais = len(linhas) > limite
-    linhas = linhas[:limite]
-    linhas.reverse()
+        # Página mais recente (desc) + 1 para saber se "há mais", devolvida
+        # em ordem cronológica.
+        linhas = (q.order_by(Mensagem.criado_em.desc(), Mensagem.id.desc())
+                    .limit(limite + 1).all())
+        ha_mais = len(linhas) > limite
+        linhas = linhas[:limite]
+        linhas.reverse()
 
-    # Marca como lidas TODAS as recebidas desse hunter (não só as da página).
-    db.query(Mensagem).filter(
+    # Marca como lidas as recebidas desse hunter — mas SÓ ESCREVE NO BANCO SE
+    # houver algo a marcar. Antes, o commit rodava a cada poll de 4s mesmo sem
+    # nada novo: uma transação de escrita por poll, por conversa aberta, num
+    # banco remoto. Era o principal motivo da lentidão.
+    marcadas = db.query(Mensagem).filter(
         Mensagem.de_id == alvo.id,
         Mensagem.para_id == usuario.id,
         Mensagem.lida_em.is_(None),
     ).update({Mensagem.lida_em: datetime.utcnow()}, synchronize_session=False)
-    db.commit()
+    if marcadas:
+        db.commit()
+    else:
+        db.rollback()   # não deixa a transação aberta segurando conexão
 
     mensagens = []
     for m in linhas:

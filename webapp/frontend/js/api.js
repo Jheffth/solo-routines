@@ -218,8 +218,13 @@ class API {
     pedir:     async (login)        => API.post('/social/pedir', { login }),
     responder: async (id, aceitar)  => API.post('/social/responder', { amizade_id: id, aceitar }),
     remover:   async (login)        => API.delete('/social/amigo/' + encodeURIComponent(login)),
-    conversa:  async (login, antesDe) => API.get('/social/conversa/' + encodeURIComponent(login)
-                                          + (antesDe ? '?antes_de=' + encodeURIComponent(antesDe) : '')),
+    conversa:  async (login, antesDe, aposId) => {
+      const qs = [];
+      if (antesDe) qs.push('antes_de=' + encodeURIComponent(antesDe));
+      if (aposId)  qs.push('apos_id=' + encodeURIComponent(aposId));
+      return API.get('/social/conversa/' + encodeURIComponent(login)
+                     + (qs.length ? '?' + qs.join('&') : ''));
+    },
     enviar:    async (login, corpo) => API.post('/social/enviar', { login, corpo }),
     novidades: async ()             => API.get('/social/novidades'),
     digitando: async (login)        => API.post('/social/digitando', { login }),

@@ -231,9 +231,19 @@ const Chat = {
   },
 
   /* ── Polling: mensagens novas a cada ~4s ──────────────────── */
+  /* Maior id REAL já visto (ignora as bolhas otimistas "tmp-N", que não
+     existem no servidor). null se ainda não há nada — aí o poll pega tudo. */
+  _maiorId() {
+    let max = 0;
+    this._ids.forEach((id) => {
+      if (typeof id === 'number' && id > max) max = id;
+    });
+    return max || null;
+  },
+
   _iniciarPolling() {
     this._pararPolling();
-    this._timer = setInterval(() => this._buscarNovas(), 4000);
+    this._timer = setInterval(() => this._buscarNovas(), 3000);
   },
 
   _pararPolling() {
@@ -253,7 +263,9 @@ const Chat = {
     const login = this._login;
     this._buscando = true;
     try {
-      const r = await API.social.conversa(login);
+      // Poll leve: manda o maior id que já temos; o servidor devolve só o
+      // que chegou depois, em vez de reenviar as últimas 40 a cada 3s.
+      const r = await API.social.conversa(login, null, this._maiorId());
       if (this._login !== login || !this._win || this._win.hidden) return;
 
       if (r.com) { this._com = r.com; this._renderCabecalho(); }
@@ -271,6 +283,12 @@ const Chat = {
       // Só puxa o scroll se o usuário já estava lendo o fim; se ele
       // rolou para cima lendo o histórico, não o arrancamos de lá.
       if (novas && perto) this._irAoFim();
+
+      // Som com o chat ABERTO. Não colide com o poll global (app.js): lá o
+      // som toca quando as não-lidas SOBEM, o que só acontece com o chat
+      // fechado. Aqui a conversa está aberta e já marcou como lida, então
+      // as não-lidas não sobem — os dois nunca disparam para a mesma msg.
+      if (novasDele) window.SFX?.play('mensagem');
 
       // "digitando…": chegou mensagem do interlocutor → ele parou; senão
       // reflete o heartbeat que o backend reportou em com.digitando.
