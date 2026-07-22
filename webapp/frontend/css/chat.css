@@ -33,6 +33,12 @@
     0 0 34px color-mix(in srgb, var(--purple-main) 16%, transparent);
   animation: ch-surgir .24s cubic-bezier(.34, 1.3, .64, 1) both;
 }
+
+/* O atributo hidden nativo é atropelado pelo display: flex da .ch-janela, forçamos o sumiço */
+.ch-janela[hidden] {
+  display: none !important;
+}
+
 /* Navegadores sem color-mix continuam com uma janela apresentável */
 @supports not (color: color-mix(in srgb, red, blue)) {
   .ch-janela {
