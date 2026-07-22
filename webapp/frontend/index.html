@@ -176,7 +176,32 @@
 
       <div id="sidebar">
         <div class="sidebar-logo">
-          <div id="sidebar-logo-img" class="sidebar-logo-icon">&#9876;&#65039;</div>
+          <div id="sidebar-logo-img" class="sidebar-logo-icon">
+            <!-- Espadas cruzadas SVG -->
+            <svg width="34" height="34" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="slg-blade" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#e2e8f0"/>
+                  <stop offset="50%" stop-color="#a855f7"/>
+                  <stop offset="100%" stop-color="#7c3aed"/>
+                </linearGradient>
+                <filter id="slg-glow"><feGaussianBlur stdDeviation="1.5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+              </defs>
+              <g filter="url(#slg-glow)">
+                <!-- Espada 1 (diagonal /) -->
+                <rect x="18.5" y="2" width="3" height="22" rx="1.5" fill="url(#slg-blade)" transform="rotate(45 20 20)"/>
+                <rect x="7" y="17.5" width="6" height="5" rx="1" fill="#a855f7" transform="rotate(45 20 20)"/>
+                <rect x="19" y="27" width="2" height="6" rx="1" fill="#7c3aed" transform="rotate(45 20 20)"/>
+                <!-- Espada 2 (diagonal \) -->
+                <rect x="18.5" y="2" width="3" height="22" rx="1.5" fill="url(#slg-blade)" transform="rotate(-45 20 20)"/>
+                <rect x="7" y="17.5" width="6" height="5" rx="1" fill="#a855f7" transform="rotate(-45 20 20)"/>
+                <rect x="19" y="27" width="2" height="6" rx="1" fill="#7c3aed" transform="rotate(-45 20 20)"/>
+                <!-- Gema central -->
+                <circle cx="20" cy="20" r="3" fill="#c084fc" opacity="0.9"/>
+                <circle cx="20" cy="20" r="1.5" fill="#fff" opacity="0.6"/>
+              </g>
+            </svg>
+          </div>
           <div class="sidebar-logo-texts">
             <div class="sidebar-logo-text" id="sidebar-app-nome">Solo Routines</div>
             <div class="sidebar-logo-sub">Sistema de Missoes</div>
@@ -184,42 +209,127 @@
         </div>
         <nav class="sidebar-nav">
           <div class="nav-section"><span class="nav-section-label">Missoes</span></div>
+
+          <!-- Dashboard -->
           <a class="nav-item active" data-page="dashboard" id="nav-dashboard" href="#">
-            <span class="nav-icon">&#127968;</span><span>Dashboard</span>
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/>
+                <rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>
+              </svg>
+            </span>
+            <span>Dashboard</span>
           </a>
+
+          <!-- Rotinas -->
           <a class="nav-item" data-page="rotinas" id="nav-rotinas" href="#">
-            <span class="nav-icon">&#128260;</span><span>Rotinas</span>
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12a9 9 0 1 1-6.22-8.56"/><polyline points="21 3 21 9 15 9"/><line x1="12" y1="7" x2="12" y2="12"/><line x1="12" y1="12" x2="15.5" y2="15.5"/>
+              </svg>
+            </span>
+            <span>Rotinas</span>
           </a>
+
+          <!-- Missões Gerais / Tarefas -->
           <a class="nav-item" data-page="tarefas" id="nav-tarefas" href="#">
-            <span class="nav-icon">&#9876;&#65039;</span><span>Miss&#245;es Gerais</span>
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="12" y2="17"/>
+                <polyline points="9 9 10 9 10 10 9 10"/>
+              </svg>
+            </span>
+            <span>Missões Gerais</span>
           </a>
+
+          <!-- Dungeons -->
           <a class="nav-item" data-page="dungeons" id="nav-dungeons" href="#">
-            <span class="nav-icon">&#127761;</span><span>Dungeons</span>
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <path d="M9 22V12h6v10"/><path d="M12 7v1"/>
+                <circle cx="12" cy="11" r="1"/>
+              </svg>
+            </span>
+            <span>Dungeons</span>
           </a>
+
           <div class="nav-section"><span class="nav-section-label">Recompensas</span></div>
+
+          <!-- Loja -->
           <a class="nav-item" data-page="loja" id="nav-loja" href="#">
-            <span class="nav-icon">&#128717;&#65039;</span><span>Loja do Hunter</span>
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <path d="M16 10a4 4 0 0 1-8 0"/>
+              </svg>
+            </span>
+            <span>Loja do Hunter</span>
           </a>
+
+          <!-- Materiais -->
           <a class="nav-item" data-page="materiais" id="nav-materiais" href="#">
-            <span class="nav-icon">&#128142;</span><span>Materiais</span>
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            </span>
+            <span>Materiais</span>
           </a>
-          <!-- Amigos: abre a BuddyList (drawer), não navega para uma página.
-               O badge de não-lidas é preenchido pelo app via polling. -->
+
+          <!-- Amigos -->
           <a class="nav-item" id="nav-amigos" href="#">
-            <span class="nav-icon">&#128101;</span><span>Amigos</span>
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </span>
+            <span>Amigos</span>
             <span class="nav-badge hidden" id="nav-amigos-badge">0</span>
           </a>
+
+          <!-- Meu Perfil -->
           <a class="nav-item" data-page="perfil" id="nav-perfil" href="#">
-            <span class="nav-icon">&#128202;</span><span>Meu Perfil</span>
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+            </span>
+            <span>Meu Perfil</span>
           </a>
+
           <div class="nav-section hidden" id="nav-admin-section">
             <span class="nav-section-label">Sistema</span>
           </div>
+
+          <!-- Painel do Sistema -->
           <a class="nav-item hidden" data-page="sistema" id="nav-sistema" href="#">
-            <span class="nav-icon">&#128737;&#65039;</span><span>Painel do Sistema</span>
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+            </span>
+            <span>Painel do Sistema</span>
           </a>
+
+          <!-- Configurações -->
           <a class="nav-item hidden" data-page="gerencial" id="nav-gerencial" href="#">
-            <span class="nav-icon">&#9881;&#65039;</span><span>Configuracoes</span>
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+                <path d="M12 2v2m0 16v2M2 12h2m16 0h2"/>
+              </svg>
+            </span>
+            <span>Configuracoes</span>
           </a>
         </nav>
         <div class="sidebar-user">
@@ -237,6 +347,7 @@
           </button>
         </div>
       </div>
+
 
       <div id="content-area">
 
