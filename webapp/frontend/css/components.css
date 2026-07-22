@@ -695,16 +695,16 @@
   100% { transform: translateY(-18px) scaleY(.4) opacity(0); }
 }
 @keyframes plaque-bob-up {
-  0%,100% { transform: rotate(-5deg) translateY(0); }
-  50%      { transform: rotate(-5deg) translateY(-2px); }
+  0%,100% { transform: rotateY(-18deg) rotateX(6deg) translateY(0); box-shadow: -4px 10px 25px rgba(0,0,0,0.4); }
+  50%      { transform: rotateY(-18deg) rotateX(6deg) translateY(-3px); box-shadow: -4px 14px 30px rgba(0,0,0,0.5); }
 }
 @keyframes plaque-bob-mid {
-  0%,100% { transform: rotate(0deg) translateY(0); }
-  50%      { transform: rotate(0deg) translateY(-1.5px); }
+  0%,100% { transform: rotateY(0deg) rotateX(0deg) translateY(0); box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
+  50%      { transform: rotateY(0deg) rotateX(0deg) translateY(-2px); box-shadow: 0 12px 25px rgba(0,0,0,0.4); }
 }
 @keyframes plaque-bob-down {
-  0%,100% { transform: rotate(4.5deg) translateY(0); }
-  50%      { transform: rotate(4.5deg) translateY(-2px); }
+  0%,100% { transform: rotateY(18deg) rotateX(-6deg) translateY(0); box-shadow: 4px 10px 25px rgba(0,0,0,0.4); }
+  50%      { transform: rotateY(18deg) rotateX(-6deg) translateY(-3px); box-shadow: 4px 14px 30px rgba(0,0,0,0.5); }
 }
 
 /* Container — overflow visível para as placas rotacionadas não cortarem */
@@ -712,8 +712,9 @@
   display: flex;
   flex-direction: column;
   gap: 1.4rem;
-  padding: 0.5rem 0.2rem;
+  padding: 0.5rem 0.5rem;
   overflow: visible;
+  perspective: 1200px; /* Adiciona profundidade 3D */
 }
 
 /* Placa base */
@@ -727,6 +728,7 @@
   overflow: visible;        /* deixa o glow vazar */
   cursor: default;
   border: 1px solid transparent;
+  transform-style: preserve-3d; /* Permite efeitos 3D nos filhos */
   /* transform e animação definidos por variante */
 }
 
