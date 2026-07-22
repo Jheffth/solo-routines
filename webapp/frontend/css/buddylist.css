@@ -14,13 +14,16 @@
   display: flex; justify-content: flex-end;
   font-family: var(--font-section);
 }
+/* BUGFIX: display:flex sobrescreve o atributo [hidden] nativo — forçamos o sumiço */
+.bl-raiz[hidden] { display: none !important; }
 
 .bl-fundo {
   position: absolute; inset: 0;
   background: rgba(4, 4, 12, .55);
   opacity: 0; transition: opacity .25s ease;
+  pointer-events: none; /* inativo: não bloqueia cliques */
 }
-.bl-raiz.bl-on .bl-fundo { opacity: 1; }
+.bl-raiz.bl-on .bl-fundo { opacity: 1; pointer-events: auto; }
 
 /* O painel entra deslizando pela direita. */
 .bl-drawer {
