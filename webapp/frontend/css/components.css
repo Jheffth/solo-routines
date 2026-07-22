@@ -671,10 +671,179 @@
 .chip-normal  { background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.3);color:#a78bfa; }
 .chip-baixa   { background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.3);color:var(--cyan-skill); }
 
-/* ── STAT CARD (dashboard) ── */
+/* ── STAT CARD (dashboard) — Placas de Destino ── */
+
+/* Container que segura as três placas */
+.stat-plaques {
+  display: flex;
+  flex-direction: column;
+  gap: .85rem;
+}
+
+/* Placa base */
+.stat-plaque {
+  position: relative;
+  border-radius: 10px;
+  padding: 1rem 1.15rem 1rem 1.3rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  overflow: hidden;
+  transition: transform .22s, box-shadow .22s;
+  cursor: default;
+  /* cada variante define background, border e skew */
+}
+
+/* Efeito de placa inclinada: pseudo-elemento faz o fill angular */
+.stat-plaque::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: inherit;
+  z-index: 0;
+}
+
+/* Pattern diagonal de fundo (hatching sutil) */
+.stat-plaque::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    -52deg,
+    rgba(255,255,255,.025) 0px,
+    rgba(255,255,255,.025) 1px,
+    transparent 1px,
+    transparent 14px
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Todos os filhos ficam acima dos pseudo */
+.stat-plaque > * { position: relative; z-index: 2; }
+
+.stat-plaque:hover {
+  transform: translateX(4px) scale(1.02);
+}
+
+/* ── Variação 1: Missoes Hoje — Rubi / Carmesim ── */
+.stat-plaque--missoes {
+  background: linear-gradient(105deg, #1a0a0a 0%, #2d0f0f 40%, #1f0c0c 100%);
+  border: 1px solid rgba(239,68,68,.45);
+  box-shadow:
+    0 0 20px rgba(239,68,68,.15),
+    inset 0 1px 0 rgba(239,68,68,.1),
+    inset 0 0 40px rgba(185,28,28,.06);
+  transform: skewX(-1.8deg);
+}
+.stat-plaque--missoes:hover {
+  transform: skewX(-1.8deg) translateX(4px) scale(1.015);
+  box-shadow: 0 0 28px rgba(239,68,68,.25), inset 0 1px 0 rgba(239,68,68,.15);
+}
+.stat-plaque--missoes .stat-plaque-icon {
+  background: rgba(239,68,68,.15);
+  border: 1px solid rgba(239,68,68,.3);
+  color: #f87171;
+  box-shadow: 0 0 12px rgba(239,68,68,.2);
+}
+.stat-plaque--missoes .stat-value { color: #fca5a5; }
+.stat-plaque--missoes .stat-label { color: rgba(252,165,165,.55); }
+
+/* ── Variação 2: Total Concluídas — Ouro / Âmbar ── */
+.stat-plaque--total {
+  background: linear-gradient(108deg, #120e00 0%, #231800 45%, #1a1200 100%);
+  border: 1px solid rgba(245,158,11,.4);
+  box-shadow:
+    0 0 20px rgba(245,158,11,.12),
+    inset 0 1px 0 rgba(245,158,11,.1),
+    inset 0 0 40px rgba(180,115,5,.06);
+  transform: skewX(1.2deg);
+}
+.stat-plaque--total:hover {
+  transform: skewX(1.2deg) translateX(4px) scale(1.015);
+  box-shadow: 0 0 28px rgba(245,158,11,.22), inset 0 1px 0 rgba(245,158,11,.15);
+}
+.stat-plaque--total .stat-plaque-icon {
+  background: rgba(245,158,11,.15);
+  border: 1px solid rgba(245,158,11,.3);
+  color: #fbbf24;
+  box-shadow: 0 0 12px rgba(245,158,11,.2);
+}
+.stat-plaque--total .stat-value { color: #fde68a; }
+.stat-plaque--total .stat-label { color: rgba(253,230,138,.5); }
+
+/* ── Variação 3: Rotinas Ativas — Ciano / Esmeralda ── */
+.stat-plaque--rotinas {
+  background: linear-gradient(103deg, #001212 0%, #001e1e 45%, #001515 100%);
+  border: 1px solid rgba(6,182,212,.4);
+  box-shadow:
+    0 0 20px rgba(6,182,212,.12),
+    inset 0 1px 0 rgba(6,182,212,.1),
+    inset 0 0 40px rgba(5,140,165,.06);
+  transform: skewX(-0.6deg);
+}
+.stat-plaque--rotinas:hover {
+  transform: skewX(-0.6deg) translateX(4px) scale(1.015);
+  box-shadow: 0 0 28px rgba(6,182,212,.22), inset 0 1px 0 rgba(6,182,212,.15);
+}
+.stat-plaque--rotinas .stat-plaque-icon {
+  background: rgba(6,182,212,.15);
+  border: 1px solid rgba(6,182,212,.3);
+  color: #22d3ee;
+  box-shadow: 0 0 12px rgba(6,182,212,.2);
+}
+.stat-plaque--rotinas .stat-value { color: #a5f3fc; }
+.stat-plaque--rotinas .stat-label { color: rgba(165,243,252,.5); }
+
+/* Ícone da placa */
+.stat-plaque-icon {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  clip-path: polygon(6px 0%,100% 0%,100% calc(100% - 6px),calc(100% - 6px) 100%,0% 100%,0% 6px);
+}
+.stat-plaque-icon svg { stroke: currentColor; }
+
+/* Valor numérico grande */
+.stat-plaque .stat-value {
+  font-family: var(--font-section);
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -.02em;
+}
+
+/* Rótulo */
+.stat-plaque .stat-label {
+  font-family: var(--font-section);
+  font-size: .68rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  margin-top: .25rem;
+}
+
+/* Barra de acento na borda esquerda */
+.stat-plaque-accent {
+  position: absolute;
+  left: 0;
+  top: 15%;
+  height: 70%;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  z-index: 3;
+}
+.stat-plaque--missoes .stat-plaque-accent { background: linear-gradient(180deg,transparent,#ef4444,#dc2626,transparent); box-shadow: 0 0 8px #ef4444; }
+.stat-plaque--total   .stat-plaque-accent { background: linear-gradient(180deg,transparent,#f59e0b,#d97706,transparent); box-shadow: 0 0 8px #f59e0b; }
+.stat-plaque--rotinas .stat-plaque-accent { background: linear-gradient(180deg,transparent,#06b6d4,#0891b2,transparent); box-shadow: 0 0 8px #06b6d4; }
+
+/* compat: mantém .stat-card e .stat-icon para outras áreas que usem */
 .stat-card {
-  background: rgba(255,255,255,.03);
-  border: 1px solid rgba(255,255,255,.07);
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.08);
   border-radius: 12px;
   padding: 1.1rem;
   display: flex;
@@ -683,8 +852,8 @@
   transition: all .2s;
 }
 .stat-card:hover {
-  background: rgba(124,58,237,.06);
-  border-color: rgba(124,58,237,.2);
+  background: rgba(124,58,237,.08);
+  border-color: rgba(124,58,237,.25);
 }
 .stat-icon {
   font-size: 1.8rem;
