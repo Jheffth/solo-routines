@@ -60,7 +60,29 @@ POST   /social/enviar   body {login:str, corpo:str}
 GET    /social/novidades   (polling leve — chamado a cada ~5s)
    -> { total_nao_lidas:int, por_hunter:{login:count},
         pedidos_recebidos:int }
+
+POST   /social/digitando   body {login:str}   -> {ok}
+   Heartbeat: "estou digitando para <login>". Guardado EM MEMÓRIA no
+   servidor (dict {(de,para): timestamp}), janela de 6s, sem tocar o banco.
+   O outro lado descobre pelo campo `com.digitando` na resposta de
+   /social/conversa (true se o interlocutor mandou heartbeat nos últimos 6s).
 ```
+
+## Adições v1.1 (digitando + som)
+
+- **Indicador "digitando…"**: o chat, ao detectar input, chama
+  `API.social.digitando(login)` no máximo uma vez a cada ~2s (throttle). O
+  `/social/conversa` passa a devolver `com.digitando:bool`. O chat mostra/
+  esconde a frase "digitando…" com base nesse campo. Latência de até 4s (a
+  cadência do poll) é aceitável.
+- **Som de mensagem nova**: `SFX.play('mensagem')` — chime sintetizado,
+  original. QUEM toca é o polling GLOBAL do menu (app.js `_bindAmigos`),
+  quando `total_nao_lidas` AUMENTA. Assim toca com o chat fechado (é quando
+  importa) e NÃO toca com o chat aberto (a leitura marca como lida, o total
+  não sobe). O chat.js NÃO toca som — evita toque duplo.
+- **Bug "precisei atualizar"**: com tudo fechado, só o badge global avisava,
+  e a 15s. O poll global do menu cai para ~8s. O chat aberto já anexa via
+  poll de 4s (confirmar com teste). `API.social.digitando` em api.js.
 
 ## Frontend — contrato de consumo
 

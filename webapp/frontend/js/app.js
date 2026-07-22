@@ -321,20 +321,36 @@ const App = {
     });
 
     const badge = document.getElementById('nav-amigos-badge');
+    // Lembra quantas não-lidas havia na última checagem, para tocar o som
+    // SÓ quando o número SOBE (mensagem nova chegou), não a cada poll.
+    // Começa em null: a primeira checagem não toca — evita som ao logar
+    // com mensagens já pendentes.
+    this._ultimasNaoLidas = null;
+
     const pintar = async () => {
       try {
         const n = await API.social.novidades();
-        const total = (n.total_nao_lidas || 0) + (n.pedidos_recebidos || 0);
+        const naoLidas = n.total_nao_lidas || 0;
+        const total = naoLidas + (n.pedidos_recebidos || 0);
+
+        // Som de mensagem nova: toca quando o total de não-lidas aumenta.
+        // Com o chat aberto, a leitura marca como lida e o total não sobe,
+        // então não toca — que é o certo (você já está vendo).
+        if (this._ultimasNaoLidas !== null && naoLidas > this._ultimasNaoLidas) {
+          window.SFX?.play('mensagem');
+        }
+        this._ultimasNaoLidas = naoLidas;
+
         if (!badge) return;
         badge.textContent = total > 99 ? '99+' : total;
         badge.classList.toggle('hidden', total === 0);
       } catch (_) { /* silencioso: contador é cortesia */ }
     };
     pintar();
-    // Polling do menu roda a cada 15s — mais folgado que o da BuddyList
-    // aberta (5s), já que aqui é só o numerozinho.
+    // 8s: folgado o bastante para não pesar, rápido o bastante para a
+    // mensagem nova "chegar" sem dar a sensação de que travou.
     clearInterval(this._amigosTimer);
-    this._amigosTimer = setInterval(pintar, 15000);
+    this._amigosTimer = setInterval(pintar, 8000);
   },
 
   /* Consulta o mapa de permissões e ajusta o menu */

@@ -112,6 +112,18 @@ const SFX = {
         ruido(0.4, 0.5, 4000, 0.08);
         break;
       }
+      case 'mensagem': {
+        // Chime arcano leve: duas notas cristalinas ascendentes + shimmer
+        // B5 → E6 (intervalo de quarta justa, limpo e agradável)
+        nota(987.77, 0,    0.30, 'sine', 0.22);          // B5 — primeira gota
+        nota(987.77 * 2, 0, 0.14, 'sine', 0.05);         // harmônico (brilho)
+        nota(1318.5, 0.09, 0.34, 'sine', 0.20);          // E6 — segunda gota, sobe
+        nota(1318.5 * 2, 0.09, 0.16, 'sine', 0.045);     // harmônico
+        // shimmer curto com leve detune (efeito "cristal arcano")
+        nota(2637, 0.14, 0.22, 'triangle', 0.06);        // E7
+        nota(2637 * 1.006, 0.14, 0.22, 'triangle', 0.05);// detune sutil
+        break;
+      }
       default:
         nota(880, 0, 0.25, 'sine', 0.5);
     }

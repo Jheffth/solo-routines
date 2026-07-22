@@ -222,6 +222,7 @@ class API {
                                           + (antesDe ? '?antes_de=' + encodeURIComponent(antesDe) : '')),
     enviar:    async (login, corpo) => API.post('/social/enviar', { login, corpo }),
     novidades: async ()             => API.get('/social/novidades'),
+    digitando: async (login)        => API.post('/social/digitando', { login }),
   };
 
   static hunters = {

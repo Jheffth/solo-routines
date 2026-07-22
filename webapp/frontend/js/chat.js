@@ -30,12 +30,14 @@ const Chat = {
   _btnMais: null,    // "carregar mais antigas"
   _input: null,
   _avisoEl: null,
+  _digitandoEl: null, // linha "digitando…" acima do campo
   _login: null,      // hunter da conversa atual
   _com: null,        // dados do interlocutor
   _ids: new Set(),   // ids já renderizados (dedup do polling)
   _maisAntiga: null, // `quando` da mensagem mais velha visível
   _haMais: false,
   _timer: null,      // setInterval do polling
+  _digThrottle: null,// setTimeout do throttle do heartbeat "digitando"
   _buscando: false,  // trava reentrância do polling
   _carregandoMais: false,
   _seq: 0,           // gera ids otimistas temporários
@@ -58,6 +60,7 @@ const Chat = {
     this._aviso('');
     this._input.value = '';
     this._ajustarAltura();
+    this._mostrarDigitando(false);
     this._renderCabecalho();
     this._atualizarBotaoMais();
     this._placeholder('Invocando a conversa…');
@@ -70,6 +73,7 @@ const Chat = {
     // A limpeza do timer é a parte inegociável: sem ela, o polling
     // continua batendo no servidor com a janela fechada.
     this._pararPolling();
+    this._mostrarDigitando(false);
     if (this._win) {
       this._win.hidden = true;
       this._win.classList.remove('ch-visivel');
@@ -93,6 +97,10 @@ const Chat = {
         '<div class="ch-lista" aria-live="polite"></div>' +
       '</div>' +
       '<div class="ch-aviso" role="alert" hidden></div>' +
+      '<div class="ch-digitando" hidden aria-hidden="true">' +
+        '<span class="ch-dig-pontos"><i></i><i></i><i></i></span>' +
+        '<span class="ch-dig-txt">digitando…</span>' +
+      '</div>' +
       '<footer class="ch-rodape">' +
         '<textarea class="ch-input" rows="1" maxlength="2000" ' +
           'placeholder="Escreva uma mensagem…" aria-label="Mensagem"></textarea>' +
@@ -108,6 +116,7 @@ const Chat = {
     this._btnMais = win.querySelector('.ch-mais');
     this._input   = win.querySelector('.ch-input');
     this._avisoEl = win.querySelector('.ch-aviso');
+    this._digitandoEl = win.querySelector('.ch-digitando');
     const btnEnviar = win.querySelector('.ch-enviar');
 
     // ── Eventos ──
@@ -121,7 +130,10 @@ const Chat = {
         this._enviar();
       }
     });
-    this._input.addEventListener('input', () => this._ajustarAltura());
+    this._input.addEventListener('input', () => {
+      this._ajustarAltura();
+      this._talvezDigitando();
+    });
 
     // Delegação: cabeçalho carrega o botão de fechar (é re-renderizado).
     this._cab.addEventListener('click', (e) => {
@@ -194,6 +206,7 @@ const Chat = {
 
       this._com = r.com || null;
       this._renderCabecalho();
+      this._mostrarDigitando(!!(r.com && r.com.digitando));
       this._haMais = !!r.ha_mais;
 
       const ms = r.mensagens || [];
@@ -228,6 +241,11 @@ const Chat = {
       clearInterval(this._timer);
       this._timer = null;
     }
+    // O throttle do "digitando" também é um timer: não pode vazar ao fechar.
+    if (this._digThrottle) {
+      clearTimeout(this._digThrottle);
+      this._digThrottle = null;
+    }
   },
 
   async _buscarNovas() {
@@ -242,12 +260,22 @@ const Chat = {
 
       const perto = this._pertoDoFim();
       let novas = 0;
+      let novasDele = 0;   // mensagens novas do interlocutor
       (r.mensagens || []).forEach((m) => {
-        if (!this._ids.has(m.id)) { this._appendMsg(m); novas++; }
+        if (!this._ids.has(m.id)) {
+          this._appendMsg(m);
+          novas++;
+          if (!m.de_mim) novasDele++;
+        }
       });
       // Só puxa o scroll se o usuário já estava lendo o fim; se ele
       // rolou para cima lendo o histórico, não o arrancamos de lá.
       if (novas && perto) this._irAoFim();
+
+      // "digitando…": chegou mensagem do interlocutor → ele parou; senão
+      // reflete o heartbeat que o backend reportou em com.digitando.
+      if (novasDele) this._mostrarDigitando(false);
+      else           this._mostrarDigitando(!!(r.com && r.com.digitando));
     } catch (err) {
       /* Polling falha em silêncio: um soluço de rede não vira aviso. */
     } finally {
@@ -288,6 +316,27 @@ const Chat = {
 
   _atualizarBotaoMais() {
     this._btnMais.hidden = !this._haMais;
+  },
+
+  /* ── Indicador "digitando…" ───────────────────────────────── */
+  /* Heartbeat de saída: ao digitar, avisa o servidor — mas no máximo
+     uma vez a cada ~2s (throttle de borda de ataque). Campo vazio não
+     dispara. O timer é limpo em _pararPolling (logo, também ao fechar). */
+  _talvezDigitando() {
+    const login = this._login;
+    if (!login) return;
+    if (!(this._input.value || '').trim()) return; // não anuncia campo vazio
+    if (this._digThrottle) return;                 // já dentro da janela de 2s
+    Promise.resolve()
+      .then(() => API.social.digitando(login))
+      .catch(() => { /* heartbeat é best-effort: falha em silêncio */ });
+    this._digThrottle = setTimeout(() => { this._digThrottle = null; }, 2000);
+  },
+
+  /* Mostra/esconde a linha "digitando…" acima do campo de texto. */
+  _mostrarDigitando(on) {
+    if (!this._digitandoEl) return;
+    this._digitandoEl.hidden = !on;
   },
 
   /* ── Envio (otimista) ─────────────────────────────────────── */

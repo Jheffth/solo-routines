@@ -16,7 +16,7 @@ Três compromissos sustentam esta feature:
      A BuddyList devolve só o cartão público do hunter — jamais e-mail,
      moedas ou o nível de acesso cru.
 """
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -35,6 +35,25 @@ router = APIRouter(prefix="/social", tags=["social"])
 CORPO_MAX  = 2000
 LIMITE_MSG = 40      # mensagens por página de conversa
 LIMITE_MAX = 100
+
+DIGITANDO_JANELA_S = 6   # segundos que um heartbeat "digitando…" continua válido
+
+# ── "Digitando…" — estado efêmero, EM MEMÓRIA ─────────────────────────────────
+# Chave (de_id, para_id) → datetime.utcnow() do último heartbeat.
+#
+# POR QUE UM DICT NO MÓDULO E NÃO O BANCO?
+#   "Digitando…" é um sinal volátil, de validade de 6 segundos, escrito a cada
+#   ~2s enquanto alguém teclou. Persistir isso no banco seria escrita constante
+#   por uma informação que expira em segundos e não precisa sobreviver a nada.
+#   Este app roda em ESCALA PEQUENA e SINGLE-PROCESS (um worker), então um dict
+#   no processo é a escolha certa: custo zero, sem I/O, sem migração.
+#
+#   LIMITE CONSCIENTE: só funciona com um único processo. Num futuro multi-worker
+#   (vários uvicorn / gunicorn), cada worker teria o seu dict e o sinal se
+#   perderia entre eles — nesse dia isto migra para Redis (com TTL nativo) ou uma
+#   coluna "digitando_ate". NÃO implementamos Redis agora de propósito: seria
+#   complexidade sem retorno para o tamanho atual.
+_DIGITANDO: dict = {}
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -88,6 +107,27 @@ def _cartao(u: Usuario) -> dict:
 def _sou_amigo(db: Session, eu: Usuario, outro: Usuario) -> bool:
     rel = _buscar_amizade(db, eu.id, outro.id)
     return bool(rel and rel.status == "aceita")
+
+
+def _limpar_digitando(agora: Optional[datetime] = None) -> None:
+    """
+    Descarta heartbeats vencidos (> janela). Chamado a cada consulta/registro,
+    o que mantém o dict pequeno sem precisar de nenhuma tarefa de fundo: como o
+    sinal só é lido/escrito quando alguém abre conversa ou digita, a limpeza
+    oportunista basta para o dict não crescer para sempre.
+    """
+    agora = agora or datetime.utcnow()
+    limite = agora - timedelta(seconds=DIGITANDO_JANELA_S)
+    vencidos = [k for k, ts in _DIGITANDO.items() if ts < limite]
+    for k in vencidos:
+        _DIGITANDO.pop(k, None)
+
+
+def _esta_digitando(de_id: int, para_id: int, agora: Optional[datetime] = None) -> bool:
+    """True se `de_id` mandou heartbeat PARA `para_id` dentro da janela de 6s."""
+    agora = agora or datetime.utcnow()
+    ts = _DIGITANDO.get((de_id, para_id))
+    return bool(ts and (agora - ts) <= timedelta(seconds=DIGITANDO_JANELA_S))
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -365,6 +405,9 @@ def conversa(
                 int((datetime.utcnow() - alvo.ultimo_acesso).total_seconds() // 60)
                 if alvo.ultimo_acesso else None),
             "aura":       _aura_cargo(alvo.nivel_acesso),
+            # "digitando…": true se o interlocutor (alvo) mandou heartbeat PARA
+            # MIM — chave (alvo_id, meu_id) — nos últimos 6s. Estado em memória.
+            "digitando":  _esta_digitando(alvo.id, usuario.id),
         },
         "mensagens": mensagens,
         "ha_mais":   ha_mais,
@@ -464,3 +507,43 @@ def novidades(
         "por_hunter":        por_hunter,
         "pedidos_recebidos": int(pedidos_recebidos),
     }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# DIGITANDO — heartbeat "estou digitando para <login>" (estado EM MEMÓRIA)
+# ══════════════════════════════════════════════════════════════════════════════
+class DigitandoPayload(BaseModel):
+    login: str
+
+    @field_validator("login")
+    @classmethod
+    def _login(cls, v):
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("Informe o destinatário")
+        return v
+
+
+@router.post("/digitando")
+def digitando(
+    payload: DigitandoPayload,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_atual),
+):
+    """
+    Heartbeat "estou digitando para <login>". NÃO toca o banco: só registra o
+    carimbo (de_id, para_id) → agora no dict em memória `_DIGITANDO`.
+
+    Só registra entre AMIGOS ACEITOS. Se o alvo não existe ou não é amigo,
+    IGNORA SILENCIOSAMENTE e ainda assim devolve {ok:true} — digitar não é uma
+    operação que "falha": nada sensível vaza, e o frontend não precisa tratar
+    erro num sinal tão trivial.
+    """
+    agora = datetime.utcnow()
+    _limpar_digitando(agora)   # limpeza oportunista: mantém o dict enxuto
+
+    alvo = _por_login(db, payload.login, apenas_ativos=True)
+    if alvo and alvo.id != usuario.id and _sou_amigo(db, usuario, alvo):
+        _DIGITANDO[(usuario.id, alvo.id)] = agora
+    # Não-amigo / inexistente: ignora sem erro (contrato: retorna ok mesmo assim).
+    return {"ok": True}
