@@ -671,131 +671,169 @@
 .chip-normal  { background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.3);color:#a78bfa; }
 .chip-baixa   { background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.3);color:var(--cyan-skill); }
 
-/* ── STAT CARD (dashboard) — Placas de Destino ── */
+/* ── STAT CARD (dashboard) — Placas de Rodovia ── */
 
-/* Container que segura as três placas */
+/* ── Animações de energia ── */
+@keyframes electric-red {
+  0%,100% { box-shadow: 0 0 8px #ef4444, 0 0 20px rgba(239,68,68,.4), inset 0 0 30px rgba(239,68,68,.06); border-color: rgba(239,68,68,.55); }
+  20%      { box-shadow: 0 0 3px #ef4444, 0 0 8px rgba(239,68,68,.2),  inset 0 0 10px rgba(239,68,68,.02); border-color: rgba(239,68,68,.25); }
+  40%      { box-shadow: 0 0 16px #ef4444,0 0 40px rgba(239,68,68,.6), inset 0 0 50px rgba(239,68,68,.1);  border-color: rgba(239,68,68,.8); }
+  70%      { box-shadow: 0 0 6px #ef4444, 0 0 12px rgba(239,68,68,.3), inset 0 0 20px rgba(239,68,68,.04); border-color: rgba(239,68,68,.4); }
+}
+@keyframes electric-gold {
+  0%,100% { box-shadow: 0 0 8px #f59e0b, 0 0 20px rgba(245,158,11,.4), inset 0 0 30px rgba(245,158,11,.06); border-color: rgba(245,158,11,.5); }
+  30%      { box-shadow: 0 0 3px #f59e0b, 0 0 8px rgba(245,158,11,.2),  inset 0 0 10px rgba(245,158,11,.02); border-color: rgba(245,158,11,.2); }
+  55%      { box-shadow: 0 0 20px #f59e0b,0 0 50px rgba(245,158,11,.7), inset 0 0 60px rgba(245,158,11,.12); border-color: rgba(245,158,11,.9); }
+}
+@keyframes electric-cyan {
+  0%,100% { box-shadow: 0 0 8px #06b6d4, 0 0 20px rgba(6,182,212,.4),  inset 0 0 30px rgba(6,182,212,.06); border-color: rgba(6,182,212,.5); }
+  25%      { box-shadow: 0 0 3px #06b6d4, 0 0 8px rgba(6,182,212,.2),   inset 0 0 10px rgba(6,182,212,.02); border-color: rgba(6,182,212,.2); }
+  60%      { box-shadow: 0 0 18px #06b6d4,0 0 45px rgba(6,182,212,.65), inset 0 0 55px rgba(6,182,212,.1);  border-color: rgba(6,182,212,.85); }
+}
+@keyframes spark-float {
+  0%   { transform: translateY(0)   scaleY(1)   opacity(1); }
+  100% { transform: translateY(-18px) scaleY(.4) opacity(0); }
+}
+@keyframes plaque-bob-up {
+  0%,100% { transform: rotate(-5deg) translateY(0); }
+  50%      { transform: rotate(-5deg) translateY(-2px); }
+}
+@keyframes plaque-bob-mid {
+  0%,100% { transform: rotate(0deg) translateY(0); }
+  50%      { transform: rotate(0deg) translateY(-1.5px); }
+}
+@keyframes plaque-bob-down {
+  0%,100% { transform: rotate(4.5deg) translateY(0); }
+  50%      { transform: rotate(4.5deg) translateY(-2px); }
+}
+
+/* Container — overflow visível para as placas rotacionadas não cortarem */
 .stat-plaques {
   display: flex;
   flex-direction: column;
-  gap: .85rem;
+  gap: 1.4rem;
+  padding: 0.5rem 0.2rem;
+  overflow: visible;
 }
 
 /* Placa base */
 .stat-plaque {
   position: relative;
-  border-radius: 10px;
-  padding: 1rem 1.15rem 1rem 1.3rem;
+  border-radius: 8px;
+  padding: 1rem 1.2rem 1rem 1.5rem;
   display: flex;
   align-items: center;
   gap: 1rem;
-  overflow: hidden;
-  transition: transform .22s, box-shadow .22s;
+  overflow: visible;        /* deixa o glow vazar */
   cursor: default;
-  /* cada variante define background, border e skew */
+  border: 1px solid transparent;
+  /* transform e animação definidos por variante */
 }
 
-/* Efeito de placa inclinada: pseudo-elemento faz o fill angular */
+/* Pattern diagonal (hatching de estrada) */
 .stat-plaque::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: inherit;
-  z-index: 0;
-}
-
-/* Pattern diagonal de fundo (hatching sutil) */
-.stat-plaque::after {
-  content: '';
-  position: absolute;
-  inset: 0;
+  border-radius: inherit;
   background-image: repeating-linear-gradient(
-    -52deg,
-    rgba(255,255,255,.025) 0px,
-    rgba(255,255,255,.025) 1px,
+    -48deg,
+    rgba(255,255,255,.03) 0px,
+    rgba(255,255,255,.03) 1px,
     transparent 1px,
-    transparent 14px
+    transparent 12px
   );
   pointer-events: none;
   z-index: 1;
 }
 
-/* Todos os filhos ficam acima dos pseudo */
+/* Pino de suporte (imita parafuso de placa de rodovia) */
+.stat-plaque::after {
+  content: '';
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  background: #0d0d1a;
+  box-shadow: 0 0 6px currentColor;
+  opacity: .7;
+  z-index: 5;
+}
+
+/* Filhos acima dos pseudo-elementos */
 .stat-plaque > * { position: relative; z-index: 2; }
 
-.stat-plaque:hover {
-  transform: translateX(4px) scale(1.02);
-}
-
-/* ── Variação 1: Missoes Hoje — Rubi / Carmesim ── */
+/* ── Placa 1: MISSÕES HOJE — Chamas Vermelhas — inclinada para cima ── */
 .stat-plaque--missoes {
-  background: linear-gradient(105deg, #1a0a0a 0%, #2d0f0f 40%, #1f0c0c 100%);
-  border: 1px solid rgba(239,68,68,.45);
-  box-shadow:
-    0 0 20px rgba(239,68,68,.15),
-    inset 0 1px 0 rgba(239,68,68,.1),
-    inset 0 0 40px rgba(185,28,28,.06);
-  transform: skewX(-1.8deg);
+  background: linear-gradient(112deg, #200808 0%, #3d1010 35%, #2a0c0c 70%, #1a0808 100%);
+  border: 1px solid rgba(239,68,68,.55);
+  color: #fca5a5;
+  animation: electric-red 2.8s ease-in-out infinite, plaque-bob-up 4s ease-in-out infinite;
+  transform-origin: right center;
 }
-.stat-plaque--missoes:hover {
-  transform: skewX(-1.8deg) translateX(4px) scale(1.015);
-  box-shadow: 0 0 28px rgba(239,68,68,.25), inset 0 1px 0 rgba(239,68,68,.15);
-}
+.stat-plaque--missoes::after { color: #ef4444; }
 .stat-plaque--missoes .stat-plaque-icon {
-  background: rgba(239,68,68,.15);
-  border: 1px solid rgba(239,68,68,.3);
+  background: rgba(239,68,68,.18);
+  border: 1px solid rgba(239,68,68,.4);
   color: #f87171;
-  box-shadow: 0 0 12px rgba(239,68,68,.2);
 }
-.stat-plaque--missoes .stat-value { color: #fca5a5; }
-.stat-plaque--missoes .stat-label { color: rgba(252,165,165,.55); }
+.stat-plaque--missoes .stat-value { color: #fca5a5; text-shadow: 0 0 12px rgba(239,68,68,.6); }
+.stat-plaque--missoes .stat-label { color: rgba(252,165,165,.6); }
+.stat-plaque--missoes .stat-plaque-accent {
+  background: linear-gradient(180deg, transparent, #ef4444 30%, #ff6b6b 50%, #ef4444 70%, transparent);
+  box-shadow: 0 0 12px #ef4444, 0 0 4px #fff;
+  animation: electric-red 1.4s ease-in-out infinite;
+}
 
-/* ── Variação 2: Total Concluídas — Ouro / Âmbar ── */
+/* ── Placa 2: TOTAL CONCLUÍDAS — Elétrico Dourado — levemente inclinada ── */
 .stat-plaque--total {
-  background: linear-gradient(108deg, #120e00 0%, #231800 45%, #1a1200 100%);
-  border: 1px solid rgba(245,158,11,.4);
-  box-shadow:
-    0 0 20px rgba(245,158,11,.12),
-    inset 0 1px 0 rgba(245,158,11,.1),
-    inset 0 0 40px rgba(180,115,5,.06);
-  transform: skewX(1.2deg);
+  background: linear-gradient(108deg, #1a1200 0%, #302000 40%, #221800 70%, #160f00 100%);
+  border: 1px solid rgba(245,158,11,.5);
+  color: #fde68a;
+  animation: electric-gold 3.3s ease-in-out infinite 0.6s, plaque-bob-mid 4.5s ease-in-out infinite 0.8s;
+  transform-origin: center center;
 }
-.stat-plaque--total:hover {
-  transform: skewX(1.2deg) translateX(4px) scale(1.015);
-  box-shadow: 0 0 28px rgba(245,158,11,.22), inset 0 1px 0 rgba(245,158,11,.15);
-}
+.stat-plaque--total::after { color: #f59e0b; }
 .stat-plaque--total .stat-plaque-icon {
-  background: rgba(245,158,11,.15);
-  border: 1px solid rgba(245,158,11,.3);
+  background: rgba(245,158,11,.18);
+  border: 1px solid rgba(245,158,11,.4);
   color: #fbbf24;
-  box-shadow: 0 0 12px rgba(245,158,11,.2);
 }
-.stat-plaque--total .stat-value { color: #fde68a; }
-.stat-plaque--total .stat-label { color: rgba(253,230,138,.5); }
+.stat-plaque--total .stat-value { color: #fde68a; text-shadow: 0 0 12px rgba(245,158,11,.7); }
+.stat-plaque--total .stat-label { color: rgba(253,230,138,.55); }
+.stat-plaque--total .stat-plaque-accent {
+  background: linear-gradient(180deg, transparent, #f59e0b 30%, #fcd34d 50%, #f59e0b 70%, transparent);
+  box-shadow: 0 0 12px #f59e0b, 0 0 4px #fff8;
+  animation: electric-gold 1.65s ease-in-out infinite;
+}
 
-/* ── Variação 3: Rotinas Ativas — Ciano / Esmeralda ── */
+/* ── Placa 3: ROTINAS ATIVAS — Elétrico Ciano — inclinada para baixo ── */
 .stat-plaque--rotinas {
-  background: linear-gradient(103deg, #001212 0%, #001e1e 45%, #001515 100%);
-  border: 1px solid rgba(6,182,212,.4);
-  box-shadow:
-    0 0 20px rgba(6,182,212,.12),
-    inset 0 1px 0 rgba(6,182,212,.1),
-    inset 0 0 40px rgba(5,140,165,.06);
-  transform: skewX(-0.6deg);
+  background: linear-gradient(104deg, #001818 0%, #002828 38%, #001d1d 68%, #001010 100%);
+  border: 1px solid rgba(6,182,212,.5);
+  color: #a5f3fc;
+  animation: electric-cyan 2.5s ease-in-out infinite 1.2s, plaque-bob-down 3.8s ease-in-out infinite 1.5s;
+  transform-origin: right center;
 }
-.stat-plaque--rotinas:hover {
-  transform: skewX(-0.6deg) translateX(4px) scale(1.015);
-  box-shadow: 0 0 28px rgba(6,182,212,.22), inset 0 1px 0 rgba(6,182,212,.15);
-}
+.stat-plaque--rotinas::after { color: #06b6d4; }
 .stat-plaque--rotinas .stat-plaque-icon {
-  background: rgba(6,182,212,.15);
-  border: 1px solid rgba(6,182,212,.3);
+  background: rgba(6,182,212,.18);
+  border: 1px solid rgba(6,182,212,.4);
   color: #22d3ee;
-  box-shadow: 0 0 12px rgba(6,182,212,.2);
 }
-.stat-plaque--rotinas .stat-value { color: #a5f3fc; }
-.stat-plaque--rotinas .stat-label { color: rgba(165,243,252,.5); }
+.stat-plaque--rotinas .stat-value { color: #a5f3fc; text-shadow: 0 0 12px rgba(6,182,212,.7); }
+.stat-plaque--rotinas .stat-label { color: rgba(165,243,252,.55); }
+.stat-plaque--rotinas .stat-plaque-accent {
+  background: linear-gradient(180deg, transparent, #06b6d4 30%, #67e8f9 50%, #06b6d4 70%, transparent);
+  box-shadow: 0 0 12px #06b6d4, 0 0 4px #fff6;
+  animation: electric-cyan 1.25s ease-in-out infinite;
+}
 
-/* Ícone da placa */
+/* Ícone da placa — chanfrado */
 .stat-plaque-icon {
   width: 42px;
   height: 42px;
@@ -805,13 +843,14 @@
   align-items: center;
   justify-content: center;
   clip-path: polygon(6px 0%,100% 0%,100% calc(100% - 6px),calc(100% - 6px) 100%,0% 100%,0% 6px);
+  transition: box-shadow .2s;
 }
 .stat-plaque-icon svg { stroke: currentColor; }
 
-/* Valor numérico grande */
+/* Valor numérico */
 .stat-plaque .stat-value {
   font-family: var(--font-section);
-  font-size: 1.75rem;
+  font-size: 1.85rem;
   font-weight: 800;
   line-height: 1;
   letter-spacing: -.02em;
@@ -820,25 +859,24 @@
 /* Rótulo */
 .stat-plaque .stat-label {
   font-family: var(--font-section);
-  font-size: .68rem;
-  letter-spacing: .08em;
+  font-size: .67rem;
+  letter-spacing: .1em;
   text-transform: uppercase;
-  margin-top: .25rem;
+  margin-top: .28rem;
 }
 
 /* Barra de acento na borda esquerda */
 .stat-plaque-accent {
   position: absolute;
   left: 0;
-  top: 15%;
-  height: 70%;
+  top: 12%;
+  height: 76%;
   width: 3px;
   border-radius: 0 2px 2px 0;
   z-index: 3;
 }
-.stat-plaque--missoes .stat-plaque-accent { background: linear-gradient(180deg,transparent,#ef4444,#dc2626,transparent); box-shadow: 0 0 8px #ef4444; }
-.stat-plaque--total   .stat-plaque-accent { background: linear-gradient(180deg,transparent,#f59e0b,#d97706,transparent); box-shadow: 0 0 8px #f59e0b; }
-.stat-plaque--rotinas .stat-plaque-accent { background: linear-gradient(180deg,transparent,#06b6d4,#0891b2,transparent); box-shadow: 0 0 8px #06b6d4; }
+
+
 
 /* compat: mantém .stat-card e .stat-icon para outras áreas que usem */
 .stat-card {
