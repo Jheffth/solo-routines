@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
    dashboard.js \u2014 Solo Routines
    Carrega e renderiza o painel principal do Hunter
    ============================================================ */
@@ -302,21 +302,16 @@ const Dashboard = {
       const sb = document.getElementById('sidebar-avatar');
       if (sb) sb.innerHTML = `<img src="${dados.avatar_url}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
     }
-    // Aura: cosmética presenteada tem prioridade; fallback = cargo.
-    // O campo aura_id vem do /me (add feat:2025-07) quando não nulo.
-    const auraId = dados.aura_id || null;
-    const hexWrap = document.querySelector('#hunter-card .hunter-hex-wrap');
-    if (hexWrap && window.Auras) {
-      if (auraId && Auras.existe(auraId)) {
-        // Aura cosmética específica
-        hexWrap.querySelector('.aura-wrap')?.remove();
-        hexWrap.insertAdjacentHTML('afterbegin', Auras.bloco(auraId, 168));
-      } else {
-        // Fallback: aura de cargo
-        Auras.aplicar(hexWrap, dados.nivel_acesso, 168);
-      }
-    }
-    // Guarda dados globalmente para o modal de aura usar
+    // Aura: cosm\u00e9tica presenteada (aura_id) > aura de cargo.
+    void (function _aplicarAura() {
+      var _hw = document.querySelector("#hunter-card .hunter-hex-wrap");
+      if (!_hw || !window.Auras) return;
+      var _aid = dados.aura_id || null;
+      if (_aid && Auras.existe(_aid)) {
+        _hw.querySelector(".aura-wrap") && _hw.querySelector(".aura-wrap").remove();
+        _hw.insertAdjacentHTML("afterbegin", Auras.bloco(_aid, 168));
+      } else { Auras.aplicar(_hw, dados.nivel_acesso, 168); }
+    }());
     window.__dashDados = dados;
 
     // Botão Editar Perfil
@@ -327,8 +322,8 @@ const Dashboard = {
       };
     }
 
-    // Botão Trocar Aura (injetado dinamicamente se não existir)
-    Dashboard._bindBtnAura(dados);
+    // Bot\u00e3o "Trocar Aura" injetado ao lado de Editar Perfil
+    Dashboard._bindBtnTrocarAura(dados);
 
     // Reset de progresso: ação perigosa — mora na Forja de Testes (Ctrl+Alt+A),
     // fora do cabeçalho. Exposto aqui para a Forja consumir.
@@ -1940,6 +1935,162 @@ const Dashboard = {
       await this.carregarExtrato();
 
     } catch (_) {}
+  },
+
+
+  /* ─── Aura: botão no cabeçalho + modal de inventário ───────────────── */
+  _bindBtnTrocarAura(dados) {
+    const container = document.getElementById('dash-btn-editar-perfil')?.parentElement;
+    if (!container) return;
+    let btn = document.getElementById('dash-btn-trocar-aura');
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.id        = 'dash-btn-trocar-aura';
+      btn.className = 'btn btn-ghost btn-sm';
+      btn.style.cssText = [
+        'font-family:var(--font-section)', 'font-size:.75rem', 'letter-spacing:.06em',
+        'border:1px solid rgba(244,143,177,.4)', 'color:#f48fb1',
+        'padding:.35rem .9rem', 'border-radius:.5rem', 'cursor:pointer',
+        'transition:all .2s', 'display:flex', 'align-items:center', 'gap:.4rem',
+      ].join(';');
+      btn.onmouseover = () => btn.style.background = 'rgba(244,143,177,.12)';
+      btn.onmouseout  = () => btn.style.background = 'transparent';
+      container.insertBefore(btn, container.firstChild);
+    }
+    const temAura = !!(dados && dados.aura_id);
+    btn.innerHTML = temAura ? '◈ Minha Aura' : '◈ Trocar Aura';
+    btn.title     = temAura ? `Aura ativa: ${dados.aura_id}` : 'Gerenciar Aura';
+    btn.onclick   = () => Dashboard._abrirModalAura(window.__dashDados || dados);
+  },
+
+  async _abrirModalAura(dados) {
+    document.getElementById('dash-modal-aura')?.remove();
+    let inv = [];
+    try {
+      const tk = localStorage.getItem('access_token');
+      const r  = await fetch('/api/perfil/auras-inventario', {
+        headers: { Authorization: `Bearer ${tk}` }
+      });
+      const d  = await r.json();
+      inv      = d.inventario || [];
+    } catch (_) {}
+
+    const cx = document.createElement('div');
+    cx.id    = 'dash-modal-aura';
+    cx.style.cssText = 'position:fixed;inset:0;z-index:8999;display:flex;align-items:center;' +
+      'justify-content:center;background:rgba(3,3,8,.88);backdrop-filter:blur(6px);padding:1rem';
+
+    const auraAtiva = (dados && dados.aura_id) || null;
+
+    const itens = inv.map(function(a) {
+      const bloco  = window.Auras && Auras.bloco ? Auras.bloco(a.id, 52) : '';
+      const ativa  = (auraAtiva === a.id) || (auraAtiva === null && a.de_cargo);
+      const traved = !!a.de_cargo;
+      const ativarBtn = !traved
+        ? '<button onclick="Dashboard._ativarAura(\'' + a.id + '\')" style="' +
+          'padding:.35rem .75rem;border-radius:8px;border:none;cursor:pointer;white-space:nowrap;' +
+          'background:' + (ativa ? '#e91e63' : 'rgba(244,143,177,.18)') + ';' +
+          'color:' + (ativa ? '#fff' : '#f48fb1') + ';' +
+          'font-family:var(--font-section);font-size:.72rem;font-weight:700">' +
+          (ativa ? '✔ Ativa' : 'Ativar') + '</button>'
+        : '';
+      return '<div style="display:flex;align-items:center;gap:.9rem;padding:.65rem .8rem;' +
+        'border-radius:12px;margin-bottom:.4rem;' +
+        'background:' + (ativa ? 'rgba(244,143,177,.12)' : 'rgba(255,255,255,.02)') + ';' +
+        'border:1px solid ' + (ativa ? 'rgba(244,143,177,.5)' : 'rgba(255,255,255,.07)') + '">' +
+        '<div style="position:relative;width:52px;height:52px;flex-shrink:0;' +
+          'display:flex;align-items:center;justify-content:center">' +
+          bloco +
+          '<div style="position:relative;z-index:2;width:28px;height:28px;' +
+            'background:linear-gradient(135deg,#2a1a4e,#0d1f36);' +
+            'clip-path:polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%)"></div>' +
+        '</div>' +
+        '<div style="flex:1">' +
+          '<div style="font-family:var(--font-section);font-size:.82rem;color:' + (a.cor || '#fff') + ';font-weight:700">' + a.nome + '</div>' +
+          '<div style="font-family:var(--font-section);font-size:.6rem;color:var(--text-muted);margin-top:.1rem">' + (a.descricao || '') + '</div>' +
+          (traved ? '<div style="font-size:.6rem;color:#6b7280;margin-top:.1rem">🔒 Vinculada ao cargo</div>' : '') +
+        '</div>' +
+        ativarBtn +
+      '</div>';
+    }).join('');
+
+    const semAuras = '<div style="text-align:center;padding:2rem;color:var(--text-muted);' +
+      'font-family:var(--font-section);font-size:.78rem">' +
+      'Nenhuma aura no inventário.<br>' +
+      '<span style="color:#6b7280;font-size:.65rem">Peça ao Arquiteto para presentear uma.</span>' +
+      '</div>';
+
+    const removerLink = auraAtiva
+      ? '<div style="margin-top:.9rem;text-align:center">' +
+          '<button onclick="Dashboard._removerAura()" style="background:none;border:none;' +
+          'color:#6b7280;font-family:var(--font-section);font-size:.62rem;cursor:pointer;' +
+          'text-decoration:underline">Remover aura cosmética (volta ao padrão do cargo)</button>' +
+        '</div>'
+      : '';
+
+    cx.innerHTML =
+      '<div style="width:min(480px,98%);max-height:85vh;overflow-y:auto;' +
+        'padding:1.5rem;border-radius:20px;' +
+        'background:linear-gradient(160deg,#0e0018,#040010 70%);' +
+        'border:1px solid rgba(244,143,177,.35);' +
+        'box-shadow:0 0 50px rgba(244,143,177,.2)">' +
+        '<div style="display:flex;align-items:center;gap:.7rem;margin-bottom:1.2rem">' +
+          '<span style="font-size:1.3rem">◈</span>' +
+          '<div style="flex:1">' +
+            '<div style="font-family:var(--font-title);font-size:1rem;color:#f48fb1">Minhas Auras</div>' +
+            '<div style="font-family:var(--font-section);font-size:.58rem;letter-spacing:.12em;' +
+              'color:var(--text-muted)">INVENTÁRIO PESSOAL DE AURAS</div>' +
+          '</div>' +
+          '<button onclick="document.getElementById(\'dash-modal-aura\').remove()"' +
+            ' style="background:none;border:none;color:var(--text-muted);font-size:1.1rem;cursor:pointer">✕</button>' +
+        '</div>' +
+        (inv.length ? '<div>' + itens + '</div>' : semAuras) +
+        removerLink +
+      '</div>';
+
+    cx.addEventListener('click', function(e) { if (e.target === cx) cx.remove(); });
+    document.body.appendChild(cx);
+  },
+
+  async _ativarAura(auraId) {
+    try {
+      const tk = localStorage.getItem('access_token');
+      const r  = await fetch('/api/perfil/aura', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tk}` },
+        body: JSON.stringify({ aura_id: auraId }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || 'Erro');
+      const hexWrap = document.querySelector('#hunter-card .hunter-hex-wrap');
+      if (hexWrap && window.Auras && Auras.existe(auraId)) {
+        const old = hexWrap.querySelector('.aura-wrap');
+        if (old) old.remove();
+        hexWrap.insertAdjacentHTML('afterbegin', Auras.bloco(auraId, 168));
+      }
+      if (window.__dashDados) window.__dashDados.aura_id = auraId;
+      document.getElementById('dash-modal-aura')?.remove();
+      Dashboard._abrirModalAura(window.__dashDados || { aura_id: auraId });
+    } catch (e) { alert('Erro: ' + e.message); }
+  },
+
+  async _removerAura() {
+    try {
+      const tk = localStorage.getItem('access_token');
+      const r  = await fetch('/api/perfil/aura', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tk}` },
+        body: JSON.stringify({ aura_id: null }),
+      });
+      if (!r.ok) { const d = await r.json(); throw new Error(d.detail); }
+      const dados = window.__dashDados;
+      if (dados) {
+        dados.aura_id = null;
+        const hexWrap = document.querySelector('#hunter-card .hunter-hex-wrap');
+        if (hexWrap && window.Auras) Auras.aplicar(hexWrap, dados.nivel_acesso, 168);
+      }
+      document.getElementById('dash-modal-aura')?.remove();
+    } catch (e) { alert('Erro: ' + e.message); }
   },
 
   _getTituloByRank(rank) {
