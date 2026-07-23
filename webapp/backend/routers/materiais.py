@@ -95,8 +95,9 @@ def inventario(
             item["veio_de"] = de.nome if de else None
         (enviaveis if q.transferivel else presos).append(item)
 
-    # O Arquiteto forja o que quiser: devolvemos o que existe para circular,
-    # marcando o que já está no inventário dele.
+    # Auras cosméticas que o Arquiteto pode forjar e enviar (nunca auras de cargo)
+    forjaveis_auras = []
+    # Emblemas que o Arquiteto pode forjar: todos os transferíveis, marcando os que já tem
     forjaveis = []
     if _eh_arquiteto(usuario):
         tenho = {m["codigo"] for m in enviaveis}
@@ -104,11 +105,21 @@ def inventario(
                      for q in db.query(Conquista)
                                 .filter(Conquista.transferivel == True)
                                 .order_by(Conquista.titulo.asc()).all()]
+        forjaveis_auras = [
+            {
+                "id": "bella-rosa",
+                "nome": "Bella Rosa — Femme Fatale",
+                "descricao": "16 pétalas em dupla espiral, halos rosa e branco. Presente exclusivo.",
+                "cor": "#f48fb1",
+                "enviavel": True,
+            },
+        ]
 
     return {"enviaveis": enviaveis, "presos": presos,
             "limite_por_envio": LIMITE_POR_ENVIO,
             "pode_forjar": _eh_arquiteto(usuario),
-            "forjaveis": forjaveis}
+            "forjaveis": forjaveis,
+            "forjaveis_auras": forjaveis_auras}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -292,6 +303,45 @@ def forjar(
     ))
     db.commit()
     return {"ok": True, "ja_possui": False, "codigo": q.codigo, "titulo": q.titulo}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ENVIAR AURA — Arquiteto presenteia aura cosmética via Forja do Arquiteto
+# ══════════════════════════════════════════════════════════════════════════════
+AURAS_ENVIAVAIS = {"bella-rosa"}   # auras de cargo nunca entram aqui
+
+class EnviarAuraPayload(BaseModel):
+    nick: str
+    aura_id: str
+    mensagem: Optional[str] = None
+
+
+@router.post("/enviar-aura")
+def enviar_aura(
+    payload: EnviarAuraPayload,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_atual),
+):
+    """Arquiteto presenteia uma aura cosmética a um hunter pelo nick."""
+    if not _eh_arquiteto(usuario):
+        raise HTTPException(403, "Somente o Arquiteto pode presentear auras")
+    if payload.aura_id not in AURAS_ENVIAVAIS:
+        raise HTTPException(400, f"Aura '{payload.aura_id}' não é presenteável ou não existe")
+
+    alvo = _resolver_hunter(db, payload.nick)
+    if not alvo:
+        raise HTTPException(404, f"Hunter '@{payload.nick}' não encontrado")
+    if not alvo.ativo:
+        raise HTTPException(400, "Hunter inativo")
+
+    alvo.aura_id = payload.aura_id
+    db.commit()
+    return {
+        "ok": True,
+        "aura_id": payload.aura_id,
+        "para": {"id": alvo.id, "nome": alvo.nome, "login": alvo.login},
+        "detalhe": f"Aura '{payload.aura_id}' concedida a {alvo.nome}",
+    }
 
 
 # ══════════════════════════════════════════════════════════════════════════════

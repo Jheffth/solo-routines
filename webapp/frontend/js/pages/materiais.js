@@ -34,8 +34,9 @@ const Materiais = {
       this._enviaveis  = inv.enviaveis || [];
       this._presos     = inv.presos    || [];
       this._limite     = inv.limite_por_envio || 10;
-      this._podeForjar = !!inv.pode_forjar;
-      this._forjaveis  = inv.forjaveis || [];
+      this._podeForjar     = !!inv.pode_forjar;
+      this._forjaveis       = inv.forjaveis       || [];
+      this._forjaveis_auras = inv.forjaveis_auras || [];
       this._sel.clear();
       this._destino = null;
       this._render();
@@ -123,7 +124,25 @@ const Materiais = {
             </div>
           </div>
         </div>
-      </div>`;
+        ${this._forjaveis_auras.length ? `
+        <div style="margin-top:.9rem;padding-top:.9rem;border-top:1px solid rgba(244,143,177,.2)">
+          <div style="font-family:var(--font-section);font-size:.62rem;letter-spacing:.14em;color:#f48fb1;margin-bottom:.6rem">&#x2736; AURAS COSM&#201;TICAS</div>
+          <div class="mt-forja-grade">${this._forjaveis_auras.map(a => `
+            <button class="mt-forja-item" data-mt-enviar-aura="${a.id}"
+                    title="${a.nome}: ${a.descricao}"
+                    style="border-color:rgba(244,143,177,.3)">
+              <span class="mt-forja-med" style="position:relative;display:flex;align-items:center;justify-content:center">
+                ${(window.Auras && Auras.existe && Auras.existe(a.id)) ? Auras.bloco(a.id, 58) : '<span style="font-size:1.6rem">&#x2736;</span>'}
+                <div style="position:absolute;z-index:2;width:26px;height:26px;
+                  background:linear-gradient(135deg,#2a1a4e,#0d1f36);
+                  clip-path:polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%)"></div>
+              </span>
+              <span class="mt-forja-nome" style="color:${a.cor}">${a.nome}</span>
+              <span class="mt-forja-acao" style="color:${a.cor}">+</span>
+            </button>`).join('')}
+          </div>
+        </div>` : ''}
+      </div>`;
 
     this._bind();
     this._atualizarBotao();
@@ -219,6 +238,9 @@ const Materiais = {
       b.addEventListener('click', () => this._forjar(b.dataset.mtForjar, b)));
 
     document.getElementById('mt-btn')?.addEventListener('click', () => this._enviar());
+
+    document.querySelectorAll('[data-mt-enviar-aura]').forEach(b =>
+      b.addEventListener('click', () => this._confirmarEnvioAura(b.dataset.mtEnviarAura)));
   },
 
   async _buscarHunter(nick) {
@@ -291,6 +313,37 @@ const Materiais = {
       SoloDialog?.toast?.(err.message || String(err), 'error');
       btn.disabled = false;
       this._atualizarBotao();
+    }
+  },
+
+  async _confirmarEnvioAura(auraId) {
+    const nick = document.getElementById('mt-nick')?.value?.trim();
+    if (!nick) {
+      SoloDialog?.toast?.('Digite o nick do destinatario no campo "1 · Destinatário" antes de enviar a aura', 'info');
+      return;
+    }
+    const nomesAura = { 'bella-rosa': 'Bella Rosa — Femme Fatale' };
+    const nomeAura = nomesAura[auraId] || auraId;
+    const ok = typeof SoloDialog !== 'undefined' && SoloDialog.confirm
+      ? await SoloDialog.confirm(
+          'Deseja presentear a aura <b>' + nomeAura + '</b> para <b>@' + nick + '</b>?',
+          { icon: '✶', titulo: 'Conceder Aura', tipo: 'warn', btnOk: 'Presentear', btnCancel: 'Cancelar' })
+      : true;
+    if (!ok) return;
+    try {
+      const tk = localStorage.getItem('access_token');
+      const r  = await fetch('/api/materiais/enviar-aura', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tk },
+        body: JSON.stringify({ nick: nick, aura_id: auraId,
+          mensagem: document.getElementById('mt-msg')?.value?.trim() || null }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || 'Erro');
+      if (typeof SFX !== 'undefined') SFX.play('carimbo');
+      SoloDialog?.toast?.('✶ ' + nomeAura + ' concedida a ' + ((d.para && d.para.nome) || nick), 'success');
+    } catch (err) {
+      SoloDialog?.toast?.(err.message || String(err), 'error');
     }
   },
 
