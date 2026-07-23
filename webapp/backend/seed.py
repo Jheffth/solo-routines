@@ -36,6 +36,9 @@ CONQUISTAS_ARQUITETO = [
     # Marco da Rede Social — cristal glacial SVG (js/badges/nexus-social.js)
     ("nexus-social",        "Nexus Social",
      "Forjou a Rede Social, o Chat e o Sistema de Lista de Amigos", "🌐", "#38bdf8", 6000, 1200),
+    # Femme Fatale — róseo acetinado, pétalas de rosa, coroa (js/badges/isabella.js)
+    ("isabella",            "Isabella Costa · Femme Fatale",
+     "A primeira modelo do Sistema — chegou com graça e ficou na memória", "🏵️", "#f48fb1", 6500, 1300),
 ]
 
 # ── O Chamado do Arquiteto ───────────────────────────────────────────────────
@@ -73,7 +76,7 @@ CONQUISTAS_PRESENTE = [
 TRANSFERIVEIS = {
     "solo", "jh3ffth", "dominio_forja",
     "diana", "pioneiro", "aliado", "mono_evelynn",
-    "nexus-social",
+    "nexus-social", "isabella",
 }
 
 

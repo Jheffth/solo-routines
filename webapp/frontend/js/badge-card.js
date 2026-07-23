@@ -59,6 +59,7 @@ const BadgeCard = {
     aliado:         'Convocado não por mérito, mas por confiança — que é mais raro.',
     chamado_arquiteto: 'Você não encontrou o Sistema. O Sistema chamou por você.',
     'nexus-social': 'Conectou hunters. Forjou a rede — o lugar onde a solidao dos caçadores tem um fim.',
+    'isabella':     'A primeira a chegar com graça. Onde ela olha, o Sistema se lembra de ser belo.',
   },
   _PADRAO: {
     lendaria: 'Poucos a carregam. Menos ainda sabem o que ela custou.',

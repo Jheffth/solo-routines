@@ -2120,6 +2120,7 @@ window.Jh3ffthFX = Jh3ffthFX;
 window.SoloFX = SoloFX;
 window.ForjaFX = ForjaFX;
 window.DianaFX = DianaFX;
+window.IsabellaFX = IsabellaFX;
 
 /* ── Inscrição das artes no renderizador único ────────────────────────────
    Toda badge desenhada à mão se declara aqui, UMA vez. A partir deste
@@ -2139,4 +2140,6 @@ window.DianaFX = DianaFX;
   reg('diana',         tam => DianaFX._svgMedalhaDiana(tam));
   if (window.NexusSocialArte)
     reg('nexus-social', tam => NexusSocialArte._svgMedalhaNexus(tam));
+  if (window.IsabellaFX)
+    reg('isabella',     tam => IsabellaFX._svgMedalhaIsabella(tam));
 })();
