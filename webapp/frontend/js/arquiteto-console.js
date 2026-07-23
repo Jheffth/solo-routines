@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
    arquiteto-console.js — ⚒ Forja de Testes do Arquiteto
    Console secreto para disparar qualquer efeito do Sistema
    na hora, sem esperar eventos reais. 100% frontend:
@@ -864,7 +864,9 @@ const ArquitetoConsole = {
           bt('Vitrine: Isabella Costa',   'vitrineInsignia("isabella")', 'rosa', true),
           bt('Nexus Social (vitrine)',     'vitrineInsignia("nexus-social")', 'ciano', true),
           bt('Vitrine: todas as artes',   'vitrineInsignia()', 'ciano', true),
-          bt('Vitrine: auras',            'window.Auras.vitrine()', 'ouro', true),
+          bt('Aura: Bella Rosa (preview)', 'window.Auras?.vitrine("bella-rosa")', 'rosa', true),
+          bt('Aura: Vitrine completa',     'window.Auras?.vitrine()', 'ouro', true),
+          bt('✨ Enviar Aura Bella Rosa',  'ArquitetoConsole.enviarAura()', 'rosa', false),
         ])}
 
         ${sec('sons', '🔊 Sons', false, [], `
@@ -1844,6 +1846,114 @@ ArquitetoConsole.vitrineInsignia = function (codigo) {
     </div>`;
   cx.addEventListener('click', e => { if (e.target === cx) cx.remove(); });
   document.body.appendChild(cx);
+};
+
+/* ══════════════════════════════════════════════════════════════════════
+   ENVIAR AURA — modal que lista hunters, seleciona aura e envia via API */
+ArquitetoConsole.enviarAura = async function () {
+  const AURAS = [
+    { id: 'bella-rosa', nome: 'Bella Rosa \u2014 Femme Fatale', cor: '#f48fb1' },
+    { id: 'arquiteto',  nome: 'A Forja Viva',                 cor: '#fbbf24' },
+    { id: 'admin',      nome: 'O Selo do Guardi\u00e3o',           cor: '#38bdf8' },
+  ];
+  document.getElementById('arq-enviar-aura')?.remove();
+  let hunters = [];
+  try {
+    const tk = localStorage.getItem('access_token');
+    const r  = await fetch('/api/hunters?limite=200', { headers: { Authorization: `Bearer ${tk}` } });
+    const d  = await r.json();
+    hunters  = d.hunters || d || [];
+  } catch (_) {}
+
+  const cx = document.createElement('div');
+  cx.id    = 'arq-enviar-aura';
+  cx.style.cssText = 'position:fixed;inset:0;z-index:9998;display:flex;align-items:center;' +
+    'justify-content:center;background:rgba(3,3,8,.92);backdrop-filter:blur(7px);padding:1rem';
+
+  const auraOpts = AURAS.map(a => {
+    const bloco = window.Auras?.bloco(a.id, 48) || '';
+    return `<label style="display:flex;align-items:center;gap:.8rem;padding:.6rem .9rem;
+      border-radius:10px;cursor:pointer;border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.02)">
+      <input type="radio" name="arq-aura-sel" value="${a.id}" style="accent-color:${a.cor}" ${a.id==='bella-rosa'?'checked':''}>
+      <div style="position:relative;width:48px;height:48px;flex-shrink:0;display:flex;align-items:center;justify-content:center">
+        ${bloco}
+        <div style="position:relative;z-index:2;width:26px;height:26px;
+          background:linear-gradient(135deg,#2a1a4e,#0d1f36);
+          clip-path:polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%)"></div>
+      </div>
+      <div>
+        <div style="font-family:var(--font-section);font-size:.82rem;color:${a.cor};font-weight:700">${a.nome}</div>
+        <div style="font-family:var(--font-section);font-size:.6rem;color:var(--text-muted)">ID: ${a.id}</div>
+      </div></label>`;
+  }).join('');
+
+  cx.innerHTML = `<div style="width:min(500px,98%);max-height:90vh;overflow-y:auto;padding:1.6rem;
+    border-radius:20px;background:linear-gradient(160deg,#1a0012,#0a0014 70%);
+    border:1px solid rgba(244,143,177,.45);box-shadow:0 0 60px rgba(244,143,177,.25)">
+    <div style="display:flex;align-items:center;gap:.7rem;margin-bottom:1.3rem">
+      <span style="font-size:1.4rem">\u2728</span>
+      <div style="flex:1">
+        <div style="font-family:var(--font-title);font-size:1.1rem;color:#f48fb1">Enviar Aura</div>
+        <div style="font-family:var(--font-section);font-size:.62rem;letter-spacing:.12em;color:var(--text-muted)">PRESENTE DO ARQUITETO \u2014 COSM\u00c9TICO EXCLUSIVO</div>
+      </div>
+      <button onclick="document.getElementById('arq-enviar-aura').remove()"
+        style="background:none;border:none;color:var(--text-muted);font-size:1.2rem;cursor:pointer">\u2715</button>
+    </div>
+    <div style="margin-bottom:1rem">
+      <label style="font-family:var(--font-section);font-size:.68rem;letter-spacing:.1em;color:var(--text-muted);display:block;margin-bottom:.35rem">DESTINAT\u00c1RIO</label>
+      <select id="arq-aura-hunter" style="width:100%;padding:.6rem .8rem;border-radius:10px;
+        background:rgba(244,143,177,.07);border:1px solid rgba(244,143,177,.3);
+        color:var(--text-primary);font-family:var(--font-section);font-size:.82rem">
+        <option value="">Selecione o hunter...</option>
+        ${hunters.map(h => `<option value="${h.id}">${h.nome} (@${h.login})</option>`).join('')}
+      </select>
+    </div>
+    <div style="margin-bottom:1rem">
+      <label style="font-family:var(--font-section);font-size:.68rem;letter-spacing:.1em;color:var(--text-muted);display:block;margin-bottom:.45rem">AURA</label>
+      <div style="display:flex;flex-direction:column;gap:.45rem">${auraOpts}</div>
+    </div>
+    <div style="margin-bottom:1.2rem">
+      <label style="font-family:var(--font-section);font-size:.68rem;letter-spacing:.1em;color:var(--text-muted);display:block;margin-bottom:.35rem">MOTIVO (opcional)</label>
+      <input id="arq-aura-motivo" type="text" placeholder="Ex: Presente especial..."
+        style="width:100%;padding:.6rem .8rem;border-radius:10px;box-sizing:border-box;
+        background:rgba(244,143,177,.07);border:1px solid rgba(244,143,177,.3);
+        color:var(--text-primary);font-family:var(--font-section);font-size:.82rem">
+    </div>
+    <button id="arq-aura-btn" onclick="ArquitetoConsole._confirmarAura()"
+      style="width:100%;padding:.8rem;border-radius:12px;border:none;cursor:pointer;
+      background:linear-gradient(135deg,#e91e63,#f48fb1);
+      color:#fff;font-family:var(--font-title);font-size:.9rem;font-weight:700;letter-spacing:.06em">
+      \u2728 CONCEDER AURA</button>
+  </div>`;
+
+  cx.addEventListener('click', e => { if (e.target === cx) cx.remove(); });
+  document.body.appendChild(cx);
+};
+
+ArquitetoConsole._confirmarAura = async function () {
+  const hunterId = document.getElementById('arq-aura-hunter')?.value;
+  const auraId   = document.querySelector('[name="arq-aura-sel"]:checked')?.value;
+  const motivo   = document.getElementById('arq-aura-motivo')?.value || null;
+  if (!hunterId) { alert('Selecione um hunter'); return; }
+  if (!auraId)   { alert('Selecione uma aura');  return; }
+  const btn = document.getElementById('arq-aura-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
+  try {
+    const tk = localStorage.getItem('access_token');
+    const r  = await fetch('/api/arquiteto/conceder/aura', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tk}` },
+      body: JSON.stringify({ usuario_id: Number(hunterId), aura_id: auraId, motivo }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'Erro');
+    alert(d.detalhe || 'Aura concedida!');
+    document.getElementById('arq-enviar-aura')?.remove();
+  } catch (e) {
+    alert('Erro: ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = '\u2728 CONCEDER AURA'; }
+  }
 };
 
 document.addEventListener('DOMContentLoaded', () => ArquitetoConsole.init());

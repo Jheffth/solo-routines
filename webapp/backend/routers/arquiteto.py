@@ -79,6 +79,16 @@ PODERES = [
         "descricao": "Invalida um convite ainda não usado.",
         "grupo": "acesso", "destrutivo": True, "alvo": "convite",
     },
+    {
+        "id": "conceder_aura", "nome": "Conceder Aura", "icone": "✨",
+        "descricao": "Presenteia uma aura cosmética exclusiva ao hunter.",
+        "grupo": "cosmético", "destrutivo": False, "alvo": "aura",
+    },
+    {
+        "id": "revogar_aura", "nome": "Revogar Aura", "icone": "🌀",
+        "descricao": "Remove a aura cosmética concedida — volta à padrão do cargo.",
+        "grupo": "cosmético", "destrutivo": True, "alvo": "hunter",
+    },
 ]
 
 
@@ -421,7 +431,7 @@ def decretos(
         "id": d.id,
         "poder": d.poder,
         "poder_nome": nomes.get(d.poder, {}).get("nome", d.poder),
-        "icone": nomes.get(d.poder, {}).get("icone", "⟁"),
+        "icone": nomes.get(d.poder, {}).get("icone", "⏁"),
         "destrutivo": nomes.get(d.poder, {}).get("destrutivo", True),
         "por": d.arquiteto_nome,
         "alvo": d.alvo_nome,
@@ -430,3 +440,69 @@ def decretos(
         "motivo": d.motivo,
         "quando": d.criado_em.isoformat() if d.criado_em else None,
     } for d in regs]}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# AURAS COSMÉTICAS
+# ══════════════════════════════════════════════════════════════════════════════
+
+# IDs de aura válidos (devem coincidir com os IDs registrados em auras.js)
+AURAS_VALIDAS = {
+    "arquiteto":  "A Forja Viva",
+    "admin":      "O Selo do Guardião",
+    "bella-rosa": "Bella Rosa — Femme Fatale",
+}
+
+
+class AuraPayload(BaseModel):
+    usuario_id: int
+    aura_id: str
+    motivo: Optional[str] = None
+
+
+@router.post("/conceder/aura")
+def conceder_aura(
+    payload: AuraPayload,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_atual),
+):
+    """Presenteia uma aura cosmética a um hunter."""
+    _exige_arquiteto(usuario)
+    alvo = _alvo(db, payload.usuario_id, usuario)
+
+    if payload.aura_id not in AURAS_VALIDAS:
+        raise HTTPException(400, f"Aura '{payload.aura_id}' não reconhecida. "
+                            f"IDs válidos: {list(AURAS_VALIDAS.keys())}")
+
+    antes = alvo.aura_id or "(nenhuma)"
+    alvo.aura_id = payload.aura_id
+    _decretar(db, usuario, "conceder_aura", alvo,
+              f"Aura concedida: {payload.aura_id} ({AURAS_VALIDAS[payload.aura_id]})",
+              antes=f"aura={antes}", motivo=payload.motivo)
+    db.commit()
+    db.refresh(alvo)
+    return {
+        "ok": True,
+        "detalhe": f"Aura '{AURAS_VALIDAS[payload.aura_id]}' concedida a {alvo.nome}",
+        "aura_id": alvo.aura_id,
+    }
+
+
+@router.delete("/revogar/aura/{usuario_id}")
+def revogar_aura(
+    usuario_id: int,
+    motivo: Optional[str] = None,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_atual),
+):
+    """Remove a aura cosmética — o hunter volta à aura padrão do cargo."""
+    _exige_arquiteto(usuario)
+    alvo = _alvo(db, usuario_id, usuario)
+
+    antes = alvo.aura_id or "(nenhuma)"
+    alvo.aura_id = None
+    _decretar(db, usuario, "revogar_aura", alvo,
+              "Aura cosmética removida",
+              antes=f"aura={antes}", motivo=motivo)
+    db.commit()
+    return {"ok": True, "detalhe": f"Aura de {alvo.nome} removida"}

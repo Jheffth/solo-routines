@@ -44,6 +44,8 @@ COLUNAS = [
     ("conquistas",                "transferivel",        "BOOLEAN NOT NULL DEFAULT 0",  "BOOLEAN NOT NULL DEFAULT FALSE"),
     # Altar de relíquias escolhidas pelo hunter
     ("usuarios",                  "reliquias_fixadas",   "TEXT",                        "TEXT"),
+    # Aura cosmética presenteada pelo Arquiteto
+    ("usuarios",                  "aura_id",             "VARCHAR(50)",                 "VARCHAR(50)"),
     # Social (amizades e mensagens) — as tabelas nascem via criar_tabelas().
     # Exclusão de mensagens (adicionadas depois da tabela existir):
     ("mensagens",                 "oculta_de",           "BOOLEAN NOT NULL DEFAULT 0",  "BOOLEAN NOT NULL DEFAULT FALSE"),

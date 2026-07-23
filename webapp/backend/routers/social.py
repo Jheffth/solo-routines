@@ -28,7 +28,7 @@ from database import get_db, Usuario, Amizade, Mensagem
 from auth.router import get_usuario_atual
 # Reaproveitamos a MESMA lógica de presença e de aura de cargo da vitrine, para
 # que um hunter apareça igual na BuddyList e no perfil público.
-from routers.hunters import _presenca, _aura_cargo
+from routers.hunters import _presenca, _aura_cargo, _aura_efetiva
 
 router = APIRouter(prefix="/social", tags=["social"])
 
@@ -100,7 +100,7 @@ def _cartao(u: Usuario) -> dict:
         "visto_ha_min": (
             int((datetime.utcnow() - u.ultimo_acesso).total_seconds() // 60)
             if u.ultimo_acesso else None),
-        "aura":        _aura_cargo(u.nivel_acesso),
+        "aura":        _aura_efetiva(u),
     }
 
 
@@ -460,7 +460,7 @@ def conversa(
             "visto_ha_min": (
                 int((datetime.utcnow() - alvo.ultimo_acesso).total_seconds() // 60)
                 if alvo.ultimo_acesso else None),
-            "aura":       _aura_cargo(alvo.nivel_acesso),
+            "aura":       _aura_efetiva(alvo),
             # "digitando…": true se o interlocutor (alvo) mandou heartbeat PARA
             # MIM — chave (alvo_id, meu_id) — nos últimos 6s. Estado em memória.
             "digitando":  _esta_digitando(alvo.id, usuario.id),

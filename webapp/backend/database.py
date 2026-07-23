@@ -55,6 +55,9 @@ class Usuario(Base):
     # Relíquias do altar: JSON com os códigos que o hunter escolheu exibir
     # na Janela de Status e no topo da vitrine. Vazio = as mais recentes.
     reliquias_fixadas = Column(Text, nullable=True)
+    # Aura cosmética presenteada pelo Arquiteto (independente do cargo)
+    # None = usa a aura de cargo padrão; string = ID de aura registrada em Auras
+    aura_id           = Column(String(50), nullable=True)
 
     # Relacionamentos
     rotinas         = relationship("Rotina", back_populates="usuario", lazy="dynamic")
