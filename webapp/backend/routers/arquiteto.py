@@ -34,7 +34,8 @@ from motors.gamificacao import recalcular_nivel
 
 router = APIRouter(prefix="/arquiteto", tags=["arquiteto"])
 
-NIVEIS = ["User", "Admin", "Criador"]      # "Arquiteto" nunca é concedido por aqui
+NIVEIS = ["User", "Suporte", "Moderador", "Admin", "Criador"]  # "Arquiteto" nunca é concedido por aqui
+
 
 
 # ══════════════════════════════════════════════════════════════════════════════

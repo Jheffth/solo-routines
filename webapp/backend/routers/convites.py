@@ -16,8 +16,8 @@ from sqlalchemy.orm import Session
 from database import get_db, Usuario, Convite, Conquista
 from auth.router import get_usuario_atual
 
-# Níveis que o Arquiteto pode conceder por convite
-NIVEIS_PERMITIDOS = ("User", "Admin")
+# Níveis que o Arquiteto pode conceder por convite (Arquiteto é inatingível por convite)
+NIVEIS_PERMITIDOS = ("User", "Suporte", "Moderador", "Admin", "Criador")
 
 router = APIRouter(prefix="/convites", tags=["convites"])
 

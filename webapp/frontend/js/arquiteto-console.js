@@ -624,16 +624,22 @@ const ArquitetoConsole = {
             <!-- Tipo de conta -->
             <label style="display:block;font-family:var(--font-section);font-size:.58rem;letter-spacing:.12em;
               text-transform:uppercase;color:var(--text-muted);margin-bottom:.3rem">Tipo de conta</label>
-            <div style="display:flex;gap:.5rem;margin-bottom:.7rem">
-              ${[['User','👤 Hunter','Acesso padrão'],['Admin','⚙️ Administrador','Painel Admin liberado']]
-                .map(([id,rot,sub],i) => `
+            <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.7rem">
+              ${[
+                ['User',      '\u{1F464} Hunter',        'Acesso padrão',              '#94a3b8', 'rgba(148,163,184,.12)', 'rgba(148,163,184,.25)'],
+                ['Suporte',   '\u{1F3A7} Suporte',        'Consulta dados',                '#38bdf8', 'rgba(56,189,248,.12)',  'rgba(56,189,248,.3)'],
+                ['Moderador', '\u{1F6E1}\uFE0F Moderador', 'Modera social',                 '#8b5cf6', 'rgba(139,92,246,.12)',  'rgba(139,92,246,.3)'],
+                ['Admin',     '\u2699\uFE0F Administrador','Painel Admin liberado',         '#fbbf24', 'rgba(251,191,36,.12)',  'rgba(251,191,36,.3)'],
+                ['Criador',   '\u26D2 Criador',           'Cria conteúdo global',      '#10b981', 'rgba(16,185,129,.12)',  'rgba(16,185,129,.3)'],
+              ].map(([id, rot, sub, cor, bg, borda], i) => `
                 <div data-conv-nivel="${id}" onclick="ArquitetoConsole._selNivel('${id}')" style="
-                  flex:1;padding:.5rem .6rem;border-radius:9px;cursor:pointer;text-align:center;
-                  background:${i===0?'rgba(56,189,248,.14)':'rgba(255,255,255,.025)'};
-                  border:1px solid ${i===0?'#38bdf8':'rgba(148,163,184,.18)'};transition:all .2s">
-                  <div style="font-family:var(--font-section);font-size:.75rem;font-weight:700;
-                    color:${i===0?'#7dd3fc':'var(--text-secondary)'}">${rot}</div>
-                  <div style="font-size:.56rem;color:var(--text-dim);margin-top:.1rem">${sub}</div>
+                  flex:1;min-width:calc(33% - .3rem);padding:.45rem .5rem;border-radius:9px;cursor:pointer;text-align:center;
+                  background:${i===0?bg:'rgba(255,255,255,.025)'};
+                  border:1px solid ${i===0?borda:'rgba(148,163,184,.18)'};transition:all .2s"
+                  data-bg="${bg}" data-borda="${borda}" data-cor="${cor}">
+                  <div style="font-family:var(--font-section);font-size:.72rem;font-weight:700;
+                    color:${i===0?cor:'var(--text-secondary)'}">${rot}</div>
+                  <div style="font-size:.54rem;color:var(--text-dim);margin-top:.1rem">${sub}</div>
                 </div>`).join('')}
             </div>
 
@@ -671,7 +677,15 @@ const ArquitetoConsole = {
                 <div style="flex:1;min-width:0">
                   <div style="font-family:'Orbitron',monospace;font-size:.85rem;font-weight:700;color:${cor};letter-spacing:.04em">${cv.codigo}</div>
                   <div style="font-size:.62rem;color:var(--text-muted);margin-top:.15rem">
-                    ${rot}${cv.nivel_acesso === 'Admin' ? ' · <b style="color:#fbbf24">⚙️ ADMIN</b>' : ''}${cv.nota ? ' · ' + cv.nota : ''}${cv.usado_por ? ' · <b style="color:#7dd3fc">' + cv.usado_por.nome + '</b>' : ''}
+                    ${rot}${(() => {
+                      const mapa = {
+                        Admin:     '<b style="color:#fbbf24">\u2699\uFE0F ADMIN</b>',
+                        Criador:   '<b style="color:#10b981">\u26D2 CRIADOR</b>',
+                        Moderador: '<b style="color:#8b5cf6">\u{1F6E1}\uFE0F MODERADOR</b>',
+                        Suporte:   '<b style="color:#38bdf8">\u{1F3A7} SUPORTE</b>',
+                      };
+                      return mapa[cv.nivel_acesso] ? ' \u00b7 ' + mapa[cv.nivel_acesso] : '';
+                    })()}${cv.nota ? ' \u00b7 ' + cv.nota : ''}${cv.usado_por ? ' \u00b7 <b style="color:#7dd3fc">' + cv.usado_por.nome + '</b>' : ''}
                   </div>
                   ${cv.badges?.length ? `<div style="font-size:.6rem;color:var(--gold-bright);margin-top:.15rem">
                     🎁 ${cv.badges.map(b => b.icone + ' ' + b.titulo).join(' · ')}</div>` : ''}
@@ -708,11 +722,16 @@ const ArquitetoConsole = {
     this._convNivel = id;
     document.querySelectorAll('[data-conv-nivel]').forEach(el => {
       const on = el.dataset.convNivel === id;
-      el.style.background = on ? 'rgba(56,189,248,.14)' : 'rgba(255,255,255,.025)';
-      el.style.borderColor = on ? '#38bdf8' : 'rgba(148,163,184,.18)';
-      el.querySelector('div').style.color = on ? '#7dd3fc' : 'var(--text-secondary)';
+      // Usa as cores guardadas como data-attributes no botão (geradas pelo template)
+      const bg    = el.dataset.bg    || 'rgba(255,255,255,.025)';
+      const borda = el.dataset.borda || 'rgba(148,163,184,.18)';
+      const cor   = el.dataset.cor   || 'var(--text-secondary)';
+      el.style.background  = on ? bg    : 'rgba(255,255,255,.025)';
+      el.style.borderColor = on ? borda : 'rgba(148,163,184,.18)';
+      el.querySelector('div').style.color = on ? cor : 'var(--text-secondary)';
     });
   },
+
 
   _selBadge(cod) {
     const i = this._convBadges.indexOf(cod);

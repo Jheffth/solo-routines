@@ -113,14 +113,32 @@ def _marcar_presenca(db: Session, usuario: Usuario) -> None:
         db.rollback()
 
 
-# Hierarquia: Arquiteto > Criador > Admin > User
-NIVEIS_ADMIN = ("Admin", "Criador", "Arquiteto")
+# Hierarquia: Arquiteto > Criador > Admin > Moderador > Suporte > User
+# Todos os níveis acima de User têm acesso mínimo ao painel gerencial.
+NIVEIS_ADMIN    = ("Suporte", "Moderador", "Admin", "Criador", "Arquiteto")
+NIVEIS_MODERACAO = ("Moderador", "Admin", "Criador", "Arquiteto")   # moderam conteúdo social
+NIVEIS_GESTAO   = ("Admin", "Criador", "Arquiteto")                 # painel completo
 NIVEL_ARQUITETO = "Arquiteto"
 
 
 def get_admin(usuario: Usuario = Depends(get_usuario_atual)) -> Usuario:
+    """Suporte, Moderador, Admin, Criador e Arquiteto têm acesso ao painel."""
     if usuario.nivel_acesso not in NIVEIS_ADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso restrito a administradores")
+    return usuario
+
+
+def get_moderador(usuario: Usuario = Depends(get_usuario_atual)) -> Usuario:
+    """Moderador ou acima — moderam chat, amizades e reportes."""
+    if usuario.nivel_acesso not in NIVEIS_MODERACAO:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso restrito a moderadores")
+    return usuario
+
+
+def get_gestor(usuario: Usuario = Depends(get_usuario_atual)) -> Usuario:
+    """Admin, Criador ou Arquiteto — gestão plena de missões e dungeons."""
+    if usuario.nivel_acesso not in NIVEIS_GESTAO:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso restrito a gestores")
     return usuario
 
 

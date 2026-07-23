@@ -83,18 +83,36 @@ const Auth = {
   isAdmin() {
     const u = Auth.getUsuario();
     if (!u) return false;
-    return u.nivel_acesso === 'Arquiteto' ||
-           u.nivel_acesso === 'Admin' ||
-           u.nivel_acesso === 'Criador' ||
-           u.nivel_acesso === 'admin' ||
-           u.nivel_acesso === 'ADMIN' ||
-           u.role === 'admin' ||
-           u.is_admin === true;
+    // Qualquer nível acima de Hunter tem acesso ao painel gerencial
+    return ['Suporte', 'Moderador', 'Admin', 'Criador', 'Arquiteto',
+            'admin', 'ADMIN', 'criador', 'moderador', 'suporte'].includes(u.nivel_acesso) ||
+           u.role === 'admin' || u.is_admin === true;
+  },
+
+  isCriador() {
+    const u = Auth.getUsuario();
+    return !!u && ['Criador', 'Arquiteto'].includes(u.nivel_acesso);
+  },
+
+  isModerador() {
+    const u = Auth.getUsuario();
+    return !!u && ['Moderador', 'Admin', 'Criador', 'Arquiteto'].includes(u.nivel_acesso);
+  },
+
+  isSuporte() {
+    const u = Auth.getUsuario();
+    return !!u && ['Suporte', 'Moderador', 'Admin', 'Criador', 'Arquiteto'].includes(u.nivel_acesso);
+  },
+
+  isGestor() {
+    const u = Auth.getUsuario();
+    return !!u && ['Admin', 'Criador', 'Arquiteto'].includes(u.nivel_acesso);
   },
 
   isAutenticado() {
     return !!localStorage.getItem('sr_token');
   },
+
 
   async verificarSessao() {
     if (!Auth.isAutenticado()) {
