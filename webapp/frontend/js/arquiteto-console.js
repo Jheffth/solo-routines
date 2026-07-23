@@ -2118,4 +2118,6 @@ window.DianaFX = DianaFX;
   reg('solo',          tam => SoloFX._svgMedalhaSolo(tam));
   reg('dominio_forja', tam => ForjaFX._svgMedalhaForja(tam));
   reg('diana',         tam => DianaFX._svgMedalhaDiana(tam));
+  if (window.NexusSocialArte)
+    reg('nexus-social', tam => NexusSocialArte._svgMedalhaNexus(tam));
 })();

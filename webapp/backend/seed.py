@@ -33,6 +33,9 @@ CONQUISTAS_ARQUITETO = [
      "A insígnia de quem ativou a Forja da Criação", "🛡", "#ef4444", 7500, 1500),
     ("solo",                "SOLO",
      "O selo da empresa — sistema tático de produtividade S-Rank", "🌌", "#a855f7", 7500, 1500),
+    # Marco da Rede Social — cristal glacial SVG (js/badges/nexus-social.js)
+    ("nexus-social",        "Nexus Social",
+     "Forjou a Rede Social, o Chat e o Sistema de Lista de Amigos", "🌐", "#38bdf8", 6000, 1200),
 ]
 
 # ── O Chamado do Arquiteto ───────────────────────────────────────────────────
@@ -70,6 +73,7 @@ CONQUISTAS_PRESENTE = [
 TRANSFERIVEIS = {
     "solo", "jh3ffth", "dominio_forja",
     "diana", "pioneiro", "aliado", "mono_evelynn",
+    "nexus-social",
 }
 
 

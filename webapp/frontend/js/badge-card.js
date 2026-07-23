@@ -58,6 +58,7 @@ const BadgeCard = {
     pioneiro:       'Chegou quando ainda era só promessa. Ficou para ver virar verdade.',
     aliado:         'Convocado não por mérito, mas por confiança — que é mais raro.',
     chamado_arquiteto: 'Você não encontrou o Sistema. O Sistema chamou por você.',
+    'nexus-social': 'Conectou hunters. Forjou a rede — o lugar onde a solidao dos caçadores tem um fim.',
   },
   _PADRAO: {
     lendaria: 'Poucos a carregam. Menos ainda sabem o que ela custou.',
