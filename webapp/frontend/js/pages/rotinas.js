@@ -257,7 +257,34 @@ const Rotinas = {
 
   _bindBotaoNova() {
     const btn = document.getElementById('btn-nova-rotina');
-    if (btn && !btn._rotinaBound) {
+    if (!btn) return;
+    // .btn-primary não existe globalmente no projeto — aplica estilo inline
+    Object.assign(btn.style, {
+      fontFamily: 'var(--font-section)',
+      fontSize: '.82rem',
+      fontWeight: '700',
+      letterSpacing: '.06em',
+      padding: '.55rem 1.2rem',
+      borderRadius: '8px',
+      border: '1px solid rgba(168,85,247,.6)',
+      background: 'linear-gradient(110deg,rgba(124,58,237,.5),rgba(168,85,247,.35))',
+      color: '#e9d5ff',
+      cursor: 'pointer',
+      flexShrink: '0',
+      whiteSpace: 'nowrap',
+      transition: 'all .2s',
+      boxShadow: '0 0 12px rgba(168,85,247,.2)',
+    });
+    btn.textContent = '+ Nova Rotina';
+    btn.onmouseover = () => {
+      btn.style.background = 'linear-gradient(110deg,rgba(124,58,237,.8),rgba(168,85,247,.6))';
+      btn.style.boxShadow = '0 0 20px rgba(168,85,247,.4)';
+    };
+    btn.onmouseout = () => {
+      btn.style.background = 'linear-gradient(110deg,rgba(124,58,237,.5),rgba(168,85,247,.35))';
+      btn.style.boxShadow = '0 0 12px rgba(168,85,247,.2)';
+    };
+    if (!btn._rotinaBound) {
       btn._rotinaBound = true;
       btn.addEventListener('click', () => this.abrirFormulario());
     }
