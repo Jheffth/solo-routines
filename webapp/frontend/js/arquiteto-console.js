@@ -858,6 +858,15 @@ const ArquitetoConsole = {
           bt('Vitrine: Mono Diana',   'window.DianaFX.vitrineCustomizada()', 'ciano', true),
         ])}
 
+
+        ${sec('auras', '🌸 Auras Cosm\u00e9ticas', false, [
+          bt('Preview: Bella Rosa',      'window.Auras?.vitrine("bella-rosa")', 'rosa', true),
+          bt('Preview: todas as auras',  'window.Auras?.vitrine()', 'ouro', true),
+          bt('Diagn\u00f3stico de auras',     'window.Auras?.diagnostico?.()', 'cinza', true),
+          bt('\u2736 Forjar Bella Rosa (meu)',  'ArquitetoConsole._forjarAura("bella-rosa")', 'rosa', false),
+          bt('\u2736 Enviar Aura a Hunter',    'ArquitetoConsole.enviarAura()', 'rosa', false),
+        ])}
+
         ${sec('insignias', '🎖 Insígnias com arte própria', false, [
           bt('Cerimônia: Mono Evelynn',   'window.EvelynnFX.cerimonia()', 'rosa', true),
           bt('Vitrine: Mono Evelynn',     'vitrineInsignia("mono_evelynn")', 'rosa', true),
@@ -1929,6 +1938,27 @@ ArquitetoConsole.enviarAura = async function () {
 
   cx.addEventListener('click', e => { if (e.target === cx) cx.remove(); });
   document.body.appendChild(cx);
+};
+
+
+ArquitetoConsole._forjarAura = async function (auraId) {
+  /* Forja a aura no pr\u00f3prio invent\u00e1rio do Arquiteto.
+     Chama o mesmo endpoint de conceder, passando o pr\u00f3prio id como destino. */
+  const nome = { "bella-rosa": "Bella Rosa \u2014 Femme Fatale" }[auraId] || auraId;
+  try {
+    const tk = localStorage.getItem("access_token");
+    // busca o pr\u00f3prio perfil para obter o id
+    const me = await fetch("/api/me", { headers: { Authorization: `Bearer ${tk}` } });
+    const eu = await me.json();
+    const r  = await fetch("/api/arquiteto/conceder/aura", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${tk}` },
+      body: JSON.stringify({ usuario_id: eu.id, aura_id: auraId, motivo: "Forjada pelo Arquiteto" }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || "Erro");
+    alert(`\u2728 Aura "${nome}" forjada no seu invent\u00e1rio!`);
+  } catch (e) { alert("Erro ao forjar: " + e.message); }
 };
 
 ArquitetoConsole._confirmarAura = async function () {

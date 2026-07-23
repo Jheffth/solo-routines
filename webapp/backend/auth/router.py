@@ -237,4 +237,5 @@ def me(usuario: Usuario = Depends(get_usuario_atual)):
         "nivel_acesso": usuario.nivel_acesso,
         "criado_em": usuario.criado_em,
         "ultimo_acesso": usuario.ultimo_acesso,
+        "aura_id": getattr(usuario, "aura_id", None),
     }

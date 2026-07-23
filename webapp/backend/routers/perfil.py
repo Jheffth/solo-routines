@@ -401,3 +401,97 @@ def definir_reliquias(
     usuario.reliquias_fixadas = json.dumps(payload.codigos)
     db.commit()
     return {"ok": True, "fixadas": payload.codigos}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# AURAS COSMÉTICAS — inventário virtual e troca
+# ══════════════════════════════════════════════════════════════════════════════
+
+# IDs de aura que são de cargo (automaticamente atribuídas pelo sistema)
+# Não podem ser trocadas pelo próprio usuário nem enviadas como presente.
+AURAS_DE_CARGO = {"arquiteto", "admin", "moderador", "suporte"}
+
+# IDs de aura cosméticas disponíveis para presentear/forjar/trocar
+AURAS_COSMETICAS = {
+    "bella-rosa": {
+        "id": "bella-rosa",
+        "nome": "Bella Rosa — Femme Fatale",
+        "descricao": "Aura exclusiva de 16 pétalas em espiral, halos rosa e branco, shimmer suave.",
+        "cor": "#f48fb1",
+        "enviavel": True,
+    },
+}
+
+
+class AuraTrocaPayload(BaseModel):
+    aura_id: Optional[str]   # None = remover aura cosmética (volta ao padrão de cargo)
+
+
+@router.get("/auras-inventario")
+def inventario_auras(
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_atual),
+):
+    """Auras que o usuário possui (forjadas ou recebidas) + aura ativa."""
+    aura_ativa = getattr(usuario, "aura_id", None)
+
+    # Inventário virtual: por ora, se o usuário tem aura_id, ele "possui" aquela aura.
+    # No futuro pode ser uma tabela separada.
+    inventario = []
+    if aura_ativa and aura_ativa in AURAS_COSMETICAS:
+        inventario.append({**AURAS_COSMETICAS[aura_ativa], "ativa": True})
+
+    # Aura de cargo (sempre disponível, não enviável)
+    from routers.hunters import _aura_cargo
+    cargo_id = _aura_cargo(usuario.nivel_acesso)
+    if cargo_id and cargo_id not in AURAS_DE_CARGO - {cargo_id}:
+        inventario.append({
+            "id": cargo_id,
+            "nome": f"Aura de Cargo ({usuario.nivel_acesso})",
+            "descricao": "Concedida automaticamente pelo seu cargo. Não pode ser enviada.",
+            "cor": "#fbbf24" if cargo_id == "arquiteto" else "#38bdf8",
+            "enviavel": False,
+            "ativa": aura_ativa is None,
+            "de_cargo": True,
+        })
+
+    return {
+        "aura_ativa": aura_ativa,
+        "inventario": inventario,
+        "auras_disponiveis": list(AURAS_COSMETICAS.values()),
+    }
+
+
+@router.put("/aura")
+def trocar_aura(
+    payload: AuraTrocaPayload,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_atual),
+):
+    """Troca a aura cosmética ativa do usuário."""
+    nova = payload.aura_id
+
+    if nova is not None:
+        # Valida que não é uma aura de cargo tentando ser atribuída manualmente
+        if nova in AURAS_DE_CARGO:
+            raise HTTPException(400,
+                "Auras de cargo são atribuídas automaticamente — não podem ser selecionadas.")
+
+        # Valida que é uma aura reconhecida
+        if nova not in AURAS_COSMETICAS:
+            raise HTTPException(400, f"Aura '{nova}' não reconhecida.")
+
+        # Valida que o usuário possui essa aura (aura_id = aura recebida)
+        aura_possuida = getattr(usuario, "aura_id", None)
+        if aura_possuida != nova:
+            raise HTTPException(403,
+                "Você não possui essa aura. Peça ao Arquiteto para presenteá-la.")
+
+    # None = remover cosmética → volta à aura de cargo
+    usuario.aura_id = nova
+    db.commit()
+    return {
+        "ok": True,
+        "aura_id": usuario.aura_id,
+        "detalhe": f"Aura trocada para '{nova}'" if nova else "Aura cosmética removida",
+    }

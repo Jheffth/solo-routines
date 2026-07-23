@@ -302,12 +302,22 @@ const Dashboard = {
       const sb = document.getElementById('sidebar-avatar');
       if (sb) sb.innerHTML = `<img src="${dados.avatar_url}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
     }
-    // Aura por cargo: fogo para o Arquiteto, selo azul para Admin.
-    // Quem decide qual é o próprio Auras — esta tela só entrega o
-    // hexágono e o cargo.
-    window.Auras?.aplicar(
-      document.querySelector('#hunter-card .hunter-hex-wrap'),
-      dados.nivel_acesso, 168);
+    // Aura: cosmética presenteada tem prioridade; fallback = cargo.
+    // O campo aura_id vem do /me (add feat:2025-07) quando não nulo.
+    const auraId = dados.aura_id || null;
+    const hexWrap = document.querySelector('#hunter-card .hunter-hex-wrap');
+    if (hexWrap && window.Auras) {
+      if (auraId && Auras.existe(auraId)) {
+        // Aura cosmética específica
+        hexWrap.querySelector('.aura-wrap')?.remove();
+        hexWrap.insertAdjacentHTML('afterbegin', Auras.bloco(auraId, 168));
+      } else {
+        // Fallback: aura de cargo
+        Auras.aplicar(hexWrap, dados.nivel_acesso, 168);
+      }
+    }
+    // Guarda dados globalmente para o modal de aura usar
+    window.__dashDados = dados;
 
     // Botão Editar Perfil
     const btnEdit = document.getElementById('dash-btn-editar-perfil');
@@ -316,6 +326,9 @@ const Dashboard = {
         if (window.App) App.navigate('perfil');
       };
     }
+
+    // Botão Trocar Aura (injetado dinamicamente se não existir)
+    Dashboard._bindBtnAura(dados);
 
     // Reset de progresso: ação perigosa — mora na Forja de Testes (Ctrl+Alt+A),
     // fora do cabeçalho. Exposto aqui para a Forja consumir.
