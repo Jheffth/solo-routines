@@ -51,11 +51,21 @@ const PainelAdmin = {
     cont.innerHTML = `
       <div class="pa-cargo">
         <span class="pa-cargo-selo ${this._perm.eh_arquiteto ? 'arq' : ''}">
-          ${this._perm.eh_arquiteto ? '⟁ ARQUITETO' : '⚙️ ' + (this._perm.nivel_acesso || '').toUpperCase()}
+          ${{
+            Arquiteto: '⟁ ARQUITETO',
+            Criador:   '⚒ CRIADOR',
+            Admin:     '⚙️ ADMINISTRADOR',
+            Moderador: '🛡️ MODERADOR',
+            Suporte:   '🎧 SUPORTE',
+          }[this._perm.nivel_acesso] || '⚙️ ' + (this._perm.nivel_acesso || '').toUpperCase()}
         </span>
-        <span class="pa-cargo-txt">${this._perm.eh_arquiteto
-          ? 'Autoridade total sobre o Sistema'
-          : 'Acesso administrativo — ações críticas reservadas ao Arquiteto'}</span>
+        <span class="pa-cargo-txt">${{
+            Arquiteto: 'Autoridade total sobre o Sistema',
+            Criador:   'Criação de conteúdo global — dungeons e missões',
+            Admin:     'Gestão plena — hunters, badges e configurações',
+            Moderador: 'Moderação social — chat e amizades',
+            Suporte:   'Consulta e suporte — visualização apenas',
+          }[this._perm.nivel_acesso] || 'Acesso administrativo'}</span>
       </div>
       <div class="pa-abas">
         ${abas.map(a => `<button class="pa-aba ${a.id === this._aba ? 'on' : ''}"

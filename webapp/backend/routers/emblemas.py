@@ -31,6 +31,19 @@ def eh_admin(u: Usuario) -> bool:
     return u.nivel_acesso in ("Admin", "Criador", "Arquiteto")
 
 
+def eh_gestor(u: Usuario) -> bool:
+    """Admin e acima — painel completo de gestão."""
+    return u.nivel_acesso in ("Admin", "Criador", "Arquiteto")
+
+
+def eh_moderador(u: Usuario) -> bool:
+    return u.nivel_acesso in ("Moderador", "Admin", "Criador", "Arquiteto")
+
+
+def eh_suporte(u: Usuario) -> bool:
+    return u.nivel_acesso in ("Suporte", "Moderador", "Admin", "Criador", "Arquiteto")
+
+
 def _exige_arquiteto(u: Usuario):
     if not eh_arquiteto(u):
         raise HTTPException(403, "Somente o Arquiteto pode fazer isso")
@@ -280,26 +293,43 @@ def permissoes(usuario: Usuario = Depends(get_usuario_atual)):
     """
     Mapa de privilégios do usuário logado — o frontend usa para montar
     o Painel Admin mostrando só o que ele pode fazer.
+
+    Hierarquia: Arquiteto > Criador > Admin > Moderador > Suporte > User
     """
-    arq = eh_arquiteto(usuario)
-    adm = eh_admin(usuario)
+    arq  = eh_arquiteto(usuario)
+    adm  = eh_admin(usuario)          # Admin, Criador, Arquiteto
+    gest = adm                         # mesmo nível por ora
+    mod  = eh_moderador(usuario)       # Moderador e acima
+    sup  = eh_suporte(usuario)         # Suporte e acima
     return {
         "nivel_acesso": usuario.nivel_acesso,
         "eh_arquiteto": arq,
-        "eh_admin": adm,
+        "eh_admin":     adm,
         "pode": {
-            "ver_painel":          adm,
-            "ver_hunters":         adm,
-            "ver_logs":            adm,
+            # ── Qualquer nível acima de Hunter ──
+            "ver_painel":          sup,
+            "ver_hunters":         sup,
+            "ver_logs":            sup,
+
+            # ── Moderador e acima ──
+            "moderar_chat":        mod,
+            "moderar_amizades":    mod,
+
+            # ── Admin e acima ──
+            "editar_hunter":       adm,
+            "ajustar_xp":          adm,
+            "excluir_hunter":      adm,
+            "enviar_emblemas":     adm,
+            "configurar_sistema":  adm,
+
+            # ── Criador e acima ──
+            "criar_emblemas":      gest,
+            "criar_dungeons_globais": gest,
+
+            # ── Só Arquiteto ──
             "ver_email_hunters":   arq,
-            "editar_hunter":       arq,
-            "ajustar_xp":          arq,
-            "excluir_hunter":      arq,
             "gerar_convites":      arq,
             "definir_admin":       arq,
-            "enviar_emblemas":     arq,
-            "criar_emblemas":      arq,
-            "configurar_sistema":  arq,
             "resetar_progresso":   arq,
         },
     }

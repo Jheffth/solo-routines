@@ -72,21 +72,24 @@ def ajustar_usuario(
     db: Session = Depends(get_db),
     admin: Usuario = Depends(get_admin),
 ):
+    # Suporte e Moderador: apenas leitura — sem acesso a rotas de escrita
+    if admin.nivel_acesso in ("Suporte", "Moderador"):
+        raise HTTPException(403, "Seu cargo permite apenas consulta — sem permissão de escrita")
+
     u = db.query(Usuario).filter(Usuario.id == usuario_id).first()
     if not u:
         raise HTTPException(404, "Usuário não encontrado")
 
     # Proteção inviolável — Arquiteto não pode ser modificado por ninguém
     if getattr(u, 'inviolavel', False) and u.nivel_acesso == "Arquiteto":
-        # Somente outro Arquiteto poderia, mas não permitimos rebaixamento
         raise HTTPException(403, "Este usuário é inviolável e não pode ser modificado")
 
-    # Ninguém pode promover alguém para Arquiteto via API (apenas via seed/script)
+    # Ninguém pode promover alguém para Arquiteto via painel
     if payload.nivel_acesso == "Arquiteto":
         raise HTTPException(403, "Promoção ao nível Arquiteto não é permitida via painel")
 
-    # Admin comum não pode modificar Criador ou Arquiteto
-    if admin.nivel_acesso == "Admin" and u.nivel_acesso in ("Criador", "Arquiteto"):
+    # Admin não pode modificar outros Admins, Criador ou Arquiteto
+    if admin.nivel_acesso == "Admin" and u.nivel_acesso in ("Admin", "Criador", "Arquiteto"):
         raise HTTPException(403, "Sem permissão para modificar este nível de usuário")
 
     if payload.nome is not None:         u.nome = payload.nome
@@ -110,6 +113,10 @@ def deletar_usuario(
     db: Session = Depends(get_db),
     admin: Usuario = Depends(get_admin),
 ):
+    # Suporte e Moderador: apenas leitura
+    if admin.nivel_acesso in ("Suporte", "Moderador"):
+        raise HTTPException(403, "Seu cargo permite apenas consulta — sem permissão de exclusão")
+
     u = db.query(Usuario).filter(Usuario.id == usuario_id).first()
     if not u:
         raise HTTPException(404, "Usuário não encontrado")
@@ -118,8 +125,8 @@ def deletar_usuario(
     if getattr(u, 'inviolavel', False) or u.nivel_acesso == "Arquiteto":
         raise HTTPException(403, "Este usuário é inviolável e não pode ser excluído")
 
-    # Admin não pode excluir Criador
-    if admin.nivel_acesso == "Admin" and u.nivel_acesso in ("Criador", "Arquiteto"):
+    # Admin não pode excluir Criador ou outros Admins
+    if admin.nivel_acesso == "Admin" and u.nivel_acesso in ("Admin", "Criador", "Arquiteto"):
         raise HTTPException(403, "Sem permissão para excluir este usuário")
 
     db.delete(u)
