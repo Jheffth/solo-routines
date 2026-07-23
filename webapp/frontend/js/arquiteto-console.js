@@ -1129,10 +1129,12 @@ const ArquitetoConsole = {
         ])}
 
         ${sec('insignias', '🎖 Insígnias com arte própria', false, [
-          bt('Cerimônia: Mono Evelynn', 'window.EvelynnFX.cerimonia()', 'rosa', true),
-          bt('Vitrine: Mono Evelynn',   'vitrineInsignia("mono_evelynn")', 'rosa', true),
-          bt('Vitrine: todas as artes', 'vitrineInsignia()', 'ciano', true),
-          bt('Vitrine: auras',          'window.Auras.vitrine()', 'ouro', true),
+          bt('Cerimônia: Mono Evelynn',   'window.EvelynnFX.cerimonia()', 'rosa', true),
+          bt('Vitrine: Mono Evelynn',     'vitrineInsignia("mono_evelynn")', 'rosa', true),
+          bt('Vitrine: Isabella Costa',   'vitrineInsignia("isabella")', 'rosa', true),
+          bt('Nexus Social (vitrine)',     'vitrineInsignia("nexus-social")', 'ciano', true),
+          bt('Vitrine: todas as artes',   'vitrineInsignia()', 'ciano', true),
+          bt('Vitrine: auras',            'window.Auras.vitrine()', 'ouro', true),
         ])}
 
         ${sec('sons', '🔊 Sons', false, [], `
