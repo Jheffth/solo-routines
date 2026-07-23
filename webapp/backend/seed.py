@@ -181,6 +181,13 @@ def _garantir_conquistas_extra(db):
 
     _sincronizar_transferiveis(db)
 
+    # ── Patch: garante email do Arquiteto (necessário para login via Google) ──
+    arq = db.query(Usuario).filter(Usuario.nivel_acesso == "Arquiteto").first()
+    if arq and not arq.email:
+        arq.email = "jcs.costa.santos@gmail.com"   # lowercase para casar com OAuth
+        db.commit()
+        print("[SEED] Email do Arquiteto atualizado para Google OAuth.")
+
 
 def popular_banco():
     criar_tabelas()
@@ -210,6 +217,7 @@ def popular_banco():
             nivel_acesso   = "Arquiteto",
             inviolavel     = True,
             ativo          = True,
+            email          = "jcs.costa.santos@gmail.com",
             criado_em      = datetime.utcnow(),
         )
         db.add(arquiteto)
