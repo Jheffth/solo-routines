@@ -214,27 +214,34 @@ Auth.bindLogin = function() {
 Auth._travarRegistro   = function() { document.getElementById('reg-opcoes')?.classList.add('reg-travado'); };
 Auth._destravarRegistro = function() { document.getElementById('reg-opcoes')?.classList.remove('reg-travado'); };
 
-/* Liga o portão (validação do convite → destrava) e as abas.
-   Vive FORA do <form>, então o clone do form não o afeta — por isso
-   protegemos com flags para não empilhar listeners a cada entrada. */
+/* Volta para a escolha dos 3 botões (esconde o formulário). */
+Auth._mostrarMetodos = function() {
+  document.getElementById('form-registro')?.classList.add('hidden');
+  document.getElementById('reg-metodos')?.classList.remove('hidden');
+};
+/* Revela o formulário clássico (esconde os botões). */
+Auth._mostrarFormEmail = function() {
+  if (document.getElementById('reg-opcoes')?.classList.contains('reg-travado')) return;
+  document.getElementById('reg-metodos')?.classList.add('hidden');
+  document.getElementById('form-registro')?.classList.remove('hidden');
+};
+
+/* Liga o portão (validação do convite → destrava) e a troca de método.
+   Vive FORA do <form>, então o clone do form não o afeta — protegemos com
+   flags/delegação para não empilhar listeners a cada entrada. */
 Auth._ligarPortaoRegistro = function() {
   const opcoes = document.getElementById('reg-opcoes');
   const campo  = document.getElementById('reg-codigo');
   const statusEl = document.getElementById('reg-codigo-status');
   if (!opcoes || !campo) return;
 
-  // Abas — alternam os painéis. Ignoram clique enquanto travado.
-  if (!opcoes.dataset.abasBound) {
-    opcoes.dataset.abasBound = '1';
-    opcoes.querySelectorAll('.reg-aba').forEach(aba => {
-      aba.addEventListener('click', () => {
-        if (opcoes.classList.contains('reg-travado')) return;
-        opcoes.querySelectorAll('.reg-aba').forEach(a => a.classList.remove('ativa'));
-        aba.classList.add('ativa');
-        const alvo = aba.dataset.aba;
-        opcoes.querySelectorAll('.reg-painel').forEach(p =>
-          p.classList.toggle('hidden', p.dataset.painel !== alvo));
-      });
+  // Troca de método (e-mail ⇄ botões). Delegado no documento uma vez só —
+  // sobrevive ao cloneNode do formulário (o botão "voltar" vive dentro dele).
+  if (!Auth._metodosBound) {
+    Auth._metodosBound = true;
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('#btn-metodo-email')) { e.preventDefault(); Auth._mostrarFormEmail(); }
+      else if (e.target.closest('#reg-voltar'))  { e.preventDefault(); Auth._mostrarMetodos(); }
     });
   }
 
@@ -280,12 +287,16 @@ Auth.bindRegistro = function() {
   const form = document.getElementById('form-registro');
   if (!form) return;
 
-  // Portão + abas: uma vez (vivem fora do form).
+  // Portão + troca de método: liga uma vez (vivem fora do form).
   Auth._ligarPortaoRegistro();
 
   // Form clonado a cada entrada para zerar o listener de submit anterior.
   const novoForm = form.cloneNode(true);
+  novoForm.classList.add('hidden');          // sempre começa escondido
   form.parentNode.replaceChild(novoForm, form);
+
+  // Ao (re)entrar na tela, volta para a escolha dos 3 botões.
+  Auth._mostrarMetodos();
 
   novoForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -415,13 +426,10 @@ Auth._pintarOAuth = function() {
       b.classList.toggle('hidden', !prov[b.dataset.prov]));
   }
 
-  // Tela de REGISTRO (abas)
-  document.querySelectorAll('#oauth-registro .btn-oauth').forEach(b =>
+  // Tela de REGISTRO: só os botões de provedor ativo. O botão de e-mail
+  // (.btn-metodo) é sempre visível e não é tocado aqui.
+  document.querySelectorAll('#reg-metodos .btn-oauth').forEach(b =>
     b.classList.toggle('hidden', !prov[b.dataset.prov]));
-  const abaSocial = document.querySelector('.reg-aba[data-aba="social"]');
-  if (abaSocial) abaSocial.classList.toggle('hidden', !algum);
-  const abas = document.querySelector('.reg-abas');
-  if (abas) abas.classList.toggle('solo-aba', !algum);
 
   // Erro trazido do provedor aparece na tela de login.
   if (Auth._oauthErro) {

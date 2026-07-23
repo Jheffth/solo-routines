@@ -135,19 +135,33 @@
           <div id="reg-codigo-status" style="font-family:var(--font-section);font-size:.7rem;margin-top:.35rem;min-height:1em"></div>
         </div>
 
-        <!-- 2. OPÇÕES: nascem travadas. Só o convite válido as destrava. -->
+        <!-- 2. OPÇÕES: nascem travadas. Só o convite válido as destrava.
+                Mostramos apenas 3 botões — o formulário só surge se a pessoa
+                escolher "e-mail". Nada de form longo assustando de cara. -->
         <div id="reg-opcoes" class="reg-travado" aria-disabled="true">
           <div class="reg-cadeado" id="reg-cadeado">
             <span>&#128274;</span> Valide um convite acima para liberar o cadastro
           </div>
 
-          <div class="reg-abas" role="tablist">
-            <button type="button" class="reg-aba ativa" data-aba="convite" role="tab">Preencher dados</button>
-            <button type="button" class="reg-aba" data-aba="social" role="tab">Google &middot; Discord</button>
+          <!-- Escolha do método -->
+          <div class="reg-metodos" id="reg-metodos">
+            <button type="button" class="btn-oauth google hidden" data-prov="google" data-modo="registro">
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.4-1.68 4.1-5.5 4.1-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 2.4 14.6 1.5 12 1.5 6.9 1.5 2.8 5.6 2.8 12S6.9 22.5 12 22.5c6 0 9.4-4.2 9.4-9.1 0-.6-.06-1-.15-1.5H12z"/></svg>
+              <span>Continuar com Google</span>
+            </button>
+            <button type="button" class="btn-oauth discord hidden" data-prov="discord" data-modo="registro">
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="#5865F2" d="M20.3 4.4A19.8 19.8 0 0 0 15.4 3l-.25.5a18.3 18.3 0 0 1 4.3 1.4A16.5 16.5 0 0 0 3.1 5 18 18 0 0 1 7.5 3.5L7.2 3A19.8 19.8 0 0 0 2.3 4.4C.5 8 .1 11.6.3 15.1a19.9 19.9 0 0 0 6 3l.8-1.3c-.66-.25-1.3-.55-1.9-.9l.47-.35a14.2 14.2 0 0 0 12.1 0l.47.35c-.6.35-1.24.65-1.9.9l.8 1.3a19.9 19.9 0 0 0 6-3c.3-4.1-.5-7.6-2.7-10.7zM8.5 13c-.9 0-1.65-.85-1.65-1.9S7.6 9.2 8.5 9.2s1.66.85 1.65 1.9c0 1.05-.74 1.9-1.65 1.9zm7 0c-.9 0-1.65-.85-1.65-1.9s.73-1.9 1.65-1.9 1.66.85 1.65 1.9c0 1.05-.73 1.9-1.65 1.9z"/></svg>
+              <span>Continuar com Discord</span>
+            </button>
+            <button type="button" class="btn-metodo" id="btn-metodo-email">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>
+              <span>Cadastrar com e-mail e senha</span>
+            </button>
           </div>
 
-          <!-- Aba A: formulário clássico -->
-          <form class="login-form reg-painel" id="form-registro" data-painel="convite" autocomplete="off">
+          <!-- Formulário clássico: escondido até escolher "e-mail" -->
+          <form class="login-form hidden" id="form-registro" autocomplete="off">
+            <button type="button" class="reg-voltar" id="reg-voltar">&#8592; Escolher outro método</button>
             <div class="form-group">
               <label class="form-label" for="reg-nome">Nome Completo</label>
               <div class="input-icon-wrap">
@@ -194,21 +208,6 @@
               <span>Criar Hunter</span>
             </button>
           </form>
-
-          <!-- Aba B: social. Usa o MESMO convite validado acima. -->
-          <div class="reg-painel hidden" id="oauth-registro" data-painel="social">
-            <p class="oauth-nota" style="margin:.2rem 0 1rem">Entre com um clique — usaremos o convite já validado acima.</p>
-            <div class="oauth-botoes">
-              <button type="button" class="btn-oauth google hidden" data-prov="google" data-modo="registro">
-                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.4-1.68 4.1-5.5 4.1-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 2.4 14.6 1.5 12 1.5 6.9 1.5 2.8 5.6 2.8 12S6.9 22.5 12 22.5c6 0 9.4-4.2 9.4-9.1 0-.6-.06-1-.15-1.5H12z"/></svg>
-                <span>Continuar com Google</span>
-              </button>
-              <button type="button" class="btn-oauth discord hidden" data-prov="discord" data-modo="registro">
-                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="#5865F2" d="M20.3 4.4A19.8 19.8 0 0 0 15.4 3l-.25.5a18.3 18.3 0 0 1 4.3 1.4A16.5 16.5 0 0 0 3.1 5 18 18 0 0 1 7.5 3.5L7.2 3A19.8 19.8 0 0 0 2.3 4.4C.5 8 .1 11.6.3 15.1a19.9 19.9 0 0 0 6 3l.8-1.3c-.66-.25-1.3-.55-1.9-.9l.47-.35a14.2 14.2 0 0 0 12.1 0l.47.35c-.6.35-1.24.65-1.9.9l.8 1.3a19.9 19.9 0 0 0 6-3c.3-4.1-.5-7.6-2.7-10.7zM8.5 13c-.9 0-1.65-.85-1.65-1.9S7.6 9.2 8.5 9.2s1.66.85 1.65 1.9c0 1.05-.74 1.9-1.65 1.9zm7 0c-.9 0-1.65-.85-1.65-1.9s.73-1.9 1.65-1.9 1.66.85 1.65 1.9c0 1.05-.73 1.9-1.65 1.9z"/></svg>
-                <span>Continuar com Discord</span>
-              </button>
-            </div>
-          </div>
         </div>
 
         <div class="login-links">

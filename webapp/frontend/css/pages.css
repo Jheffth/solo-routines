@@ -353,21 +353,27 @@
   opacity: .85;
 }
 
-/* ─── REGISTRO EM DUAS ABAS, TRAVADO PELO CONVITE ─── */
-/* As opções nascem travadas: enquanto o convite não vale, elas ficam
-   apagadas e sem clique. É o portão que impede o formulário de assustar
-   quem só quer entrar com um toque. */
-#reg-opcoes {
-  transition: opacity .3s ease;
+/* ─── REGISTRO — ESCOLHA DE MÉTODO, TRAVADA PELO CONVITE ─── */
+/* O campo do convite fica FORA do <form>, então não herda a cor clara dos
+   inputs do formulário — sem isto, o texto digitado sai preto no fundo escuro. */
+#registro-screen .input {
+  color: #f1f5f9 !important;
+  background: rgba(20, 15, 40, 0.9) !important;
+  border: 1.5px solid rgba(124,58,237,.45) !important;
 }
-#reg-opcoes.reg-travado .reg-abas,
-#reg-opcoes.reg-travado .reg-painel {
-  opacity: .4;
+#registro-screen .input::placeholder { color: #64748b !important; opacity: 1; }
+
+/* As opções nascem travadas: enquanto o convite não vale, ficam apagadas e
+   sem clique. Só os 3 botões aparecem — nunca o formulário longo de cara. */
+#reg-opcoes { transition: opacity .3s ease; }
+#reg-opcoes.reg-travado .reg-metodos,
+#reg-opcoes.reg-travado #form-registro {
+  opacity: .35;
   pointer-events: none;
-  filter: saturate(.6);
+  filter: saturate(.5);
   user-select: none;
 }
-/* O cadeado só aparece enquanto travado; some quando o convite libera. */
+/* Cadeado só aparece enquanto travado. */
 .reg-cadeado {
   display: none;
   align-items: center;
@@ -386,43 +392,117 @@
 }
 #reg-opcoes.reg-travado .reg-cadeado { display: flex; }
 
-/* Abas */
-.reg-abas {
+/* Os 3 botões de método (Google, Discord, E-mail) */
+.reg-metodos {
   display: flex;
-  gap: .35rem;
-  padding: .3rem;
-  margin-bottom: 1.1rem;
-  border-radius: 12px;
-  background: rgba(148,163,184,.08);
-  border: 1px solid rgba(148,163,184,.14);
+  flex-direction: column;
+  gap: .6rem;
 }
-.reg-aba {
-  flex: 1;
-  padding: .6rem .5rem;
+.reg-metodos.hidden { display: none; }
+
+/* Botão "e-mail" — mesma pegada visual dos sociais, tom roxo do Sistema */
+.btn-metodo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .6rem;
+  width: 100%;
+  padding: .7rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(139,92,246,.45);
+  background: rgba(124,58,237,.12);
+  color: #e9d5ff;
+  font-family: var(--font-section);
+  font-size: .9rem;
+  font-weight: 600;
+  letter-spacing: .3px;
+  cursor: pointer;
+  transition: transform .12s ease, border-color .2s, background .2s, box-shadow .2s;
+}
+.btn-metodo svg { flex: none; }
+.btn-metodo:hover {
+  transform: translateY(-1px);
+  background: rgba(124,58,237,.2);
+  border-color: rgba(168,85,247,.7);
+  box-shadow: 0 4px 18px -8px rgba(139,92,246,.8);
+}
+.btn-metodo:active { transform: translateY(0); }
+
+/* Voltar da escolha do formulário para os 3 botões */
+.reg-voltar {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  margin: 0 0 .9rem;
+  padding: .15rem 0;
+  background: none;
   border: none;
-  border-radius: 9px;
-  background: transparent;
   color: var(--text-muted, #94a3b8);
   font-family: var(--font-section);
-  font-size: .82rem;
+  font-size: .78rem;
   font-weight: 600;
-  letter-spacing: .02em;
   cursor: pointer;
-  transition: background .2s, color .2s, box-shadow .2s;
+  transition: color .2s;
 }
-.reg-aba:hover { color: #e2e8f0; }
-.reg-aba.ativa {
-  background: linear-gradient(180deg, rgba(139,92,246,.9), rgba(124,58,237,.9));
-  color: #fff;
-  box-shadow: 0 4px 14px -6px rgba(139,92,246,.8);
+.reg-voltar:hover { color: #c4b5fd; }
+
+#form-registro.hidden { display: none; }
+
+/* ── O campo do convite: o herói da tela. Espaçoso, centralizado, com
+      brilho próprio ao focar. ── */
+/* Só o grupo do convite é filho direto do card; os campos do formulário
+   ficam dentro do <form>. Assim mexemos apenas no ícone do convite. */
+#registro-screen .login-card > .form-group .input-icon {
+  font-size: 1.15rem;
+  left: 1.05rem;
 }
-.reg-aba.hidden { display: none; }
+#reg-codigo {
+  width: 100%;                     /* fica fora do .login-form, então precisa
+                                      pedir 100% p/ alinhar com os botões abaixo */
+  box-sizing: border-box;
+  padding: 1rem 3rem !important;   /* simétrico → o código fica centrado de verdade */
+  text-align: center;
+  font-size: 1.06rem !important;
+  letter-spacing: .16em !important;
+  border-radius: 12px !important;  /* mesmo raio dos botões, p/ leitura de "pilha" */
+  border-width: 1.5px !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05),
+              0 8px 22px -14px rgba(124,58,237,.7);
+  transition: border-color .25s, box-shadow .25s, background .25s;
+}
+#reg-codigo:focus {
+  border-color: #a855f7 !important;
+  box-shadow: 0 0 0 3px rgba(124,58,237,.3),
+              0 0 26px rgba(124,58,237,.4),
+              inset 0 1px 0 rgba(255,255,255,.06) !important;
+}
 
-/* Quando só sobra uma aba (sem provedores sociais), ela vira só um rótulo:
-   nada de "escolha de aba" com uma opção só. */
-.reg-abas.solo-aba { display: none; }
-
-.reg-painel.hidden { display: none; }
+/* ── Botões de método: mais altos, com um brilho que varre no hover. ── */
+.reg-metodos { gap: .7rem; }
+.reg-metodos .btn-oauth,
+.reg-metodos .btn-metodo {
+  position: relative;
+  overflow: hidden;
+  padding: .85rem 1rem;
+  font-size: .92rem;
+}
+/* O feixe de luz que atravessa o botão ao passar o mouse. */
+.reg-metodos .btn-oauth::before,
+.reg-metodos .btn-metodo::before {
+  content: "";
+  position: absolute;
+  top: 0; left: -130%;
+  width: 60%; height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.16), transparent);
+  transform: skewX(-18deg);
+  transition: left .6s ease;
+  pointer-events: none;
+}
+.reg-metodos .btn-oauth:hover::before,
+.reg-metodos .btn-metodo:hover::before { left: 150%; }
+/* O ícone do provedor/e-mail ganha um respiro à esquerda. */
+.reg-metodos .btn-oauth svg,
+.reg-metodos .btn-metodo svg { margin-right: .15rem; }
 
 /* ─── MAIN APP LAYOUT ─── */
 #main-app {
