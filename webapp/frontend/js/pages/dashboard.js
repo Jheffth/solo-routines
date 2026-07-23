@@ -475,8 +475,10 @@ const Dashboard = {
     // ── Usa o MissaoCard (mesmo componente da página de Rotinas) ──
     if (typeof MissaoCard !== 'undefined') {
       MissaoCard.cachear(lista);
-      cont.innerHTML = '<div style="display:flex;flex-direction:column;gap:.9rem">'
-        + lista.map(r => MissaoCard.html(r)).join('')
+      // Extrato do Dashboard usa a variante COMPACTA (faixa fina) com gap
+      // apertado — o objetivo aqui é ver muitas de relance.
+      cont.innerHTML = '<div style="display:flex;flex-direction:column;gap:.5rem">'
+        + lista.map(r => MissaoCard.html(r, { compacto: true })).join('')
         + '</div>';
       MissaoCard.montar(cont, {
         onMudou: () => this.carregarExtrato(),

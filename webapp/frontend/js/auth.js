@@ -209,25 +209,46 @@ Auth.bindLogin = function() {
   });
 };
 
-Auth.bindRegistro = function() {
-  const form = document.getElementById('form-registro');
-  if (!form) return;
+/* Trava/destrava as opções de cadastro. O convite é o portão: sem ele
+   válido, nem o formulário nem os botões sociais respondem. */
+Auth._travarRegistro   = function() { document.getElementById('reg-opcoes')?.classList.add('reg-travado'); };
+Auth._destravarRegistro = function() { document.getElementById('reg-opcoes')?.classList.remove('reg-travado'); };
 
-  const novoForm = form.cloneNode(true);
-  form.parentNode.replaceChild(novoForm, form);
-
-  // Validação do convite ao vivo — o hunter sabe na hora se o código serve
-  const campoCod = document.getElementById('reg-codigo');
+/* Liga o portão (validação do convite → destrava) e as abas.
+   Vive FORA do <form>, então o clone do form não o afeta — por isso
+   protegemos com flags para não empilhar listeners a cada entrada. */
+Auth._ligarPortaoRegistro = function() {
+  const opcoes = document.getElementById('reg-opcoes');
+  const campo  = document.getElementById('reg-codigo');
   const statusEl = document.getElementById('reg-codigo-status');
-  if (campoCod && statusEl) {
+  if (!opcoes || !campo) return;
+
+  // Abas — alternam os painéis. Ignoram clique enquanto travado.
+  if (!opcoes.dataset.abasBound) {
+    opcoes.dataset.abasBound = '1';
+    opcoes.querySelectorAll('.reg-aba').forEach(aba => {
+      aba.addEventListener('click', () => {
+        if (opcoes.classList.contains('reg-travado')) return;
+        opcoes.querySelectorAll('.reg-aba').forEach(a => a.classList.remove('ativa'));
+        aba.classList.add('ativa');
+        const alvo = aba.dataset.aba;
+        opcoes.querySelectorAll('.reg-painel').forEach(p =>
+          p.classList.toggle('hidden', p.dataset.painel !== alvo));
+      });
+    });
+  }
+
+  // Validação ao vivo do convite — destrava as opções quando o código serve.
+  if (!campo.dataset.valBound) {
+    campo.dataset.valBound = '1';
     let timer = null;
-    campoCod.addEventListener('input', () => {
-      const cod = campoCod.value.trim().toUpperCase();
-      campoCod.value = cod;
+    campo.addEventListener('input', () => {
+      const cod = campo.value.trim().toUpperCase();
+      campo.value = cod;
       clearTimeout(timer);
-      if (cod.length < 8) { statusEl.textContent = ''; return; }
-      statusEl.textContent = 'Verificando...';
-      statusEl.style.color = 'var(--text-muted)';
+      Auth._travarRegistro();                 // qualquer edição re-tranca
+      if (cod.length < 8) { if (statusEl) statusEl.textContent = ''; return; }
+      if (statusEl) { statusEl.textContent = 'Verificando...'; statusEl.style.color = 'var(--text-muted)'; }
       timer = setTimeout(async () => {
         try {
           const r = await API.convites.validar(cod);
@@ -235,17 +256,36 @@ Auth.bindRegistro = function() {
             const extras = [];
             if (r.nivel_acesso === 'Admin') extras.push('<b style="color:#fbbf24">⚙️ Conta de Administrador</b>');
             if (r.badges?.length) extras.push('🎁 ' + r.badges.map(b => b.icone + ' ' + b.titulo).join(' · '));
-            statusEl.innerHTML = `✔ Convocado por <b>${r.convocado_por}</b>` +
-              (extras.length ? `<br><span style="font-size:.66rem">${extras.join('<br>')}</span>` : '');
-            statusEl.style.color = '#34d399';
+            if (statusEl) {
+              statusEl.innerHTML = `✔ Convocado por <b>${r.convocado_por}</b>` +
+                (extras.length ? `<br><span style="font-size:.66rem">${extras.join('<br>')}</span>` : '');
+              statusEl.style.color = '#34d399';
+            }
+            Auth._destravarRegistro();          // 🔓 libera formulário + social
           } else {
-            statusEl.textContent = '✕ ' + (r.motivo || 'Convite inválido');
-            statusEl.style.color = '#f87171';
+            if (statusEl) { statusEl.textContent = '✕ ' + (r.motivo || 'Convite inválido'); statusEl.style.color = '#f87171'; }
           }
-        } catch (_) { statusEl.textContent = ''; }
+        } catch (_) { if (statusEl) statusEl.textContent = ''; }
       }, 450);
     });
   }
+
+  // Ao (re)entrar na tela: revalida se já houver um código digitado,
+  // senão garante o estado travado.
+  if (campo.value.trim().length >= 8) campo.dispatchEvent(new Event('input'));
+  else Auth._travarRegistro();
+};
+
+Auth.bindRegistro = function() {
+  const form = document.getElementById('form-registro');
+  if (!form) return;
+
+  // Portão + abas: uma vez (vivem fora do form).
+  Auth._ligarPortaoRegistro();
+
+  // Form clonado a cada entrada para zerar o listener de submit anterior.
+  const novoForm = form.cloneNode(true);
+  form.parentNode.replaceChild(novoForm, form);
 
   novoForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -307,6 +347,118 @@ Auth.bindRegistro = function() {
     }
   });
 };
+
+/* ============================================================
+   OAuth social — Google / Discord
+   ------------------------------------------------------------
+   O fluxo SAI da SPA: clicar num botão redireciona o navegador ao
+   provedor; ele volta a index.html com #sr_token=<jwt> (ou #sr_erro).
+   Aqui tratamos os dois lados:
+     • consumirTokenDaUrl() — lê o fragmento no boot e vira sessão;
+     • bindOAuth()          — desenha e liga os botões.
+   ============================================================ */
+
+// Guardado entre boot e a tela de login: se a volta do provedor trouxe erro,
+// mostramos ao pintar a tela de login (que ainda nem existe no instante do boot).
+Auth._oauthErro = null;
+Auth._oauthProv = null;   // cache de /disponiveis — busca só uma vez
+
+/* Lê #sr_token / #sr_erro deixado pela volta do provedor. O fragmento (#…)
+   nunca chega ao servidor nem aos logs — por isso o token vem por ali.
+   Devolve true se logou (há token), para o boot pular direto ao app. */
+Auth.consumirTokenDaUrl = function() {
+  const h = window.location.hash || '';
+  if (!h || (h.indexOf('sr_token=') < 0 && h.indexOf('sr_erro=') < 0)) return false;
+
+  const p = new URLSearchParams(h.replace(/^#/, ''));
+  const token = p.get('sr_token');
+  const erro  = p.get('sr_erro');
+
+  // Limpa o fragmento da barra de endereço: token não fica no histórico,
+  // e um F5 não repete o efeito.
+  try {
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+  } catch (_) { window.location.hash = ''; }
+
+  if (token) {
+    _srSetToken(token);
+    API.token = token;
+    return true;
+  }
+  if (erro) Auth._oauthErro = erro;
+  return false;
+};
+
+/* Descobre quais provedores estão configurados (uma vez) e pinta as telas. */
+Auth.bindOAuth = async function() {
+  if (!Auth._oauthProv) {
+    try { Auth._oauthProv = await API.auth.oauth.disponiveis(); }
+    catch { Auth._oauthProv = {}; }
+  }
+  Auth._pintarOAuth();
+};
+
+/* Mostra só os botões dos provedores ativos.
+   - Login: o bloco inteiro aparece/some conforme haja algum provedor.
+   - Registro: os botões vivem dentro da aba "social"; se não houver
+     provedor, a aba some e a barra de abas vira invisível (sobra só o
+     formulário, sem uma "escolha" de aba única sem sentido). */
+Auth._pintarOAuth = function() {
+  const prov = Auth._oauthProv || {};
+  const algum = Object.values(prov).some(Boolean);
+
+  // Tela de LOGIN
+  const blocoLogin = document.getElementById('oauth-login');
+  if (blocoLogin) {
+    blocoLogin.classList.toggle('hidden', !algum);
+    blocoLogin.querySelectorAll('.btn-oauth').forEach(b =>
+      b.classList.toggle('hidden', !prov[b.dataset.prov]));
+  }
+
+  // Tela de REGISTRO (abas)
+  document.querySelectorAll('#oauth-registro .btn-oauth').forEach(b =>
+    b.classList.toggle('hidden', !prov[b.dataset.prov]));
+  const abaSocial = document.querySelector('.reg-aba[data-aba="social"]');
+  if (abaSocial) abaSocial.classList.toggle('hidden', !algum);
+  const abas = document.querySelector('.reg-abas');
+  if (abas) abas.classList.toggle('solo-aba', !algum);
+
+  // Erro trazido do provedor aparece na tela de login.
+  if (Auth._oauthErro) {
+    const el = document.getElementById('login-erro');
+    if (el) { el.textContent = Auth._oauthErro; el.classList.remove('hidden'); }
+    Auth._oauthErro = null;
+  }
+};
+
+// Clique nos botões sociais — delegado no documento, sobrevive a cloneNode().
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('.btn-oauth');
+  if (!btn) return;
+  e.preventDefault();
+
+  const prov = btn.dataset.prov;
+  const modo = btn.dataset.modo || 'login';
+
+  if (modo === 'registro') {
+    // Registro social continua fechado: sem convite, nem sai daqui.
+    const cod = document.getElementById('reg-codigo')?.value?.trim().toUpperCase();
+    const erroEl = document.getElementById('registro-erro');
+    if (!cod) {
+      if (erroEl) {
+        erroEl.textContent = 'Informe o código de convite antes de registrar com ' +
+          (prov === 'google' ? 'Google' : 'Discord') + '.';
+        erroEl.classList.remove('hidden');
+      }
+      document.getElementById('reg-codigo')?.focus();
+      return;
+    }
+    API.auth.oauth.iniciar(prov, 'registro', cod);
+  } else {
+    API.auth.oauth.iniciar(prov, 'login');
+  }
+});
+
 
 /* ============================================================
    Botão Olho — Revelar / Ocultar Senha

@@ -33,3 +33,28 @@ APP_VERSION = "1.0.0"
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID   = os.getenv("TELEGRAM_CHAT_ID", "")
 TELEGRAM_SECRET    = os.getenv("TELEGRAM_SECRET", "solorotinas-webhook-secret")
+
+# ── OAuth (Google / Discord) ──────────────────────
+# Registro e login sociais. SEM esses segredos, os botões nem aparecem e o
+# app segue com login/senha normal — nada quebra.
+GOOGLE_CLIENT_ID     = os.getenv("GOOGLE_CLIENT_ID", "").strip()
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "").strip()
+DISCORD_CLIENT_ID     = os.getenv("DISCORD_CLIENT_ID", "").strip()
+DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET", "").strip()
+
+# Base pública do app, para montar o redirect_uri:
+#   <base>/api/auth/oauth/<provedor>/callback
+# Ex.: https://solorotinas.up.railway.app  (sem barra no fim)
+OAUTH_REDIRECT_BASE = os.getenv("OAUTH_REDIRECT_BASE", "").strip().rstrip("/")
+
+
+def oauth_configurado(provedor: str) -> bool:
+    """True se as credenciais do provedor e a base de redirect existem."""
+    if not OAUTH_REDIRECT_BASE:
+        return False
+    p = (provedor or "").lower()
+    if p == "google":
+        return bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET)
+    if p == "discord":
+        return bool(DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET)
+    return False

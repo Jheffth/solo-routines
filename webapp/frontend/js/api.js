@@ -129,6 +129,26 @@ class API {
     registro: async (nome, login, senha, codigo, email) =>
       API.post('/auth/registro', { nome, login, senha, codigo, email: email || null }),
 
+    /* ── OAuth social (Google/Discord) ─────────────────────────
+       O fluxo SAI da SPA: o navegador é REDIRECIONADO ao provedor e
+       volta ao app com o token no fragmento (#sr_token). Por isso
+       `iniciar` faz window.location, e não fetch. */
+    oauth: {
+      // Quais botões desenhar. Provedor sem credencial vem como false.
+      disponiveis: async () => {
+        try { return await API.get('/auth/oauth/disponiveis'); }
+        catch { return {}; }
+      },
+      // Manda o hunter ao provedor. modo: 'login' | 'registro'.
+      // No registro, `codigo` (convite) é obrigatório e vai junto.
+      iniciar: (provedor, modo = 'login', codigo = null) => {
+        const q = new URLSearchParams({ modo });
+        if (codigo) q.append('codigo', codigo);
+        window.location.href =
+          `${API.BASE}/auth/oauth/${encodeURIComponent(provedor)}/login?${q}`;
+      },
+    },
+
     me: async () => API.get('/auth/me'),
 
     logout: async () => {

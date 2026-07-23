@@ -177,87 +177,27 @@ def login(
 
 @router.post("/registro")
 def registro(payload: RegistroRequest, db: Session = Depends(get_db)):
-    """Cadastro fechado: exige um convite válido do Arquiteto."""
-    # 1. Convite
-    convite = db.query(Convite).filter(Convite.codigo == payload.codigo).first()
-    if not convite:
-        raise HTTPException(400, "Código de convite inválido")
-    if convite.revogado:
-        raise HTTPException(400, "Este convite foi revogado")
-    if convite.usado_por_id:
-        raise HTTPException(400, "Este convite já foi utilizado")
-    if convite.expira_em and datetime.utcnow() > convite.expira_em:
-        raise HTTPException(400, "Este convite expirou")
+    """Cadastro fechado por SENHA: exige um convite válido do Arquiteto.
+       A regra de convite/badges mora em registro_core (compartilhada com o
+       registro via Google/Discord)."""
+    from auth.registro_core import validar_convite, criar_conta
 
-    # 2. Unicidade
+    convite = validar_convite(db, payload.codigo)
+
+    # Unicidade (o login vem do formulário; no OAuth ele é derivado do perfil)
     if db.query(Usuario).filter(Usuario.login == payload.login).first():
         raise HTTPException(400, "Login já está em uso")
     if payload.email and db.query(Usuario).filter(Usuario.email == payload.email).first():
         raise HTTPException(400, "E-mail já cadastrado")
 
-    # Nível de acesso definido no convite (User ou Admin) — nunca Arquiteto
-    nivel = (getattr(convite, "nivel_acesso", "User") or "User").strip().capitalize()
-    if nivel not in ("User", "Admin"):
-        nivel = "User"
-
-    novo = Usuario(
-        nome=payload.nome,
-        login=payload.login,
-        email=payload.email,
-        senha_hash=hash_senha(payload.senha),
-        classe="E-Rank",
-        titulo="O Mais Fraco",
-        xp_total=0, xp_atual=0, nivel_atual=1, xp_proximo_nivel=100,
-        moedas=50,
-        nivel_acesso=nivel,
-        ativo=True,
+    novo, concedidas = criar_conta(
+        db, nome=payload.nome, login=payload.login, email=payload.email,
+        convite=convite, senha=payload.senha, origem="senha",
     )
-    db.add(novo)
-    db.flush()
-
-    # 3. Queima o convite
-    convite.usado_por_id = novo.id
-    convite.usado_em = datetime.utcnow()
-
-    # 4. Badges: "O Chamado" (sempre) + as presenteadas no convite
-    codigos = ["chamado_arquiteto"]
-    try:
-        import json as _json
-        codigos += _json.loads(convite.badges) if getattr(convite, "badges", None) else []
-    except Exception:
-        pass
-
-    concedidas = []
-    for q in db.query(Conquista).filter(Conquista.codigo.in_(codigos)).all():
-        cu = ConquistaUsuario(usuario_id=novo.id, conquista_id=q.id,
-                              desbloqueada_em=datetime.utcnow())
-        # Pendente de cerimônia: o hunter será celebrado ao entrar,
-        # em vez de encontrar as medalhas caladas no perfil.
-        try:
-            cu.celebrada = False
-            cu.presenteada_por = convite.criado_por_id
-        except Exception:
-            pass
-        db.add(cu)
-        novo.xp_total = (novo.xp_total or 0) + (q.xp_bonus or 0)
-        novo.xp_atual = (novo.xp_atual or 0) + (q.xp_bonus or 0)
-        novo.moedas   = (novo.moedas or 0) + (q.moedas_bonus or 0)
-        concedidas.append(q.titulo)
-
-    # Nível derivado do XP das badges (passa pelo motor)
-    try:
-        from motors.gamificacao import recalcular_nivel
-        recalcular_nivel(db, novo)
-    except Exception:
-        pass
-
     db.commit()
     db.refresh(novo)
-    registrar_log(db, novo.login, "REGISTRO",
-                  f"Novo hunter convocado: {novo.nome} · nível {nivel} · "
-                  f"convite {convite.codigo} · badges: {', '.join(concedidas) or 'nenhuma'}")
     return {"ok": True, "msg": f"Hunter {novo.nome} convocado! Bem-vindo ao Sistema!",
-            "badges": concedidas, "nivel_acesso": nivel}
+            "badges": concedidas, "nivel_acesso": novo.nivel_acesso}
 
 
 @router.get("/me")

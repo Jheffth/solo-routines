@@ -38,13 +38,43 @@ const MissaoCard = {
     FRACASSADA: { rotulo: '☠ Fracassada',  classe: 'st-fracassada' },
     CANCELADA:  { rotulo: '✕ Cancelada',   classe: 'st-cancelada'  },
   },
-  CAT_ICO: {
-    'Saúde': '❤️', 'Saude': '❤️', 'Trabalho': '💼', 'Estudo': '📚',
-    'Casa': '🏠', 'Pessoal': '⚡', 'Combate': '⚔️',
+  /* Glifos de categoria — SVG de linha (estilo profissional, sem emoji).
+     Cada um é o miolo de um viewBox 0 0 24 24, traço = currentColor. */
+  GLIFOS: {
+    'saude':    '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+    'trabalho': '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',
+    'estudo':   '<path d="M12 7v13"/><path d="M3 18V5a1 1 0 0 1 1-1h4a4 4 0 0 1 4 4 4 4 0 0 1 4-4h4a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3H4a1 1 0 0 1-1-1z"/>',
+    'casa':     '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 21V12h6v9"/>',
+    'pessoal':  '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+    'combate':  '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+    'default':  '<path d="M12 2l8 10-8 10-8-10z"/>',
+  },
+
+  _catKey(categoria) {
+    return (categoria || '')
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '');   // "Saúde" → "saude"
+  },
+
+  _glifoCat(categoria) {
+    const paths = this.GLIFOS[this._catKey(categoria)] || this.GLIFOS.default;
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
+  },
+
+  /* Raio (XP) e disco de mana (moedas) — SVG, no lugar dos emojis. */
+  _glifoXp() {
+    return `<svg class="mc-glifo-xp" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M13 2 L4 14 h6 l-1 8 L20 9 h-6 z"/></svg>`;
+  },
+  _glifoMoeda() {
+    return `<svg class="mc-glifo-moeda" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" aria-hidden="true">
+      <circle cx="12" cy="12" r="8"/><path d="M12 8 L15 12 L12 16 L9 12 Z" fill="currentColor" stroke="none"/></svg>`;
   },
 
   /* ── Sigilo (ícone cinético em SVG) ────────────────────── */
-  _sigilo(cor, icone) {
+  _sigilo(cor, categoria) {
     return `
       <div class="mc-sigilo">
         <svg viewBox="0 0 100 100" aria-hidden="true">
@@ -59,7 +89,7 @@ const MissaoCard = {
                     stroke-width="2" stroke-dasharray="22 242" stroke-linecap="round"/>
           </g>
         </svg>
-        <span class="mc-sigilo-ico">${icone}</span>
+        <span class="mc-sigilo-ico">${this._glifoCat(categoria)}</span>
       </div>`;
   },
 
@@ -144,13 +174,15 @@ const MissaoCard = {
     return acoes + gerir + extinguir;
   },
 
-  /* ── HTML de um cartão ─────────────────────────────────── */
-  html(m) {
+  /* ── HTML de um cartão ───────────────────────────────────
+     opts.compacto → variante FINA (usada no Extrato do Dashboard):
+     mesmo componente, layout condensado numa faixa baixa. */
+  html(m, opts = {}) {
+    const compacto = opts.compacto ? ' mc-compacto' : '';
     const status = m.status_hoje || m.status || 'PENDENTE';
     const st     = this.STATUS[status] || this.STATUS.PENDENTE;
     const prior  = this.PRIORIDADES[(m.prioridade || 'MEDIA').toUpperCase()] || this.PRIORIDADES.MEDIA;
     const rank   = this.RANKS[(m.dificuldade || 'NORMAL').toUpperCase()] || this.RANKS.NORMAL;
-    const icone  = m.icone || this.CAT_ICO[m.categoria] || '⚔️';
     const prazo  = this._prazo(m);
     const id     = m.id;
     const cor    = prior.cor;                      // ← a prioridade comanda
@@ -160,34 +192,43 @@ const MissaoCard = {
       return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
     };
 
+    // Selo de recompensa — mesma marca nos dois modos. No cheio ele flutua
+    // no topo direito; no compacto ele entra no FLUXO dos chips (à esquerda),
+    // onde se alinha naturalmente em vez de flutuar num x variável.
+    const recompensa = `<div class="mc-recompensa" title="Recompensa da missão">
+      ${this._glifoXp()}<b>${m.xp_recompensa || 0}</b><span class="mc-rec-un">XP</span>
+      ${m.moedas_recompensa ? `<span class="mc-rec-sep"></span>${this._glifoMoeda()}<b class="mc-rec-moeda">${m.moedas_recompensa}</b>` : ''}
+    </div>`;
+
     return `
-    <div class="mc ${st.classe}" data-mc-card="${id}"
+    <div class="mc ${st.classe}${compacto}" data-mc-card="${id}"
          style="--mc-cor:${cor};--mc-cor-suave:${alpha(cor, .14)}">
       <div class="mc-fio"></div>
-      ${this._sigilo(cor, icone)}
+      ${this._sigilo(cor, m.categoria)}
       <div class="mc-corpo">
         <div class="mc-topo">
           <div class="mc-titulo" title="${(m.titulo || '').replace(/"/g,'&quot;')}">${m.titulo || 'Missão'}</div>
-          ${prazo ? `<div class="mc-prazo ${prazo.classe}" data-mc-prazo="${id}">
-            <span class="lbl">⏳ Prazo</span> <span data-mc-timer>${prazo.texto}</span>
-          </div>` : ''}
+          ${compacto ? '' : recompensa}
         </div>
 
         <div class="mc-chips">
           <span class="mc-chip mc-chip-prior">◆ ${prior.rotulo}</span>
           <span class="mc-chip mc-chip-rank" title="Dificuldade ${(m.dificuldade || 'NORMAL').toLowerCase()} — XP ${rank.mult}">✦ ${rank.letra}-Rank</span>
           <span class="mc-chip mc-chip-status">${st.rotulo}</span>
-          ${m.categoria ? `<span class="mc-chip mc-chip-cat">${this.CAT_ICO[m.categoria] || ''} ${m.categoria}</span>` : ''}
-          <span class="mc-div"></span>
-          <span class="mc-premio">⚡ ${m.xp_recompensa || 0} XP
-            ${m.moedas_recompensa ? `<span class="moeda">· 🪙 ${m.moedas_recompensa}</span>` : ''}</span>
+          ${m.categoria ? `<span class="mc-chip mc-chip-cat">${m.categoria}</span>` : ''}
+          ${prazo ? `<span class="mc-div"></span>
+          <span class="mc-prazo ${prazo.classe}" data-mc-prazo="${id}">
+            <span class="lbl">⏳ Prazo</span> <span data-mc-timer>${prazo.texto}</span>
+          </span>` : ''}
+          ${compacto ? recompensa : ''}
         </div>
 
         ${prazo ? `<div class="mc-barra"><div class="mc-barra-fill" data-mc-barra="${id}"
                      style="width:${prazo.pct}%"></div></div>` : ''}
 
-        <div class="mc-acoes">${this._acoes(status, id)}</div>
+        ${compacto ? '' : `<div class="mc-acoes">${this._acoes(status, id)}</div>`}
       </div>
+      ${compacto ? `<div class="mc-acoes">${this._acoes(status, id)}</div>` : ''}
     </div>`;
   },
 

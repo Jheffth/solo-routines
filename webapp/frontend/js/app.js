@@ -55,6 +55,12 @@ const App = {
     // 0. Inicializar sistema de dialogs premium
     if (typeof SoloDialog !== 'undefined') SoloDialog.init();
 
+    // 0b. Volta do OAuth? Se o provedor devolveu um token no fragmento,
+    //     consumimos ANTES de checar sessão — o passo 9 já entra logado.
+    if (typeof Auth !== 'undefined' && Auth.consumirTokenDaUrl) {
+      Auth.consumirTokenDaUrl();
+    }
+
     // 1. Bind eventos de modal
     Modal._bindEvents();
 
@@ -234,17 +240,20 @@ const App = {
     document.getElementById('registro-screen')?.classList.add('hidden');
     document.getElementById('main-app')?.classList.add('hidden');
     Auth.bindLogin();
+    Auth.bindOAuth?.();
   },
 
   _mostrarRegistro() {
     document.getElementById('login-screen')?.classList.add('hidden');
     document.getElementById('registro-screen')?.classList.remove('hidden');
     Auth.bindRegistro();
+    Auth.bindOAuth?.();
   },
 
   _mostrarLogin() {
     document.getElementById('login-screen')?.classList.remove('hidden');
     document.getElementById('registro-screen')?.classList.add('hidden');
+    Auth.bindOAuth?.();
   },
 
   mostrarApp(usuario) {

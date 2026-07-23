@@ -541,6 +541,28 @@ class Mensagem(Base):
 
 
 # ==============================================================================
+# IDENTIDADE OAUTH — login/registro via Google e Discord
+# ==============================================================================
+# Uma linha por vínculo (usuário ↔ provedor). Um hunter pode ter mais de uma
+# (entrou com Google, depois vinculou o Discord). A chave de busca é
+# (provedor, provedor_id): o id ESTÁVEL que o provedor dá para a conta —
+# nunca o e-mail, que pode mudar.
+class IdentidadeOAuth(Base):
+    __tablename__ = "identidades_oauth"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    usuario_id    = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    provedor      = Column(String(20), nullable=False, index=True)   # google | discord
+    provedor_id   = Column(String(64), nullable=False, index=True)   # id estável no provedor
+    email         = Column(String(200), nullable=True)
+    criado_em     = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("provedor", "provedor_id", name="uq_oauth_provedor_id"),
+    )
+
+
+# ==============================================================================
 # CONFIGURAÇÕES DO APP (Logo, Fontes, Tema)
 # ==============================================================================
 class ConfiguracaoApp(Base):
