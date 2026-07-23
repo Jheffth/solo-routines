@@ -43,6 +43,10 @@ def _aura_cargo(nivel_acesso: str):
         return "arquiteto"
     if n in ("admin", "criador"):
         return "admin"
+    if n == "moderador":
+        return "moderador"
+    if n == "suporte":
+        return "suporte"
     return None
 
 
