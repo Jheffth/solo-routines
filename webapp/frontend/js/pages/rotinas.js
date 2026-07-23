@@ -241,27 +241,49 @@ const Rotinas = {
 
   // ── Bind Tabs ──────────────────────────────────────────────
   _bindTabs() {
-    document.querySelectorAll('.rotina-tab').forEach(tab => {
+    // Suporta tanto .rotina-tab quanto [data-tipo-rotina] (padrão do index.html)
+    const tabs = document.querySelectorAll('[data-tipo-rotina], .rotina-tab');
+    tabs.forEach(tab => {
+      if (tab._rotinaTabBound) return;
+      tab._rotinaTabBound = true;
       tab.addEventListener('click', () => {
-        document.querySelectorAll('.rotina-tab').forEach(t => t.classList.remove('active'));
+        tabs.forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
-        this.carregarPorTipo(tab.dataset.tipo);
+        const tipo = tab.dataset.tipoRotina || tab.dataset.tipo;
+        if (tipo) this.carregarPorTipo(tipo);
       });
     });
   },
 
   _bindBotaoNova() {
-    document.getElementById('btn-nova-rotina')?.addEventListener('click', () => this.abrirFormulario());
+    const btn = document.getElementById('btn-nova-rotina');
+    if (btn && !btn._rotinaBound) {
+      btn._rotinaBound = true;
+      btn.addEventListener('click', () => this.abrirFormulario());
+    }
   },
 
   _bindOrdenacao() {
-    const sel = document.getElementById('rotinas-ordem');
-    if (!sel) return;
-    sel.value = this._ordem;
-    sel.addEventListener('change', () => {
-      this._salvarOrdem(sel.value);
-      this.renderLista(this._ordenarLista(this._lista));
+    // Suporta botões [data-ordem] (padrão do index.html)
+    document.querySelectorAll('[data-ordem]').forEach(btn => {
+      if (btn._ordemBound) return;
+      btn._ordemBound = true;
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-ordem]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this._salvarOrdem(btn.dataset.ordem);
+        this.renderLista(this._ordenarLista(this._lista));
+      });
     });
+    // Também suporta o <select id="rotinas-ordem"> legado
+    const sel = document.getElementById('rotinas-ordem');
+    if (sel) {
+      sel.value = this._ordem;
+      sel.addEventListener('change', () => {
+        this._salvarOrdem(sel.value);
+        this.renderLista(this._ordenarLista(this._lista));
+      });
+    }
   },
 
   abrirFormulario(item = null) {
