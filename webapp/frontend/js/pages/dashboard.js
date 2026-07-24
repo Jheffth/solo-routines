@@ -2064,20 +2064,30 @@ const Dashboard = {
       const traved = !!a.de_cargo;
       // Aura grande com animação completa (tamanho 112 = mesmo da Vitrine)
       const blocoSvg = (window.Auras && Auras.bloco) ? Auras.bloco(aId, 112) : `<span style="font-size:3rem;opacity:.3">◈</span>`;
-      const labelEquip = traved
-        ? '<div style="font-size:.52rem;color:#475569;font-family:var(--font-section)">🔒 Vinculada ao cargo</div>'
-        : ativa
-          ? '<div style="color:#fbbf24;font-size:.55rem;font-family:var(--font-section);letter-spacing:.06em">⬡ EQUIPADA</div>'
-          : '';
-      const btnAtivar = !traved && !ativa
-        ? `<button onclick="Dashboard._ativarAura('${aId}')" style="
-            margin-top:.5rem;padding:.25rem .7rem;border-radius:6px;border:none;cursor:pointer;
-            background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.3);
-            color:#fbbf24;font-family:var(--font-section);font-size:.6rem;font-weight:700;
+      const labelEquip = ativa
+        ? (traved
+            ? '<div style="font-size:.52rem;color:#475569;font-family:var(--font-section)">⬡ CARGO · EQUIPADA</div>'
+            : '<div style="color:#fbbf24;font-size:.55rem;font-family:var(--font-section);letter-spacing:.06em">⬡ EQUIPADA</div>')
+        : (traved
+            ? '<div style="font-size:.52rem;color:#334155;font-family:var(--font-section)">🔒 Vinculada ao cargo</div>'
+            : '');
+      const btnAtivar = traved && ativa
+        ? `<button onclick="Dashboard._removerAura()" style="
+            margin-top:.5rem;padding:.25rem .7rem;border-radius:6px;cursor:pointer;
+            background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);
+            color:#f87171;font-family:var(--font-section);font-size:.6rem;font-weight:700;
             transition:all .18s"
-            onmouseover="this.style.background='rgba(251,191,36,.28)'"
-            onmouseout="this.style.background='rgba(251,191,36,.15)'">Equipar</button>`
-        : '';
+            onmouseover="this.style.background='rgba(239,68,68,.22)'"
+            onmouseout="this.style.background='rgba(239,68,68,.1)'">Desequipar</button>`
+        : (!traved && !ativa
+            ? `<button onclick="Dashboard._ativarAura('${aId}')" style="
+                margin-top:.5rem;padding:.25rem .7rem;border-radius:6px;border:none;cursor:pointer;
+                background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.3);
+                color:#fbbf24;font-family:var(--font-section);font-size:.6rem;font-weight:700;
+                transition:all .18s"
+                onmouseover="this.style.background='rgba(251,191,36,.28)'"
+                onmouseout="this.style.background='rgba(251,191,36,.15)'">Equipar</button>`
+            : '');
       return `<div style="
           background:${ativa ? 'rgba(251,191,36,.08)' : 'rgba(255,255,255,.02)'};
           border:1px solid ${ativa ? 'rgba(251,191,36,.35)' : 'rgba(255,255,255,.07)'};
