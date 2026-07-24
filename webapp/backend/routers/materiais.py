@@ -38,18 +38,23 @@ router = APIRouter(prefix="/materiais", tags=["materiais"])
 LIMITE_POR_ENVIO = 10   # nada de despejar o inventário inteiro de uma vez
 
 # Catálogo de auras cosméticas (extensível — adicione novas auras aqui)
-_AURA_PINK_SPIRIT = {
-    "id":        "pink-spirit",
-    "nome":      "Pink Spirit \u2014 Femme Fatale",
-    "descricao": "11 camadas: halos magenta, 4 grupos de p\u00e9talas, espinhos, shimmers e fa\u00edscas em \u00f3rbita. Aura espetacular e expansiva.",
+_AURA_BELLA_ROSA = {
+    "id":        "bella-rosa",
+    "nome":      "Bella Rosa — Femme Fatale",
+    "descricao": "11 camadas: halos magenta, 4 grupos de pétalas, espinhos, shimmers e faíscas em órbita. Aura espetacular e expansiva.",
     "cor":       "#ff1493",
     "enviavel":  True,
 }
+_AURA_PINK_SPIRIT = {
+    "id":        "pink-spirit",
+    "nome":      "Pink Spirit",
+    "descricao": "Aura rosa tradicional. 16 pétalas com shimmers luminosos.",
+    "cor":       "#f48fb1",
+    "enviavel":  True,
+}
 CATALOGO_AURAS = {
+    "bella-rosa": _AURA_BELLA_ROSA,
     "pink-spirit": _AURA_PINK_SPIRIT,
-    # alias legacy — c\u00f3digo que use 'bella-rosa' continua funcionando
-    "bella-rosa":  _AURA_PINK_SPIRIT,
-    # futuras auras entram aqui
 }
 
 

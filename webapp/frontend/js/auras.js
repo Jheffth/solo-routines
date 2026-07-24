@@ -535,11 +535,11 @@ Auras.registrar('admin', function (tam) {
 
 
 /* ===================================================================
-   AURA "PINK SPIRIT" — Femme Fatale (redesign espetacular)
+   AURA BELLA ROSA — Femme Fatale (redesign espetacular)
    11 camadas: halos, 4 grupos de pétalas, espinhos, 2 shimmers,
    faíscas em órbita, anel tracejado duplo. Raios até 145.
    =================================================================== */
-Auras.registrar('pink-spirit', function (tam) {
+Auras.registrar('bella-rosa', function (tam) {
   const C = 150;
 
   /* ── pétalas (curva Bézier) ─────────────────────────────────────── */
@@ -731,6 +731,119 @@ Auras.registrar('pink-spirit', function (tam) {
   </svg>`;
 });
 
-/* backward-compat: código legado que use 'bella-rosa' continua funcionando */
-Auras.registrar('bella-rosa', function(tam) { return Auras.bloco('pink-spirit', tam); });
+/* ===================================================================
+   AURA PINK SPIRIT — Tradicional
+   16 pétalas com shimmers luminosos.
+   =================================================================== */
+Auras.registrar('pink-spirit', function (tam) {
+  const C = 150;
+
+  /* 16 petalas alternando longas e curtas */
+  const petalas = (aL, aC, rBase, larg, fill, op) => {
+    const ps = [];
+    for (let i = 0; i < 16; i++) {
+      const ang = (360/16) * i;
+      const a   = i % 2 === 0 ? aL : aC;
+      const w   = larg * (a / aL);
+      const base = C - rBase, ponta = base - a;
+      ps.push(`<path d="M ${C} ${base}
+               C ${C-w} ${base-a*.12}, ${C-w*.75} ${base-a*.50}, ${C-w*.18} ${base-a*.82}
+               Q ${C-w*.04} ${base-a*.94}, ${C} ${ponta}
+               Q ${C+w*.04} ${base-a*.94}, ${C+w*.18} ${base-a*.82}
+               C ${C+w*.75} ${base-a*.50}, ${C+w} ${base-a*.12}, ${C} ${base} Z"
+            transform="rotate(${ang} ${C} ${C})" fill="${fill}" opacity="${op}"/>`);
+    }
+    return ps.join('');
+  };
+
+  /* 24 tracos de shimmer em anel */
+  const shimmer = (r, op) => {
+    const ps = [];
+    for (let i = 0; i < 24; i++) {
+      const ang = (360/24)*i, a = (ang-90)*Math.PI/180;
+      const x1 = C+(r-5)*Math.cos(a), y1 = C+(r-5)*Math.sin(a);
+      const x2 = C+(r+3)*Math.cos(a), y2 = C+(r+3)*Math.sin(a);
+      ps.push(`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}"
+                     x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"
+                     stroke="#fff" stroke-width="1.4" stroke-opacity="${op}"
+                     stroke-linecap="round"/>`);
+    }
+    return ps.join('');
+  };
+
+  const pF = petalas(58,38,38,12,'url(#brPF)',.55);
+  const pM = petalas(44,28,32,9, 'url(#brPM)',.72);
+  const pT = petalas(30,18,26,7, 'url(#brPT)',.88);
+  const sF = shimmer(100,.55);
+  const sG = shimmer(88,.40);
+
+  return `
+  <svg viewBox="0 0 300 300" width="${tam}" height="${tam}"
+       class="aura-svg" aria-hidden="true" focusable="false"
+       style="display:block;overflow:visible;max-width:none;width:${tam}px;height:${tam}px">
+    <style>
+      .br-r1{transform-origin:150px 150px;animation:aura-girar 68s linear infinite}
+      .br-r2{transform-origin:150px 150px;animation:aura-girar 45s linear infinite reverse}
+      .br-r3{transform-origin:150px 150px;animation:aura-girar 29s linear infinite}
+      .br-p{transform-origin:150px 150px;animation:br-bloom 4.8s ease-in-out infinite}
+      .br-b{transform-origin:150px 150px;animation:br-bloom 3.2s ease-in-out infinite reverse}
+      .br-h{animation:br-halo 7s ease-in-out infinite}
+      @keyframes br-bloom{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.06);opacity:1}}
+      @keyframes br-halo{0%,100%{opacity:.45}50%{opacity:.90}}
+      @media(prefers-reduced-motion:reduce){.br-r1,.br-r2,.br-r3,.br-p,.br-b,.br-h{animation:none}}
+    </style>
+    <defs>
+      <radialGradient id="brPF" cx="50%" cy="20%">
+        <stop offset="0%"   stop-color="#fff"    stop-opacity=".97"/>
+        <stop offset="35%"  stop-color="#fce4ec" stop-opacity=".80"/>
+        <stop offset="70%"  stop-color="#f48fb1" stop-opacity=".50"/>
+        <stop offset="100%" stop-color="#c2185b" stop-opacity=".15"/>
+      </radialGradient>
+      <radialGradient id="brPM" cx="50%" cy="18%">
+        <stop offset="0%"   stop-color="#fff"    stop-opacity="1"/>
+        <stop offset="40%"  stop-color="#f8bbd0" stop-opacity=".88"/>
+        <stop offset="80%"  stop-color="#f06292" stop-opacity=".55"/>
+        <stop offset="100%" stop-color="#880e4f" stop-opacity=".20"/>
+      </radialGradient>
+      <radialGradient id="brPT" cx="50%" cy="15%">
+        <stop offset="0%"   stop-color="#fff"    stop-opacity="1"/>
+        <stop offset="45%"  stop-color="#fce4ec" stop-opacity=".95"/>
+        <stop offset="85%"  stop-color="#f48fb1" stop-opacity=".65"/>
+        <stop offset="100%" stop-color="#e91e63" stop-opacity=".25"/>
+      </radialGradient>
+      <radialGradient id="brHalo" cx="50%" cy="50%">
+        <stop offset="0%"   stop-color="#fff"    stop-opacity="0"/>
+        <stop offset="42%"  stop-color="#fff"    stop-opacity="0"/>
+        <stop offset="54%"  stop-color="#fce4ec" stop-opacity=".28"/>
+        <stop offset="70%"  stop-color="#f48fb1" stop-opacity=".18"/>
+        <stop offset="86%"  stop-color="#f06292" stop-opacity=".10"/>
+        <stop offset="100%" stop-color="#e91e63" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="brCalor" cx="50%" cy="50%">
+        <stop offset="0%"   stop-color="#f48fb1" stop-opacity="0"/>
+        <stop offset="46%"  stop-color="#f48fb1" stop-opacity="0"/>
+        <stop offset="60%"  stop-color="#fce4ec" stop-opacity=".35"/>
+        <stop offset="78%"  stop-color="#f48fb1" stop-opacity=".22"/>
+        <stop offset="92%"  stop-color="#e91e63" stop-opacity=".12"/>
+        <stop offset="100%" stop-color="#880e4f" stop-opacity="0"/>
+      </radialGradient>
+      <filter id="brFundir" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="14"/></filter>
+      <filter id="brGlow"   x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="3"/></filter>
+      <filter id="brShimmer" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="1.5"/></filter>
+    </defs>
+    <circle cx="${C}" cy="${C}" r="130" fill="url(#brCalor)" class="br-h" filter="url(#brFundir)"/>
+    <circle cx="${C}" cy="${C}" r="115" fill="url(#brHalo)" class="br-h"/>
+    <g class="br-r1" filter="url(#brShimmer)">${sF}</g>
+    <g class="br-r2"><g class="br-p" filter="url(#brGlow)">${pF}</g></g>
+    <g class="br-r3">${sG}</g>
+    <g class="br-r1"><g class="br-b" filter="url(#brGlow)">${pM}</g></g>
+    <g class="br-r2"><g class="br-p">${pT}</g></g>
+    <g class="br-r3">
+      <circle cx="${C}" cy="${C}" r="104" fill="none"
+              stroke="#fce4ec" stroke-width="0.9" stroke-opacity=".65"
+              stroke-dasharray="8 10" filter="url(#brGlow)"/>
+    </g>
+  </svg>`;
+});
+
 window.Auras = Auras;
