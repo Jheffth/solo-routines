@@ -2007,7 +2007,8 @@ const Dashboard = {
     document.getElementById('dash-modal-aura')?.remove();
     let inv = [];
     try {
-      const tk = localStorage.getItem('access_token') || localStorage.getItem('sr_token');
+      // Token correto: sr_token (igual à classe API)
+      const tk = localStorage.getItem('sr_token');
       const r  = await fetch('/api/perfil/auras-inventario', {
         headers: { Authorization: `Bearer ${tk}` }
       });
@@ -2018,121 +2019,136 @@ const Dashboard = {
     const cx = document.createElement('div');
     cx.id    = 'dash-modal-aura';
     cx.style.cssText = 'position:fixed;inset:0;z-index:8999;display:flex;align-items:center;' +
-      'justify-content:center;background:rgba(3,3,8,.92);backdrop-filter:blur(8px);padding:1rem';
+      'justify-content:center;background:rgba(2,2,6,.94);backdrop-filter:blur(10px);padding:1rem';
 
-    const auraAtiva = (dados && dados.aura_id) || null;
-    const auraAtivaCat = auraAtiva ? inv.find(a => a.id === auraAtiva || a.aura_id === auraAtiva) : null;
+    const auraAtiva   = (dados && dados.aura_id) || null;
+    const auraAtivaCat = auraAtiva ? inv.find(a => (a.id || a.aura_id) === auraAtiva) : null;
 
-    // Card da aura ativa no topo
+    /* ── Seção: aura equipada atualmente ── */
     const ativaSection = auraAtivaCat ? (() => {
-      const blocoAtiva = window.Auras && Auras.bloco ? Auras.bloco(auraAtiva, 64) : '';
-      return `<div style="background:linear-gradient(135deg,rgba(244,143,177,.18),rgba(244,143,177,.06));
-        border:1px solid rgba(244,143,177,.5);border-radius:14px;padding:1rem;
-        margin-bottom:1rem;display:flex;align-items:center;gap:.9rem;position:relative">
-        <div style="position:relative;width:64px;height:64px;flex-shrink:0;
+      const aId = auraAtivaCat.id || auraAtivaCat.aura_id;
+      const blocoSvg = (window.Auras && Auras.bloco) ? Auras.bloco(aId, 96) : '';
+      return `<div style="
+          background:linear-gradient(135deg,rgba(251,191,36,.12),rgba(251,191,36,.04));
+          border:1px solid rgba(251,191,36,.3);border-radius:14px;padding:1rem 1.2rem;
+          margin-bottom:1.2rem;display:flex;align-items:center;gap:1rem">
+        <div style="position:relative;width:96px;height:96px;flex-shrink:0;
           display:flex;align-items:center;justify-content:center">
-          ${blocoAtiva}
-          <div style="position:absolute;z-index:2;width:30px;height:30px;
-            background:linear-gradient(135deg,#2a1a4e,#0d1f36);
+          ${blocoSvg}
+          <div style="position:absolute;z-index:2;width:38px;height:38px;
+            background:linear-gradient(135deg,#1a1030,#0d1f36);
             clip-path:polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%)"></div>
         </div>
         <div style="flex:1">
-          <div style="color:#f9a8d4;font-size:.55rem;letter-spacing:.14em;font-family:var(--font-section);margin-bottom:.2rem">EQUIPADA ATUALMENTE</div>
-          <div style="color:#f48fb1;font-weight:700;font-size:.88rem;font-family:var(--font-section)">${auraAtivaCat.nome || auraAtiva}</div>
-            <div style="color:#94a3b8;font-size:.62rem;font-family:var(--font-section);margin-top:.15rem">${auraAtivaCat.descricao || ''}</div>
+          <div style="color:#fbbf24;font-size:.52rem;letter-spacing:.14em;
+            font-family:var(--font-section);margin-bottom:.25rem">⬡ EQUIPADA ATUALMENTE</div>
+          <div style="color:#f0c060;font-weight:700;font-size:.9rem;
+            font-family:var(--font-section)">${auraAtivaCat.nome || aId}</div>
+          <div style="color:#64748b;font-size:.6rem;font-family:var(--font-section);
+            margin-top:.2rem">${auraAtivaCat.descricao || ''}</div>
         </div>
         <button onclick="Dashboard._removerAura()" style="
-          padding:.3rem .7rem;border-radius:8px;cursor:pointer;white-space:nowrap;
-          background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);
-          color:#ef4444;font-family:var(--font-section);font-size:.62rem;font-weight:700;
+          padding:.3rem .75rem;border-radius:8px;cursor:pointer;white-space:nowrap;
+          background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);
+          color:#f87171;font-family:var(--font-section);font-size:.6rem;font-weight:700;
           transition:all .18s"
-          onmouseover="this.style.background='rgba(239,68,68,.25)'" onmouseout="this.style.background='rgba(239,68,68,.12)'"
-        >Desequipar</button>
+          onmouseover="this.style.background='rgba(239,68,68,.22)'"
+          onmouseout="this.style.background='rgba(239,68,68,.1)'">Desequipar</button>
       </div>`;
     })() : '';
 
-    // Grade de auras
+    /* ── Grade de auras (2 colunas, tamanho grande, com animação) ── */
     const gridItens = inv.map(function(a) {
-      const aId    = a.id || a.aura_id;
-      const bloco  = window.Auras && Auras.bloco ? Auras.bloco(aId, 52) : '';
-      const ativa  = auraAtiva === aId;
+      const aId   = a.id || a.aura_id;
+      const ativa = auraAtiva === aId;
       const traved = !!a.de_cargo;
-      const ativarBtn = !traved
-        ? '<button onclick="Dashboard._ativarAura(\'' + aId + '\')" style="' +
-          'padding:.3rem .7rem;border-radius:8px;border:none;cursor:pointer;white-space:nowrap;' +
-          'background:' + (ativa ? 'linear-gradient(135deg,#e91e63,#c2185b)' : 'rgba(244,143,177,.15)') + ';' +
-          'color:' + (ativa ? '#fff' : '#f48fb1') + ';' +
-          'font-family:var(--font-section);font-size:.65rem;font-weight:700;' +
-          'box-shadow:' + (ativa ? '0 0 12px rgba(244,143,177,.35)' : 'none') + ';' +
-          'transition:all .18s">' +
-          (ativa ? '✔ Equipada' : 'Equipar') + '</button>'
-        : '<span style="font-size:.58rem;color:#6b7280;font-family:var(--font-section)">🔒 Vinculada</span>';
-      return '<div style="display:flex;align-items:center;gap:.8rem;padding:.6rem .75rem;' +
-        'border-radius:12px;margin-bottom:.35rem;' +
-        'background:' + (ativa ? 'rgba(244,143,177,.1)' : 'rgba(255,255,255,.025)') + ';' +
-        'border:1px solid ' + (ativa ? 'rgba(244,143,177,.45)' : 'rgba(255,255,255,.07)') + ';' +
-        'transition:border-color .2s">' +
-        '<div style="position:relative;width:52px;height:52px;flex-shrink:0;' +
-          'display:flex;align-items:center;justify-content:center">' +
-          bloco +
-          '<div style="position:absolute;z-index:2;width:26px;height:26px;' +
-            'background:linear-gradient(135deg,#2a1a4e,#0d1f36);' +
-            'clip-path:polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%)"></div>' +
-        '</div>' +
-        '<div style="flex:1">' +
-          '<div style="font-family:var(--font-section);font-size:.8rem;color:' + (a.cor || '#e2e8f0') + ';font-weight:700">' + (a.nome || aId) + '</div>' +
-          '<div style="font-family:var(--font-section);font-size:.58rem;color:#64748b;margin-top:.1rem">' + (a.descricao || '') + '</div>' +
-          (traved ? '<div style="font-size:.56rem;color:#6b7280;margin-top:.15rem">🔒 Vinculada ao cargo</div>' : '') +
-        '</div>' +
-        ativarBtn +
-      '</div>';
+      // Aura grande com animação completa (tamanho 112 = mesmo da Vitrine)
+      const blocoSvg = (window.Auras && Auras.bloco) ? Auras.bloco(aId, 112) : `<span style="font-size:3rem;opacity:.3">◈</span>`;
+      const labelEquip = traved
+        ? '<div style="font-size:.52rem;color:#475569;font-family:var(--font-section)">🔒 Vinculada ao cargo</div>'
+        : ativa
+          ? '<div style="color:#fbbf24;font-size:.55rem;font-family:var(--font-section);letter-spacing:.06em">⬡ EQUIPADA</div>'
+          : '';
+      const btnAtivar = !traved && !ativa
+        ? `<button onclick="Dashboard._ativarAura('${aId}')" style="
+            margin-top:.5rem;padding:.25rem .7rem;border-radius:6px;border:none;cursor:pointer;
+            background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.3);
+            color:#fbbf24;font-family:var(--font-section);font-size:.6rem;font-weight:700;
+            transition:all .18s"
+            onmouseover="this.style.background='rgba(251,191,36,.28)'"
+            onmouseout="this.style.background='rgba(251,191,36,.15)'">Equipar</button>`
+        : '';
+      return `<div style="
+          background:${ativa ? 'rgba(251,191,36,.08)' : 'rgba(255,255,255,.02)'};
+          border:1px solid ${ativa ? 'rgba(251,191,36,.35)' : 'rgba(255,255,255,.07)'};
+          border-radius:14px;padding:1rem .75rem;
+          display:flex;flex-direction:column;align-items:center;gap:.4rem;
+          transition:border-color .2s;cursor:${traved ? 'default' : 'pointer'}"
+          ${!traved && !ativa ? `onclick="Dashboard._ativarAura('${aId}')"` : ''}>
+        <div style="position:relative;width:112px;height:112px;
+          display:flex;align-items:center;justify-content:center">
+          ${blocoSvg}
+          <div style="position:absolute;z-index:2;width:44px;height:44px;
+            background:linear-gradient(135deg,#1a1030,#0d1f36);
+            clip-path:polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%)"></div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-family:var(--font-section);font-size:.72rem;
+            color:${a.cor || '#e2e8f0'};font-weight:700">${a.nome || aId}</div>
+          ${labelEquip}
+          ${btnAtivar}
+        </div>
+      </div>`;
     }).join('');
 
-    const semAuras = '<div style="text-align:center;padding:3rem 1rem">' +
-      '<div style="font-size:2rem;margin-bottom:.8rem;opacity:.3">◈</div>' +
-      '<div style="font-family:var(--font-section);font-size:.82rem;color:#94a3b8;margin-bottom:.4rem">Nenhuma aura cosmética</div>' +
-      '<div style="font-family:var(--font-section);font-size:.62rem;color:#475569">Peça ao Arquiteto para presentear uma.</div>' +
-      '</div>';
+    const semAuras = `<div style="text-align:center;padding:3rem 1rem">
+      <div style="font-size:2.5rem;opacity:.2;margin-bottom:.8rem">◈</div>
+      <div style="font-family:var(--font-section);font-size:.82rem;color:#475569">Nenhuma aura no inventário</div>
+      <div style="font-family:var(--font-section);font-size:.6rem;color:#334155;margin-top:.3rem">Forje uma na aba Materiais ou peça ao Arquiteto</div>
+    </div>`;
 
     cx.innerHTML =
-      '<div style="width:min(500px,98%);max-height:88vh;overflow-y:auto;' +
-        'padding:1.6rem;border-radius:20px;' +
-        'background:linear-gradient(160deg,#0e0018 0%,#06000f 60%,#040010 100%);' +
-        'border:1px solid rgba(244,143,177,.35);' +
-        'box-shadow:0 0 60px rgba(244,143,177,.2),0 0 120px rgba(100,0,80,.15)">' +
-        // Header
-        '<div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1.4rem">' +
-          '<div style="width:38px;height:38px;border-radius:50%;flex-shrink:0;' +
-            'background:linear-gradient(135deg,rgba(244,143,177,.25),rgba(244,143,177,.08));' +
-            'border:1px solid rgba(244,143,177,.4);' +
-            'display:flex;align-items:center;justify-content:center;' +
-            'box-shadow:0 0 16px rgba(244,143,177,.3);font-size:1.1rem">◈</div>' +
-          '<div style="flex:1">' +
-            '<div style="font-family:var(--font-title);font-size:1.05rem;color:#f48fb1;' +
-              'text-shadow:0 0 20px rgba(244,143,177,.4)">Minhas Auras</div>' +
-            '<div style="font-family:var(--font-section);font-size:.56rem;letter-spacing:.14em;' +
-              'color:#475569;margin-top:.1rem">INVENTÁRIO PESSOAL DE AURAS</div>' +
-          '</div>' +
-          '<button onclick="document.getElementById(\'dash-modal-aura\').remove()"' +
-            ' style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.05);' +
-            'border:1px solid rgba(255,255,255,.1);color:#64748b;font-size:.9rem;cursor:pointer;' +
-            'display:flex;align-items:center;justify-content:center;transition:all .18s"' +
-            ' onmouseover="this.style.background=\'rgba(255,255,255,.1)\'" onmouseout="this.style.background=\'rgba(255,255,255,.05)\'">✕</button>' +
-        '</div>' +
-        // Aura ativa
-        ativaSection +
-        // Grade de auras
-        (inv.length ? '<div>' + gridItens + '</div>' : semAuras) +
-      '</div>';
+      `<div style="width:min(560px,98%);max-height:88vh;overflow-y:auto;
+          padding:1.6rem;border-radius:20px;
+          background:linear-gradient(160deg,#09060f 0%,#050310 60%,#030208 100%);
+          border:1px solid rgba(251,191,36,.2);
+          box-shadow:0 0 60px rgba(251,191,36,.08),0 0 120px rgba(60,10,120,.1)">
+        <!-- Header -->
+        <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:1.4rem">
+          <div style="width:38px;height:38px;border-radius:50%;flex-shrink:0;
+            background:linear-gradient(135deg,rgba(251,191,36,.2),rgba(251,191,36,.06));
+            border:1px solid rgba(251,191,36,.3);
+            display:flex;align-items:center;justify-content:center;
+            box-shadow:0 0 16px rgba(251,191,36,.2);font-size:1.1rem;color:#fbbf24">◈</div>
+          <div style="flex:1">
+            <div style="font-family:var(--font-title);font-size:1.05rem;color:#f0c060;
+              text-shadow:0 0 20px rgba(251,191,36,.3)">Minhas Auras</div>
+            <div style="font-family:var(--font-section);font-size:.52rem;letter-spacing:.14em;
+              color:#334155;margin-top:.1rem">INVENTÁRIO PESSOAL</div>
+          </div>
+          <button onclick="document.getElementById('dash-modal-aura').remove()"
+            style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.04);
+            border:1px solid rgba(255,255,255,.08);color:#475569;font-size:.9rem;cursor:pointer;
+            display:flex;align-items:center;justify-content:center;transition:all .18s"
+            onmouseover="this.style.background='rgba(255,255,255,.09)'"
+            onmouseout="this.style.background='rgba(255,255,255,.04)'">✕</button>
+        </div>
+        <!-- Aura equipada -->
+        ${ativaSection}
+        <!-- Grade de auras (2 colunas) -->
+        ${inv.length
+          ? `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:.75rem">${gridItens}</div>`
+          : semAuras}
+      </div>`;
 
-    cx.addEventListener('click', function(e) { if (e.target === cx) cx.remove(); });
+    cx.addEventListener('click', e => { if (e.target === cx) cx.remove(); });
     document.body.appendChild(cx);
   },
 
 
   async _ativarAura(auraId) {
     try {
-      const tk = localStorage.getItem('access_token');
+      const tk = localStorage.getItem('sr_token');
       const r  = await fetch('/api/perfil/aura', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tk}` },
@@ -2154,7 +2170,7 @@ const Dashboard = {
 
   async _removerAura() {
     try {
-      const tk = localStorage.getItem('access_token') || localStorage.getItem('sr_token');
+      const tk = localStorage.getItem('sr_token');
       const r  = await fetch('/api/perfil/aura', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tk}` },
