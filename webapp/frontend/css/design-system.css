@@ -22,6 +22,7 @@
   --purple-main:    #7c3aed;
   --purple-glow:    #a855f7;
   --purple-soft:    #c084fc;
+  --purple-light:   #c4b5fd; /* lavanda claro — entre --purple-soft e --purple-glow */
   --purple-bright:  #d946ef;
 
   /* Accent colors */
@@ -44,6 +45,15 @@
   --green-done:     #10b981;
   --green-dark:     #065f46;
 
+  /* Rank colors — fonte canônica (E → S → National) */
+  --rank-e:         #6b7280; /* cinza */
+  --rank-d:         #10b981; /* verde esmeralda */
+  --rank-c:         #3b82f6; /* azul */
+  --rank-b:         #8b5cf6; /* violeta */
+  --rank-a:         #f59e0b; /* âmbar */
+  --rank-s:         #f59e0b; /* ouro (mesmo que --gold-xp) */
+  --rank-national:  #ec4899; /* rosa/magenta */
+
   /* Text */
   --text-primary:   #e2e8f0;
   --text-secondary: #94a3b8;
@@ -55,6 +65,7 @@
   /* Borders */
   --border-subtle:  rgba(124, 58, 237, 0.15);
   --border-purple:  rgba(124, 58, 237, 0.4);
+  --border-glow:    rgba(168, 85, 247, 0.4); /* alias para borda com glow roxo — usado em animations.css */
   --border-gold:    rgba(251, 191, 36, 0.3);
   --border-glass:   rgba(255, 255, 255, 0.06);
 
@@ -76,6 +87,8 @@
   --font-title:     'Cinzel Decorative', serif;
   --font-section:   'Rajdhani', sans-serif;
   --font-body:      'Inter', sans-serif;
+  --font-mono:      'Orbitron', monospace; /* fonte monoespaçada padrão do sistema */
+  --font-digits:    'Orbitron', monospace; /* alias para números/contadores digitais */
 
   /* Sizing */
   --sidebar-width:  260px;
@@ -87,6 +100,7 @@
   --radius-full:    9999px;
 
   /* Transitions */
+  --transition:        all 0.2s ease;  /* alias genérico — mesmo que --transition-base */
   --transition-fast:   150ms ease;
   --transition-base:   250ms ease;
   --transition-slow:   400ms ease;

@@ -187,7 +187,7 @@ class API {
     },
     hoje:     async ()       => API.get('/tarefas/hoje'),
     criar:    async (dados)  => API.post('/tarefas/', dados),
-    concluir: async (id)     => API.patch('/tarefas/' + id + '/concluir', {}),
+    concluir: async (id)     => API.post('/tarefas/' + id + '/concluir', {}),
     atualizar:async (id, d)  => API.put('/tarefas/' + id, d),
     deletar:  async (id)     => API.delete('/tarefas/' + id),
   };
@@ -279,6 +279,8 @@ class API {
     restaurarAcesso: async (d)   => API.post('/arquiteto/restaurar/acesso', d),
     revogarXp:       async (d)   => API.post('/arquiteto/revogar/xp', d),
     revogarConvite:  async (d)   => API.post('/arquiteto/revogar/convite', d),
+    concederAura:    async (d)   => API.post('/arquiteto/conceder/aura', d),
+    revogarAura:     async (d)   => API.post('/arquiteto/revogar/aura', d),
   };
 
   /* ── Dungeons ─────────────────────────────────────────── */

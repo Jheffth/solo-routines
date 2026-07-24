@@ -486,7 +486,7 @@ const App = {
 
   async _carregarConfigs() {
     try {
-      const configs = await API.get('/admin/configs');
+      const configs = await API.get('/configuracoes/');
       if (configs) this.aplicarConfig(configs);
     } catch (_) {
       // Sem configs, usa padroes

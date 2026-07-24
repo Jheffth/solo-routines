@@ -3,13 +3,14 @@ Router do Bot Telegram para o Solo Routines.
 Recebe webhooks, permite concluir missões e consultar status via chat.
 """
 import os, json, requests as req_lib
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Depends, Request, HTTPException
 from sqlalchemy.orm import Session
 from datetime import date, timedelta
 
 from database import (
     get_db, Usuario, Rotina, TarefaDia, Execucao, SessionLocal
 )
+from auth.router import get_arquiteto
 from motors.gamificacao import aplicar_xp, calcular_xp_rotina, calcular_xp_tarefa
 
 router = APIRouter(prefix="/bot", tags=["bot-telegram"])
@@ -374,7 +375,10 @@ async def webhook(request: Request):
 
 
 @router.post("/configurar-webhook")
-def configurar_webhook(webhook_url: str):
+def configurar_webhook(
+    webhook_url: str,
+    _: Usuario = Depends(get_arquiteto),
+):
     if not BOT_TOKEN:
         raise HTTPException(400, "TELEGRAM_BOT_TOKEN não configurado")
     url_webhook = f"{webhook_url}/api/bot/webhook"
