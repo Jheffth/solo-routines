@@ -303,6 +303,18 @@
 }
 .mt-fallback { display: inline-block; line-height: 1; }
 
+/* ── Botão deletar (X) nos cards ───────────────────── */
+.mt-card { position: relative; }
+.mt-card-del {
+  position: absolute; top: .35rem; right: .35rem;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: rgba(239,68,68,.15); border: 1px solid rgba(239,68,68,.4);
+  color: #ef4444; font-size: .62rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .18s; z-index: 5; padding: 0;
+}
+.mt-card-del:hover { background: rgba(239,68,68,.4); border-color: #ef4444; transform: scale(1.15); }
+
 @media (max-width: 980px) {
   .mt-layout { grid-template-columns: 1fr; }
 }

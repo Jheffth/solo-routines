@@ -231,6 +231,8 @@ class API {
     catalogo:      async ()         => API.get('/materiais/catalogo'),
     definirStatus: async (cod, t)   => API.patch('/materiais/catalogo/' + encodeURIComponent(cod),
                                                  { transferivel: t }),
+    deletar:     async (codigo)  => API.delete('/materiais/inventario/emblema/' + encodeURIComponent(codigo)),
+    deletarAura: async (aura_id) => API.delete('/materiais/inventario/aura/' + encodeURIComponent(aura_id)),
   };
 
   /* ── Auras: inventário e cerimônia ─────────────────────────── */

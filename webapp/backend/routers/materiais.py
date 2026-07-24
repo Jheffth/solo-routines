@@ -536,3 +536,48 @@ def definir_status(
     return {"ok": True, "codigo": q.codigo,
             "transferivel": bool(q.transferivel),
             "exclusiva_arquiteto": bool(q.exclusiva_arquiteto)}
+
+
+@router.delete("/inventario/emblema/{codigo}")
+def deletar_emblema(
+    codigo: str,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_atual),
+):
+    """Remove um emblema transferível do inventário do usuário."""
+    q = db.query(Conquista).filter(Conquista.codigo == codigo).first()
+    if not q or not q.transferivel:
+        raise HTTPException(404, "Material não encontrado ou não removível")
+    posse = db.query(ConquistaUsuario).filter(
+        ConquistaUsuario.usuario_id == usuario.id,
+        ConquistaUsuario.conquista_id == q.id
+    ).first()
+    if not posse:
+        raise HTTPException(404, "Você não possui este material")
+    db.delete(posse)
+    db.commit()
+    return {"ok": True, "codigo": codigo}
+
+
+@router.delete("/inventario/aura/{aura_id}")
+def deletar_aura_inventario(
+    aura_id: str,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_atual),
+):
+    """Remove uma aura cosmética do inventário do usuário.
+    Se estiver ativa no perfil, desequipa automaticamente.
+    """
+    posse = db.query(AuraUsuario).filter(
+        AuraUsuario.usuario_id == usuario.id,
+        AuraUsuario.aura_id    == aura_id,
+    ).first()
+    if not posse:
+        raise HTTPException(404, "Aura não encontrada no inventário")
+    db.delete(posse)
+    # Desequipa se estiver ativa
+    if usuario.aura_id == aura_id:
+        usuario.aura_id = None
+    db.commit()
+    return {"ok": True, "aura_id": aura_id}
+

@@ -129,25 +129,7 @@ const Materiais = {
             </div>
           </div>
         </div>
-        ${this._forjaveis_auras.length ? `
-        <div style="margin-top:.9rem;padding-top:.9rem;border-top:1px solid rgba(244,143,177,.2)">
-          <div style="font-family:var(--font-section);font-size:.62rem;letter-spacing:.14em;color:#f48fb1;margin-bottom:.6rem">&#x2736; AURAS COSM&#201;TICAS</div>
-          <div class="mt-forja-grade">${this._forjaveis_auras.map(a => `
-            <button class="mt-forja-item" data-mt-enviar-aura="${a.id}"
-                    title="${a.nome}: ${a.descricao}"
-                    style="border-color:rgba(244,143,177,.3)">
-              <span class="mt-forja-med" style="position:relative;display:flex;align-items:center;justify-content:center">
-                ${(window.Auras && Auras.existe && Auras.existe(a.id)) ? Auras.bloco(a.id, 58) : '<span style="font-size:1.6rem">&#x2736;</span>'}
-                <div style="position:absolute;z-index:2;width:26px;height:26px;
-                  background:linear-gradient(135deg,#2a1a4e,#0d1f36);
-                  clip-path:polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%)"></div>
-              </span>
-              <span class="mt-forja-nome" style="color:${a.cor}">${a.nome}</span>
-              <span class="mt-forja-acao" style="color:${a.cor}">+</span>
-            </button>`).join('')}
-          </div>
-        </div>` : ''}
-      </div>`;
+      </div>`;
 
     this._bind();
     this._atualizarBotao();
@@ -219,10 +201,14 @@ const Materiais = {
 
   _cardMaterial(m, enviavel) {
     const veio = m.veio_de ? `<div class="mt-card-origem">de ${m.veio_de}</div>` : '';
+    const delBtn = enviavel
+      ? `<button class="mt-card-del" data-mt-deletar="${m.codigo}" title="Remover do inventário" onclick="event.stopPropagation()">✕</button>`
+      : '';
     return `
       <div class="mt-card ${enviavel ? '' : 'preso'}"
            ${enviavel ? `data-mt="${m.codigo}"` : ''}
            title="${m.titulo}${m.descricao ? ' — ' + m.descricao : ''}">
+        ${delBtn}
         <div class="mt-card-medalha">${this._medalha(m)}</div>
         <div class="mt-card-nome">${m.titulo}</div>
         ${veio}
@@ -273,6 +259,12 @@ const Materiais = {
 
     document.querySelectorAll('[data-forja-tab]').forEach(t =>
       t.addEventListener('click', () => this._trocarAbaForja(t.dataset.forjaTab)));
+
+    document.querySelectorAll('[data-mt-deletar]').forEach(b =>
+      b.addEventListener('click', e => { e.stopPropagation(); this._deletarMaterial(b.dataset.mtDeletar, b); }));
+
+    document.querySelectorAll('[data-mt-deletar-aura]').forEach(b =>
+      b.addEventListener('click', e => { e.stopPropagation(); this._deletarAura(b.dataset.mtDeletarAura); }));
 
     document.getElementById('mt-btn')?.addEventListener('click', () => this._enviar());
   },
@@ -372,6 +364,7 @@ const Materiais = {
     return `
       <div class="mt-card" data-mt-aura="${a.aura_id}"
            title="${a.nome}${a.descricao ? ' — ' + a.descricao : ''}">
+        <button class="mt-card-del" data-mt-deletar-aura="${a.aura_id}" title="Remover do inventário" onclick="event.stopPropagation()">✕</button>
         <div class="mt-card-medalha" style="position:relative;display:flex;align-items:center;justify-content:center;height:92px">
           ${bloco}
           <div style="position:absolute;z-index:2;width:34px;height:34px;
@@ -406,6 +399,45 @@ const Materiais = {
     } catch (err) {
       SoloDialog?.toast?.(err.message || String(err), 'error');
       btn.disabled = false;
+    }
+  },
+
+  async _deletarMaterial(codigo, btn) {
+    const mat = this._enviaveis.find(m => m.codigo === codigo);
+    const nome = mat ? mat.titulo : codigo;
+    const ok = typeof SoloDialog !== 'undefined' && SoloDialog.confirm
+      ? await SoloDialog.confirm(
+          `Remover <b>${nome}</b> do seu inventário?<br><span style="color:#94a3b8;font-size:.78em">Se estiver equipado no perfil, será desequipado automaticamente.</span>`,
+          { titulo: 'Remover Material', icon: '🗑', tipo: 'error', btnOk: 'Remover', btnCancel: 'Cancelar' }
+        )
+      : true;
+    if (!ok) return;
+    try {
+      await API.materiais.deletar(codigo);
+      if (typeof SFX !== 'undefined') SFX.play('carimbo');
+      SoloDialog?.toast?.(`${nome} removido do inventário`, 'info');
+      await this.carregar();
+    } catch (err) {
+      SoloDialog?.toast?.(err.message || String(err), 'error');
+    }
+  },
+
+  async _deletarAura(auraId) {
+    const cat = this._enviaveis_auras.find(a => a.aura_id === auraId);
+    const nome = cat ? cat.nome : auraId;
+    const ok = typeof SoloDialog !== 'undefined' && SoloDialog.confirm
+      ? await SoloDialog.confirm(
+          `Remover <b>${nome}</b> do seu inventário?<br><span style="color:#94a3b8;font-size:.78em">Se estiver equipada, será desequipada automaticamente.</span>`,
+          { titulo: 'Remover Aura', icon: '✶', tipo: 'error', btnOk: 'Remover', btnCancel: 'Cancelar' }
+        )
+      : true;
+    if (!ok) return;
+    try {
+      await API.materiais.deletarAura(auraId);
+      SoloDialog?.toast?.(`${nome} removida do inventário`, 'info');
+      await this.carregar();
+    } catch (err) {
+      SoloDialog?.toast?.(err.message || String(err), 'error');
     }
   },
 

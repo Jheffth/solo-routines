@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
    dashboard.js \u2014 Solo Routines
    Carrega e renderiza o painel principal do Hunter
    ============================================================ */
@@ -1940,34 +1940,57 @@ const Dashboard = {
 
   /* ─── Aura: botão no cabeçalho + modal de inventário ───────────────── */
   _bindBtnTrocarAura(dados) {
-    const container = document.getElementById('dash-btn-editar-perfil')?.parentElement;
-    if (!container) return;
+    // Injeta o botão circular abaixo do hexágono de foto
+    const hexWrap = document.querySelector('#hunter-card .hunter-hex-wrap');
+    const fallbackContainer = document.getElementById('dash-btn-editar-perfil')?.parentElement;
+
     let btn = document.getElementById('dash-btn-trocar-aura');
     if (!btn) {
       btn = document.createElement('button');
-      btn.id        = 'dash-btn-trocar-aura';
-      btn.className = 'btn btn-ghost btn-sm';
-      btn.style.cssText = [
-        'font-family:var(--font-section)', 'font-size:.75rem', 'letter-spacing:.06em',
-        'border:1px solid rgba(244,143,177,.4)', 'color:#f48fb1',
-        'padding:.35rem .9rem', 'border-radius:.5rem', 'cursor:pointer',
-        'transition:all .2s', 'display:flex', 'align-items:center', 'gap:.4rem',
-      ].join(';');
-      btn.onmouseover = () => btn.style.background = 'rgba(244,143,177,.12)';
-      btn.onmouseout  = () => btn.style.background = 'transparent';
-      container.insertBefore(btn, container.firstChild);
+      btn.id = 'dash-btn-trocar-aura';
+
+      if (hexWrap) {
+        // Garante que o pai do hex-wrap seja position:relative
+        const hexParent = hexWrap.parentElement;
+        if (hexParent) hexParent.style.position = 'relative';
+        btn.style.cssText = [
+          'position:absolute', 'bottom:-10px', 'left:50%', 'transform:translateX(-50%)',
+          'width:32px', 'height:32px', 'border-radius:50%',
+          'background:linear-gradient(135deg,#2a0a4e,#1a0a2e)',
+          'border:1px solid rgba(244,143,177,.5)', 'color:#f48fb1',
+          'font-size:.75rem', 'cursor:pointer', 'z-index:10',
+          'box-shadow:0 0 12px rgba(244,143,177,.25)',
+          'display:flex', 'align-items:center', 'justify-content:center',
+          'transition:all .2s',
+        ].join(';');
+        btn.onmouseover = () => { btn.style.boxShadow = '0 0 20px rgba(244,143,177,.5)'; btn.style.background = 'linear-gradient(135deg,#3a1a6e,#2a0a4e)'; };
+        btn.onmouseout  = () => { btn.style.boxShadow = '0 0 12px rgba(244,143,177,.25)'; btn.style.background = 'linear-gradient(135deg,#2a0a4e,#1a0a2e)'; };
+        hexParent.appendChild(btn);
+      } else if (fallbackContainer) {
+        btn.className = 'btn btn-ghost btn-sm';
+        btn.style.cssText = [
+          'font-family:var(--font-section)', 'font-size:.75rem', 'letter-spacing:.06em',
+          'border:1px solid rgba(244,143,177,.4)', 'color:#f48fb1',
+          'padding:.35rem .9rem', 'border-radius:.5rem', 'cursor:pointer',
+          'transition:all .2s', 'display:flex', 'align-items:center', 'gap:.4rem',
+        ].join(';');
+        btn.onmouseover = () => btn.style.background = 'rgba(244,143,177,.12)';
+        btn.onmouseout  = () => btn.style.background = 'transparent';
+        fallbackContainer.insertBefore(btn, fallbackContainer.firstChild);
+      }
     }
     const temAura = !!(dados && dados.aura_id);
-    btn.innerHTML = temAura ? '◈ Minha Aura' : '◈ Trocar Aura';
+    btn.innerHTML = '◈';
     btn.title     = temAura ? `Aura ativa: ${dados.aura_id}` : 'Gerenciar Aura';
     btn.onclick   = () => Dashboard._abrirModalAura(window.__dashDados || dados);
   },
+
 
   async _abrirModalAura(dados) {
     document.getElementById('dash-modal-aura')?.remove();
     let inv = [];
     try {
-      const tk = localStorage.getItem('access_token');
+      const tk = localStorage.getItem('access_token') || localStorage.getItem('sr_token');
       const r  = await fetch('/api/perfil/auras-inventario', {
         headers: { Authorization: `Bearer ${tk}` }
       });
@@ -1978,79 +2001,118 @@ const Dashboard = {
     const cx = document.createElement('div');
     cx.id    = 'dash-modal-aura';
     cx.style.cssText = 'position:fixed;inset:0;z-index:8999;display:flex;align-items:center;' +
-      'justify-content:center;background:rgba(3,3,8,.88);backdrop-filter:blur(6px);padding:1rem';
+      'justify-content:center;background:rgba(3,3,8,.92);backdrop-filter:blur(8px);padding:1rem';
 
     const auraAtiva = (dados && dados.aura_id) || null;
+    const auraAtivaCat = auraAtiva ? inv.find(a => a.id === auraAtiva || a.aura_id === auraAtiva) : null;
 
-    const itens = inv.map(function(a) {
-      const bloco  = window.Auras && Auras.bloco ? Auras.bloco(a.id, 52) : '';
-      const ativa  = (auraAtiva === a.id) || (auraAtiva === null && a.de_cargo);
+    // Card da aura ativa no topo
+    const ativaSection = auraAtivaCat ? (() => {
+      const blocoAtiva = window.Auras && Auras.bloco ? Auras.bloco(auraAtiva, 64) : '';
+      return `<div style="background:linear-gradient(135deg,rgba(244,143,177,.18),rgba(244,143,177,.06));
+        border:1px solid rgba(244,143,177,.5);border-radius:14px;padding:1rem;
+        margin-bottom:1rem;display:flex;align-items:center;gap:.9rem;position:relative">
+        <div style="position:relative;width:64px;height:64px;flex-shrink:0;
+          display:flex;align-items:center;justify-content:center">
+          ${blocoAtiva}
+          <div style="position:absolute;z-index:2;width:30px;height:30px;
+            background:linear-gradient(135deg,#2a1a4e,#0d1f36);
+            clip-path:polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%)"></div>
+        </div>
+        <div style="flex:1">
+          <div style="color:#f9a8d4;font-size:.55rem;letter-spacing:.14em;font-family:var(--font-section);margin-bottom:.2rem">EQUIPADA ATUALMENTE</div>
+          <div style="color:#f48fb1;font-weight:700;font-size:.88rem;font-family:var(--font-section)">${auraAtivaCat.nome || auraAtiva}</div>
+            <div style="color:#94a3b8;font-size:.62rem;font-family:var(--font-section);margin-top:.15rem">${auraAtivaCat.descricao || ''}</div>
+        </div>
+        <button onclick="Dashboard._removerAura()" style="
+          padding:.3rem .7rem;border-radius:8px;cursor:pointer;white-space:nowrap;
+          background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);
+          color:#ef4444;font-family:var(--font-section);font-size:.62rem;font-weight:700;
+          transition:all .18s"
+          onmouseover="this.style.background='rgba(239,68,68,.25)'" onmouseout="this.style.background='rgba(239,68,68,.12)'"
+        >Desequipar</button>
+      </div>`;
+    })() : '';
+
+    // Grade de auras
+    const gridItens = inv.map(function(a) {
+      const aId    = a.id || a.aura_id;
+      const bloco  = window.Auras && Auras.bloco ? Auras.bloco(aId, 52) : '';
+      const ativa  = auraAtiva === aId;
       const traved = !!a.de_cargo;
       const ativarBtn = !traved
-        ? '<button onclick="Dashboard._ativarAura(\'' + a.id + '\')" style="' +
-          'padding:.35rem .75rem;border-radius:8px;border:none;cursor:pointer;white-space:nowrap;' +
-          'background:' + (ativa ? '#e91e63' : 'rgba(244,143,177,.18)') + ';' +
+        ? '<button onclick="Dashboard._ativarAura(\'' + aId + '\')" style="' +
+          'padding:.3rem .7rem;border-radius:8px;border:none;cursor:pointer;white-space:nowrap;' +
+          'background:' + (ativa ? 'linear-gradient(135deg,#e91e63,#c2185b)' : 'rgba(244,143,177,.15)') + ';' +
           'color:' + (ativa ? '#fff' : '#f48fb1') + ';' +
-          'font-family:var(--font-section);font-size:.72rem;font-weight:700">' +
-          (ativa ? '✔ Ativa' : 'Ativar') + '</button>'
-        : '';
-      return '<div style="display:flex;align-items:center;gap:.9rem;padding:.65rem .8rem;' +
-        'border-radius:12px;margin-bottom:.4rem;' +
-        'background:' + (ativa ? 'rgba(244,143,177,.12)' : 'rgba(255,255,255,.02)') + ';' +
-        'border:1px solid ' + (ativa ? 'rgba(244,143,177,.5)' : 'rgba(255,255,255,.07)') + '">' +
+          'font-family:var(--font-section);font-size:.65rem;font-weight:700;' +
+          'box-shadow:' + (ativa ? '0 0 12px rgba(244,143,177,.35)' : 'none') + ';' +
+          'transition:all .18s">' +
+          (ativa ? 'u2714 Equipada' : 'Equipar') + '</button>'
+          (ativa ? '✔ Equipada' : 'Equipar') + '</button>'
+        : '<span style="font-size:.58rem;color:#6b7280;font-family:var(--font-section)">🔒 Vinculada</span>';
+      return '<div style="display:flex;align-items:center;gap:.8rem;padding:.6rem .75rem;' +
+        'border-radius:12px;margin-bottom:.35rem;' +
+        'background:' + (ativa ? 'rgba(244,143,177,.1)' : 'rgba(255,255,255,.025)') + ';' +
+        'border:1px solid ' + (ativa ? 'rgba(244,143,177,.45)' : 'rgba(255,255,255,.07)') + ';' +
+        'transition:border-color .2s">' +
         '<div style="position:relative;width:52px;height:52px;flex-shrink:0;' +
           'display:flex;align-items:center;justify-content:center">' +
           bloco +
-          '<div style="position:relative;z-index:2;width:28px;height:28px;' +
+          '<div style="position:absolute;z-index:2;width:26px;height:26px;' +
             'background:linear-gradient(135deg,#2a1a4e,#0d1f36);' +
             'clip-path:polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%)"></div>' +
         '</div>' +
         '<div style="flex:1">' +
-          '<div style="font-family:var(--font-section);font-size:.82rem;color:' + (a.cor || '#fff') + ';font-weight:700">' + a.nome + '</div>' +
-          '<div style="font-family:var(--font-section);font-size:.6rem;color:var(--text-muted);margin-top:.1rem">' + (a.descricao || '') + '</div>' +
-          (traved ? '<div style="font-size:.6rem;color:#6b7280;margin-top:.1rem">🔒 Vinculada ao cargo</div>' : '') +
+          '<div style="font-family:var(--font-section);font-size:.8rem;color:' + (a.cor || '#e2e8f0') + ';font-weight:700">' + (a.nome || aId) + '</div>' +
+          '<div style="font-family:var(--font-section);font-size:.58rem;color:#64748b;margin-top:.1rem">' + (a.descricao || '') + '</div>' +
+          (traved ? '<div style="font-size:.56rem;color:#6b7280;margin-top:.15rem">🔒 Vinculada ao cargo</div>' : '') +
         '</div>' +
         ativarBtn +
       '</div>';
     }).join('');
 
-    const semAuras = '<div style="text-align:center;padding:2rem;color:var(--text-muted);' +
-      'font-family:var(--font-section);font-size:.78rem">' +
-      'Nenhuma aura no inventário.<br>' +
-      '<span style="color:#6b7280;font-size:.65rem">Peça ao Arquiteto para presentear uma.</span>' +
+    const semAuras = '<div style="text-align:center;padding:3rem 1rem">' +
+      '<div style="font-size:2rem;margin-bottom:.8rem;opacity:.3">◈</div>' +
+      '<div style="font-family:var(--font-section);font-size:.82rem;color:#94a3b8;margin-bottom:.4rem">Nenhuma aura cosmética</div>' +
+      '<div style="font-family:var(--font-section);font-size:.62rem;color:#475569">Peça ao Arquiteto para presentear uma.</div>' +
       '</div>';
 
-    const removerLink = auraAtiva
-      ? '<div style="margin-top:.9rem;text-align:center">' +
-          '<button onclick="Dashboard._removerAura()" style="background:none;border:none;' +
-          'color:#6b7280;font-family:var(--font-section);font-size:.62rem;cursor:pointer;' +
-          'text-decoration:underline">Remover aura cosmética (volta ao padrão do cargo)</button>' +
-        '</div>'
-      : '';
-
     cx.innerHTML =
-      '<div style="width:min(480px,98%);max-height:85vh;overflow-y:auto;' +
-        'padding:1.5rem;border-radius:20px;' +
-        'background:linear-gradient(160deg,#0e0018,#040010 70%);' +
+      '<div style="width:min(500px,98%);max-height:88vh;overflow-y:auto;' +
+        'padding:1.6rem;border-radius:20px;' +
+        'background:linear-gradient(160deg,#0e0018 0%,#06000f 60%,#040010 100%);' +
         'border:1px solid rgba(244,143,177,.35);' +
-        'box-shadow:0 0 50px rgba(244,143,177,.2)">' +
-        '<div style="display:flex;align-items:center;gap:.7rem;margin-bottom:1.2rem">' +
-          '<span style="font-size:1.3rem">◈</span>' +
+        'box-shadow:0 0 60px rgba(244,143,177,.2),0 0 120px rgba(100,0,80,.15)">' +
+        // Header
+        '<div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1.4rem">' +
+          '<div style="width:38px;height:38px;border-radius:50%;flex-shrink:0;' +
+            'background:linear-gradient(135deg,rgba(244,143,177,.25),rgba(244,143,177,.08));' +
+            'border:1px solid rgba(244,143,177,.4);' +
+            'display:flex;align-items:center;justify-content:center;' +
+            'box-shadow:0 0 16px rgba(244,143,177,.3);font-size:1.1rem">◈</div>' +
           '<div style="flex:1">' +
-            '<div style="font-family:var(--font-title);font-size:1rem;color:#f48fb1">Minhas Auras</div>' +
-            '<div style="font-family:var(--font-section);font-size:.58rem;letter-spacing:.12em;' +
-              'color:var(--text-muted)">INVENTÁRIO PESSOAL DE AURAS</div>' +
+            '<div style="font-family:var(--font-title);font-size:1.05rem;color:#f48fb1;' +
+              'text-shadow:0 0 20px rgba(244,143,177,.4)">Minhas Auras</div>' +
+            '<div style="font-family:var(--font-section);font-size:.56rem;letter-spacing:.14em;' +
+              'color:#475569;margin-top:.1rem">INVENTÁRIO PESSOAL DE AURAS</div>' +
           '</div>' +
           '<button onclick="document.getElementById(\'dash-modal-aura\').remove()"' +
-            ' style="background:none;border:none;color:var(--text-muted);font-size:1.1rem;cursor:pointer">✕</button>' +
+            ' style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.05);' +
+            'border:1px solid rgba(255,255,255,.1);color:#64748b;font-size:.9rem;cursor:pointer;' +
+            'display:flex;align-items:center;justify-content:center;transition:all .18s"' +
+            ' onmouseover="this.style.background=\'rgba(255,255,255,.1)\'" onmouseout="this.style.background=\'rgba(255,255,255,.05)\'">✕</button>' +
         '</div>' +
-        (inv.length ? '<div>' + itens + '</div>' : semAuras) +
-        removerLink +
+        // Aura ativa
+        ativaSection +
+        // Grade de auras
+        (inv.length ? '<div>' + gridItens + '</div>' : semAuras) +
       '</div>';
 
     cx.addEventListener('click', function(e) { if (e.target === cx) cx.remove(); });
     document.body.appendChild(cx);
   },
+
 
   async _ativarAura(auraId) {
     try {
@@ -2076,20 +2138,21 @@ const Dashboard = {
 
   async _removerAura() {
     try {
-      const tk = localStorage.getItem('access_token');
+      const tk = localStorage.getItem('access_token') || localStorage.getItem('sr_token');
       const r  = await fetch('/api/perfil/aura', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tk}` },
         body: JSON.stringify({ aura_id: null }),
       });
       if (!r.ok) { const d = await r.json(); throw new Error(d.detail); }
-      const dados = window.__dashDados;
-      if (dados) {
-        dados.aura_id = null;
-        const hexWrap = document.querySelector('#hunter-card .hunter-hex-wrap');
-        if (hexWrap && window.Auras) Auras.aplicar(hexWrap, dados.nivel_acesso, 168);
+      if (window.__dashDados) window.__dashDados.aura_id = null;
+      const hexWrap = document.querySelector('#hunter-card .hunter-hex-wrap');
+      if (hexWrap && window.Auras) {
+        const dados = window.__dashDados;
+        if (dados) Auras.aplicar(hexWrap, dados.nivel_acesso, 168);
       }
       document.getElementById('dash-modal-aura')?.remove();
+      await Dashboard.carregar(); // refresh completo do dashboard
     } catch (e) { alert('Erro: ' + e.message); }
   },
 
