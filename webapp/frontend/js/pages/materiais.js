@@ -455,7 +455,11 @@ const Materiais = {
     try {
       const { registros } = await API.materiais.historico();
       if (!registros.length) {
-        el.innerHTML = '<div class="mt-vazio-suave">Nenhuma troca registrada ainda.</div>';
+        el.innerHTML = `
+          <div style="text-align:center;padding:2rem;opacity:.5">
+            <div style="font-size:2.5rem;margin-bottom:.5rem">◈</div>
+            <div style="font-family:var(--font-section);color:var(--text-muted);font-size:.85rem">Nenhuma troca realizada ainda — use a Forja para enviar materiais</div>
+          </div>`;
         return;
       }
       const dt = s => s ? new Date(s).toLocaleString('pt-BR', {

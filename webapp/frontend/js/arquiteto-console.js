@@ -1,13 +1,13 @@
-/* ============================================================
-   arquiteto-console.js — ⚒ Forja de Testes do Arquiteto
+﻿/* ============================================================
+   arquiteto-console.js â€” âš’ Forja de Testes do Arquiteto
    Console secreto para disparar qualquer efeito do Sistema
    na hora, sem esperar eventos reais. 100% frontend:
-   nenhum XP, nenhuma escrita no banco. Só o Arquiteto vê.
+   nenhum XP, nenhuma escrita no banco. SÃ³ o Arquiteto vÃª.
 
-   Abrir: Ctrl+Alt+A  ou  duplo-clique no badge ★ ARQUITETO ★
+   Abrir: Ctrl+Alt+A  ou  duplo-clique no badge â˜… ARQUITETO â˜…
    ============================================================ */
-/* JH3FFTH — arte externa: js/badges/jh3ffth.js (cristal facetado).
-   Nao definir aqui — o registry usa window.Jh3ffthFX injetado por jh3ffth.js. */
+/* JH3FFTH â€” arte externa: js/badges/jh3ffth.js (cristal facetado).
+   Nao definir aqui â€” o registry usa window.Jh3ffthFX injetado por jh3ffth.js. */
 
 const DianaFX = {
   _svgMedalhaDiana(tamanho = 260) {
@@ -60,13 +60,13 @@ const DianaFX = {
         <path d="M 55 130 A 75 75 0 0 1 205 130 Z" fill="rgba(255,255,255,0.2)"/>
         <path d="M 55 130 A 75 75 0 0 0 205 130 Z" fill="rgba(0,0,0,0.3)"/>
         
-        <!-- Runas Místicas Internas (Contra-rotação) -->
+        <!-- Runas MÃ­sticas Internas (Contra-rotaÃ§Ã£o) -->
         <g style="transform-origin: 130px 130px; animation: cq-anel-girar 20s linear infinite reverse;">
           <circle cx="130" cy="130" r="65" fill="none" stroke="rgba(56,189,248,0.6)" stroke-width="1.5" stroke-dasharray="4 8"/>
           <circle cx="130" cy="130" r="50" fill="none" stroke="#e0f2fe" stroke-width="1" stroke-dasharray="2 12" opacity="0.5"/>
         </g>
         
-        <!-- Ícone: A Lâmina Crescente da Diana no Centro -->
+        <!-- Ãcone: A LÃ¢mina Crescente da Diana no Centro -->
         <g transform="translate(130, 130)">
           <path d="M -15 -35 A 30 30 0 1 1 -15 25 A 35 35 0 1 0 -15 -35 Z" fill="#ffffff" filter="url(#moonGlow)"/>
           <path d="M -15 -35 A 30 30 0 1 1 -15 25 A 35 35 0 1 0 -15 -35 Z" fill="#ffffff"/>
@@ -89,7 +89,7 @@ const DianaFX = {
         <div style="${raiosLuna}"></div>
         <div class="cq-medalha" style="width:260px;height:260px;margin-bottom:1rem;">${this._svgMedalhaDiana(260)}</div>
         <div class="cq-textos">
-          <div style="font-family:var(--font-section);font-size:0.85rem;font-weight:700;letter-spacing:4px;color:#bae6fd;text-transform:uppercase;margin-bottom:0.6rem;text-shadow: 0 0 10px rgba(186,230,253,0.5);">🌙 FÚRIA DA LUA MINGUANTE 🌙</div>
+          <div style="font-family:var(--font-section);font-size:0.85rem;font-weight:700;letter-spacing:4px;color:#bae6fd;text-transform:uppercase;margin-bottom:0.6rem;text-shadow: 0 0 10px rgba(186,230,253,0.5);">ðŸŒ™ FÃšRIA DA LUA MINGUANTE ðŸŒ™</div>
           <div style="font-family:var(--font-title);font-size:2.8rem;text-shadow:0 8px 25px rgba(0,0,0,0.8);letter-spacing:2px; line-height:1.1; ${shimmerStyle}">PAULO</div>
           <div style="font-family:var(--font-section);font-size:1.1rem;font-weight:700;letter-spacing:6px;color:#e2e8f0;margin-top:0.6rem; text-shadow:0 2px 4px #000;">O MONO DIANA</div>
           <div style="margin-top:1.5rem;font-family:'Orbitron',monospace;font-size:1.4rem;font-weight:700;color:#7dd3fc;text-shadow:0 0 15px rgba(125,211,252,0.8);letter-spacing:2px;">+1.000.000 MAESTRIA</div>
@@ -121,7 +121,7 @@ const DianaFX = {
     el.style.background = 'linear-gradient(90deg, rgba(8,47,73,0.95), rgba(2,6,23,0.98))';
     el.innerHTML = `
       <div class="cq-selo-ico" style="position:relative;width:40px;height:40px;margin-right:14px;filter:drop-shadow(0 2px 4px rgba(186,230,253,0.5))">${this._svgMedalhaDiana(40)}</div>
-      <div><div class="cq-selo-lbl" style="color:#e0f2fe;font-weight:700;letter-spacing:1px;font-size:0.65rem">FÚRIA DA LUA MINGUANTE</div><div class="cq-selo-nome" style="color:#fff;font-size:1.1rem">PAULO</div></div>
+      <div><div class="cq-selo-lbl" style="color:#e0f2fe;font-weight:700;letter-spacing:1px;font-size:0.65rem">FÃšRIA DA LUA MINGUANTE</div><div class="cq-selo-nome" style="color:#fff;font-size:1.1rem">PAULO</div></div>
       <div class="cq-selo-xp" style="color:#7dd3fc;text-shadow:0 0 10px rgba(125,211,252,0.5)">+1M MP</div>`;
     pilha.appendChild(el);
     setTimeout(() => { el.classList.add('cq-selo-out'); setTimeout(() => el.remove(), 500); }, 6000);
@@ -147,8 +147,8 @@ const DianaFX = {
       </span>
       
       <div class="conquista-mini-info">
-        <div class="conquista-mini-nome" style="color:#bae6fd; text-shadow:0 0 5px rgba(56,189,248,0.4)">Fúria da Lua Minguante</div>
-        <div class="conquista-mini-desc" style="color:#d1d5db">O Mono Diana — Paulo (+1.000.000 Maestria)</div>
+        <div class="conquista-mini-nome" style="color:#bae6fd; text-shadow:0 0 5px rgba(56,189,248,0.4)">FÃºria da Lua Minguante</div>
+        <div class="conquista-mini-desc" style="color:#d1d5db">O Mono Diana â€” Paulo (+1.000.000 Maestria)</div>
       </div>`;
     quadro.prepend(card);
     
@@ -173,7 +173,7 @@ const DianaFX = {
         <div style="position:relative; z-index:2; padding:0.75rem 1rem; display:flex; align-items:center; gap:1rem; width:100%">
           <div style="flex-shrink:0; width:34px; height:34px; filter:drop-shadow(0 0 5px rgba(186,230,253,0.5)); animation: spin 15s linear infinite">${this._svgMedalhaDiana(34)}</div>
           <div style="flex:1; min-width:0">
-            <div style="font-family:var(--font-section); font-size:0.55rem; letter-spacing:1px; color:#94a3b8; text-transform:uppercase; margin-bottom:2px">LENDÁRIO</div>
+            <div style="font-family:var(--font-section); font-size:0.55rem; letter-spacing:1px; color:#94a3b8; text-transform:uppercase; margin-bottom:2px">LENDÃRIO</div>
             <div style="font-family:var(--font-title); font-size:1.05rem; letter-spacing:0.5px; background:linear-gradient(90deg, #ffffff, #7dd3fc); -webkit-background-clip:text; color:transparent; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">O Mono Diana</div>
           </div>
           <div style="font-family:'Orbitron',monospace; font-size:0.75rem; color:#bae6fd; font-weight:700">+1M</div>
@@ -220,39 +220,39 @@ const ArquitetoConsole = {
     this._aberto = false;
   },
 
-  /* ── Disparadores (tudo simulado, nada persiste) ───────── */
+  /* â”€â”€ Disparadores (tudo simulado, nada persiste) â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   _CONQUISTAS_TESTE: [
-    { icone: '🌀', titulo: 'Primeira Travessia',  descricao: 'Faça o primeiro clear de uma Dungeon', xp_bonus: 100 },
-    { icone: '⭐', titulo: 'Perfeccionista',      descricao: 'Conquiste um clear rank S numa Dungeon', xp_bonus: 250 },
-    { icone: '🔥', titulo: 'Imparável',           descricao: 'Some 30 clears de Dungeon', xp_bonus: 800 },
-    { icone: '⚡', titulo: 'Caçador de Eventos',  descricao: 'Capture 10 eventos dentro de Dungeons', xp_bonus: 200 },
-    { icone: '🌑', titulo: 'Lendário',            descricao: 'Alcance o nível 50', xp_bonus: 2000 },
+    { icone: 'ðŸŒ€', titulo: 'Primeira Travessia',  descricao: 'FaÃ§a o primeiro clear de uma Dungeon', xp_bonus: 100 },
+    { icone: 'â­', titulo: 'Perfeccionista',      descricao: 'Conquiste um clear rank S numa Dungeon', xp_bonus: 250 },
+    { icone: 'ðŸ”¥', titulo: 'ImparÃ¡vel',           descricao: 'Some 30 clears de Dungeon', xp_bonus: 800 },
+    { icone: 'âš¡', titulo: 'CaÃ§ador de Eventos',  descricao: 'Capture 10 eventos dentro de Dungeons', xp_bonus: 200 },
+    { icone: 'ðŸŒ‘', titulo: 'LendÃ¡rio',            descricao: 'Alcance o nÃ­vel 50', xp_bonus: 2000 },
   ],
 
   cerimonia() {
     const c = this._CONQUISTAS_TESTE[Math.floor(Math.random() * this._CONQUISTAS_TESTE.length)];
-    // clona com timestamp p/ furar o dedup e sinaliza que é ensaio
+    // clona com timestamp p/ furar o dedup e sinaliza que Ã© ensaio
     ConquistaFX.show({ ...c, id: 'teste_' + Date.now(), titulo: c.titulo });
   },
 
   fila3() {
-    // Testa a fila: três cerimônias em sequência
+    // Testa a fila: trÃªs cerimÃ´nias em sequÃªncia
     const embaralhado = [...this._CONQUISTAS_TESTE].sort(() => Math.random() - .5).slice(0, 3);
     embaralhado.forEach(c => ConquistaFX.show({ ...c, id: 'teste_' + Date.now() + Math.random() }));
   },
 
   levelup() {
     const niveis = [
-      [7,  'D-Rank', 'Caçador em Ascensão', 120],
-      [15, 'B-Rank', 'Lâmina Confiável', 300],
-      [30, 'A-Rank', 'Elite dos Portões', 550],
+      [7,  'D-Rank', 'CaÃ§ador em AscensÃ£o', 120],
+      [15, 'B-Rank', 'LÃ¢mina ConfiÃ¡vel', 300],
+      [30, 'A-Rank', 'Elite dos PortÃµes', 550],
       [50, 'National-Level', 'Monarca das Sombras', 5000],
     ];
     const [n, r, t, m] = niveis[Math.floor(Math.random() * niveis.length)];
     Ascensao.mostrar([{ nivel: n, rank: r, titulo: t, moedas_bonus: m, nivel_anterior: n - 1 }]);
   },
 
-  /* Ascensão com salto grande (vários níveis de uma vez) */
+  /* AscensÃ£o com salto grande (vÃ¡rios nÃ­veis de uma vez) */
   ascensaoMultipla() {
     Ascensao.mostrar([{
       nivel: 12, rank: 'D-Rank', titulo: 'Sentinela',
@@ -260,15 +260,15 @@ const ArquitetoConsole = {
     }]);
   },
 
-  /* Sequência real: Ascensão -> Cerimônia (a ordem do Sistema) */
+  /* SequÃªncia real: AscensÃ£o -> CerimÃ´nia (a ordem do Sistema) */
   async sequenciaCompleta() {
     await Ascensao.mostrar([{
       nivel: 10, rank: 'D-Rank', titulo: 'Sentinela',
       moedas_bonus: 700, nivel_anterior: 1, niveis_ganhos: 9,
     }]);
     ConquistaFX.show({
-      id: 'seq_' + Date.now(), codigo: 'solo', icone: '🌌', titulo: 'SOLO',
-      descricao: 'O selo da empresa — sistema tático de produtividade S-Rank',
+      id: 'seq_' + Date.now(), codigo: 'solo', icone: 'ðŸŒŒ', titulo: 'SOLO',
+      descricao: 'O selo da empresa â€” sistema tÃ¡tico de produtividade S-Rank',
       xp_bonus: 7500,
     });
   },
@@ -294,7 +294,7 @@ const ArquitetoConsole = {
     ConquistaFX._carimbarQuadro(c);
   },
 
-  /* ── Convites: convocar novos hunters ────────────────── */
+  /* â”€â”€ Convites: convocar novos hunters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   async convites() {
     let ex = document.getElementById('arq-convites');
     if (ex) { ex.remove(); return; }
@@ -310,10 +310,10 @@ const ArquitetoConsole = {
         background:rgba(3,3,8,.9);backdrop-filter:blur(7px);padding:1.2rem`;
 
       const ESTADOS = {
-        DISPONIVEL: ['#34d399', 'rgba(16,185,129,.4)', '◆ Disponível'],
-        USADO:      ['#38bdf8', 'rgba(56,189,248,.4)', '✔ Utilizado'],
-        EXPIRADO:   ['#94a3b8', 'rgba(148,163,184,.3)', '⌛ Expirado'],
-        REVOGADO:   ['#f87171', 'rgba(239,68,68,.35)', '✕ Revogado'],
+        DISPONIVEL: ['#34d399', 'rgba(16,185,129,.4)', 'â—† DisponÃ­vel'],
+        USADO:      ['#38bdf8', 'rgba(56,189,248,.4)', 'âœ” Utilizado'],
+        EXPIRADO:   ['#94a3b8', 'rgba(148,163,184,.3)', 'âŒ› Expirado'],
+        REVOGADO:   ['#f87171', 'rgba(239,68,68,.35)', 'âœ• Revogado'],
       };
 
       el.innerHTML = `
@@ -322,14 +322,14 @@ const ArquitetoConsole = {
           border-radius:16px;box-shadow:0 0 50px rgba(56,189,248,.2);overflow:hidden">
 
           <div style="display:flex;align-items:center;gap:.7rem;padding:1.2rem 1.3rem .9rem;border-bottom:1px solid rgba(148,163,184,.12)">
-            <span style="font-size:1.3rem">📜</span>
+            <span style="font-size:1.3rem">ðŸ“œ</span>
             <div style="flex:1">
               <div style="font-family:var(--font-title);font-size:1.05rem;color:#7dd3fc">O Chamado do Arquiteto</div>
               <div style="font-family:var(--font-section);font-size:.6rem;letter-spacing:.14em;color:var(--text-muted)">
-                ${resumo.disponiveis} DISPONÍVEIS · ${resumo.usados} CONVOCADOS · ${resumo.total} NO TOTAL</div>
+                ${resumo.disponiveis} DISPONÃVEIS Â· ${resumo.usados} CONVOCADOS Â· ${resumo.total} NO TOTAL</div>
             </div>
             <button onclick="document.getElementById('arq-convites').remove()"
-              style="background:none;border:none;color:var(--text-muted);font-size:1.1rem;cursor:pointer">✕</button>
+              style="background:none;border:none;color:var(--text-muted);font-size:1.1rem;cursor:pointer">âœ•</button>
           </div>
 
           <div style="padding:.9rem 1.3rem;border-bottom:1px solid rgba(148,163,184,.1)">
@@ -344,7 +344,7 @@ const ArquitetoConsole = {
               <div style="width:86px">
                 <label style="display:block;font-family:var(--font-section);font-size:.58rem;letter-spacing:.12em;
                   text-transform:uppercase;color:var(--text-muted);margin-bottom:.25rem">Validade</label>
-                <input id="conv-dias" type="number" min="0" value="30" title="0 = não expira"
+                <input id="conv-dias" type="number" min="0" value="30" title="0 = nÃ£o expira"
                   style="width:100%;background:rgba(0,0,0,.5);border:1px solid rgba(148,163,184,.2);
                   border-radius:8px;color:var(--text-primary);font-family:'Orbitron',monospace;
                   font-size:.8rem;padding:.5rem;text-align:center">
@@ -356,11 +356,11 @@ const ArquitetoConsole = {
               text-transform:uppercase;color:var(--text-muted);margin-bottom:.3rem">Tipo de conta</label>
             <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.7rem">
               ${[
-                ['User',      '\u{1F464} Hunter',        'Acesso padrão',              '#94a3b8', 'rgba(148,163,184,.12)', 'rgba(148,163,184,.25)'],
+                ['User',      '\u{1F464} Hunter',        'Acesso padrÃ£o',              '#94a3b8', 'rgba(148,163,184,.12)', 'rgba(148,163,184,.25)'],
                 ['Suporte',   '\u{1F3A7} Suporte',        'Consulta dados',                '#38bdf8', 'rgba(56,189,248,.12)',  'rgba(56,189,248,.3)'],
                 ['Moderador', '\u{1F6E1}\uFE0F Moderador', 'Modera social',                 '#8b5cf6', 'rgba(139,92,246,.12)',  'rgba(139,92,246,.3)'],
                 ['Admin',     '\u2699\uFE0F Administrador','Painel Admin liberado',         '#fbbf24', 'rgba(251,191,36,.12)',  'rgba(251,191,36,.3)'],
-                ['Criador',   '\u26D2 Criador',           'Cria conteúdo global',      '#10b981', 'rgba(16,185,129,.12)',  'rgba(16,185,129,.3)'],
+                ['Criador',   '\u26D2 Criador',           'Cria conteÃºdo global',      '#10b981', 'rgba(16,185,129,.12)',  'rgba(16,185,129,.3)'],
               ].map(([id, rot, sub, cor, bg, borda], i) => `
                 <div data-conv-nivel="${id}" onclick="ArquitetoConsole._selNivel('${id}')" style="
                   flex:1;min-width:calc(33% - .3rem);padding:.45rem .5rem;border-radius:9px;cursor:pointer;text-align:center;
@@ -376,7 +376,7 @@ const ArquitetoConsole = {
             <!-- Badges de presente -->
             <label style="display:block;font-family:var(--font-section);font-size:.58rem;letter-spacing:.12em;
               text-transform:uppercase;color:var(--text-muted);margin-bottom:.3rem">
-              Presentes <span style="text-transform:none;letter-spacing:0;opacity:.7">— além de "O Chamado", que é automático</span></label>
+              Presentes <span style="text-transform:none;letter-spacing:0;opacity:.7">â€” alÃ©m de "O Chamado", que Ã© automÃ¡tico</span></label>
             <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.8rem">
               ${badges.length ? badges.map(b => `
                 <div data-conv-badge="${b.codigo}" onclick="ArquitetoConsole._selBadge('${b.codigo}')"
@@ -388,14 +388,14 @@ const ArquitetoConsole = {
                   <span style="font-family:var(--font-section);font-size:.68rem;font-weight:700;
                     color:var(--text-secondary)">${b.titulo}</span>
                 </div>`).join('')
-                : '<span style="font-size:.65rem;color:var(--text-dim)">Nenhuma badge presenteável cadastrada.</span>'}
+                : '<span style="font-size:.65rem;color:var(--text-dim)">Nenhuma badge presenteÃ¡vel cadastrada.</span>'}
             </div>
 
             <button onclick="ArquitetoConsole._gerarConvite()" style="
               width:100%;font-family:var(--font-section);font-size:.78rem;font-weight:700;letter-spacing:.08em;
               padding:.6rem 1.1rem;border-radius:8px;cursor:pointer;color:#fff;
               background:linear-gradient(100deg,#0369a1,#0284c7);border:1px solid #38bdf8;
-              box-shadow:0 0 14px rgba(56,189,248,.35)">📜 Convocar Hunter</button>
+              box-shadow:0 0 14px rgba(56,189,248,.35)">ðŸ“œ Convocar Hunter</button>
           </div>
 
           <div style="flex:1;overflow-y:auto;padding:.8rem 1.3rem 1.2rem">
@@ -418,24 +418,24 @@ const ArquitetoConsole = {
                     })()}${cv.nota ? ' \u00b7 ' + cv.nota : ''}${cv.usado_por ? ' \u00b7 <b style="color:#7dd3fc">' + cv.usado_por.nome + '</b>' : ''}
                   </div>
                   ${cv.badges?.length ? `<div style="font-size:.6rem;color:var(--gold-bright);margin-top:.15rem">
-                    🎁 ${cv.badges.map(b => b.icone + ' ' + b.titulo).join(' · ')}</div>` : ''}
+                    ðŸŽ ${cv.badges.map(b => b.icone + ' ' + b.titulo).join(' Â· ')}</div>` : ''}
                 </div>
                 ${cv.estado === 'DISPONIVEL' ? `
-                  <button onclick="ArquitetoConsole._copiarConvite('${cv.codigo}')" title="Copiar código"
+                  <button onclick="ArquitetoConsole._copiarConvite('${cv.codigo}')" title="Copiar cÃ³digo"
                     style="font-size:.75rem;padding:.35rem .6rem;border-radius:7px;cursor:pointer;color:#7dd3fc;
-                    background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.35)">📋</button>
+                    background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.35)">ðŸ“‹</button>
                   <button onclick="ArquitetoConsole._revogarConvite(${cv.id})" title="Revogar"
                     style="font-size:.75rem;padding:.35rem .6rem;border-radius:7px;cursor:pointer;color:#f87171;
-                    background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3)">✕</button>` : ''}
+                    background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3)">âœ•</button>` : ''}
               </div>`;
             }).join('') : `<div style="text-align:center;padding:2rem 1rem;color:var(--text-muted);font-family:var(--font-section);font-size:.8rem">
-                Nenhum convite ainda.<br><span style="font-size:.68rem;color:var(--text-dim)">Gere um código e envie a quem você quer convocar.</span></div>`}
+                Nenhum convite ainda.<br><span style="font-size:.68rem;color:var(--text-dim)">Gere um cÃ³digo e envie a quem vocÃª quer convocar.</span></div>`}
           </div>
 
           <div style="padding:.7rem 1.3rem;border-top:1px solid rgba(148,163,184,.1);font-size:.6rem;
             color:var(--text-dim);font-family:var(--font-section);line-height:1.6">
-            Quem entrar com o seu código recebe a badge <b style="color:#7dd3fc">O Chamado do Arquiteto</b> (+500 XP).<br>
-            Cada código serve para um único hunter.
+            Quem entrar com o seu cÃ³digo recebe a badge <b style="color:#7dd3fc">O Chamado do Arquiteto</b> (+500 XP).<br>
+            Cada cÃ³digo serve para um Ãºnico hunter.
           </div>
         </div>`;
       el.addEventListener('click', e => { if (e.target === el) el.remove(); });
@@ -452,7 +452,7 @@ const ArquitetoConsole = {
     this._convNivel = id;
     document.querySelectorAll('[data-conv-nivel]').forEach(el => {
       const on = el.dataset.convNivel === id;
-      // Usa as cores guardadas como data-attributes no botão (geradas pelo template)
+      // Usa as cores guardadas como data-attributes no botÃ£o (geradas pelo template)
       const bg    = el.dataset.bg    || 'rgba(255,255,255,.025)';
       const borda = el.dataset.borda || 'rgba(148,163,184,.18)';
       const cor   = el.dataset.cor   || 'var(--text-secondary)';
@@ -499,15 +499,15 @@ const ArquitetoConsole = {
   async _copiarConvite(codigo) {
     try {
       await navigator.clipboard.writeText(codigo);
-      SoloDialog?.toast?.(`📋 ${codigo} copiado`, 'success');
+      SoloDialog?.toast?.(`ðŸ“‹ ${codigo} copiado`, 'success');
     } catch (_) {
-      SoloDialog?.toast?.(`Código: ${codigo}`, 'info', 6000);
+      SoloDialog?.toast?.(`CÃ³digo: ${codigo}`, 'info', 6000);
     }
   },
 
   async _revogarConvite(id) {
     const ok = await SoloDialog.confirm('Revogar este convite? Ele deixa de funcionar imediatamente.',
-      { titulo: 'Revogar Convite', tipo: 'warn', icon: '✕', btnOk: 'Revogar', btnCancel: 'Manter' });
+      { titulo: 'Revogar Convite', tipo: 'warn', icon: 'âœ•', btnOk: 'Revogar', btnCancel: 'Manter' });
     if (!ok) return;
     try {
       await API.convites.revogar(id);
@@ -519,7 +519,7 @@ const ArquitetoConsole = {
     }
   },
 
-  /* ── Vitrine do Cartão de Missão (componente real, modo demo) ── */
+  /* â”€â”€ Vitrine do CartÃ£o de MissÃ£o (componente real, modo demo) â”€â”€ */
   cardMissao() {
     let ex = document.getElementById('mc-vitrine');
     if (ex) { ex.remove(); return; }
@@ -529,26 +529,26 @@ const ArquitetoConsole = {
       return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
     };
 
-    // Amostras cobrindo as 4 prioridades (a cor do cartão) e os 4 ranks
+    // Amostras cobrindo as 4 prioridades (a cor do cartÃ£o) e os 4 ranks
     const amostras = [
       { id: 9001, titulo: 'O Futuro dos Cards Solo', categoria: 'Trabalho',
         prioridade: 'CRITICA', dificuldade: 'LENDARIO',
-        xp_recompensa: 500, moedas_recompensa: 50, icone: '💠',
+        xp_recompensa: 500, moedas_recompensa: 50, icone: 'ðŸ’ ',
         hora_inicio: hhmm(-120), hora_fim: hhmm(180), status_hoje: 'PENDENTE' },
-      { id: 9002, titulo: 'Treino de Força — Ciclo A', categoria: 'Saúde',
+      { id: 9002, titulo: 'Treino de ForÃ§a â€” Ciclo A', categoria: 'SaÃºde',
         prioridade: 'ALTA', dificuldade: 'DIFICIL',
-        xp_recompensa: 220, moedas_recompensa: 20, icone: '💪',
+        xp_recompensa: 220, moedas_recompensa: 20, icone: 'ðŸ’ª',
         hora_inicio: hhmm(-60), hora_fim: hhmm(25), status_hoje: 'ATIVA' },
       { id: 9003, titulo: 'Revisar arquitetura do Sistema', categoria: 'Estudo',
         prioridade: 'MEDIA', dificuldade: 'NORMAL',
-        xp_recompensa: 90, moedas_recompensa: 8, icone: '📚',
+        xp_recompensa: 90, moedas_recompensa: 8, icone: 'ðŸ“š',
         hora_inicio: hhmm(-200), hora_fim: hhmm(400), status_hoje: 'PAUSADA' },
       { id: 9004, titulo: 'Preparar o jantar', categoria: 'Casa',
         prioridade: 'BAIXA', dificuldade: 'FACIL',
-        xp_recompensa: 40, moedas_recompensa: 4, icone: '🍳', status_hoje: 'CONCLUIDA' },
-      { id: 9005, titulo: 'Beber 3L de água', categoria: 'Saúde',
+        xp_recompensa: 40, moedas_recompensa: 4, icone: 'ðŸ³', status_hoje: 'CONCLUIDA' },
+      { id: 9005, titulo: 'Beber 3L de Ã¡gua', categoria: 'SaÃºde',
         prioridade: 'MEDIA', dificuldade: 'FACIL',
-        xp_recompensa: 30, moedas_recompensa: 3, icone: '💧', status_hoje: 'FRACASSADA' },
+        xp_recompensa: 30, moedas_recompensa: 3, icone: 'ðŸ’§', status_hoje: 'FRACASSADA' },
     ];
 
     const el = document.createElement('div');
@@ -561,18 +561,18 @@ const ArquitetoConsole = {
         background:linear-gradient(170deg,#0d0b18,#07070f 65%);border:1px solid rgba(168,85,247,.45);
         border-radius:16px;box-shadow:0 0 50px rgba(168,85,247,.22)">
         <div style="display:flex;align-items:center;gap:.7rem;margin-bottom:1rem">
-          <span style="font-size:1.2rem">🗂</span>
+          <span style="font-size:1.2rem">ðŸ—‚</span>
           <div style="flex:1">
-            <div style="font-family:var(--font-title);font-size:1rem;color:var(--purple-glow)">Cartão de Missão — proposta</div>
-            <div style="font-family:var(--font-section);font-size:.6rem;letter-spacing:.14em;color:var(--text-muted)">COMPONENTE REAL EM MODO DEMONSTRAÇÃO · OS BOTÕES TRANSITAM DE ESTADO</div>
+            <div style="font-family:var(--font-title);font-size:1rem;color:var(--purple-glow)">CartÃ£o de MissÃ£o â€” proposta</div>
+            <div style="font-family:var(--font-section);font-size:.6rem;letter-spacing:.14em;color:var(--text-muted)">COMPONENTE REAL EM MODO DEMONSTRAÃ‡ÃƒO Â· OS BOTÃ•ES TRANSITAM DE ESTADO</div>
           </div>
           <button onclick="document.getElementById('mc-vitrine').remove()"
-            style="background:none;border:none;color:var(--text-muted);font-size:1.1rem;cursor:pointer">✕</button>
+            style="background:none;border:none;color:var(--text-muted);font-size:1.1rem;cursor:pointer">âœ•</button>
         </div>
         <div id="mc-vitrine-lista"></div>
         <div style="font-size:.62rem;color:var(--text-dim);margin-top:.8rem;font-family:var(--font-section);line-height:1.6">
-          A <b>cor</b> vem da prioridade · o <b>selo de rank</b> vem da dificuldade.<br>
-          Clique em <b>Iniciar</b> para ver a máquina de estados · timer regressivo real.
+          A <b>cor</b> vem da prioridade Â· o <b>selo de rank</b> vem da dificuldade.<br>
+          Clique em <b>Iniciar</b> para ver a mÃ¡quina de estados Â· timer regressivo real.
         </div>
       </div>`;
     el.addEventListener('click', e => { if (e.target === el) el.remove(); });
@@ -584,16 +584,16 @@ const ArquitetoConsole = {
     MissaoCard.montar(lista, { demo: true });
   },
 
-  /* Vitrine do novo Lançador (componente real, modo demonstração) */
+  /* Vitrine do novo LanÃ§ador (componente real, modo demonstraÃ§Ã£o) */
   forjaMissao() {
     if (typeof ForjaMissao === 'undefined') {
-      SoloDialog?.toast?.('ForjaMissao não carregado', 'error');
+      SoloDialog?.toast?.('ForjaMissao nÃ£o carregado', 'error');
       return;
     }
     ForjaMissao.abrir({ demo: true });
   },
 
-  /* Liga/desliga o banner cosmético na Janela de Status */
+  /* Liga/desliga o banner cosmÃ©tico na Janela de Status */
   banner() {
     const janela = document.getElementById('hunter-card') || document.getElementById('perfil-window');
     if (!janela) {
@@ -602,21 +602,21 @@ const ArquitetoConsole = {
     }
     if (janela.dataset.banner) {
       delete janela.dataset.banner;
-      SoloDialog?.toast?.('🚫 Banner removido', 'info');
+      SoloDialog?.toast?.('ðŸš« Banner removido', 'info');
     } else {
       janela.dataset.banner = 'monarca';
-      SoloDialog?.toast?.('🖼 Banner "O Monarca" equipado', 'success');
+      SoloDialog?.toast?.('ðŸ–¼ Banner "O Monarca" equipado', 'success');
     }
   },
 
-  /* Insígnias com arte própria — fonte única: o registro do ConquistaFX.
-     Não duplicar o mapa aqui: badge nova se registra num lugar só. */
+  /* InsÃ­gnias com arte prÃ³pria â€” fonte Ãºnica: o registro do ConquistaFX.
+     NÃ£o duplicar o mapa aqui: badge nova se registra num lugar sÃ³. */
   _insignia(codigo, tam = 44) {
     try { return window.ConquistaFX?._insigniaCustom?.(codigo, tam) || null; }
     catch (_) { return null; }
   },
 
-  /* ── Comemorativas: conceder de verdade e controlar visibilidade ── */
+  /* â”€â”€ Comemorativas: conceder de verdade e controlar visibilidade â”€â”€ */
   async comemorativas() {
     let cx = document.getElementById('arq-comemorativas');
     if (cx) { cx.remove(); return; }
@@ -632,13 +632,13 @@ const ArquitetoConsole = {
           background:linear-gradient(170deg,#1a1206,#0d0d1a 60%);border:1px solid rgba(251,191,36,.5);
           border-radius:16px;box-shadow:0 0 50px rgba(251,191,36,.25)">
           <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:1rem">
-            <span style="font-size:1.2rem">🏛</span>
+            <span style="font-size:1.2rem">ðŸ›</span>
             <div style="flex:1">
               <div style="font-family:var(--font-title);font-size:1rem;color:var(--gold-bright)">Comemorativas do Arquiteto</div>
-              <div style="font-family:var(--font-section);font-size:.6rem;letter-spacing:.14em;color:var(--text-muted)">MARCOS DO DESENVOLVIMENTO · SÓ VOCÊ VÊ</div>
+              <div style="font-family:var(--font-section);font-size:.6rem;letter-spacing:.14em;color:var(--text-muted)">MARCOS DO DESENVOLVIMENTO Â· SÃ“ VOCÃŠ VÃŠ</div>
             </div>
             <button onclick="document.getElementById('arq-comemorativas').remove()"
-              style="background:none;border:none;color:var(--text-muted);font-size:1.1rem;cursor:pointer">✕</button>
+              style="background:none;border:none;color:var(--text-muted);font-size:1.1rem;cursor:pointer">âœ•</button>
           </div>
           ${lista.map(c => `
             <div style="display:flex;align-items:center;gap:.8rem;padding:.7rem .8rem;margin-bottom:.5rem;
@@ -649,15 +649,15 @@ const ArquitetoConsole = {
               <div style="flex:1;min-width:0">
                 <div style="font-family:var(--font-section);font-weight:700;font-size:.85rem;color:var(--text-primary)">${c.titulo}</div>
                 <div style="font-size:.66rem;color:var(--text-muted)">${c.descricao}</div>
-                <div style="font-family:'Orbitron',monospace;font-size:.62rem;color:var(--gold-bright);margin-top:.15rem">+${c.xp_bonus} XP · +${c.moedas_bonus} 💰</div>
+                <div style="font-family:'Orbitron',monospace;font-size:.62rem;color:var(--gold-bright);margin-top:.15rem">+${c.xp_bonus} XP Â· +${c.moedas_bonus} ðŸ’°</div>
               </div>
               <div style="display:flex;flex-direction:column;gap:.3rem;align-items:stretch">
                 ${c.desbloqueada
-                  ? `<span style="font-size:.58rem;font-family:var(--font-section);color:#34d399;text-align:center">✔ CONQUISTADA</span>
-                     <button onclick="ArquitetoConsole._revogar(${c.id})" title="Devolve ao estado bloqueado e estorna o bônus — permite reviver a cerimônia"
+                  ? `<span style="font-size:.58rem;font-family:var(--font-section);color:#34d399;text-align:center">âœ” CONQUISTADA</span>
+                     <button onclick="ArquitetoConsole._revogar(${c.id})" title="Devolve ao estado bloqueado e estorna o bÃ´nus â€” permite reviver a cerimÃ´nia"
                        style="font-family:var(--font-section);font-size:.6rem;font-weight:700;
                        padding:.3rem .6rem;border-radius:7px;cursor:pointer;color:#f87171;
-                       background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.35)">↺ REVOGAR</button>`
+                       background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.35)">â†º REVOGAR</button>`
                   : `<button onclick="ArquitetoConsole._conceder(${c.id})" style="font-family:var(--font-section);font-size:.65rem;font-weight:700;
                       padding:.35rem .7rem;border-radius:7px;cursor:pointer;color:#38bdf8;
                       background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.4)">CONCEDER</button>`}
@@ -665,12 +665,12 @@ const ArquitetoConsole = {
                   <input type="checkbox" ${c.visivel ? 'checked' : ''}
                     onchange="ArquitetoConsole._visibilidade(${c.id}, this.checked)"
                     style="accent-color:var(--gold-bright);cursor:pointer">
-                  visível
+                  visÃ­vel
                 </label>
               </div>
             </div>`).join('')}
           <div style="font-size:.6rem;color:var(--text-dim);margin-top:.6rem;font-family:var(--font-section)">
-            Ocultar remove a medalha do seu perfil — o progresso permanece.
+            Ocultar remove a medalha do seu perfil â€” o progresso permanece.
           </div>
         </div>`;
       cx.addEventListener('click', e => { if (e.target === cx) cx.remove(); });
@@ -682,7 +682,7 @@ const ArquitetoConsole = {
 
   async _conceder(id) {
     try {
-      await API.conquistas.conceder(id);   // o interceptador do api.js dispara a Cerimônia
+      await API.conquistas.conceder(id);   // o interceptador do api.js dispara a CerimÃ´nia
       document.getElementById('arq-comemorativas')?.remove();
     } catch (err) {
       SoloDialog.toast(err.message || String(err), 'error');
@@ -691,32 +691,32 @@ const ArquitetoConsole = {
 
   async _revogar(id) {
     const ok = await SoloDialog.confirm(
-      'Revogar esta comemorativa? Ela volta ao estado bloqueado e o XP/moedas do bônus são estornados — útil para rever a cerimônia.',
-      { titulo: 'Revogar Comemorativa', tipo: 'warn', icon: '↺', btnOk: 'Revogar', btnCancel: 'Cancelar' }
+      'Revogar esta comemorativa? Ela volta ao estado bloqueado e o XP/moedas do bÃ´nus sÃ£o estornados â€” Ãºtil para rever a cerimÃ´nia.',
+      { titulo: 'Revogar Comemorativa', tipo: 'warn', icon: 'â†º', btnOk: 'Revogar', btnCancel: 'Cancelar' }
     );
     if (!ok) return;
     try {
       const r = await API.conquistas.revogar(id);
-      SoloDialog.toast(`↺ Revogada — −${r.xp_estornado} XP estornados`, 'info');
-      // Reabre o painel já atualizado
+      SoloDialog.toast(`â†º Revogada â€” âˆ’${r.xp_estornado} XP estornados`, 'info');
+      // Reabre o painel jÃ¡ atualizado
       document.getElementById('arq-comemorativas')?.remove();
       this.comemorativas();
-      // Estorno não passa pelo canal de celebração: atualiza a tela na mão
+      // Estorno nÃ£o passa pelo canal de celebraÃ§Ã£o: atualiza a tela na mÃ£o
       window.App?.atualizarPaginaAtual?.();
     } catch (err) {
       SoloDialog.toast(err.message || String(err), 'error');
     }
   },
 
-  /* Reconcilia nível/rank/título com o XP acumulado e celebra o resultado */
+  /* Reconcilia nÃ­vel/rank/tÃ­tulo com o XP acumulado e celebra o resultado */
   async sincronizarNivel() {
     try {
       const r = await API.post('/conquistas/sincronizar-nivel', {});
       if (!r.level_ups?.length) {
-        SoloDialog.toast('✔ Nível já está em dia', 'info');
+        SoloDialog.toast('âœ” NÃ­vel jÃ¡ estÃ¡ em dia', 'info');
         return;
       }
-      // A Ascensão e a atualização da tela vêm pelo canal 'sr:recompensa'
+      // A AscensÃ£o e a atualizaÃ§Ã£o da tela vÃªm pelo canal 'sr:recompensa'
     } catch (err) {
       SoloDialog.toast(err.message || String(err), 'error');
     }
@@ -725,7 +725,7 @@ const ArquitetoConsole = {
   async _visibilidade(id, visivel) {
     try {
       await API.conquistas.visibilidade(id, visivel);
-      SoloDialog.toast(visivel ? '👁 Medalha visível no perfil' : '🚫 Medalha oculta', 'info');
+      SoloDialog.toast(visivel ? 'ðŸ‘ Medalha visÃ­vel no perfil' : 'ðŸš« Medalha oculta', 'info');
     } catch (err) {
       SoloDialog.toast(err.message || String(err), 'error');
     }
@@ -736,14 +736,14 @@ const ArquitetoConsole = {
     ConquistaFX.show({
       id: 'conq_dev_habilidades_' + Date.now(),
       codigo: 'dominio_habilidades',
-      icone: '💻',
-      titulo: 'Domínio das Habilidades',
-      descricao: 'Desenvolvimento integrado S-Rank (Caçador, Opus e Gemini)',
+      icone: 'ðŸ’»',
+      titulo: 'DomÃ­nio das Habilidades',
+      descricao: 'Desenvolvimento integrado S-Rank (CaÃ§ador, Opus e Gemini)',
       xp_bonus: 5000
     });
   },
 
-  /* ── DOM ───────────────────────────────────────────────── */
+  /* â”€â”€ DOM â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   _garantirDOM() {
     if (document.getElementById('arq-console')) return;
 
@@ -766,7 +766,7 @@ const ArquitetoConsole = {
       background:linear-gradient(170deg,#1a1206,#0d0d1a 60%);
       border:1px solid rgba(251,191,36,.55);border-radius:16px;
       box-shadow:0 0 40px rgba(251,191,36,.25), 0 18px 50px rgba(0,0,0,.6);`;
-    /* ── Helpers de UI do painel ── */
+    /* â”€â”€ Helpers de UI do painel â”€â”€ */
     const CORES = {
       ouro:     ['var(--gold-bright)', '251,191,36'],
       roxo:     ['#d8b4fe',            '168,85,247'],
@@ -774,7 +774,7 @@ const ArquitetoConsole = {
       ciano:    ['#67e8f9',            '34,211,238'],
       cinza:    ['#94a3b8',            '148,163,184'],
       vermelho: ['#f87171',            '239,68,68'],
-      rosa:     ['#ff6ec4',            '255,46,154'],   // insígnias Evelynn
+      rosa:     ['#ff6ec4',            '255,46,154'],   // insÃ­gnias Evelynn
     };
     const bt = (rotulo, acao, tom = 'ouro', tracejado = false) => {
       const [cor, rgb] = CORES[tom] || CORES.ouro;
@@ -798,7 +798,7 @@ const ArquitetoConsole = {
           font-family:var(--font-section);font-size:.6rem;font-weight:700;
           letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);
           background:none;border:none;cursor:pointer;padding:.45rem .2rem .3rem;text-align:left">
-          <span class="arq-sec-seta" style="transition:transform .2s;display:inline-block;${aberta ? 'transform:rotate(90deg)' : ''}">▸</span>
+          <span class="arq-sec-seta" style="transition:transform .2s;display:inline-block;${aberta ? 'transform:rotate(90deg)' : ''}">â–¸</span>
           <span style="flex:1">${titulo}</span>
         </button>
         <div class="arq-sec-corpo" style="display:${aberta ? 'flex' : 'none'};flex-direction:column;gap:.3rem;padding-bottom:.35rem">
@@ -808,58 +808,58 @@ const ArquitetoConsole = {
 
     el.innerHTML = `
       <div id="arq-console-handle" style="display:flex;align-items:center;gap:.5rem;padding-bottom:.5rem;margin-bottom:.2rem;border-bottom:1px solid rgba(251,191,36,.2);cursor:grab;user-select:none" title="Arraste para mover">
-        <span style="font-size:1.1rem">⚒</span>
+        <span style="font-size:1.1rem">âš’</span>
         <div style="flex:1">
           <div style="font-family:var(--font-title);font-size:.85rem;color:var(--gold-bright)">Forja de Testes</div>
-          <div style="font-family:var(--font-section);font-size:.56rem;letter-spacing:.14em;color:var(--text-muted)">SÓ O ARQUITETO VÊ · NADA É SALVO</div>
+          <div style="font-family:var(--font-section);font-size:.56rem;letter-spacing:.14em;color:var(--text-muted)">SÃ“ O ARQUITETO VÃŠ Â· NADA Ã‰ SALVO</div>
         </div>
-        <button onclick="ArquitetoConsole.fechar()" style="color:var(--text-muted);cursor:pointer;font-size:1rem;background:none;border:none">✕</button>
+        <button onclick="ArquitetoConsole.fechar()" style="color:var(--text-muted);cursor:pointer;font-size:1rem;background:none;border:none">âœ•</button>
       </div>
 
       <div id="arq-console-corpo" style="display:flex;flex-direction:column;gap:.3rem;overflow-y:auto;max-height:min(72vh,620px);padding-right:.25rem;margin-right:-.25rem">
 
-        ${sec('propostas', '🗂 Propostas de Interface', true, [
-          bt('Cartão de Missão',        'cardMissao()',   'roxo'),
-          bt('Forja de Missões',        'forjaMissao()',  'roxo'),
+        ${sec('propostas', 'ðŸ—‚ Propostas de Interface', true, [
+          bt('CartÃ£o de MissÃ£o',        'cardMissao()',   'roxo'),
+          bt('Forja de MissÃµes',        'forjaMissao()',  'roxo'),
           bt('Banner "O Monarca"',      'banner()',       'roxo'),
         ])}
 
-        ${sec('hunters', '📜 Hunters & Convites', false, [
+        ${sec('hunters', 'ðŸ“œ Hunters & Convites', false, [
           bt('Convocar hunters (convites)', 'convites()', 'ciano'),
         ])}
 
-        ${sec('conquistas', '🏅 Conquistas & Cerimônias', false, [
+        ${sec('conquistas', 'ðŸ… Conquistas & CerimÃ´nias', false, [
           bt('Comemorativas (conceder/ocultar)', 'comemorativas()', 'ouro'),
-          bt('Cerimônia de Conquista',           'cerimonia()',     'ouro'),
-          bt('Fila — 3 cerimônias seguidas',     'fila3()',         'ouro'),
+          bt('CerimÃ´nia de Conquista',           'cerimonia()',     'ouro'),
+          bt('Fila â€” 3 cerimÃ´nias seguidas',     'fila3()',         'ouro'),
           bt('Selo + carimbo no quadro',         'selo()',          'ouro'),
         ])}
 
-        ${sec('ascensao', '✨ Ascensão & Nível', false, [
-          bt('Ascensão (1 nível)',            'levelup()',           'violeta'),
-          bt('Ascensão múltipla (+11)',       'ascensaoMultipla()',  'violeta'),
-          bt('Sequência: Ascensão → Cerimônia','sequenciaCompleta()', 'violeta'),
-          bt('Sincronizar meu nível (reparo)','sincronizarNivel()',  'ciano'),
+        ${sec('ascensao', 'âœ¨ AscensÃ£o & NÃ­vel', false, [
+          bt('AscensÃ£o (1 nÃ­vel)',            'levelup()',           'violeta'),
+          bt('AscensÃ£o mÃºltipla (+11)',       'ascensaoMultipla()',  'violeta'),
+          bt('SequÃªncia: AscensÃ£o â†’ CerimÃ´nia','sequenciaCompleta()', 'violeta'),
+          bt('Sincronizar meu nÃ­vel (reparo)','sincronizarNivel()',  'ciano'),
         ])}
 
-        ${sec('efeitos', '💥 Efeitos Avulsos', false, [
-          bt('Explosão de partículas', 'explosao()', 'ciano'),
+        ${sec('efeitos', 'ðŸ’¥ Efeitos Avulsos', false, [
+          bt('ExplosÃ£o de partÃ­culas', 'explosao()', 'ciano'),
           bt('Sparks + XP Float',      'xpfloat()',  'ciano'),
         ])}
 
-        ${sec('gemini', '🧪 Protótipos (Gemini)', false, [
+        ${sec('gemini', 'ðŸ§ª ProtÃ³tipos (Gemini)', false, [
           bt('Medalha JH3FFTH',       'window.Jh3ffthFX.toggle()', 'cinza', true),
           bt('Medalha SOLO',          'window.SoloFX.toggle()',    'cinza', true),
           bt('Card de Rotina',        'window.SoloFX.demoCard()',  'cinza', true),
-          bt('Lançador de Missões',   'window.SoloFX.demoLauncher()', 'cinza', true),
-          bt('Domínio da Forja',      'window.ForjaFX.demo()',     'cinza', true),
-          bt('Domínio das Habilidades','dominioHabilidades()', 'cinza', true),
+          bt('LanÃ§ador de MissÃµes',   'window.SoloFX.demoLauncher()', 'cinza', true),
+          bt('DomÃ­nio da Forja',      'window.ForjaFX.demo()',     'cinza', true),
+          bt('DomÃ­nio das Habilidades','dominioHabilidades()', 'cinza', true),
           bt('Medalha Diana (Foice)', 'window.DianaFX.cerimonia()', 'ciano', true),
           bt('Vitrine: Mono Diana',   'window.DianaFX.vitrineCustomizada()', 'ciano', true),
         ])}
 
 
-        ${sec('auras', '🌸 Auras Cosm\u00e9ticas', false, [
+        ${sec('auras', 'ðŸŒ¸ Auras Cosm\u00e9ticas', false, [
           bt('Preview: Bella Rosa',      'window.Auras?.vitrine("bella-rosa")', 'rosa', true),
           bt('Preview: todas as auras',  'window.Auras?.vitrine()', 'ouro', true),
           bt('Diagn\u00f3stico de auras',     'window.Auras?.diagnostico?.()', 'cinza', true),
@@ -867,18 +867,18 @@ const ArquitetoConsole = {
           bt('\u2736 Enviar Aura a Hunter',    'ArquitetoConsole.enviarAura()', 'rosa', false),
         ])}
 
-        ${sec('insignias', '🎖 Insígnias com arte própria', false, [
-          bt('Cerimônia: Mono Evelynn',   'window.EvelynnFX.cerimonia()', 'rosa', true),
+        ${sec('insignias', 'ðŸŽ– InsÃ­gnias com arte prÃ³pria', false, [
+          bt('CerimÃ´nia: Mono Evelynn',   'window.EvelynnFX.cerimonia()', 'rosa', true),
           bt('Vitrine: Mono Evelynn',     'vitrineInsignia("mono_evelynn")', 'rosa', true),
           bt('Vitrine: Isabella Costa',   'vitrineInsignia("isabella")', 'rosa', true),
           bt('Nexus Social (vitrine)',     'vitrineInsignia("nexus-social")', 'ciano', true),
           bt('Vitrine: todas as artes',   'vitrineInsignia()', 'ciano', true),
           bt('Aura: Bella Rosa (preview)', 'window.Auras?.vitrine("bella-rosa")', 'rosa', true),
           bt('Aura: Vitrine completa',     'window.Auras?.vitrine()', 'ouro', true),
-          bt('✨ Enviar Aura Bella Rosa',  'ArquitetoConsole.enviarAura()', 'rosa', false),
+          bt('âœ¨ Enviar Aura Bella Rosa',  'ArquitetoConsole.enviarAura()', 'rosa', false),
         ])}
 
-        ${sec('sons', '🔊 Sons', false, [], `
+        ${sec('sons', 'ðŸ”Š Sons', false, [], `
           <div style="display:flex;gap:.35rem">
             ${['conquista','carimbo','levelup'].map((s,i) => `
               <button onclick="ArquitetoConsole.som('${s}')" style="
@@ -888,11 +888,11 @@ const ArquitetoConsole = {
                 border:1px solid rgba(251,191,36,.3);transition:all .15s"
                 onmouseover="this.style.background='rgba(251,191,36,.2)'"
                 onmouseout="this.style.background='rgba(251,191,36,.07)'">
-                <div style="font-size:.95rem">${['🎺','🔨','🌟'][i]}</div>${s}
+                <div style="font-size:.95rem">${['ðŸŽº','ðŸ”¨','ðŸŒŸ'][i]}</div>${s}
               </button>`).join('')}
           </div>`)}
 
-        ${sec('perigo', '☠ Zona de Perigo', false, [
+        ${sec('perigo', 'â˜  Zona de Perigo', false, [
           bt('Resetar Progresso (zera tudo)',
              'if(window.__resetPerfilArquiteto)window.__resetPerfilArquiteto();else SoloDialog.toast(\'Abra o Dashboard primeiro\',\'warn\')',
              'vermelho', true),
@@ -900,14 +900,14 @@ const ArquitetoConsole = {
       </div>
 
       <div style="font-size:.56rem;color:var(--text-dim);padding-top:.5rem;margin-top:.2rem;border-top:1px solid rgba(251,191,36,.15);font-family:var(--font-section)">
-        Ctrl+Alt+A · duplo-clique no badge ★ Arquiteto ★
+        Ctrl+Alt+A Â· duplo-clique no badge â˜… Arquiteto â˜…
       </div>`;
     document.body.appendChild(el);
     this._tornarArrastavel(el);
     this._bindSecoes(el);
   },
 
-  /* Seções recolhíveis — lembra o que ficou aberto */
+  /* SeÃ§Ãµes recolhÃ­veis â€” lembra o que ficou aberto */
   _bindSecoes(el) {
     let abertas = [];
     try { abertas = JSON.parse(localStorage.getItem('arq_secoes') || '["propostas"]'); }
@@ -931,12 +931,12 @@ const ArquitetoConsole = {
     });
   },
 
-  /* ── Arrastável (mouse e toque), com posição lembrada ──── */
+  /* â”€â”€ ArrastÃ¡vel (mouse e toque), com posiÃ§Ã£o lembrada â”€â”€â”€â”€ */
   _tornarArrastavel(el) {
     const handle = el.querySelector('#arq-console-handle');
     if (!handle) return;
 
-    // Restaura a última posição
+    // Restaura a Ãºltima posiÃ§Ã£o
     try {
       const pos = JSON.parse(localStorage.getItem('arq_console_pos') || 'null');
       if (pos) {
@@ -964,7 +964,7 @@ const ArquitetoConsole = {
       } catch (_) {}
     };
     handle.addEventListener('pointerdown', e => {
-      if (e.target.closest('button')) return;   // não arrasta pelo ✕
+      if (e.target.closest('button')) return;   // nÃ£o arrasta pelo âœ•
       e.preventDefault();
       const r = el.getBoundingClientRect();
       el.style.left = r.left + 'px';
@@ -1025,42 +1025,42 @@ const SoloFX = {
 
     card.innerHTML = `
       <div style="position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg, transparent, #a855f7, #d8b4fe, transparent); animation: cq-shimmer 3s linear infinite; background-size: 200% 100%;"></div>
-      <div style="position:absolute; top:12px; right:16px; font-size:1.2rem; cursor:pointer; color:#4b5563; transition: color 0.2s" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#4b5563'" onclick="this.parentElement.remove()">✕</div>
+      <div style="position:absolute; top:12px; right:16px; font-size:1.2rem; cursor:pointer; color:#4b5563; transition: color 0.2s" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#4b5563'" onclick="this.parentElement.remove()">âœ•</div>
 
-      <!-- Ícone Cinético na Esquerda -->
+      <!-- Ãcone CinÃ©tico na Esquerda -->
       <div style="width:65px; height:65px; flex-shrink:0; background:rgba(88,28,135,0.15); border-radius:12px; display:flex; align-items:center; justify-content:center; box-shadow:0 0 15px rgba(88,28,135,0.4) inset; border:1px solid rgba(168,85,247,0.2);">
         <div style="width:50px; height:50px;">
           ${SVG}
         </div>
       </div>
 
-      <!-- Conteúdo Direito (Linhas) -->
+      <!-- ConteÃºdo Direito (Linhas) -->
       <div style="flex:1; display:flex; flex-direction:column; justify-content:space-between;">
         
-        <!-- Topo: Título + Tempo -->
+        <!-- Topo: TÃ­tulo + Tempo -->
         <div style="display:flex; justify-content:space-between; align-items:flex-start;">
           <div style="font-family:var(--font-title); font-size:1.3rem; color:#fff; text-shadow:0 2px 4px rgba(168,85,247,0.5); letter-spacing:0.5px;">O Futuro dos Cards Solo</div>
           <div style="font-family:var(--font-section); font-size:0.85rem; color:#d1d5db; display:flex; align-items:center; gap:6px; margin-right:15px; text-shadow:0 0 5px rgba(0,0,0,0.8);">
-            <span style="color:#d8b4fe">⏳ Prazo</span> 23h 00m 33s
+            <span style="color:#d8b4fe">â³ Prazo</span> 23h 00m 33s
           </div>
         </div>
 
         <!-- Meio: Tags + Recompensas -->
         <div style="display:flex; align-items:center; gap:12px; margin-top:8px;">
-          <span style="background:rgba(216,180,254,0.15); color:#d8b4fe; border:1px solid #a855f7; padding:4px 10px; border-radius:20px; font-size:0.65rem; font-family:var(--font-section); font-weight:700; letter-spacing:1px; text-transform:uppercase; box-shadow:0 0 8px rgba(168,85,247,0.3) inset;">✦ S-RANK</span>
-          <span style="background:rgba(15,23,42,0.8); color:#9ca3af; border:1px solid #475569; padding:4px 10px; border-radius:20px; font-size:0.65rem; font-family:var(--font-section); font-weight:700; letter-spacing:1px; text-transform:uppercase;">⏳ PENDENTE</span>
+          <span style="background:rgba(216,180,254,0.15); color:#d8b4fe; border:1px solid #a855f7; padding:4px 10px; border-radius:20px; font-size:0.65rem; font-family:var(--font-section); font-weight:700; letter-spacing:1px; text-transform:uppercase; box-shadow:0 0 8px rgba(168,85,247,0.3) inset;">âœ¦ S-RANK</span>
+          <span style="background:rgba(15,23,42,0.8); color:#9ca3af; border:1px solid #475569; padding:4px 10px; border-radius:20px; font-size:0.65rem; font-family:var(--font-section); font-weight:700; letter-spacing:1px; text-transform:uppercase;">â³ PENDENTE</span>
           <div style="width:1px; height:14px; background:#374151;"></div>
-          <span style="font-size:0.85rem; font-weight:bold; color:var(--gold-bright); text-shadow:0 0 5px rgba(251,191,36,0.4);">⚡ 500 XP &nbsp;•&nbsp; 🪙 50</span>
+          <span style="font-size:0.85rem; font-weight:bold; color:var(--gold-bright); text-shadow:0 0 5px rgba(251,191,36,0.4);">âš¡ 500 XP &nbsp;â€¢&nbsp; ðŸª™ 50</span>
         </div>
 
-        <!-- Barra Magmática de Sincronização (Opcional p/ mostrar progresso em andamento) -->
+        <!-- Barra MagmÃ¡tica de SincronizaÃ§Ã£o (Opcional p/ mostrar progresso em andamento) -->
         <div style="margin-top:14px;">
           <div style="height:4px; background:#1e1b4b; border-radius:2px; overflow:hidden; box-shadow:0 0 5px #000 inset;">
             <div style="width:30%; height:100%; background:linear-gradient(90deg, #581c87, #a855f7, #d8b4fe); box-shadow:0 0 10px #a855f7; animation: cq-shimmer 2s ease-in-out infinite alternate; background-size:200% 100%"></div>
           </div>
         </div>
 
-        <!-- Botões (State Machine) -->
+        <!-- BotÃµes (State Machine) -->
         <div id="demo-card-actions" style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
           
           <button id="demo-btn-iniciar" style="
@@ -1073,7 +1073,7 @@ const SoloFX = {
             onmouseover="this.style.background='linear-gradient(90deg, #2e1065, #581c87)'; this.style.boxShadow='0 0 20px rgba(168,85,247,0.5) inset, 0 4px 10px rgba(168,85,247,0.3)'"
             onmouseout="this.style.background='linear-gradient(90deg, #1e1b4b, #2e1065)'; this.style.boxShadow='0 0 10px rgba(168,85,247,0.2) inset, 0 4px 6px rgba(0,0,0,0.5)'"
             onclick="document.getElementById('demo-btn-iniciar').style.display='none'; document.getElementById('demo-btn-andamento').style.display='flex';">
-            <span style="font-size:1rem; text-shadow:0 0 5px #d8b4fe">▶</span> INICIAR MISSÃO
+            <span style="font-size:1rem; text-shadow:0 0 5px #d8b4fe">â–¶</span> INICIAR MISSÃƒO
           </button>
           
           <div id="demo-btn-andamento" style="display:none; gap:10px;">
@@ -1085,7 +1085,7 @@ const SoloFX = {
               box-shadow:0 0 8px rgba(0,0,0,0.5) inset; transition:all 0.2s;"
               onmouseover="this.style.background='#374151'; this.style.borderColor='#6b7280'"
               onmouseout="this.style.background='linear-gradient(90deg, #1f2937, #111827)'; this.style.borderColor='#4b5563'">
-              ⏸ PAUSAR
+              â¸ PAUSAR
             </button>
             <button style="
               padding:8px 16px; border-radius:8px; cursor:pointer;
@@ -1096,7 +1096,7 @@ const SoloFX = {
               onmouseover="this.style.background='#70001a'; this.style.boxShadow='0 0 15px rgba(225,29,72,0.5) inset'"
               onmouseout="this.style.background='linear-gradient(90deg, #3f000f, #210008)'; this.style.boxShadow='0 0 8px rgba(225,29,72,0.2) inset'"
               onclick="document.getElementById('demo-btn-andamento').style.display='none'; document.getElementById('demo-btn-iniciar').style.display='flex';">
-              ✖ CANCELAR HOJE
+              âœ– CANCELAR HOJE
             </button>
             <button style="
               padding:8px 24px; border-radius:8px; cursor:pointer;
@@ -1108,7 +1108,7 @@ const SoloFX = {
               onmouseover="this.style.background='linear-gradient(90deg, #581c87, #7e22ce)'; this.style.boxShadow='0 0 25px rgba(216,180,254,0.8) inset, 0 0 25px rgba(168,85,247,0.8)'"
               onmouseout="this.style.background='linear-gradient(90deg, #3b0764, #581c87)'; this.style.boxShadow='0 0 20px rgba(168,85,247,0.5) inset, 0 0 15px rgba(168,85,247,0.4)'"
               onclick="document.getElementById('solo-demo-card').style.animation='conquista-materialize 0.5s reverse forwards'; setTimeout(() => document.getElementById('solo-demo-card').remove(), 500); if(typeof SFX !== 'undefined') SFX.play('carimbo');">
-              <span style="font-size:1.1rem; color:#d8b4fe; text-shadow:0 0 10px #d8b4fe">✔</span> CONCLUIR
+              <span style="font-size:1.1rem; color:#d8b4fe; text-shadow:0 0 10px #d8b4fe">âœ”</span> CONCLUIR
             </button>
           </div>
         </div>
@@ -1118,7 +1118,7 @@ const SoloFX = {
 
     document.body.appendChild(card);
     
-    // Tornar o card arrastável
+    // Tornar o card arrastÃ¡vel
     let ox = 0, oy = 0;
     const handle = card;
     const mover = e => { card.style.left = (e.clientX - ox) + 'px'; card.style.top = (e.clientY - oy) + 'px'; };
@@ -1199,10 +1199,10 @@ const SoloFX = {
           ${SVGIcon}
         </div>
         <div style="flex:1">
-          <div style="font-family:var(--font-title); font-size:1.3rem; color:#fff; text-shadow:0 2px 4px rgba(168,85,247,0.5); letter-spacing:1px;">Nova Missão S-Rank</div>
-          <div style="font-family:var(--font-section); font-size:0.65rem; color:#d8b4fe; letter-spacing:3px; font-weight:700; text-transform:uppercase; margin-top:4px; opacity:0.8;">Sistema de Missões Solo Routines</div>
+          <div style="font-family:var(--font-title); font-size:1.3rem; color:#fff; text-shadow:0 2px 4px rgba(168,85,247,0.5); letter-spacing:1px;">Nova MissÃ£o S-Rank</div>
+          <div style="font-family:var(--font-section); font-size:0.65rem; color:#d8b4fe; letter-spacing:3px; font-weight:700; text-transform:uppercase; margin-top:4px; opacity:0.8;">Sistema de MissÃµes Solo Routines</div>
         </div>
-        <button style="background:none; border:none; color:#9ca3af; font-size:1.5rem; cursor:pointer; transition:0.2s" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#9ca3af'" onclick="document.getElementById('solo-demo-launcher').remove()">✕</button>
+        <button style="background:none; border:none; color:#9ca3af; font-size:1.5rem; cursor:pointer; transition:0.2s" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#9ca3af'" onclick="document.getElementById('solo-demo-launcher').remove()">âœ•</button>
       </div>
 
       <!-- Scrollable Body -->
@@ -1214,18 +1214,18 @@ const SoloFX = {
           <div style="flex:1; padding:12px; text-align:center; background:rgba(255,255,255,0.03); border:1px solid #374151; border-radius:8px; color:#9ca3af; font-family:var(--font-title); font-size:0.85rem; letter-spacing:1px; cursor:pointer;">TAREFA AVULSA</div>
         </div>
 
-        <!-- Título -->
+        <!-- TÃ­tulo -->
         <div>
-          <div style="font-family:var(--font-section); font-size:0.65rem; color:#d8b4fe; font-weight:700; letter-spacing:2px; text-transform:uppercase; margin-bottom:8px;">TÍTULO DA MISSÃO</div>
-          <input type="text" placeholder="Designação da rotina..." style="width:100%; background:linear-gradient(90deg, rgba(0,0,0,0.6), rgba(15,7,32,0.4)); border:1px solid rgba(88,28,135,0.4); border-radius:8px; color:#fff; font-family:var(--font-title); font-size:1.1rem; letter-spacing:1px; padding:14px; outline:none; transition:all 0.3s; box-shadow:0 5px 15px rgba(0,0,0,0.5) inset;" onfocus="this.style.borderColor='#d8b4fe'; this.style.boxShadow='0 0 15px rgba(168,85,247,0.3) inset, 0 0 10px rgba(168,85,247,0.2)'" onblur="this.style.borderColor='rgba(88,28,135,0.4)'; this.style.boxShadow='0 5px 15px rgba(0,0,0,0.5) inset'">
+          <div style="font-family:var(--font-section); font-size:0.65rem; color:#d8b4fe; font-weight:700; letter-spacing:2px; text-transform:uppercase; margin-bottom:8px;">TÃTULO DA MISSÃƒO</div>
+          <input type="text" placeholder="DesignaÃ§Ã£o da rotina..." style="width:100%; background:linear-gradient(90deg, rgba(0,0,0,0.6), rgba(15,7,32,0.4)); border:1px solid rgba(88,28,135,0.4); border-radius:8px; color:#fff; font-family:var(--font-title); font-size:1.1rem; letter-spacing:1px; padding:14px; outline:none; transition:all 0.3s; box-shadow:0 5px 15px rgba(0,0,0,0.5) inset;" onfocus="this.style.borderColor='#d8b4fe'; this.style.boxShadow='0 0 15px rgba(168,85,247,0.3) inset, 0 0 10px rgba(168,85,247,0.2)'" onblur="this.style.borderColor='rgba(88,28,135,0.4)'; this.style.boxShadow='0 5px 15px rgba(0,0,0,0.5) inset'">
         </div>
 
-        <!-- Frequência -->
+        <!-- FrequÃªncia -->
         <div>
-          <div style="font-family:var(--font-section); font-size:0.65rem; color:#d8b4fe; font-weight:700; letter-spacing:2px; text-transform:uppercase; margin-bottom:12px;">FREQUÊNCIA</div>
+          <div style="font-family:var(--font-section); font-size:0.65rem; color:#d8b4fe; font-weight:700; letter-spacing:2px; text-transform:uppercase; margin-bottom:12px;">FREQUÃŠNCIA</div>
           <div style="display:flex; gap:12px;">
             <div style="flex:1; padding:14px 8px; text-align:center; background:linear-gradient(180deg, #2e1065, #000); border:1px solid #a855f7; border-radius:8px; cursor:pointer; box-shadow:0 0 20px rgba(168,85,247,0.3) inset;">
-              <div style="font-family:var(--font-title); font-weight:700; font-size:0.8rem; letter-spacing:1px; color:#fff; text-shadow:0 0 5px #d8b4fe;">DIÁRIA</div>
+              <div style="font-family:var(--font-title); font-weight:700; font-size:0.8rem; letter-spacing:1px; color:#fff; text-shadow:0 0 5px #d8b4fe;">DIÃRIA</div>
             </div>
             <div style="flex:1; padding:14px 8px; text-align:center; background:#111827; border:1px solid #374151; border-radius:8px; cursor:pointer; transition:0.2s;" onmouseover="this.style.borderColor='#6b7280'" onmouseout="this.style.borderColor='#374151'">
               <div style="font-family:var(--font-title); font-weight:700; font-size:0.8rem; letter-spacing:1px; color:#9ca3af;">SEMANAL</div>
@@ -1239,22 +1239,22 @@ const SoloFX = {
           </div>
         </div>
 
-        <!-- Janela de Horário -->
+        <!-- Janela de HorÃ¡rio -->
         <div style="display:flex; align-items:center; gap:16px; padding:14px 16px; background:linear-gradient(90deg, rgba(0,0,0,0.4), transparent); border-left:3px solid rgba(168,85,247,0.3); cursor:pointer; transition:all 0.2s;" onmouseover="this.style.borderLeftColor='#d8b4fe'; this.style.background='linear-gradient(90deg, rgba(88,28,135,0.2), transparent)'" onmouseout="this.style.borderLeftColor='rgba(168,85,247,0.3)'; this.style.background='linear-gradient(90deg, rgba(0,0,0,0.4), transparent)'">
           <div style="width:20px; height:20px; border:1px solid #7e22ce; border-radius:4px; background:rgba(0,0,0,0.8); box-shadow:0 0 10px rgba(168,85,247,0.2) inset;"></div>
           <div>
-            <div style="font-family:var(--font-title); font-size:0.85rem; color:#e5e7eb; letter-spacing:1px;">DEFINIR JANELA DE HORÁRIO</div>
-            <div style="font-family:var(--font-section); font-size:0.65rem; color:#6b7280; letter-spacing:1px; margin-top:2px;">Sincronização temporal estrita</div>
+            <div style="font-family:var(--font-title); font-size:0.85rem; color:#e5e7eb; letter-spacing:1px;">DEFINIR JANELA DE HORÃRIO</div>
+            <div style="font-family:var(--font-section); font-size:0.65rem; color:#6b7280; letter-spacing:1px; margin-top:2px;">SincronizaÃ§Ã£o temporal estrita</div>
           </div>
         </div>
 
         <!-- Prioridade -->
         <div>
-          <div style="font-family:var(--font-section); font-size:0.65rem; color:#d8b4fe; font-weight:700; letter-spacing:2px; text-transform:uppercase; margin-bottom:12px;">NÍVEL DE PRIORIDADE</div>
+          <div style="font-family:var(--font-section); font-size:0.65rem; color:#d8b4fe; font-weight:700; letter-spacing:2px; text-transform:uppercase; margin-bottom:12px;">NÃVEL DE PRIORIDADE</div>
           <div style="display:flex; gap:12px;">
             <div style="flex:1; padding:16px 8px; display:flex; flex-direction:column; align-items:center; background:#0b0f19; border:1px solid #1f2937; border-radius:8px; cursor:pointer;">
               <div style="width:12px; height:12px; border-radius:50%; background:#991b1b; box-shadow:0 0 8px #991b1b;"></div>
-              <div style="font-family:var(--font-title); font-size:0.75rem; letter-spacing:1px; color:#6b7280; margin-top:10px;">CRÍTICA</div>
+              <div style="font-family:var(--font-title); font-size:0.75rem; letter-spacing:1px; color:#6b7280; margin-top:10px;">CRÃTICA</div>
             </div>
             <div style="flex:1; padding:16px 8px; display:flex; flex-direction:column; align-items:center; background:#0b0f19; border:1px solid #1f2937; border-radius:8px; cursor:pointer;">
               <div style="width:12px; height:12px; border-radius:50%; background:#9a3412; box-shadow:0 0 8px #9a3412;"></div>
@@ -1262,7 +1262,7 @@ const SoloFX = {
             </div>
             <div style="flex:1; padding:16px 8px; display:flex; flex-direction:column; align-items:center; background:linear-gradient(180deg, rgba(63,46,20,0.5), #000); border:1px solid rgba(251,191,36,0.5); border-radius:8px; cursor:pointer; box-shadow:0 0 20px rgba(251,191,36,0.15) inset;">
               <div style="width:12px; height:12px; border-radius:50%; background:#f59e0b; box-shadow:0 0 15px #f59e0b, 0 0 25px rgba(251,191,36,0.6);"></div>
-              <div style="font-family:var(--font-title); font-size:0.75rem; letter-spacing:1px; color:#fde68a; margin-top:10px; text-shadow:0 0 5px rgba(251,191,36,0.5);">MÉDIA</div>
+              <div style="font-family:var(--font-title); font-size:0.75rem; letter-spacing:1px; color:#fde68a; margin-top:10px; text-shadow:0 0 5px rgba(251,191,36,0.5);">MÃ‰DIA</div>
             </div>
             <div style="flex:1; padding:16px 8px; display:flex; flex-direction:column; align-items:center; background:#0b0f19; border:1px solid #1f2937; border-radius:8px; cursor:pointer;">
               <div style="width:12px; height:12px; border-radius:50%; background:#065f46; box-shadow:0 0 8px #065f46;"></div>
@@ -1276,7 +1276,7 @@ const SoloFX = {
           <div style="font-family:var(--font-section); font-size:0.65rem; color:#d8b4fe; font-weight:700; letter-spacing:2px; text-transform:uppercase; margin-bottom:12px;">CLASSE DE DIFICULDADE</div>
           <div style="display:flex; gap:12px;">
             <div style="flex:1; padding:16px 8px; text-align:center; background:#0b0f19; border:1px solid #1f2937; border-radius:8px; cursor:pointer;">
-              <div style="font-family:var(--font-title); font-weight:700; font-size:0.9rem; letter-spacing:1px; color:#6b7280;">FÁCIL</div>
+              <div style="font-family:var(--font-title); font-weight:700; font-size:0.9rem; letter-spacing:1px; color:#6b7280;">FÃCIL</div>
               <div style="font-family:var(--font-section); font-size:0.6rem; color:#4b5563; margin-top:4px; letter-spacing:1px;">x0.5 MULT</div>
             </div>
             <div style="flex:1; padding:16px 8px; text-align:center; background:linear-gradient(180deg, rgba(46,16,101,0.6), #000); border:1px solid #9333ea; border-radius:8px; cursor:pointer; box-shadow:0 0 20px rgba(147,51,234,0.3) inset, 0 5px 15px rgba(0,0,0,0.8);">
@@ -1284,11 +1284,11 @@ const SoloFX = {
               <div style="font-family:var(--font-section); font-size:0.6rem; color:#c084fc; margin-top:4px; letter-spacing:1px;">x1.0 MULT</div>
             </div>
             <div style="flex:1; padding:16px 8px; text-align:center; background:#0b0f19; border:1px solid #1f2937; border-radius:8px; cursor:pointer;">
-              <div style="font-family:var(--font-title); font-weight:700; font-size:0.9rem; letter-spacing:1px; color:#6b7280;">DIFÍCIL</div>
+              <div style="font-family:var(--font-title); font-weight:700; font-size:0.9rem; letter-spacing:1px; color:#6b7280;">DIFÃCIL</div>
               <div style="font-family:var(--font-section); font-size:0.6rem; color:#4b5563; margin-top:4px; letter-spacing:1px;">x1.5 MULT</div>
             </div>
             <div style="flex:1; padding:16px 8px; text-align:center; background:#0b0f19; border:1px solid #1f2937; border-radius:8px; cursor:pointer;">
-              <div style="font-family:var(--font-title); font-weight:700; font-size:0.9rem; letter-spacing:1px; color:#6b7280;">LENDÁRIO</div>
+              <div style="font-family:var(--font-title); font-weight:700; font-size:0.9rem; letter-spacing:1px; color:#6b7280;">LENDÃRIO</div>
               <div style="font-family:var(--font-section); font-size:0.6rem; color:#4b5563; margin-top:4px; letter-spacing:1px;">x2.5 MULT</div>
             </div>
           </div>
@@ -1296,10 +1296,10 @@ const SoloFX = {
 
         <!-- Categoria -->
         <div>
-          <div style="font-family:var(--font-section); font-size:0.65rem; color:#d8b4fe; font-weight:700; letter-spacing:2px; text-transform:uppercase; margin-bottom:12px;">CLASSIFICAÇÃO TÁTICA</div>
+          <div style="font-family:var(--font-section); font-size:0.65rem; color:#d8b4fe; font-weight:700; letter-spacing:2px; text-transform:uppercase; margin-bottom:12px;">CLASSIFICAÃ‡ÃƒO TÃTICA</div>
           <div style="display:flex; gap:10px;">
             <div style="flex:1; padding:12px 6px; text-align:center; background:#0b0f19; border:1px solid #1f2937; border-radius:8px; cursor:pointer;">
-              <div style="font-family:var(--font-title); font-size:0.75rem; letter-spacing:1px; color:#6b7280;">SAÚDE</div>
+              <div style="font-family:var(--font-title); font-size:0.75rem; letter-spacing:1px; color:#6b7280;">SAÃšDE</div>
             </div>
             <div style="flex:1; padding:12px 6px; text-align:center; background:#0b0f19; border:1px solid #1f2937; border-radius:8px; cursor:pointer;">
               <div style="font-family:var(--font-title); font-size:0.75rem; letter-spacing:1px; color:#6b7280;">TRABALHO</div>
@@ -1319,7 +1319,7 @@ const SoloFX = {
           </div>
         </div>
 
-        <!-- Recompensas e Punições Grid S-RANK PREMIUM -->
+        <!-- Recompensas e PuniÃ§Ãµes Grid S-RANK PREMIUM -->
         <div style="display:flex; gap:20px; padding-top:10px; border-top:1px dashed rgba(168,85,247,0.2);">
           
           <div style="flex:1;">
@@ -1353,9 +1353,9 @@ const SoloFX = {
 
         </div>
 
-        <!-- Descrição -->
+        <!-- DescriÃ§Ã£o -->
         <div>
-          <div style="font-family:var(--font-section); font-size:0.65rem; color:#d8b4fe; font-weight:700; letter-spacing:2px; text-transform:uppercase; margin-bottom:8px;">DESCRIÇÃO TÁTICA (OPCIONAL)</div>
+          <div style="font-family:var(--font-section); font-size:0.65rem; color:#d8b4fe; font-weight:700; letter-spacing:2px; text-transform:uppercase; margin-bottom:8px;">DESCRIÃ‡ÃƒO TÃTICA (OPCIONAL)</div>
           <textarea placeholder="Detalhes operacionais adicionais..." style="width:100%; height:80px; background:linear-gradient(180deg, rgba(0,0,0,0.6), rgba(15,7,32,0.2)); border:1px solid rgba(88,28,135,0.4); border-radius:8px; color:#e5e7eb; font-family:var(--font-base); font-size:0.9rem; padding:14px; outline:none; resize:none; transition:all 0.3s; box-shadow:0 5px 15px rgba(0,0,0,0.5) inset;" onfocus="this.style.borderColor='#d8b4fe'; this.style.boxShadow='0 0 15px rgba(168,85,247,0.2) inset, 0 0 10px rgba(168,85,247,0.1)'" onblur="this.style.borderColor='rgba(88,28,135,0.4)'; this.style.boxShadow='0 5px 15px rgba(0,0,0,0.5) inset'"></textarea>
         </div>
 
@@ -1381,7 +1381,7 @@ const SoloFX = {
             <path d="M8 8L4 4"></path>
             <path d="M3 5l2-2"></path>
           </svg>
-          FORJAR MISSÃO
+          FORJAR MISSÃƒO
         </button>
       </div>
     `;
@@ -1503,7 +1503,7 @@ const SoloFX = {
           <div style="font-family:var(--font-section);font-size:0.85rem;font-weight:700;
                       letter-spacing:4px;color:#d8b4fe;text-transform:uppercase;margin-bottom:0.6rem;
                       text-shadow: 0 0 10px rgba(168,85,247,0.5);">
-            ✦ IMPÉRIO DA ESCURIDÃO ✦
+            âœ¦ IMPÃ‰RIO DA ESCURIDÃƒO âœ¦
           </div>
           <div style="font-family:var(--font-title);font-size:2.8rem;text-shadow:0 8px 25px rgba(0,0,0,0.8);
                       letter-spacing:2px; line-height:1.1; ${shimmerStyle}">
@@ -1583,7 +1583,7 @@ const SoloFX = {
       </span>
       
       <div class="conquista-mini-info">
-        <div class="conquista-mini-nome" style="color:#d8b4fe; text-shadow:0 0 5px rgba(168,85,247,0.4)">SOLO, O Império</div>
+        <div class="conquista-mini-nome" style="color:#d8b4fe; text-shadow:0 0 5px rgba(168,85,247,0.4)">SOLO, O ImpÃ©rio</div>
         <div class="conquista-mini-desc" style="color:#d1d5db">O Submundo despertou.</div>
       </div>`;
     quadro.prepend(card);
@@ -1697,15 +1697,15 @@ const ForjaFX = {
           <div style="font-family:var(--font-section);font-size:0.85rem;font-weight:700;
                       letter-spacing:4px;color:#6ee7b7;text-transform:uppercase;margin-bottom:0.6rem;
                       text-shadow: 0 0 10px rgba(16,185,129,0.5);">
-            ✦ FORJA SUPREMA ✦
+            âœ¦ FORJA SUPREMA âœ¦
           </div>
           <div style="font-family:var(--font-title);font-size:2.8rem;text-shadow:0 8px 25px rgba(0,0,0,0.8);
                       letter-spacing:2px; line-height:1.1; ${shimmerStyle}">
-            DOMÍNIO DA FORJA
+            DOMÃNIO DA FORJA
           </div>
           <div style="font-family:var(--font-section);font-size:1.1rem;font-weight:700;
                       letter-spacing:6px;color:#d1d5db;margin-top:0.6rem; text-shadow:0 2px 4px #000;">
-            A ARTE DA CRIAÇÃO
+            A ARTE DA CRIAÃ‡ÃƒO
           </div>
         </div>
       </div>
@@ -1751,8 +1751,8 @@ const ForjaFX = {
         ${this._svgMedalhaForja(40)}
       </div>
       <div>
-        <div class="cq-selo-lbl" style="color:#6ee7b7;font-weight:700;letter-spacing:1px;font-size:0.65rem">RECOMPENSA MÍTICA</div>
-        <div class="cq-selo-nome" style="color:#fff;font-size:1.1rem">DOMÍNIO DA FORJA</div>
+        <div class="cq-selo-lbl" style="color:#6ee7b7;font-weight:700;letter-spacing:1px;font-size:0.65rem">RECOMPENSA MÃTICA</div>
+        <div class="cq-selo-nome" style="color:#fff;font-size:1.1rem">DOMÃNIO DA FORJA</div>
       </div>`;
     pilha.appendChild(el);
     setTimeout(() => { el.classList.add('cq-selo-out'); setTimeout(() => el.remove(), 500); }, 6000);
@@ -1763,10 +1763,10 @@ const ForjaFX = {
     if (!quadro) return;
     quadro.querySelector('.empty-state')?.remove();
     // Idempotente: este demo tem o mesmo nome da comemorativa real
-    // "Domínio da Forja" — sem o guarda, o quadro ficava com cards repetidos.
+    // "DomÃ­nio da Forja" â€” sem o guarda, o quadro ficava com cards repetidos.
     if (quadro.querySelector('[data-cq-chave="demo-forja"]')) return;
     const jaTemReal = [...quadro.querySelectorAll('.conquista-mini-nome')]
-      .some(el => el.textContent.trim().toLowerCase() === 'domínio da forja');
+      .some(el => el.textContent.trim().toLowerCase() === 'domÃ­nio da forja');
     if (jaTemReal) return;
 
     const card = document.createElement('div');
@@ -1784,29 +1784,29 @@ const ForjaFX = {
       </span>
       
       <div class="conquista-mini-info">
-        <div class="conquista-mini-nome" style="color:#6ee7b7; text-shadow:0 0 5px rgba(16,185,129,0.4)">DOMÍNIO DA FORJA</div>
-        <div class="conquista-mini-desc" style="color:#d1d5db">A Arte da Criação.</div>
+        <div class="conquista-mini-nome" style="color:#6ee7b7; text-shadow:0 0 5px rgba(16,185,129,0.4)">DOMÃNIO DA FORJA</div>
+        <div class="conquista-mini-desc" style="color:#d1d5db">A Arte da CriaÃ§Ã£o.</div>
       </div>`;
     quadro.prepend(card);
     
     setTimeout(() => { if (typeof SFX !== 'undefined') SFX.play('carimbo'); }, 380);
   },
 
-  /* API pública do ensaio (convenção: onclick nunca chama método `_privado`) */
+  /* API pÃºblica do ensaio (convenÃ§Ã£o: onclick nunca chama mÃ©todo `_privado`) */
   demo() { return this._cerimonia(); },
 };
 
-/* ── Vitrine das insígnias ────────────────────────────────────────────────
-   Lê o REGISTRO do ConquistaFX, não uma lista escrita à mão. Toda arte
-   nova que se registrar aparece aqui sozinha, em três tamanhos, para
-   conferir leitura e simetria sem precisar conceder a badge a ninguém. */
+/* â”€â”€ Vitrine das insÃ­gnias â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   LÃª o REGISTRO do ConquistaFX, nÃ£o uma lista escrita Ã  mÃ£o. Toda arte
+   nova que se registrar aparece aqui sozinha, em trÃªs tamanhos, para
+   conferir leitura e simetria sem precisar conceder a badge a ninguÃ©m. */
 ArquitetoConsole.vitrineInsignia = function (codigo) {
   const velha = document.getElementById('arq-vitrine-insignia');
   if (velha) { velha.remove(); if (codigo === undefined) return; }
 
   const reg = window.ConquistaFX?._insignias || {};
   const codigos = codigo ? [codigo] : Object.keys(reg);
-  if (!codigos.length) { SoloDialog?.toast?.('Nenhuma insígnia registrada', 'info'); return; }
+  if (!codigos.length) { SoloDialog?.toast?.('Nenhuma insÃ­gnia registrada', 'info'); return; }
 
   const cx = document.createElement('div');
   cx.id = 'arq-vitrine-insignia';
@@ -1815,7 +1815,7 @@ ArquitetoConsole.vitrineInsignia = function (codigo) {
 
   const arte = (cod, tam) => {
     const svg = window.ConquistaFX?._insigniaCustom?.(cod, tam);
-    return svg || `<span style="font-size:${tam * .5}px;opacity:.4">🎖</span>`;
+    return svg || `<span style="font-size:${tam * .5}px;opacity:.4">ðŸŽ–</span>`;
   };
 
   cx.innerHTML = `
@@ -1824,16 +1824,16 @@ ArquitetoConsole.vitrineInsignia = function (codigo) {
       border:1px solid rgba(255,46,154,.45);border-radius:18px;
       box-shadow:0 0 60px rgba(255,46,154,.25)">
       <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:1.2rem">
-        <span style="font-size:1.2rem">🎖</span>
+        <span style="font-size:1.2rem">ðŸŽ–</span>
         <div style="flex:1">
           <div style="font-family:var(--font-title);font-size:1rem;color:#ff6ec4">
-            Vitrine das Insígnias</div>
+            Vitrine das InsÃ­gnias</div>
           <div style="font-family:var(--font-section);font-size:.6rem;letter-spacing:.14em;
-            color:var(--text-muted)">CERIMÔNIA · MATERIAIS · CHIP — OS TRÊS TAMANHOS REAIS</div>
+            color:var(--text-muted)">CERIMÃ”NIA Â· MATERIAIS Â· CHIP â€” OS TRÃŠS TAMANHOS REAIS</div>
         </div>
         <button onclick="document.getElementById('arq-vitrine-insignia').remove()"
           style="background:none;border:none;color:var(--text-muted);font-size:1.1rem;
-          cursor:pointer">✕</button>
+          cursor:pointer">âœ•</button>
       </div>
       ${codigos.map(cod => `
         <div style="display:flex;align-items:center;gap:1.4rem;padding:1rem;margin-bottom:.7rem;
@@ -1849,7 +1849,7 @@ ArquitetoConsole.vitrineInsignia = function (codigo) {
             <div style="font-family:var(--font-section);font-size:.9rem;font-weight:700;
               color:var(--text-primary)">${cod}</div>
             <div style="font-family:var(--font-section);font-size:.66rem;
-              color:var(--text-muted);margin-top:.2rem">arte própria registrada</div>
+              color:var(--text-muted);margin-top:.2rem">arte prÃ³pria registrada</div>
           </div>
         </div>`).join('')}
     </div>`;
@@ -1857,8 +1857,8 @@ ArquitetoConsole.vitrineInsignia = function (codigo) {
   document.body.appendChild(cx);
 };
 
-/* ══════════════════════════════════════════════════════════════════════
-   ENVIAR AURA — modal que lista hunters, seleciona aura e envia via API */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   ENVIAR AURA â€” modal que lista hunters, seleciona aura e envia via API */
 ArquitetoConsole.enviarAura = async function () {
   const AURAS = [
     { id: 'bella-rosa', nome: 'Bella Rosa \u2014 Femme Fatale', cor: '#f48fb1' },
@@ -1940,11 +1940,11 @@ ArquitetoConsole.enviarAura = async function () {
 
 
 ArquitetoConsole._forjarAura = async function (auraId) {
-  /* Forja a aura no próprio inventário do Arquiteto.
-     Chama o mesmo endpoint de conceder, passando o próprio id como destino. */
+  /* Forja a aura no prÃ³prio inventÃ¡rio do Arquiteto.
+     Chama o mesmo endpoint de conceder, passando o prÃ³prio id como destino. */
   const nome = { "bella-rosa": "Bella Rosa \u2014 Femme Fatale" }[auraId] || auraId;
   try {
-    // busca o próprio perfil para obter o id (via API para capturar 401)
+    // busca o prÃ³prio perfil para obter o id (via API para capturar 401)
     const eu = await API.get('/me');
     const d  = await API.arquiteto.concederAura({ usuario_id: eu.id, aura_id: auraId, motivo: "Forjada pelo Arquiteto" });
     alert(`\u2728 Aura "${nome}" forjada no seu invent\u00e1rio!`);
@@ -1978,14 +1978,14 @@ window.ForjaFX = ForjaFX;
 window.DianaFX = DianaFX;
 window.IsabellaFX = IsabellaFX;
 
-/* ── Inscrição das artes no renderizador único ────────────────────────────
-   Toda badge desenhada à mão se declara aqui, UMA vez. A partir deste
-   ponto ela aparece sozinha na cerimônia, no selo, no carimbo, no perfil,
-   no relicário, na Casa de Trocas e no catálogo — sem tocar em mais nada.
+/* â”€â”€ InscriÃ§Ã£o das artes no renderizador Ãºnico â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   Toda badge desenhada Ã  mÃ£o se declara aqui, UMA vez. A partir deste
+   ponto ela aparece sozinha na cerimÃ´nia, no selo, no carimbo, no perfil,
+   no relicÃ¡rio, na Casa de Trocas e no catÃ¡logo â€” sem tocar em mais nada.
 
    Para acrescentar uma badge nova no futuro, basta uma linha:
        ConquistaFX.registrarInsignia('codigo_da_badge', tam => SuaFX._svg(tam));
-   Se o código não estiver aqui, ela cai na medalha premium padrão do
+   Se o cÃ³digo nÃ£o estiver aqui, ela cai na medalha premium padrÃ£o do
    Sistema (nunca no emoji). */
 (function registrarInsignias() {
   const reg = window.ConquistaFX?.registrarInsignia?.bind(window.ConquistaFX);
