@@ -239,3 +239,13 @@ def me(usuario: Usuario = Depends(get_usuario_atual)):
         "ultimo_acesso": usuario.ultimo_acesso,
         "aura_id": getattr(usuario, "aura_id", None),
     }
+
+
+@router.post("/logout")
+def logout():
+    """
+    Stub de logout — o sistema usa JWT stateless, portanto a invalidação real
+    é feita no cliente (descartando o token). Este endpoint existe apenas para
+    que o frontend não receba 404 ao chamar POST /api/auth/logout.
+    """
+    return {"ok": True}

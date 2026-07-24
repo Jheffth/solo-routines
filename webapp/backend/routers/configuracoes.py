@@ -84,8 +84,11 @@ def atualizar_configs_batch(
     admin: Usuario = Depends(get_admin),
 ):
     """Atualiza múltiplas configurações de uma vez."""
+    # O frontend envia { "configs": { chave: valor } }; aceita também o formato
+    # plano { chave: valor } para manter compatibilidade com integrações antigas.
+    dados = payload.get("configs", payload)
     atualizadas = {}
-    for chave, valor in payload.items():
+    for chave, valor in dados.items():
         if chave not in CHAVES_VALIDAS:
             continue
         cfg = db.query(ConfiguracaoApp).filter(ConfiguracaoApp.chave == chave).first()

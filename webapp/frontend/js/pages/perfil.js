@@ -470,9 +470,9 @@ const Perfil = {
 
     if (!lista || !lista.length) {
       cont.innerHTML = `
-        <div class="empty-state" style="grid-column:1/-1">
-          <div class="empty-icon">&#127942;</div>
-          <div>Nenhuma conquista encontrada</div>
+        <div style="text-align:center;padding:2rem;opacity:.5">
+          <div style="font-size:2.5rem;margin-bottom:.5rem">⬡</div>
+          <div style="font-family:var(--font-section);color:var(--text-muted);font-size:.85rem">Nenhuma conquista ainda — complete missões para desbloquear</div>
         </div>`;
       return;
     }

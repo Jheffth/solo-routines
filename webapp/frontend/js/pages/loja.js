@@ -67,7 +67,7 @@ const Loja = {
       btn.addEventListener('click', () => {
         const id = btn.dataset.id;
         const item = this._recompensas.find(r => String(r.id) === String(id));
-        if (item) this.confirmarResgate(item);
+        if (item) this.confirmarResgate(item, btn);
       });
     });
   },
@@ -111,7 +111,7 @@ const Loja = {
     `;
   },
 
-  async confirmarResgate(recompensa) {
+  async confirmarResgate(recompensa, btn) {
     const titulo = recompensa.titulo || recompensa.nome || 'Recompensa';
     const ok = await SoloDialog.confirm(
       `Resgatar <strong>${titulo}</strong>?<br><br>
@@ -120,6 +120,7 @@ const Loja = {
       { titulo: 'Confirmar Resgate', icon: '🛒', tipo: 'info', btnOk: 'Resgatar', btnCancel: 'Cancelar' }
     );
     if (!ok) return;
+    if (btn) { btn.disabled = true; btn.dataset.original = btn.textContent; btn.textContent = '...'; }
     try {
       const resp = await API.post(`/recompensas/${recompensa.id}/resgatar`, {});
       if (resp) {
@@ -131,6 +132,8 @@ const Loja = {
       SoloDialog.toast(`"${titulo}" resgatado com sucesso! 🎉`, 'success');
     } catch (err) {
       SoloDialog.toast(err.message || 'Erro ao resgatar recompensa', 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = btn.dataset.original || '⚡ Resgatar'; }
     }
   }
 };

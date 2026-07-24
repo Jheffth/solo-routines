@@ -99,6 +99,42 @@ def _raridade(xp_bonus: int) -> str:
     return "comum"
 
 
+@router.get("/")
+def listar_hunters(
+    limite: int = Query(50, ge=1, le=500, description="Número máximo de hunters retornados"),
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_atual),
+):
+    """Lista hunters ativos — rota pública autenticada para o console do Arquiteto."""
+    linhas = (
+        db.query(
+            Usuario.id, Usuario.nome, Usuario.login, Usuario.avatar_url,
+            Usuario.classe, Usuario.titulo, Usuario.nivel_atual, Usuario.xp_total,
+            Usuario.moedas, Usuario.streak_atual, Usuario.nivel_acesso,
+            Usuario.ativo, Usuario.criado_em, Usuario.ultimo_acesso,
+        )
+        .filter(Usuario.ativo == True)
+        .order_by(Usuario.nome.asc())
+        .limit(limite)
+        .all()
+    )
+    hunters_lista = [
+        {
+            "id": r.id, "nome": r.nome, "login": r.login,
+            "avatar_url": r.avatar_url, "classe": r.classe,
+            "titulo": r.titulo, "nivel_atual": r.nivel_atual,
+            "xp_total": r.xp_total, "moedas": r.moedas,
+            "streak_atual": r.streak_atual, "nivel_acesso": r.nivel_acesso,
+            "ativo": r.ativo,
+            "criado_em": r.criado_em.isoformat() if r.criado_em else None,
+            "ultimo_acesso": r.ultimo_acesso.isoformat() if r.ultimo_acesso else None,
+            "presenca": _presenca(r.ultimo_acesso),
+        }
+        for r in linhas
+    ]
+    return {"hunters": hunters_lista, "total": len(hunters_lista)}
+
+
 @router.get("/buscar")
 def buscar(
     q: str = Query("", description="Nick ou nome do hunter"),

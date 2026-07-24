@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
    arquiteto-console.js — ⚒ Forja de Testes do Arquiteto
    Console secreto para disparar qualquer efeito do Sistema
    na hora, sem esperar eventos reais. 100% frontend:
@@ -1868,9 +1868,7 @@ ArquitetoConsole.enviarAura = async function () {
   document.getElementById('arq-enviar-aura')?.remove();
   let hunters = [];
   try {
-    const tk = localStorage.getItem('access_token');
-    const r  = await fetch('/api/hunters?limite=200', { headers: { Authorization: `Bearer ${tk}` } });
-    const d  = await r.json();
+    const d = await API.get('/hunters?limite=200');
     hunters  = d.hunters || d || [];
   } catch (_) {}
 
@@ -1942,21 +1940,13 @@ ArquitetoConsole.enviarAura = async function () {
 
 
 ArquitetoConsole._forjarAura = async function (auraId) {
-  /* Forja a aura no pr\u00f3prio invent\u00e1rio do Arquiteto.
-     Chama o mesmo endpoint de conceder, passando o pr\u00f3prio id como destino. */
+  /* Forja a aura no próprio inventário do Arquiteto.
+     Chama o mesmo endpoint de conceder, passando o próprio id como destino. */
   const nome = { "bella-rosa": "Bella Rosa \u2014 Femme Fatale" }[auraId] || auraId;
   try {
-    const tk = localStorage.getItem("access_token");
-    // busca o pr\u00f3prio perfil para obter o id
-    const me = await fetch("/api/me", { headers: { Authorization: `Bearer ${tk}` } });
-    const eu = await me.json();
-    const r  = await fetch("/api/arquiteto/conceder/aura", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${tk}` },
-      body: JSON.stringify({ usuario_id: eu.id, aura_id: auraId, motivo: "Forjada pelo Arquiteto" }),
-    });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.detail || "Erro");
+    // busca o próprio perfil para obter o id (via API para capturar 401)
+    const eu = await API.get('/me');
+    const d  = await API.arquiteto.concederAura({ usuario_id: eu.id, aura_id: auraId, motivo: "Forjada pelo Arquiteto" });
     alert(`\u2728 Aura "${nome}" forjada no seu invent\u00e1rio!`);
   } catch (e) { alert("Erro ao forjar: " + e.message); }
 };
@@ -1970,12 +1960,6 @@ ArquitetoConsole._confirmarAura = async function () {
   const btn = document.getElementById('arq-aura-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
   try {
-    const tk = localStorage.getItem('access_token');
-    const r  = await fetch('/api/arquiteto/conceder/aura', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tk}` },
-      body: JSON.stringify({ usuario_id: Number(hunterId), aura_id: auraId, motivo }),
-    });
     const d = await r.json();
     if (!r.ok) throw new Error(d.detail || 'Erro');
     alert(d.detalhe || 'Aura concedida!');
