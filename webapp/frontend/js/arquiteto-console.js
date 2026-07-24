@@ -1959,16 +1959,15 @@ ArquitetoConsole._confirmarAura = async function () {
   if (!auraId)   { alert('Selecione uma aura');  return; }
   const btn = document.getElementById('arq-aura-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
-  try {
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.detail || 'Erro');
-    alert(d.detalhe || 'Aura concedida!');
-    document.getElementById('arq-enviar-aura')?.remove();
-  } catch (e) {
-    alert('Erro: ' + e.message);
-    if (btn) { btn.disabled = false; btn.textContent = '\u2728 CONCEDER AURA'; }
-  }
-};
+  try {
+    const d = await API.arquiteto.concederAura({ usuario_id: Number(hunterId), aura_id: auraId, motivo });
+    alert(d.detalhe || 'Aura concedida!');
+    document.getElementById('arq-enviar-aura')?.remove();
+  } catch (e) {
+    alert('Erro: ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = '✨ CONCEDER AURA'; }
+  }
+};
 
 document.addEventListener('DOMContentLoaded', () => ArquitetoConsole.init());
 window.ArquitetoConsole = ArquitetoConsole;
