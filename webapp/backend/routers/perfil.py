@@ -15,7 +15,7 @@ from typing import Optional, List
 
 from database import (
     get_db, Usuario, Execucao, Rotina, TarefaDia,
-    Conquista, ConquistaUsuario, Recompensa, RecompensaUsuario
+    Conquista, ConquistaUsuario, Recompensa, RecompensaUsuario, AuraUsuario
 )
 from auth.router import get_usuario_atual
 
@@ -432,32 +432,48 @@ def inventario_auras(
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(get_usuario_atual),
 ):
-    """Auras que o usuário possui (forjadas ou recebidas) + aura ativa."""
+    """Auras que o usuário possui (forjadas ou recebidas) + aura ativa.
+    Lê a tabela AuraUsuario real. A aura de cargo sempre aparece.
+    """
     aura_ativa = getattr(usuario, "aura_id", None)
 
-    # Inventário virtual: por ora, se o usuário tem aura_id, ele "possui" aquela aura.
-    # No futuro pode ser uma tabela separada.
+    # --- Auras cosméticas: lê do inventário real (AuraUsuario) ---
     inventario = []
-    if aura_ativa and aura_ativa in AURAS_COSMETICAS:
-        inventario.append({**AURAS_COSMETICAS[aura_ativa], "ativa": True})
+    minhas = (db.query(AuraUsuario)
+                .filter(AuraUsuario.usuario_id == usuario.id)
+                .order_by(AuraUsuario.obtida_em.desc()).all())
+    for au in minhas:
+        cat = AURAS_COSMETICAS.get(au.aura_id)
+        if not cat:
+            continue
+        de_nome = None
+        if au.presenteada_por:
+            rem = db.query(Usuario).filter(Usuario.id == au.presenteada_por).first()
+            de_nome = rem.nome if rem else None
+        inventario.append({
+            **cat,
+            "ativa":       aura_ativa == au.aura_id,
+            "de":          de_nome,
+            "obtida_em":   au.obtida_em.isoformat() if au.obtida_em else None,
+        })
 
-    # Aura de cargo (sempre disponível, não enviável)
+    # --- Aura de cargo (sempre disponível, não enviável) ---
     from routers.hunters import _aura_cargo
     cargo_id = _aura_cargo(usuario.nivel_acesso)
-    if cargo_id and cargo_id not in AURAS_DE_CARGO - {cargo_id}:
+    if cargo_id:
         inventario.append({
-            "id": cargo_id,
-            "nome": f"Aura de Cargo ({usuario.nivel_acesso})",
+            "id":        cargo_id,
+            "nome":      f"Aura de Cargo ({usuario.nivel_acesso})",
             "descricao": "Concedida automaticamente pelo seu cargo. Não pode ser enviada.",
-            "cor": "#fbbf24" if cargo_id == "arquiteto" else "#38bdf8",
-            "enviavel": False,
-            "ativa": aura_ativa is None,
-            "de_cargo": True,
+            "cor":       "#fbbf24" if cargo_id == "arquiteto" else "#38bdf8",
+            "enviavel":  False,
+            "ativa":     aura_ativa is None,
+            "de_cargo":  True,
         })
 
     return {
-        "aura_ativa": aura_ativa,
-        "inventario": inventario,
+        "aura_ativa":       aura_ativa,
+        "inventario":       inventario,
         "auras_disponiveis": list(AURAS_COSMETICAS.values()),
     }
 
@@ -481,11 +497,14 @@ def trocar_aura(
         if nova not in AURAS_COSMETICAS:
             raise HTTPException(400, f"Aura '{nova}' não reconhecida.")
 
-        # Valida que o usuário possui essa aura (aura_id = aura recebida)
-        aura_possuida = getattr(usuario, "aura_id", None)
-        if aura_possuida != nova:
+        # Valida que o usuário possui essa aura na tabela AuraUsuario
+        posse = db.query(AuraUsuario).filter(
+            AuraUsuario.usuario_id == usuario.id,
+            AuraUsuario.aura_id    == nova,
+        ).first()
+        if not posse:
             raise HTTPException(403,
-                "Você não possui essa aura. Peça ao Arquiteto para presenteá-la.")
+                "Você não possui essa aura no inventário. Forje-a ou peça ao Arquiteto.")
 
     # None = remover cosmética → volta à aura de cargo
     usuario.aura_id = nova
