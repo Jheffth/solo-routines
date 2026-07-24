@@ -1940,49 +1940,66 @@ const Dashboard = {
 
   /* ─── Aura: botão no cabeçalho + modal de inventário ───────────────── */
   _bindBtnTrocarAura(dados) {
-    // Injeta o botão circular abaixo do hexágono de foto
+    // Injeta botão ◈ DENTRO do .hunter-hex-wrap, logo abaixo do avatar
     const hexWrap = document.querySelector('#hunter-card .hunter-hex-wrap');
-    const fallbackContainer = document.getElementById('dash-btn-editar-perfil')?.parentElement;
 
-    let btn = document.getElementById('dash-btn-trocar-aura');
-    if (!btn) {
-      btn = document.createElement('button');
-      btn.id = 'dash-btn-trocar-aura';
+    // Remove instância anterior para recriar sempre atualizado
+    document.getElementById('dash-btn-trocar-aura')?.remove();
 
-      if (hexWrap) {
-        // Garante que o pai do hex-wrap seja position:relative
-        const hexParent = hexWrap.parentElement;
-        if (hexParent) hexParent.style.position = 'relative';
-        btn.style.cssText = [
-          'position:absolute', 'bottom:-10px', 'left:50%', 'transform:translateX(-50%)',
-          'width:32px', 'height:32px', 'border-radius:50%',
-          'background:linear-gradient(135deg,#2a0a4e,#1a0a2e)',
-          'border:1px solid rgba(244,143,177,.5)', 'color:#f48fb1',
-          'font-size:.75rem', 'cursor:pointer', 'z-index:10',
-          'box-shadow:0 0 12px rgba(244,143,177,.25)',
-          'display:flex', 'align-items:center', 'justify-content:center',
-          'transition:all .2s',
-        ].join(';');
-        btn.onmouseover = () => { btn.style.boxShadow = '0 0 20px rgba(244,143,177,.5)'; btn.style.background = 'linear-gradient(135deg,#3a1a6e,#2a0a4e)'; };
-        btn.onmouseout  = () => { btn.style.boxShadow = '0 0 12px rgba(244,143,177,.25)'; btn.style.background = 'linear-gradient(135deg,#2a0a4e,#1a0a2e)'; };
-        hexParent.appendChild(btn);
-      } else if (fallbackContainer) {
-        btn.className = 'btn btn-ghost btn-sm';
-        btn.style.cssText = [
-          'font-family:var(--font-section)', 'font-size:.75rem', 'letter-spacing:.06em',
-          'border:1px solid rgba(244,143,177,.4)', 'color:#f48fb1',
-          'padding:.35rem .9rem', 'border-radius:.5rem', 'cursor:pointer',
-          'transition:all .2s', 'display:flex', 'align-items:center', 'gap:.4rem',
-        ].join(';');
-        btn.onmouseover = () => btn.style.background = 'rgba(244,143,177,.12)';
-        btn.onmouseout  = () => btn.style.background = 'transparent';
-        fallbackContainer.insertBefore(btn, fallbackContainer.firstChild);
-      }
+    const btn = document.createElement('button');
+    btn.id = 'dash-btn-trocar-aura';
+
+    if (hexWrap) {
+      // hexWrap já tem position:relative no CSS — botão fica dentro dele
+      hexWrap.style.position = 'relative';   // garante, caso o CSS mude
+      btn.style.cssText = [
+        'position:absolute',
+        'bottom:-14px',
+        'left:50%',
+        'transform:translateX(-50%)',
+        'width:28px', 'height:28px',
+        'border-radius:50%',
+        'background:linear-gradient(135deg,#2a0a3e,#130a28)',
+        'border:1.5px solid rgba(244,143,177,.65)',
+        'color:#f48fb1',
+        'font-size:.72rem',
+        'cursor:pointer',
+        'z-index:20',
+        'box-shadow:0 0 10px rgba(244,143,177,.3),inset 0 0 6px rgba(244,143,177,.1)',
+        'display:flex', 'align-items:center', 'justify-content:center',
+        'transition:box-shadow .2s,background .2s',
+        'padding:0',
+      ].join(';');
+      btn.onmouseover = () => {
+        btn.style.boxShadow = '0 0 18px rgba(244,143,177,.6),inset 0 0 8px rgba(244,143,177,.2)';
+        btn.style.background = 'linear-gradient(135deg,#3e1060,#1a0a38)';
+      };
+      btn.onmouseout = () => {
+        btn.style.boxShadow = '0 0 10px rgba(244,143,177,.3),inset 0 0 6px rgba(244,143,177,.1)';
+        btn.style.background = 'linear-gradient(135deg,#2a0a3e,#130a28)';
+      };
+      hexWrap.appendChild(btn);
+    } else {
+      // Fallback: ao lado do Editar Perfil
+      const fc = document.getElementById('dash-btn-editar-perfil')?.parentElement;
+      if (!fc) return;
+      btn.className = 'btn btn-ghost btn-sm';
+      btn.style.cssText = [
+        'font-family:var(--font-section)', 'font-size:.75rem', 'letter-spacing:.06em',
+        'border:1px solid rgba(244,143,177,.4)', 'color:#f48fb1',
+        'padding:.35rem .9rem', 'border-radius:.5rem', 'cursor:pointer',
+        'transition:all .2s', 'display:flex', 'align-items:center', 'gap:.4rem',
+      ].join(';');
+      btn.onmouseover = () => btn.style.background = 'rgba(244,143,177,.12)';
+      btn.onmouseout  = () => btn.style.background = 'transparent';
+      fc.insertBefore(btn, fc.firstChild);
     }
+
     const temAura = !!(dados && dados.aura_id);
     btn.innerHTML = '◈';
     btn.title     = temAura ? `Aura ativa: ${dados.aura_id}` : 'Gerenciar Aura';
-    btn.onclick   = () => Dashboard._abrirModalAura(window.__dashDados || dados);
+    // onclick direto — sem bind antigo que pode ter sido perdido
+    btn.addEventListener('click', () => Dashboard._abrirModalAura(window.__dashDados || dados));
   },
 
 
