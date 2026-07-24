@@ -2065,7 +2065,6 @@ const Dashboard = {
           'font-family:var(--font-section);font-size:.65rem;font-weight:700;' +
           'box-shadow:' + (ativa ? '0 0 12px rgba(244,143,177,.35)' : 'none') + ';' +
           'transition:all .18s">' +
-          (ativa ? 'u2714 Equipada' : 'Equipar') + '</button>'
           (ativa ? '✔ Equipada' : 'Equipar') + '</button>'
         : '<span style="font-size:.58rem;color:#6b7280;font-family:var(--font-section)">🔒 Vinculada</span>';
       return '<div style="display:flex;align-items:center;gap:.8rem;padding:.6rem .75rem;' +
