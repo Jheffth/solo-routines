@@ -219,16 +219,24 @@ class API {
     permissoes:    async ()    => API.get('/emblemas/permissoes'),
   };
 
-  /* ── Materiais: a Casa de Trocas entre hunters ────────── */
+  /* ── Materiais: a Casa de Trocas entre hunters ──────────────── */
   static materiais = {
-    inventario:  async ()          => API.get('/materiais/inventario'),
-    hunter:      async (nick)      => API.get('/materiais/hunter/' + encodeURIComponent(nick)),
-    enviar:      async (d)         => API.post('/materiais/enviar', d),
-    forjar:      async (codigo)    => API.post('/materiais/forjar', { codigo }),
-    historico:   async ()          => API.get('/materiais/historico'),
-    catalogo:    async ()          => API.get('/materiais/catalogo'),
-    definirStatus: async (cod, t)  => API.patch('/materiais/catalogo/' + encodeURIComponent(cod),
-                                                { transferivel: t }),
+    inventario:    async ()         => API.get('/materiais/inventario'),
+    hunter:        async (nick)     => API.get('/materiais/hunter/' + encodeURIComponent(nick)),
+    enviar:        async (d)        => API.post('/materiais/enviar', d),
+    forjar:        async (codigo)   => API.post('/materiais/forjar', { codigo }),
+    forjarAura:    async (aura_id)  => API.post('/materiais/forjar-aura', { aura_id }),
+    enviarAura:    async (d)        => API.post('/materiais/enviar-aura', d),
+    historico:     async ()         => API.get('/materiais/historico'),
+    catalogo:      async ()         => API.get('/materiais/catalogo'),
+    definirStatus: async (cod, t)   => API.patch('/materiais/catalogo/' + encodeURIComponent(cod),
+                                                 { transferivel: t }),
+  };
+
+  /* ── Auras: inventário e cerimônia ─────────────────────────── */
+  static auras = {
+    pendentes:   async () => API.get('/auras/pendentes'),
+    celebradas:  async () => API.post('/auras/celebradas', {}),
   };
 
   /* ── Hunters: busca e perfil público ──────────────────── */

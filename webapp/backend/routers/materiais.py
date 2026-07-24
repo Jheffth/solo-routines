@@ -30,12 +30,24 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from database import (get_db, Usuario, Conquista, ConquistaUsuario,
-                      TransferenciaMaterial)
+                      TransferenciaMaterial, AuraUsuario)
 from auth.router import get_usuario_atual
 
 router = APIRouter(prefix="/materiais", tags=["materiais"])
 
 LIMITE_POR_ENVIO = 10   # nada de despejar o inventário inteiro de uma vez
+
+# Catálogo de auras cosméticas (extensível — adicione novas auras aqui)
+CATALOGO_AURAS = {
+    "bella-rosa": {
+        "id":        "bella-rosa",
+        "nome":      "Bella Rosa \u2014 Femme Fatale",
+        "descricao": "16 pétalas em dupla espiral, halos rosa e branco. Presente exclusivo.",
+        "cor":       "#f48fb1",
+        "enviavel":  True,
+    },
+    # futuras auras entram aqui
+}
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -95,31 +107,45 @@ def inventario(
             item["veio_de"] = de.nome if de else None
         (enviaveis if q.transferivel else presos).append(item)
 
-    # Auras cosméticas que o Arquiteto pode forjar e enviar (nunca auras de cargo)
-    forjaveis_auras = []
-    # Emblemas que o Arquiteto pode forjar: todos os transferíveis, marcando os que já tem
-    forjaveis = []
+    # Auras no inventário do usuário (prontas para envio)
+    minhas_auras = (db.query(AuraUsuario)
+                      .filter(AuraUsuario.usuario_id == usuario.id)
+                      .order_by(AuraUsuario.obtida_em.desc()).all())
+    enviaveis_auras = []
+    for au in minhas_auras:
+        cat = CATALOGO_AURAS.get(au.aura_id, {})
+        item = {
+            "aura_id":   au.aura_id,
+            "nome":      cat.get("nome", au.aura_id),
+            "descricao": cat.get("descricao", ""),
+            "cor":       cat.get("cor", "#ffffff"),
+        }
+        if au.presenteada_por:
+            de = db.query(Usuario).filter(Usuario.id == au.presenteada_por).first()
+            item["veio_de"] = de.nome if de else None
+        enviaveis_auras.append(item)
+
+    # Arquiteto: forjaveis de emblemas e auras
+    forjaveis, forjaveis_auras = [], []
     if _eh_arquiteto(usuario):
-        tenho = {m["codigo"] for m in enviaveis}
-        forjaveis = [{**_material(q), "no_inventario": q.codigo in tenho}
+        tenho_emblemas = {m["codigo"] for m in enviaveis}
+        tenho_auras    = {au.aura_id for au in minhas_auras}
+        forjaveis = [{**_material(q), "no_inventario": q.codigo in tenho_emblemas}
                      for q in db.query(Conquista)
                                 .filter(Conquista.transferivel == True)
                                 .order_by(Conquista.titulo.asc()).all()]
-        forjaveis_auras = [
-            {
-                "id": "bella-rosa",
-                "nome": "Bella Rosa — Femme Fatale",
-                "descricao": "16 pétalas em dupla espiral, halos rosa e branco. Presente exclusivo.",
-                "cor": "#f48fb1",
-                "enviavel": True,
-            },
-        ]
+        forjaveis_auras = [{**a, "no_inventario": a["id"] in tenho_auras}
+                           for a in CATALOGO_AURAS.values() if a["enviavel"]]
 
-    return {"enviaveis": enviaveis, "presos": presos,
-            "limite_por_envio": LIMITE_POR_ENVIO,
-            "pode_forjar": _eh_arquiteto(usuario),
-            "forjaveis": forjaveis,
-            "forjaveis_auras": forjaveis_auras}
+    return {
+        "enviaveis":        enviaveis,
+        "presos":           presos,
+        "enviaveis_auras":  enviaveis_auras,
+        "limite_por_envio": LIMITE_POR_ENVIO,
+        "pode_forjar":      _eh_arquiteto(usuario),
+        "forjaveis":        forjaveis,
+        "forjaveis_auras":  forjaveis_auras,
+    }
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -306,10 +332,52 @@ def forjar(
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# ENVIAR AURA — Arquiteto presenteia aura cosmética via Forja do Arquiteto
+# FORJAR AURA — Arquiteto adiciona aura ao próprio inventário
 # ══════════════════════════════════════════════════════════════════════════════
-AURAS_ENVIAVAIS = {"bella-rosa"}   # auras de cargo nunca entram aqui
+class ForjaAuraPayload(BaseModel):
+    aura_id: str
 
+
+@router.post("/forjar-aura")
+def forjar_aura(
+    payload: ForjaAuraPayload,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_atual),
+):
+    """
+    Arquiteto adiciona aura cosmética ao próprio inventário.
+    Mesmo fluxo do forjar de emblemas: 1 cópia por vez.
+    Ao enviar, a aura sai do inventário — forje novamente para enviar de novo.
+    """
+    if not _eh_arquiteto(usuario):
+        raise HTTPException(403, "Somente o Arquiteto pode forjar auras")
+
+    cat = CATALOGO_AURAS.get(payload.aura_id)
+    if not cat or not cat["enviavel"]:
+        raise HTTPException(404, f"Aura não encontrada: {payload.aura_id}")
+
+    ja = db.query(AuraUsuario).filter(
+        AuraUsuario.usuario_id == usuario.id,
+        AuraUsuario.aura_id    == payload.aura_id,
+    ).first()
+    if ja:
+        return {"ok": True, "ja_possui": True,
+                "aura_id": payload.aura_id, "nome": cat["nome"],
+                "detalhe": "Aura já está no inventário — envie-a antes de forjar outra"}
+
+    db.add(AuraUsuario(
+        usuario_id      = usuario.id,
+        aura_id         = payload.aura_id,
+        obtida_em       = datetime.utcnow(),
+        celebrada       = True,   # forja não dispara cerimônia
+    ))
+    db.commit()
+    return {"ok": True, "ja_possui": False, "aura_id": payload.aura_id, "nome": cat["nome"]}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ENVIAR AURA — transferência real de aura cosmética
+# ══════════════════════════════════════════════════════════════════════════════
 class EnviarAuraPayload(BaseModel):
     nick: str
     aura_id: str
@@ -322,25 +390,51 @@ def enviar_aura(
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(get_usuario_atual),
 ):
-    """Arquiteto presenteia uma aura cosmética a um hunter pelo nick."""
+    """
+    Transferência real de aura (espelho do /enviar de emblemas):
+      • A aura SAI do inventário do Arquiteto  
+      • Nasce no inventário do alvo com celebrada=False (cerimônia no login)
+      • alvo.aura_id é atualizado (aura fica ativa imediatamente)
+    """
     if not _eh_arquiteto(usuario):
         raise HTTPException(403, "Somente o Arquiteto pode presentear auras")
-    if payload.aura_id not in AURAS_ENVIAVAIS:
-        raise HTTPException(400, f"Aura '{payload.aura_id}' não é presenteável ou não existe")
+
+    cat = CATALOGO_AURAS.get(payload.aura_id)
+    if not cat or not cat["enviavel"]:
+        raise HTTPException(400, f"Aura não encontrada ou não enviável: {payload.aura_id}")
+
+    posse = db.query(AuraUsuario).filter(
+        AuraUsuario.usuario_id == usuario.id,
+        AuraUsuario.aura_id    == payload.aura_id,
+    ).first()
+    if not posse:
+        raise HTTPException(400,
+            "Aura não está no seu inventário. Forje-a primeiro na aba 'Auras'.")
 
     alvo = _resolver_hunter(db, payload.nick)
     if not alvo:
-        raise HTTPException(404, f"Hunter '@{payload.nick}' não encontrado")
-    if not alvo.ativo:
-        raise HTTPException(400, "Hunter inativo")
+        raise HTTPException(404, f"Hunter não encontrado: {payload.nick}")
+    if alvo.id == usuario.id:
+        raise HTTPException(400, "Você não pode enviar para si mesmo")
 
+    # Transferência real: sai de um, nasce em outro
+    db.delete(posse)
+    db.add(AuraUsuario(
+        usuario_id      = alvo.id,
+        aura_id         = payload.aura_id,
+        obtida_em       = datetime.utcnow(),
+        presenteada_por = usuario.id,
+        mensagem        = (payload.mensagem or "").strip()[:300] or None,
+        celebrada       = False,   # dispara cerimônia no próximo login
+    ))
+    # Ativa automaticamente no perfil do alvo
     alvo.aura_id = payload.aura_id
     db.commit()
     return {
-        "ok": True,
+        "ok":      True,
         "aura_id": payload.aura_id,
-        "para": {"id": alvo.id, "nome": alvo.nome, "login": alvo.login},
-        "detalhe": f"Aura '{payload.aura_id}' concedida a {alvo.nome}",
+        "nome":    cat["nome"],
+        "para":    {"id": alvo.id, "nome": alvo.nome, "login": alvo.login},
     }
 
 

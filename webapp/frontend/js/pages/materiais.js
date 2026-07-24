@@ -13,9 +13,11 @@
    ============================================================ */
 
 const Materiais = {
-  _enviaveis:   [],
-  _presos:      [],
-  _sel:         new Set(),
+  _enviaveis:        [],
+  _presos:           [],
+  _enviaveis_auras:  [],
+  _sel:              new Set(),
+  _sel_auras:        new Set(),
   _destino:     null,   // hunter confirmado
   _buscando:    null,   // debounce timer
   _limite:      10,
@@ -34,10 +36,12 @@ const Materiais = {
       this._enviaveis  = inv.enviaveis || [];
       this._presos     = inv.presos    || [];
       this._limite     = inv.limite_por_envio || 10;
-      this._podeForjar     = !!inv.pode_forjar;
-      this._forjaveis       = inv.forjaveis       || [];
-      this._forjaveis_auras = inv.forjaveis_auras || [];
+      this._podeForjar       = !!inv.pode_forjar;
+      this._forjaveis         = inv.forjaveis       || [];
+      this._forjaveis_auras   = inv.forjaveis_auras || [];
+      this._enviaveis_auras   = inv.enviaveis_auras || [];
       this._sel.clear();
+      this._sel_auras.clear();
       this._destino = null;
       this._render();
       this._carregarHistorico();
@@ -84,13 +88,14 @@ const Materiais = {
             <div class="mt-lbl">2 · Materiais
               <span class="mt-contador" id="mt-contador"></span>
             </div>
-            ${this._enviaveis.length ? `
+            ${this._enviaveis.length || this._enviaveis_auras.length ? `
               <div class="mt-grade">
                 ${this._enviaveis.map(m => this._cardMaterial(m, true)).join('')}
+                ${this._enviaveis_auras.map(a => this._cardAura(a)).join('')}
               </div>` : `
               <div class="mt-vazio-suave">
                 ${this._podeForjar
-                  ? 'Inventário vazio — use a <b>Forja do Arquiteto</b> ao lado para gerar o que quiser enviar.'
+                  ? 'Inventário vazio — forje um item na <b>Forja do Arquiteto</b> acima.'
                   : 'Você ainda não possui materiais que circulam.<br>Emblemas personalizados chegam por convite, presente ou troca.'}
               </div>`}
           </div>
@@ -153,22 +158,45 @@ const Materiais = {
      circular. Aqui ele estoca o inventário com um clique; e no envio,
      o backend forja sozinho o que faltar. */
   _blocoForja() {
+    const cardsEmblemas = this._forjaveis.map(m => `
+      <button class="mt-forja-item ${m.no_inventario ? 'tem' : ''}"
+              data-mt-forjar="${m.codigo}"
+              title="${m.no_inventario ? 'Já está no seu inventário' : 'Forjar ' + m.titulo}">
+        <span class="mt-forja-med">${this._medalha(m, 58)}</span>
+        <span class="mt-forja-nome">${m.titulo}</span>
+        <span class="mt-forja-acao">${m.no_inventario ? '✓' : '+'}</span>
+      </button>`).join('');
+    const cardsAuras = this._forjaveis_auras.map(a => `
+      <button class="mt-forja-item ${a.no_inventario ? 'tem' : ''}"
+              data-mt-forjar-aura="${a.id}"
+              title="${a.no_inventario ? 'Já está no seu inventário' : 'Forjar ' + a.nome}"
+              style="border-color:rgba(244,143,177,.3)">
+        <span class="mt-forja-med" style="position:relative;display:flex;align-items:center;justify-content:center">
+          ${ (window.Auras && window.Auras.existe && window.Auras.existe(a.id)) ? window.Auras.bloco(a.id, 58) : '<span style="font-size:1.6rem">❇</span>' }
+          <div style="position:absolute;z-index:2;width:26px;height:26px;
+            background:linear-gradient(135deg,#2a1a4e,#0d1f36);
+            clip-path:polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%)"></div>
+        </span>
+        <span class="mt-forja-nome" style="color:${a.cor}">${a.nome}</span>
+        <span class="mt-forja-acao" style="color:${a.cor}">${a.no_inventario ? '✓' : '+'}</span>
+      </button>`).join('');
     return `
       <div class="mt-bloco mt-forja">
         <div class="mt-lbl mt-lbl-arq">⟁ Forja do Arquiteto</div>
         <div class="mt-forja-nota">
-          Gere qualquer material que circula. Ao enviar, a forja repõe sozinha —
-          você pode mandar o mesmo emblema para quantos hunters quiser.
+          Forje o item no seu inventário, selecione em “2 · Materiais” e envie.
         </div>
-        <div class="mt-forja-grade">
-          ${this._forjaveis.map(m => `
-            <button class="mt-forja-item ${m.no_inventario ? 'tem' : ''}"
-                    data-mt-forjar="${m.codigo}"
-                    title="${m.no_inventario ? 'Já está no seu inventário' : 'Forjar ' + m.titulo}">
-              <span class="mt-forja-med">${this._medalha(m, 58)}</span>
-              <span class="mt-forja-nome">${m.titulo}</span>
-              <span class="mt-forja-acao">${m.no_inventario ? '✓' : '+'}</span>
-            </button>`).join('')}
+        <div class="mt-forja-tabs">
+          <button class="mt-forja-tab active" data-forja-tab="emblemas">🖼️ Emblemas</button>
+          <button class="mt-forja-tab"        data-forja-tab="auras">❇ Auras</button>
+        </div>
+        <div id="mt-forja-painel-emblemas" class="mt-forja-painel">
+          ${cardsEmblemas.length ? '<div class="mt-forja-grade">' + cardsEmblemas + '</div>'
+            : '<div class="mt-vazio-suave" style="font-size:.75rem">Nenhum emblema forjável ainda.</div>'}
+        </div>
+        <div id="mt-forja-painel-auras" class="mt-forja-painel" style="display:none">
+          ${cardsAuras.length ? '<div class="mt-forja-grade">' + cardsAuras + '</div>'
+            : '<div class="mt-vazio-suave" style="font-size:.75rem">Nenhuma aura no catálogo ainda.</div>'}
         </div>
       </div>`;
   },
@@ -237,10 +265,16 @@ const Materiais = {
     document.querySelectorAll('[data-mt-forjar]').forEach(b =>
       b.addEventListener('click', () => this._forjar(b.dataset.mtForjar, b)));
 
-    document.getElementById('mt-btn')?.addEventListener('click', () => this._enviar());
+    document.querySelectorAll('[data-mt-forjar-aura]').forEach(b =>
+      b.addEventListener('click', () => this._forjarAura(b.dataset.mtForjarAura, b)));
 
-    document.querySelectorAll('[data-mt-enviar-aura]').forEach(b =>
-      b.addEventListener('click', () => this._confirmarEnvioAura(b.dataset.mtEnviarAura)));
+    document.querySelectorAll('[data-mt-aura]').forEach(el =>
+      el.addEventListener('click', () => this._toggleAura(el.dataset.mtAura, el)));
+
+    document.querySelectorAll('[data-forja-tab]').forEach(t =>
+      t.addEventListener('click', () => this._trocarAbaForja(t.dataset.forjaTab)));
+
+    document.getElementById('mt-btn')?.addEventListener('click', () => this._enviar());
   },
 
   async _buscarHunter(nick) {
@@ -272,20 +306,23 @@ const Materiais = {
   _atualizarBotao() {
     const btn = document.getElementById('mt-btn');
     const ctr = document.getElementById('mt-contador');
-    if (ctr) ctr.textContent = this._sel.size ? `${this._sel.size} selecionado${this._sel.size > 1 ? 's' : ''}` : '';
+    const total = this._sel.size + this._sel_auras.size;
+    if (ctr) ctr.textContent = total ? `${total} selecionado${total > 1 ? 's' : ''}` : '';
     if (!btn) return;
-
-    if (!this._destino)      { btn.disabled = true;  btn.textContent = 'Selecione um destinatário'; return; }
-    if (!this._sel.size)     { btn.disabled = true;  btn.textContent = 'Escolha o que enviar';      return; }
+    if (!this._destino)            { btn.disabled = true;  btn.textContent = 'Selecione um destinatário'; return; }
+    if (!total)                    { btn.disabled = true;  btn.textContent = 'Escolha o que enviar';      return; }
     btn.disabled = false;
-    btn.textContent = `Enviar ${this._sel.size} material${this._sel.size > 1 ? 'is' : ''} para ${this._destino.nome}`;
+    btn.textContent = `Enviar ${total} item${total > 1 ? 'ns' : ''} para ${this._destino.nome}`;
   },
 
   async _enviar() {
-    const btn = document.getElementById('mt-btn');
-    const nomes = this._enviaveis.filter(m => this._sel.has(m.codigo)).map(m => m.titulo).join(', ');
+    const btn       = document.getElementById('mt-btn');
+    const msgVal    = document.getElementById('mt-msg')?.value?.trim() || null;
+    const nomesEmbl = this._enviaveis.filter(m => this._sel.has(m.codigo)).map(m => m.titulo);
+    const nomesAura = this._enviaveis_auras.filter(a => this._sel_auras.has(a.aura_id)).map(a => a.nome);
+    const todos     = [...nomesEmbl, ...nomesAura].join(', ');
 
-    const aviso = `<b>${nomes}</b> deixará o seu inventário e passará a pertencer a `
+    const aviso = `<b>${todos}</b> deixará o seu inventário e passará a pertencer a `
                 + `<b>${this._destino.nome}</b>. A troca é definitiva.`;
     const ok = typeof SoloDialog !== 'undefined' && SoloDialog.confirm
       ? await SoloDialog.confirm(aviso, {
@@ -298,16 +335,28 @@ const Materiais = {
     btn.disabled = true;
     btn.textContent = 'Enviando...';
     try {
-      const r = await API.materiais.enviar({
-        nick:     this._destino.login,
-        codigos:  [...this._sel],
-        mensagem: document.getElementById('mt-msg')?.value?.trim() || null,
-      });
-      if (typeof SFX !== 'undefined') SFX.play('carimbo');
-      SoloDialog?.toast?.(
-        `${r.enviados.map(e => e.titulo).join(', ')} → ${r.para.nome}`, 'success');
-      (r.recusados || []).forEach(x =>
-        SoloDialog?.toast?.(`${x.titulo || x.codigo}: ${x.motivo}`, 'info'));
+      // 1. Envia emblemas (fluxo original)
+      if (this._sel.size) {
+        const r = await API.materiais.enviar({
+          nick:     this._destino.login,
+          codigos:  [...this._sel],
+          mensagem: msgVal,
+        });
+        if (typeof SFX !== 'undefined') SFX.play('carimbo');
+        SoloDialog?.toast?.(`${r.enviados.map(e => e.titulo).join(', ')} → ${r.para.nome}`, 'success');
+        (r.recusados || []).forEach(x =>
+          SoloDialog?.toast?.(`${x.titulo || x.codigo}: ${x.motivo}`, 'info'));
+      }
+      // 2. Envia auras (fluxo novo, uma por vez)
+      for (const auraId of this._sel_auras) {
+        const r = await API.materiais.enviarAura({
+          nick:     this._destino.login,
+          aura_id:  auraId,
+          mensagem: msgVal,
+        });
+        if (typeof SFX !== 'undefined') SFX.play('carimbo');
+        SoloDialog?.toast?.(`✶ ${r.nome} → ${r.para.nome}`, 'success');
+      }
       await this.carregar();
     } catch (err) {
       SoloDialog?.toast?.(err.message || String(err), 'error');
@@ -316,35 +365,56 @@ const Materiais = {
     }
   },
 
-  async _confirmarEnvioAura(auraId) {
-    const nick = document.getElementById('mt-nick')?.value?.trim();
-    if (!nick) {
-      SoloDialog?.toast?.('Digite o nick do destinatario no campo "1 · Destinatário" antes de enviar a aura', 'info');
-      return;
+  _cardAura(a) {
+    const bloco = (window.Auras && window.Auras.existe && window.Auras.existe(a.aura_id))
+      ? window.Auras.bloco(a.aura_id, 72) : '<span style="font-size:2rem">✶</span>';
+    const veio = a.veio_de ? `<div class="mt-card-origem">de ${a.veio_de}</div>` : '';
+    return `
+      <div class="mt-card" data-mt-aura="${a.aura_id}"
+           title="${a.nome}${a.descricao ? ' — ' + a.descricao : ''}">
+        <div class="mt-card-medalha" style="position:relative;display:flex;align-items:center;justify-content:center;height:92px">
+          ${bloco}
+          <div style="position:absolute;z-index:2;width:34px;height:34px;
+            background:linear-gradient(135deg,#1a0a2e,#0d1f36);
+            clip-path:polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%)"></div>
+        </div>
+        <div class="mt-card-nome" style="color:${a.cor}">${a.nome}</div>
+        ${veio}
+        <div class="mt-check">✓</div>
+      </div>`;
+  },
+
+  _toggleAura(auraId, el) {
+    if (this._sel_auras.has(auraId)) {
+      this._sel_auras.delete(auraId); el.classList.remove('on');
+    } else {
+      this._sel_auras.add(auraId); el.classList.add('on');
     }
-    const nomesAura = { 'bella-rosa': 'Bella Rosa — Femme Fatale' };
-    const nomeAura = nomesAura[auraId] || auraId;
-    const ok = typeof SoloDialog !== 'undefined' && SoloDialog.confirm
-      ? await SoloDialog.confirm(
-          'Deseja presentear a aura <b>' + nomeAura + '</b> para <b>@' + nick + '</b>?',
-          { icon: '✶', titulo: 'Conceder Aura', tipo: 'warn', btnOk: 'Presentear', btnCancel: 'Cancelar' })
-      : true;
-    if (!ok) return;
+    this._atualizarBotao();
+  },
+
+  async _forjarAura(auraId, btn) {
+    btn.disabled = true;
     try {
-      const tk = localStorage.getItem('access_token');
-      const r  = await fetch('/api/materiais/enviar-aura', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tk },
-        body: JSON.stringify({ nick: nick, aura_id: auraId,
-          mensagem: document.getElementById('mt-msg')?.value?.trim() || null }),
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.detail || 'Erro');
+      const r = await API.materiais.forjarAura(auraId);
       if (typeof SFX !== 'undefined') SFX.play('carimbo');
-      SoloDialog?.toast?.('✶ ' + nomeAura + ' concedida a ' + ((d.para && d.para.nome) || nick), 'success');
+      SoloDialog?.toast?.(
+        r.ja_possui ? r.detalhe : `✶ ${r.nome} forjada no seu inventário`,
+        r.ja_possui ? 'info' : 'success');
+      if (!r.ja_possui) await this.carregar();
+      else btn.disabled = false;
     } catch (err) {
       SoloDialog?.toast?.(err.message || String(err), 'error');
+      btn.disabled = false;
     }
+  },
+
+  _trocarAbaForja(tabId) {
+    document.querySelectorAll('.mt-forja-tab').forEach(t =>
+      t.classList.toggle('active', t.dataset.forjaTab === tabId));
+    document.querySelectorAll('.mt-forja-painel').forEach(p =>
+      p.style.display = p.id === 'mt-forja-painel-' + tabId ? '' : 'none');
+    localStorage.setItem('mt_forja_aba', tabId);
   },
 
   async _carregarHistorico() {

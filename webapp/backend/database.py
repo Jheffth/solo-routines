@@ -468,11 +468,30 @@ class TransferenciaMaterial(Base):
 
     id             = Column(Integer, primary_key=True, index=True)
     conquista_id   = Column(Integer, ForeignKey("conquistas.id"), nullable=False, index=True)
-    codigo         = Column(String(50), nullable=False)      # redundante de propósito
+    codigo         = Column(String(50), nullable=False)      # redundante de prop\u00f3sito
     de_usuario_id  = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
     para_usuario_id= Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
     mensagem       = Column(String(300), nullable=True)
     criado_em      = Column(DateTime, default=datetime.utcnow, index=True)
+
+
+# ==============================================================================
+# INVENTÁRIO DE AURAS COSMÉTICAS
+# ==============================================================================
+# Espelho de ConquistaUsuario mas para auras: cada linha é uma aura possuída
+# por um hunter. Quando o Arquiteto envia, a linha sai de um e nasce em outro.
+# celebrada=False sinaliza cerim\u00f4nia pendente — a aura "aparece" no próximo login.
+class AuraUsuario(Base):
+    __tablename__ = "auras_usuario"
+
+    id              = Column(Integer, primary_key=True, index=True)
+    usuario_id      = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    aura_id         = Column(String(50), nullable=False)         # ex: "bella-rosa"
+    obtida_em       = Column(DateTime, default=datetime.utcnow)
+    presenteada_por = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    mensagem        = Column(String(300), nullable=True)         # bilhete do remetente
+    celebrada       = Column(Boolean, default=False)             # False = cerim\u00f4nia pendente
+
 
 
 # ==============================================================================

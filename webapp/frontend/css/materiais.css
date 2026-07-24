@@ -270,6 +270,26 @@
   box-shadow: none; border: 1px solid rgba(52,211,153,.4);
 }
 
+/* -- Abas da Forja (Emblemas / Auras / futuras) ---- */
+.mt-forja-tabs {
+  display: flex; gap: .35rem; margin-bottom: .8rem;
+  border-bottom: 1px solid rgba(255,255,255,.06); padding-bottom: .4rem;
+}
+.mt-forja-tab {
+  font-family: var(--font-section); font-size: .6rem; letter-spacing: .1em;
+  padding: .3rem .8rem; border-radius: 4px 4px 0 0;
+  background: transparent; border: 1px solid rgba(255,255,255,.08);
+  color: var(--text-muted); cursor: pointer; transition: all .2s;
+  text-transform: uppercase;
+}
+.mt-forja-tab:hover   { color: var(--text-main); border-color: rgba(255,255,255,.2); }
+.mt-forja-tab.active  {
+  color: var(--gold-bright); border-color: var(--gold-bright);
+  border-bottom-color: transparent; background: rgba(251,191,36,.06);
+}
+.mt-forja-painel      { animation: fadeIn .18s ease; }
+
+
 /* ── Estados vazios ────────────────────────────────────── */
 .mt-vazio {
   text-align: center; padding: 2.5rem 1rem;

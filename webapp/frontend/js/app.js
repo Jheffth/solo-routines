@@ -146,6 +146,24 @@ const App = {
     } catch (_) { /* silencioso: celebração nunca pode travar a entrada */ }
   },
 
+  async celebrarAurasPendentes() {
+    try {
+      const { auras } = await API.auras.pendentes();
+      if (!auras || !auras.length) return;
+      // Pequeno delay para não sobrepor a cerimônia de emblemas
+      await new Promise(res => setTimeout(res, 2200));
+      for (const a of auras) {
+        const de = a.de ? ` — de ${a.de}` : '';
+        const msg = a.mensagem ? `<br><span style="font-style:italic;opacity:.75">&ldquo;${a.mensagem}&rdquo;</span>` : '';
+        SoloDialog?.toast?.(
+          `✶ Aura <b>${a.nome}</b> recebida${de}${msg}`,
+          'success', { duracao: 5000 }
+        );
+      }
+      await API.auras.celebradas();
+    } catch (_) { /* silencioso */ }
+  },
+
   /* Ouve o fim de qualquer celebração (Ascensão/Cerimônia) e recarrega
      os dados da página visível — sem F5, sem piscar a tela. */
   _bindRecompensa() {
@@ -313,6 +331,7 @@ const App = {
 
     // Celebra o que chegou enquanto o hunter estava fora
     this.celebrarPendentes();
+    this.celebrarAurasPendentes();
 
     // BuddyList: liga o botão do menu e o contador global de não-lidas
     this._bindAmigos();
