@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
    auras.js — Auras dos Hunters
 
    A aura antiga do Arquiteto era um borrão de CSS: gradiente
@@ -535,118 +535,202 @@ Auras.registrar('admin', function (tam) {
 
 
 /* ===================================================================
-   AURA "BELLA ROSA" - Femme Fatale
-   16 petalas em dupla espiral (8 longas + 8 curtas), aneis de shimmer,
-   halos sobrepostos branco e rosa. Geometria exclusiva.
+   AURA "PINK SPIRIT" — Femme Fatale (redesign espetacular)
+   11 camadas: halos, 4 grupos de pétalas, espinhos, 2 shimmers,
+   faíscas em órbita, anel tracejado duplo. Raios até 145.
    =================================================================== */
-Auras.registrar('bella-rosa', function (tam) {
+Auras.registrar('pink-spirit', function (tam) {
   const C = 150;
 
-  /* 16 petalas alternando longas e curtas */
-  const petalas = (aL, aC, rBase, larg, fill, op) => {
+  /* ── pétalas (curva Bézier) ─────────────────────────────────────── */
+  const petalas = (n, aL, aC, rBase, larg, fill, op) => {
     const ps = [];
-    for (let i = 0; i < 16; i++) {
-      const ang = (360/16) * i;
-      const a   = i % 2 === 0 ? aL : aC;
-      const w   = larg * (a / aL);
+    for (let i = 0; i < n; i++) {
+      const ang  = (360 / n) * i;
+      const a    = i % 2 === 0 ? aL : aC;
+      const w    = larg * (a / aL);
       const base = C - rBase, ponta = base - a;
-      ps.push(`<path d="M ${C} ${base}
-               C ${C-w} ${base-a*.12}, ${C-w*.75} ${base-a*.50}, ${C-w*.18} ${base-a*.82}
-               Q ${C-w*.04} ${base-a*.94}, ${C} ${ponta}
-               Q ${C+w*.04} ${base-a*.94}, ${C+w*.18} ${base-a*.82}
-               C ${C+w*.75} ${base-a*.50}, ${C+w} ${base-a*.12}, ${C} ${base} Z"
-            transform="rotate(${ang} ${C} ${C})" fill="${fill}" opacity="${op}"/>`);
+      ps.push(
+        `<path d="M ${C} ${base}` +
+        ` C ${C-w} ${base-a*.12},${C-w*.75} ${base-a*.50},${C-w*.18} ${base-a*.82}` +
+        ` Q ${C-w*.04} ${base-a*.94},${C} ${ponta}` +
+        ` Q ${C+w*.04} ${base-a*.94},${C+w*.18} ${base-a*.82}` +
+        ` C ${C+w*.75} ${base-a*.50},${C+w} ${base-a*.12},${C} ${base} Z"` +
+        ` transform="rotate(${ang} ${C} ${C})" fill="${fill}" opacity="${op}"/>`);
     }
     return ps.join('');
   };
 
-  /* 24 tracos de shimmer em anel */
-  const shimmer = (r, op) => {
+  /* ── espinhos finos pontudos ─────────────────────────────────────── */
+  const espinhos = (n, rBase, larg, fill, op) => {
     const ps = [];
-    for (let i = 0; i < 24; i++) {
-      const ang = (360/24)*i, a = (ang-90)*Math.PI/180;
-      const x1 = C+(r-5)*Math.cos(a), y1 = C+(r-5)*Math.sin(a);
-      const x2 = C+(r+3)*Math.cos(a), y2 = C+(r+3)*Math.sin(a);
-      ps.push(`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}"
-                     x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"
-                     stroke="#fff" stroke-width="1.4" stroke-opacity="${op}"
-                     stroke-linecap="round"/>`);
+    for (let i = 0; i < n; i++) {
+      const ang  = (360 / n) * i;
+      const aL   = i % 2 === 0 ? 60 : 44;
+      const w    = larg * (aL / 60);
+      const base = C - rBase, ponta = base - aL;
+      ps.push(
+        `<path d="M ${C} ${base}` +
+        ` C ${C-w} ${base-aL*.08},${C-w*.5} ${base-aL*.45},${C-w*.08} ${base-aL*.88}` +
+        ` Q ${C} ${ponta},${C+w*.08} ${base-aL*.88}` +
+        ` C ${C+w*.5} ${base-aL*.45},${C+w} ${base-aL*.08},${C} ${base} Z"` +
+        ` transform="rotate(${ang} ${C} ${C})" fill="${fill}" opacity="${op}"/>`);
     }
     return ps.join('');
   };
 
-  const pF = petalas(58,38,38,12,'url(#brPF)',.55);
-  const pM = petalas(44,28,32,9, 'url(#brPM)',.72);
-  const pT = petalas(30,18,26,7, 'url(#brPT)',.88);
-  const sF = shimmer(100,.55);
-  const sG = shimmer(88,.40);
+  /* ── shimmer em anel ─────────────────────────────────────────────── */
+  const shimmer = (n, r, w1, w2, sw, op) => {
+    const ps = [];
+    for (let i = 0; i < n; i++) {
+      const ang = (360 / n) * i, a = (ang - 90) * Math.PI / 180;
+      const x1 = C + (r - w1) * Math.cos(a), y1 = C + (r - w1) * Math.sin(a);
+      const x2 = C + (r + w2) * Math.cos(a), y2 = C + (r + w2) * Math.sin(a);
+      ps.push(
+        `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}"` +
+        ` x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"` +
+        ` stroke="#fff" stroke-width="${sw}" stroke-opacity="${op}" stroke-linecap="round"/>`);
+    }
+    return ps.join('');
+  };
+
+  /* ── faíscas em órbita ──────────────────────────────────────────── */
+  const faiscas = (n, rMin, rMax, fill) => {
+    const ps = [];
+    for (let i = 0; i < n; i++) {
+      const ang = (360 / n) * i, a = (ang - 90) * Math.PI / 180;
+      const r   = rMin + (rMax - rMin) * (i % 3) / 2;
+      const x   = C + r * Math.cos(a), y = C + r * Math.sin(a);
+      const del = (i * 0.22).toFixed(2);
+      ps.push(
+        `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.2" fill="${fill}"` +
+        ` opacity="0.7" style="animation:ps-spark 1.8s ${del}s ease-in-out infinite"/>`);
+    }
+    return ps.join('');
+  };
+
+  /* ── construção das camadas ─────────────────────────────────────── */
+  const pExt  = petalas(20, 72, 48, 30, 16, 'url(#psPF)',  .60);
+  const espnh = espinhos(24, 28, 20, 'url(#psEsp)', .50);
+  const pMed  = petalas(16, 52, 34, 24, 12, 'url(#psPM)',  .70);
+  const pInt  = petalas(20, 36, 22, 18,  9, 'url(#psPT)',  .90);
+  const shExt = shimmer(32, 118, 6, 4, 1.6, .60);
+  const shInt = shimmer(24,  88, 5, 3, 1.2, .45);
+  const sparks = faiscas(8, 96, 108, '#ff80ab');
 
   return `
   <svg viewBox="0 0 300 300" width="${tam}" height="${tam}"
        class="aura-svg" aria-hidden="true" focusable="false"
        style="display:block;overflow:visible;max-width:none;width:${tam}px;height:${tam}px">
     <style>
-      .br-r1{transform-origin:150px 150px;animation:aura-girar 68s linear infinite}
-      .br-r2{transform-origin:150px 150px;animation:aura-girar 45s linear infinite reverse}
-      .br-r3{transform-origin:150px 150px;animation:aura-girar 29s linear infinite}
-      .br-p{transform-origin:150px 150px;animation:br-bloom 4.8s ease-in-out infinite}
-      .br-b{transform-origin:150px 150px;animation:br-bloom 3.2s ease-in-out infinite reverse}
-      .br-h{animation:br-halo 7s ease-in-out infinite}
-      @keyframes br-bloom{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.06);opacity:1}}
-      @keyframes br-halo{0%,100%{opacity:.45}50%{opacity:.90}}
-      @media(prefers-reduced-motion:reduce){.br-r1,.br-r2,.br-r3,.br-p,.br-b,.br-h{animation:none}}
+      .ps-r1{transform-origin:150px 150px;animation:ps-spin1 80s linear infinite}
+      .ps-r2{transform-origin:150px 150px;animation:ps-spin2 55s linear infinite reverse}
+      .ps-r3{transform-origin:150px 150px;animation:ps-spin3 32s linear infinite}
+      .ps-r4{transform-origin:150px 150px;animation:ps-spin4 120s linear infinite reverse}
+      .ps-bloom{transform-origin:150px 150px;animation:ps-bloom 4s ease-in-out infinite}
+      .ps-pulse{transform-origin:150px 150px;animation:ps-pulse 2.8s ease-in-out infinite reverse}
+      .ps-halo{animation:ps-halo 6s ease-in-out infinite}
+      @keyframes ps-spin1{to{transform:rotate(360deg)}}
+      @keyframes ps-spin2{to{transform:rotate(-360deg)}}
+      @keyframes ps-spin3{to{transform:rotate(360deg)}}
+      @keyframes ps-spin4{to{transform:rotate(-360deg)}}
+      @keyframes ps-bloom{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.09);opacity:1}}
+      @keyframes ps-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+      @keyframes ps-halo{0%,100%{opacity:.3}50%{opacity:.85}}
+      @keyframes ps-spark{0%,100%{opacity:0}50%{opacity:1}}
+      @media(prefers-reduced-motion:reduce){
+        .ps-r1,.ps-r2,.ps-r3,.ps-r4,.ps-bloom,.ps-pulse,.ps-halo{animation:none}
+        circle[style*="ps-spark"]{animation:none!important}
+      }
     </style>
     <defs>
-      <radialGradient id="brPF" cx="50%" cy="20%">
-        <stop offset="0%"   stop-color="#fff"    stop-opacity=".97"/>
-        <stop offset="35%"  stop-color="#fce4ec" stop-opacity=".80"/>
-        <stop offset="70%"  stop-color="#f48fb1" stop-opacity=".50"/>
-        <stop offset="100%" stop-color="#c2185b" stop-opacity=".15"/>
+      <!-- Gradientes pétalas -->
+      <radialGradient id="psPF" cx="50%" cy="18%">
+        <stop offset="0%"   stop-color="#c2185b" stop-opacity=".90"/>
+        <stop offset="30%"  stop-color="#ffffff" stop-opacity=".95"/>
+        <stop offset="65%"  stop-color="#ff69b4" stop-opacity=".65"/>
+        <stop offset="100%" stop-color="#e91e63" stop-opacity=".15"/>
       </radialGradient>
-      <radialGradient id="brPM" cx="50%" cy="18%">
-        <stop offset="0%"   stop-color="#fff"    stop-opacity="1"/>
-        <stop offset="40%"  stop-color="#f8bbd0" stop-opacity=".88"/>
-        <stop offset="80%"  stop-color="#f06292" stop-opacity=".55"/>
-        <stop offset="100%" stop-color="#880e4f" stop-opacity=".20"/>
+      <radialGradient id="psPM" cx="50%" cy="18%">
+        <stop offset="0%"   stop-color="#ffffff" stop-opacity="1"/>
+        <stop offset="35%"  stop-color="#ff80ab" stop-opacity=".92"/>
+        <stop offset="75%"  stop-color="#ff1493" stop-opacity=".55"/>
+        <stop offset="100%" stop-color="#e91e63" stop-opacity=".18"/>
       </radialGradient>
-      <radialGradient id="brPT" cx="50%" cy="15%">
-        <stop offset="0%"   stop-color="#fff"    stop-opacity="1"/>
-        <stop offset="45%"  stop-color="#fce4ec" stop-opacity=".95"/>
-        <stop offset="85%"  stop-color="#f48fb1" stop-opacity=".65"/>
-        <stop offset="100%" stop-color="#e91e63" stop-opacity=".25"/>
+      <radialGradient id="psPT" cx="50%" cy="15%">
+        <stop offset="0%"   stop-color="#ffffff" stop-opacity="1"/>
+        <stop offset="40%"  stop-color="#fce4ec" stop-opacity=".95"/>
+        <stop offset="80%"  stop-color="#f48fb1" stop-opacity=".70"/>
+        <stop offset="100%" stop-color="#ff69b4" stop-opacity=".25"/>
       </radialGradient>
-      <radialGradient id="brHalo" cx="50%" cy="50%">
-        <stop offset="0%"   stop-color="#fff"    stop-opacity="0"/>
-        <stop offset="42%"  stop-color="#fff"    stop-opacity="0"/>
-        <stop offset="54%"  stop-color="#fce4ec" stop-opacity=".28"/>
-        <stop offset="70%"  stop-color="#f48fb1" stop-opacity=".18"/>
-        <stop offset="86%"  stop-color="#f06292" stop-opacity=".10"/>
-        <stop offset="100%" stop-color="#e91e63" stop-opacity="0"/>
+      <!-- Gradiente espinhos -->
+      <radialGradient id="psEsp" cx="50%" cy="12%">
+        <stop offset="0%"   stop-color="#ffffff" stop-opacity="1"/>
+        <stop offset="50%"  stop-color="#fce4ec" stop-opacity=".80"/>
+        <stop offset="100%" stop-color="#ff1493" stop-opacity=".20"/>
       </radialGradient>
-      <radialGradient id="brCalor" cx="50%" cy="50%">
-        <stop offset="0%"   stop-color="#f48fb1" stop-opacity="0"/>
-        <stop offset="46%"  stop-color="#f48fb1" stop-opacity="0"/>
-        <stop offset="60%"  stop-color="#fce4ec" stop-opacity=".35"/>
-        <stop offset="78%"  stop-color="#f48fb1" stop-opacity=".22"/>
-        <stop offset="92%"  stop-color="#e91e63" stop-opacity=".12"/>
+      <!-- Halos -->
+      <radialGradient id="psHalo1" cx="50%" cy="50%">
+        <stop offset="0%"   stop-color="#e91e63" stop-opacity="0"/>
+        <stop offset="45%"  stop-color="#e91e63" stop-opacity="0"/>
+        <stop offset="62%"  stop-color="#ff1493" stop-opacity=".22"/>
+        <stop offset="78%"  stop-color="#e91e63" stop-opacity=".40"/>
+        <stop offset="90%"  stop-color="#c2185b" stop-opacity=".20"/>
         <stop offset="100%" stop-color="#880e4f" stop-opacity="0"/>
       </radialGradient>
-      <filter id="brFundir" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="14"/></filter>
-      <filter id="brGlow"   x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="3"/></filter>
-      <filter id="brShimmer" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="1.5"/></filter>
+      <radialGradient id="psHalo2" cx="50%" cy="50%">
+        <stop offset="0%"   stop-color="#f48fb1" stop-opacity="0"/>
+        <stop offset="40%"  stop-color="#f48fb1" stop-opacity="0"/>
+        <stop offset="58%"  stop-color="#fce4ec" stop-opacity=".30"/>
+        <stop offset="75%"  stop-color="#f48fb1" stop-opacity=".18"/>
+        <stop offset="90%"  stop-color="#ff80ab" stop-opacity=".08"/>
+        <stop offset="100%" stop-color="#f48fb1" stop-opacity="0"/>
+      </radialGradient>
+      <!-- Filtros -->
+      <filter id="psGlow"  x="-70%" y="-70%" width="240%" height="240%"><feGaussianBlur stdDeviation="18"/></filter>
+      <filter id="psBlur"  x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="8"/></filter>
+      <filter id="psSharp" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2"/></filter>
+      <filter id="psSpark" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="1"/></filter>
     </defs>
-    <circle cx="${C}" cy="${C}" r="130" fill="url(#brCalor)" class="br-h" filter="url(#brFundir)"/>
-    <circle cx="${C}" cy="${C}" r="115" fill="url(#brHalo)" class="br-h"/>
-    <g class="br-r1" filter="url(#brShimmer)">${sF}</g>
-    <g class="br-r2"><g class="br-p" filter="url(#brGlow)">${pF}</g></g>
-    <g class="br-r3">${sG}</g>
-    <g class="br-r1"><g class="br-b" filter="url(#brGlow)">${pM}</g></g>
-    <g class="br-r2"><g class="br-p">${pT}</g></g>
-    <g class="br-r3">
-      <circle cx="${C}" cy="${C}" r="104" fill="none"
-              stroke="#fce4ec" stroke-width="0.9" stroke-opacity=".65"
-              stroke-dasharray="8 10" filter="url(#brGlow)"/>
+
+    <!-- Camada 0a: Halo exterior grande (r≈145) pulsante magenta -->
+    <circle cx="${C}" cy="${C}" r="145" fill="url(#psHalo1)" class="ps-halo" filter="url(#psGlow)"/>
+    <!-- Camada 0b: Segundo halo médio (r≈125) branco/rose translúcido -->
+    <circle cx="${C}" cy="${C}" r="125" fill="url(#psHalo2)" class="ps-halo" filter="url(#psBlur)"/>
+
+    <!-- Camada 1: Pétalas externas grandes (20) gradiente rosa→magenta -->
+    <g class="ps-r2"><g class="ps-bloom" filter="url(#psBlur)">${pExt}</g></g>
+
+    <!-- Camada 2: Espinhos/cristais (24) branco→rosa vivo -->
+    <g class="ps-r1"><g class="ps-pulse" filter="url(#psSharp)">${espnh}</g></g>
+
+    <!-- Camada 3: Pétalas médias (16) branco→pink -->
+    <g class="ps-r3"><g class="ps-bloom">${pMed}</g></g>
+
+    <!-- Camada 4: Anel shimmer externo (r=118, 32 traços) -->
+    <g class="ps-r4" filter="url(#psSharp)">${shExt}</g>
+
+    <!-- Camada 5: Anel de faíscas em espiral (8 pontos piscando, r=96–108) -->
+    <g class="ps-r1" filter="url(#psSpark)">${sparks}</g>
+
+    <!-- Camada 6: Pétalas internas (20) muito luminosas -->
+    <g class="ps-r2"><g class="ps-pulse">${pInt}</g></g>
+
+    <!-- Camada 7: Anel shimmer interno (r=88, 24 traços) -->
+    <g class="ps-r3" filter="url(#psSharp)">${shInt}</g>
+
+    <!-- Camada 8: Anel tracejado duplo externo -->
+    <g class="ps-r4">
+      <circle cx="${C}" cy="${C}" r="132" fill="none"
+              stroke="#ff80ab" stroke-width="1.2" stroke-opacity=".55"
+              stroke-dasharray="12 8" filter="url(#psSharp)"/>
+      <circle cx="${C}" cy="${C}" r="136" fill="none"
+              stroke="#fce4ec" stroke-width="0.7" stroke-opacity=".35"
+              stroke-dasharray="4 14" filter="url(#psSharp)"/>
     </g>
   </svg>`;
 });
+
+/* backward-compat: código legado que use 'bella-rosa' continua funcionando */
+Auras.registrar('bella-rosa', function(tam) { return Auras.bloco('pink-spirit', tam); });
 window.Auras = Auras;

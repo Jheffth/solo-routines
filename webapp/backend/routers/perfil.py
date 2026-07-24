@@ -412,14 +412,17 @@ def definir_reliquias(
 AURAS_DE_CARGO = {"arquiteto", "admin", "moderador", "suporte"}
 
 # IDs de aura cosméticas disponíveis para presentear/forjar/trocar
+_COSMETIC_PINK_SPIRIT = {
+    "id": "pink-spirit",
+    "nome": "Pink Spirit \u2014 Femme Fatale",
+    "descricao": "11 camadas espetaculares: halos magenta pulsantes, 4 grupos de p\u00e9talas, espinhos, shimmers e fa\u00edscas em \u00f3rbita. Aura exclusiva.",
+    "cor": "#ff1493",
+    "enviavel": True,
+}
 AURAS_COSMETICAS = {
-    "bella-rosa": {
-        "id": "bella-rosa",
-        "nome": "Bella Rosa — Femme Fatale",
-        "descricao": "Aura exclusiva de 16 pétalas em espiral, halos rosa e branco, shimmer suave.",
-        "cor": "#f48fb1",
-        "enviavel": True,
-    },
+    "pink-spirit": _COSMETIC_PINK_SPIRIT,
+    # alias legacy — usuários com aura_id='bella-rosa' continuam funcionando
+    "bella-rosa":  _COSMETIC_PINK_SPIRIT,
 }
 
 
