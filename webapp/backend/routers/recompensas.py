@@ -8,9 +8,37 @@ from typing import Optional
 from datetime import datetime
 
 from database import get_db, Recompensa, RecompensaUsuario, Usuario
-from auth.router import get_usuario_atual, get_admin
+from auth.router import get_usuario_atual
+from motors import loja_efeitos, cosmeticos
+from motors.celebracao import anexar
 
 router = APIRouter(prefix="/recompensas", tags=["recompensas"])
+
+
+# ── Quem pode FORJAR itens para a prateleira ──────────────────────────
+#
+# ESTA TUPLA É O ÚNICO LUGAR A MUDAR. Para abrir a forja a Admin e Suporte
+# (cargos que a hierarquia já prevê), escreva:
+#
+#     FORJADORES = ("Arquiteto", "Admin", "Suporte")
+#
+# Nada mais precisa ser tocado: os endpoints de escrita, e também a tela,
+# perguntam daqui. A tela nunca aprende a lista de cargos — ela pergunta ao
+# servidor se pode forjar, então nunca mostra um botão que seria recusado.
+#
+# Antes isto usava `get_admin`, que já inclui Suporte, Moderador, Admin e
+# Criador — largo demais para quem decide o que a loja vende e por quanto.
+FORJADORES = ("Arquiteto",)
+
+
+def pode_forjar(usuario: Usuario) -> bool:
+    return (usuario.nivel_acesso or "") in FORJADORES
+
+
+def get_forjador(usuario: Usuario = Depends(get_usuario_atual)) -> Usuario:
+    if not pode_forjar(usuario):
+        raise HTTPException(403, "Apenas o Arquiteto pode forjar itens da loja")
+    return usuario
 
 
 class RecompensaCreate(BaseModel):
@@ -22,6 +50,8 @@ class RecompensaCreate(BaseModel):
     custo_xp: int = 0
     nivel_minimo: int = 1
     estoque: int = -1
+    tipo: str = "externa"                 # externa | aura | emblema
+    payload: Optional[str] = None         # id do cosmético, quando houver
 
 
 class RecompensaUpdate(BaseModel):
@@ -33,16 +63,37 @@ class RecompensaUpdate(BaseModel):
     nivel_minimo: Optional[int] = None
     estoque: Optional[int] = None
     ativo: Optional[bool] = None
+    tipo: Optional[str] = None
+    payload: Optional[str] = None
 
 
-def _recompensa_to_dict(r: Recompensa, usuario_id: int = None, db: Session = None) -> dict:
-    resgatada = False
-    if usuario_id and db:
+def _recompensa_to_dict(r: Recompensa, usuario: Usuario = None, db: Session = None) -> dict:
+    """
+    A vitrine precisa saber, ANTES do clique, tudo que pode impedir a compra.
+    Antes ela só recebia o preço, então o card convidava a resgatar e o
+    backend recusava depois — o hunter descobria o bloqueio errando.
+    """
+    tipo = (getattr(r, "tipo", None) or "externa").lower()
+    payload = getattr(r, "payload", None)
+
+    resgatada = possui = False
+    pode_pagar = tem_nivel = True
+    if usuario is not None and db is not None:
         resgatada = db.query(RecompensaUsuario).filter(
-            RecompensaUsuario.usuario_id == usuario_id,
+            RecompensaUsuario.usuario_id == usuario.id,
             RecompensaUsuario.recompensa_id == r.id,
         ).first() is not None
-    return {
+        possui     = loja_efeitos.ja_possui(db, usuario.id, r)
+        pode_pagar = (usuario.moedas or 0) >= (r.custo_moedas or 0)
+        tem_nivel  = (usuario.nivel_atual or 1) >= (r.nivel_minimo or 0)
+
+    # -1 significa ILIMITADO (é o padrão do modelo). A vitrine antiga tratava
+    # qualquer valor <= 0 como esgotado, então todo item permanente nascia
+    # impossível de comprar. Quem decide isto agora é o backend, uma vez só.
+    ilimitado = r.estoque is None or r.estoque < 0
+    esgotado  = (not ilimitado) and r.estoque <= 0
+
+    d = {
         "id":           r.id,
         "titulo":       r.titulo,
         "descricao":    r.descricao,
@@ -52,9 +103,32 @@ def _recompensa_to_dict(r: Recompensa, usuario_id: int = None, db: Session = Non
         "custo_xp":     r.custo_xp,
         "nivel_minimo": r.nivel_minimo,
         "estoque":      r.estoque,
+        "ilimitado":    ilimitado,
+        "esgotado":     esgotado,
         "ativo":        r.ativo,
         "resgatada":    resgatada,
+
+        # Identidade do item
+        "tipo":         tipo,
+        "payload":      payload,
+        "unico":        loja_efeitos.eh_unico(tipo),
+        "possui":       possui,
+
+        # Veredito pronto: a vitrine não precisa reimplementar a regra.
+        "pode_pagar":   pode_pagar,
+        "tem_nivel":    tem_nivel,
+        "disponivel":   bool(pode_pagar and tem_nivel and not esgotado and not possui),
     }
+
+    # Dados do cosmético para o card desenhá-lo de verdade, em vez de emoji.
+    if tipo == "aura" and payload:
+        cat = cosmeticos.aura(payload)
+        d["cosmetico"] = {"tipo": "aura", "id": payload,
+                          "nome": cat["nome"], "cor": cat["cor"]}
+    elif tipo == "emblema" and payload:
+        d["cosmetico"] = {"tipo": "emblema", "id": payload,
+                          "nome": r.titulo, "cor": None}
+    return d
 
 
 @router.get("/")
@@ -63,7 +137,36 @@ def listar_recompensas(
     usuario: Usuario = Depends(get_usuario_atual),
 ):
     recompensas = db.query(Recompensa).filter(Recompensa.ativo == True).all()
-    return [_recompensa_to_dict(r, usuario.id, db) for r in recompensas]
+    return [_recompensa_to_dict(r, usuario, db) for r in recompensas]
+
+
+@router.get("/forja/permissao")
+def permissao_forja(usuario: Usuario = Depends(get_usuario_atual)):
+    """
+    A vitrine pergunta ao servidor se deve desenhar a Forja, em vez de
+    decidir pelo cargo que tem em mãos. Assim, quando a forja for aberta a
+    Admin e Suporte, basta mudar `get_forjador` — nenhuma tela precisa saber
+    a lista de cargos, e nenhuma delas fica mostrando um botão que o servidor
+    vai recusar.
+    """
+    return {"pode_forjar": pode_forjar(usuario)}
+
+
+@router.get("/catalogo-cosmeticos")
+def catalogo_cosmeticos(
+    db: Session = Depends(get_db),
+    forjador: Usuario = Depends(get_forjador),
+):
+    """O que existe para ser posto à venda — alimenta o cadastro de itens."""
+    from database import Conquista
+    emblemas = db.query(Conquista).filter(Conquista.ativo == True).all() \
+        if hasattr(Conquista, "ativo") else db.query(Conquista).all()
+    return {
+        "tipos": loja_efeitos.tipos_disponiveis(),
+        "auras": list(cosmeticos.AURAS.values()),
+        "emblemas": [{"codigo": q.codigo, "titulo": q.titulo, "icone": q.icone}
+                     for q in emblemas],
+    }
 
 
 @router.post("/{recompensa_id}/resgatar")
@@ -87,22 +190,39 @@ def resgatar_recompensa(
     if usuario.moedas < r.custo_moedas:
         raise HTTPException(400, f"Mana Coins insuficientes. Necessário: {r.custo_moedas} 💰")
 
-    if r.estoque == 0:
+    # -1 = ilimitado; só 0 é esgotado de verdade.
+    if r.estoque is not None and r.estoque == 0:
         raise HTTPException(400, "Esta recompensa está esgotada")
 
-    # Debita moedas
+    # ENTREGA PRIMEIRO, COBRA DEPOIS.
+    # A ordem é o ponto: se a entrega falhar (aura já possuída, cosmético
+    # removido do catálogo), o hunter não pode sair mais pobre por nada.
+    # O efeito levanta ValueError e nada foi debitado ainda.
+    try:
+        eventos = loja_efeitos.entregar(db, usuario, r)
+    except ValueError as e:
+        db.rollback()
+        raise HTTPException(400, str(e))
+
     usuario.moedas -= r.custo_moedas
-    if r.estoque > 0:
+    if r.estoque is not None and r.estoque > 0:
         r.estoque -= 1
 
-    # Registra resgate
-    resgate = RecompensaUsuario(
-        usuario_id=usuario.id,
-        recompensa_id=r.id,
-    )
-    db.add(resgate)
+    db.add(RecompensaUsuario(usuario_id=usuario.id, recompensa_id=r.id))
     db.commit()
-    return {"ok": True, "msg": f"🎉 Recompensa '{r.titulo}' resgatada!", "moedas_restantes": usuario.moedas}
+
+    resp = {
+        "ok": True,
+        "msg": f"🎉 '{r.titulo}' resgatado!",
+        "moedas_restantes": usuario.moedas,
+        "tipo": (getattr(r, "tipo", None) or "externa"),
+    }
+    # Cosmético comprado merece a mesma cerimônia de um presenteado: comprar
+    # não pode ser mais sem graça do que ganhar. O envelope `sr_eventos` é o
+    # canal único de celebração do app.
+    if eventos:
+        resp = anexar(resp, None, **eventos)
+    return resp
 
 
 # ── Admin ──────────────────────────────────────────────────────
@@ -110,7 +230,7 @@ def resgatar_recompensa(
 def criar_recompensa(
     payload: RecompensaCreate,
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(get_admin),
+    forjador: Usuario = Depends(get_forjador),
 ):
     r = Recompensa(**payload.dict())
     db.add(r)
@@ -124,7 +244,7 @@ def atualizar_recompensa(
     recompensa_id: int,
     payload: RecompensaUpdate,
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(get_admin),
+    forjador: Usuario = Depends(get_forjador),
 ):
     r = db.query(Recompensa).filter(Recompensa.id == recompensa_id).first()
     if not r:
@@ -141,7 +261,7 @@ def atualizar_recompensa(
 def deletar_recompensa(
     recompensa_id: int,
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(get_admin),
+    forjador: Usuario = Depends(get_forjador),
 ):
     r = db.query(Recompensa).filter(Recompensa.id == recompensa_id).first()
     if not r:

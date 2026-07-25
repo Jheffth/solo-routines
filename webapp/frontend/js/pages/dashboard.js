@@ -401,7 +401,10 @@ const Dashboard = {
   // Retorna a lista can\u00F4nica para quem chamou (carregar() usa no fallback dos
   // contadores) \u2014 assim ningu\u00E9m precisa refazer a mesma consulta.
   async carregarExtrato() {
-    const periodo   = document.getElementById('filtro-periodo')?.value   || 'hoje';
+    // Padrão TUDO: o extrato é um livro-caixa, e um livro-caixa abre mostrando
+    // o que existe. Abrir em "hoje" escondia todo o histórico logo no momento
+    // em que ele passou a existir. Quem quiser recortar o dia, recorta.
+    const periodo   = document.getElementById('filtro-periodo')?.value   || 'tudo';
     const origem    = document.getElementById('filtro-origem')?.value    || '';
     const tipo      = document.getElementById('filtro-tipo')?.value      || '';
     const categoria = document.getElementById('filtro-categoria')?.value || '';
@@ -616,14 +619,21 @@ const Dashboard = {
 
 
   _bindFiltrosExtrato() {
+    const IDS = ['filtro-periodo','filtro-origem','filtro-tipo',
+                 'filtro-categoria','filtro-status-missao'];
+
     const bind = (id) => {
       const el = document.getElementById(id);
       if (el && !el._extratoListenerAdded) {
-        el.addEventListener('change', () => this.carregarExtrato());
+        el.addEventListener('change', () => {
+          this._marcarFiltrosAtivos();
+          this.carregarExtrato();
+        });
         el._extratoListenerAdded = true;
       }
     };
-    ['filtro-periodo','filtro-origem','filtro-tipo','filtro-categoria','filtro-status-missao'].forEach(bind);
+    IDS.forEach(bind);
+    this._marcarFiltrosAtivos();
 
     // Toggle ocultar concluídas (Extrato) — persistente
     const toggleExtrato = document.getElementById('toggle-ocultar-extrato');
@@ -641,6 +651,20 @@ const Dashboard = {
       btnAtualizar.addEventListener('click', () => this.carregarExtrato());
       btnAtualizar._extratoListenerAdded = true;
     }
+  },
+
+  /* Acende o filtro que está recortando a lista. Sem isto, uma lista curta
+     por causa de um filtro esquecido parece uma lista vazia por falta de
+     dados — e o hunter conclui que o extrato está quebrado.
+     "Tudo" e "Todas" são o repouso: não acendem. */
+  _marcarFiltrosAtivos() {
+    ['filtro-periodo','filtro-origem','filtro-tipo',
+     'filtro-categoria','filtro-status-missao'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const emRepouso = el.value === '' || el.value === 'tudo';
+      el.classList.toggle('sr-filtro-ativo', !emRepouso);
+    });
   },
 
   // Todo relógio do Dashboard morre aqui. O app.js chama isto ao trocar de

@@ -38,24 +38,9 @@ router = APIRouter(prefix="/materiais", tags=["materiais"])
 LIMITE_POR_ENVIO = 10   # nada de despejar o inventário inteiro de uma vez
 
 # Catálogo de auras cosméticas (extensível — adicione novas auras aqui)
-_AURA_BELLA_ROSA = {
-    "id":        "bella-rosa",
-    "nome":      "Bella Rosa — Femme Fatale",
-    "descricao": "11 camadas: halos magenta, 4 grupos de pétalas, espinhos, shimmers e faíscas em órbita. Aura espetacular e expansiva.",
-    "cor":       "#ff1493",
-    "enviavel":  True,
-}
-_AURA_PINK_SPIRIT = {
-    "id":        "pink-spirit",
-    "nome":      "Pink Spirit",
-    "descricao": "Aura rosa tradicional. 16 pétalas com shimmers luminosos.",
-    "cor":       "#f48fb1",
-    "enviavel":  True,
-}
-CATALOGO_AURAS = {
-    "bella-rosa": _AURA_BELLA_ROSA,
-    "pink-spirit": _AURA_PINK_SPIRIT,
-}
+# Fonte única em motors/cosmeticos.py — este arquivo era o "dono" informal do
+# catálogo, e a cópia que existia em auras.py vivia atrasada em relação a ele.
+from motors.cosmeticos import AURAS as CATALOGO_AURAS
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

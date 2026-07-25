@@ -504,6 +504,63 @@
 .reg-metodos .btn-oauth svg,
 .reg-metodos .btn-metodo svg { margin-right: .15rem; }
 
+/* ─── FILTROS DO EXTRATO ───────────────────────────────────────────
+   A legibilidade do menu aberto foi resolvida na raiz (color-scheme no
+   design-system), porque o problema era de todo <select> do app, não
+   só destes. Aqui fica apenas a aparência: cada filtro traz seu tom em
+   --f-cor e o resto é comum aos sete. */
+.sr-filtro {
+  --f-cor: #7c3aed;
+  appearance: none;
+  -webkit-appearance: none;
+  font-family: var(--font-section);
+  font-size: .68rem;
+  font-weight: 600;
+  letter-spacing: .02em;
+  padding: .4rem 1.85rem .4rem .6rem;
+  border-radius: .5rem;
+  color: #e2e8f0;
+  background-color: color-mix(in srgb, var(--f-cor) 14%, #0f0a1e);
+  border: 1px solid color-mix(in srgb, var(--f-cor) 45%, transparent);
+  cursor: pointer;
+  outline: none;
+  transition: border-color .18s, background-color .18s, box-shadow .18s;
+
+  /* Seta própria: a nativa vem com a cor do sistema e destoa do tema. */
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position:
+    calc(100% - 1.05rem) calc(50% + 1px),
+    calc(100% - 0.72rem) calc(50% + 1px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+.sr-filtro:hover {
+  border-color: color-mix(in srgb, var(--f-cor) 75%, transparent);
+  background-color: color-mix(in srgb, var(--f-cor) 22%, #0f0a1e);
+}
+.sr-filtro:focus-visible {
+  border-color: var(--f-cor);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--f-cor) 28%, transparent);
+}
+/* Filtro em uso fica evidente — ajuda a entender por que a lista encolheu. */
+.sr-filtro.sr-filtro-ativo {
+  background-color: color-mix(in srgb, var(--f-cor) 30%, #0f0a1e);
+  border-color: var(--f-cor);
+  color: #fff;
+}
+.sr-filtro option {
+  background-color: #14102b;
+  color: #e2e8f0;
+  font-weight: 500;
+  padding: .4rem;
+}
+.sr-filtro option:checked {
+  background-color: var(--f-cor);
+  color: #fff;
+}
+
 /* ─── MAIN APP LAYOUT ─── */
 #main-app {
   display: flex;

@@ -1,0 +1,656 @@
+/* ============================================================
+   loja.css — A Loja do Hunter
+
+   A loja era a única tela do app sem folha própria: 15 regras
+   perdidas no components.css, contra 320 do materiais e 526 do
+   cartão de missão. Ela destoava por abandono, não por escolha.
+
+   Esta folha a traz para a mesma família:
+     • tokens do design-system (nada de hex solto onde há token)
+     • o casco radial e o salto no hover vindos do .mt-card
+       (Casa de Trocas), que é a vitrine irmã desta
+     • o fio superior e o selo do cartão de missão
+
+   A cor do card é ditada pelo TIPO do item, via --lj-cor:
+   cosmético é roxo (é poder do Sistema), recompensa da vida real
+   é dourada (é promessa que o hunter faz a si mesmo).
+   ============================================================ */
+
+/* ── Cabeçalho e carteira ─────────────────────────────────── */
+.lj-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.1rem;
+}
+.lj-carteira {
+  display: inline-flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .6rem 1.1rem;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(245,158,11,.16), rgba(245,158,11,.05));
+  border: 1px solid var(--border-gold);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+}
+.lj-carteira-moeda { width: 22px; height: 22px; flex: none; }
+.lj-carteira-valor {
+  font-family: var(--font-digits);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--gold-bright);
+  letter-spacing: .04em;
+  text-shadow: 0 0 14px rgba(251,191,36,.45);
+}
+.lj-carteira-lbl {
+  font-family: var(--font-section);
+  font-size: .66rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ── Abas por tipo ────────────────────────────────────────── */
+.lj-abas {
+  display: flex;
+  gap: .35rem;
+  padding: .3rem;
+  border-radius: var(--radius-md);
+  background: rgba(148,163,184,.07);
+  border: 1px solid var(--border-glass);
+  flex-wrap: wrap;
+}
+.lj-aba {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .5rem .9rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-section);
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .03em;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.lj-aba:hover { color: var(--text-primary); }
+.lj-aba.on {
+  background: linear-gradient(180deg, var(--purple-glow), var(--purple-main));
+  color: #fff;
+  box-shadow: 0 4px 14px -6px var(--purple-glow);
+}
+.lj-aba-n {
+  font-family: var(--font-digits);
+  font-size: .66rem;
+  padding: .05rem .35rem;
+  border-radius: var(--radius-full);
+  background: rgba(0,0,0,.28);
+}
+
+/* ── Grade ────────────────────────────────────────────────── */
+.lj-grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+  gap: 1rem;
+}
+
+/* ── O cartão ─────────────────────────────────────────────── */
+.lj-card {
+  --lj-cor: var(--gold-xp);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 0%,
+      color-mix(in srgb, var(--lj-cor) 14%, transparent), transparent 62%),
+    var(--bg-card);
+  border: 1px solid var(--border-glass);
+  transition: transform var(--transition-bounce),
+              border-color var(--transition-base),
+              box-shadow var(--transition-base);
+}
+.lj-card:hover {
+  transform: translateY(-5px);
+  border-color: color-mix(in srgb, var(--lj-cor) 55%, transparent);
+  box-shadow: 0 14px 38px -14px color-mix(in srgb, var(--lj-cor) 65%, transparent);
+}
+/* Fio superior: a assinatura visual que o cartão de missão já usa. */
+.lj-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--lj-cor), transparent);
+  opacity: .55;
+  transition: opacity var(--transition-base);
+}
+.lj-card:hover::before { opacity: 1; }
+
+/* ── Palco do item ────────────────────────────────────────── */
+/* Altura fixa para os cartões alinharem em grade mesmo com
+   preview de tamanhos diferentes (aura desenhada x emoji). */
+.lj-palco {
+  position: relative;
+  height: 132px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(ellipse at 50% 55%,
+      color-mix(in srgb, var(--lj-cor) 18%, transparent), transparent 70%);
+  border-bottom: 1px solid var(--border-glass);
+  overflow: hidden;
+}
+.lj-palco-emoji {
+  font-size: 3rem;
+  line-height: 1;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,.55));
+  transition: transform var(--transition-base);
+}
+.lj-card:hover .lj-palco-emoji { transform: scale(1.08); }
+/* A aura é um SVG que se anima sozinho; aqui ela só é enquadrada.
+   `max-width:none` é obrigatório: existe uma regra global
+   `img, svg { max-width:100% }` que já colapsou SVG neste projeto. */
+.lj-palco-aura, .lj-palco-medalha {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--transition-base);
+}
+.lj-palco-aura svg, .lj-palco-medalha svg { max-width: none; }
+.lj-card:hover .lj-palco-aura,
+.lj-card:hover .lj-palco-medalha { transform: scale(1.06); }
+
+/* Selo de tipo, no canto do palco */
+.lj-selo-tipo {
+  position: absolute;
+  top: .5rem; left: .5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .28rem;
+  padding: .2rem .5rem;
+  border-radius: var(--radius-full);
+  background: rgba(5,5,8,.72);
+  border: 1px solid color-mix(in srgb, var(--lj-cor) 45%, transparent);
+  color: color-mix(in srgb, var(--lj-cor) 78%, #fff);
+  font-family: var(--font-section);
+  font-size: .58rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  backdrop-filter: blur(var(--glass-blur-sm));
+}
+
+/* Fita de posse — o hunter já tem este cosmético */
+.lj-fita {
+  position: absolute;
+  top: .5rem; right: .5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  padding: .2rem .5rem;
+  border-radius: var(--radius-full);
+  background: rgba(16,185,129,.16);
+  border: 1px solid rgba(16,185,129,.5);
+  color: #34d399;
+  font-family: var(--font-section);
+  font-size: .58rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+/* ── Corpo ────────────────────────────────────────────────── */
+.lj-corpo {
+  padding: .85rem .95rem .6rem;
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+  flex: 1;
+}
+.lj-nome {
+  font-family: var(--font-section);
+  font-size: .95rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--text-primary);
+}
+.lj-desc {
+  font-family: var(--font-body);
+  font-size: .74rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+  flex: 1;
+  /* Descrição longa não pode empurrar o preço para fora do alinhamento. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.lj-chips { display: flex; flex-wrap: wrap; gap: .3rem; }
+.lj-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  padding: .16rem .45rem;
+  border-radius: var(--radius-sm);
+  background: rgba(148,163,184,.1);
+  border: 1px solid var(--border-glass);
+  color: var(--text-secondary);
+  font-family: var(--font-section);
+  font-size: .6rem;
+  font-weight: 600;
+  letter-spacing: .03em;
+}
+.lj-chip-alerta {
+  background: rgba(239,68,68,.12);
+  border-color: rgba(239,68,68,.35);
+  color: #fca5a5;
+}
+.lj-chip-nivel {
+  background: rgba(59,130,246,.12);
+  border-color: rgba(59,130,246,.35);
+  color: #93c5fd;
+}
+
+/* ── Rodapé: preço e ação ─────────────────────────────────── */
+.lj-rodape {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .6rem;
+  padding: .7rem .95rem .85rem;
+  border-top: 1px solid var(--border-glass);
+}
+.lj-preco {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-family: var(--font-digits);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--gold-bright);
+  letter-spacing: .02em;
+}
+.lj-preco svg { width: 16px; height: 16px; flex: none; }
+/* Sem saldo: o preço vira o aviso, sem precisar de texto extra. */
+.lj-preco.sem-saldo { color: #f87171; }
+.lj-preco.sem-saldo svg { opacity: .6; }
+
+.lj-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .5rem .85rem;
+  border: 1px solid color-mix(in srgb, var(--lj-cor) 50%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--lj-cor) 16%, transparent);
+  color: color-mix(in srgb, var(--lj-cor) 85%, #fff);
+  font-family: var(--font-section);
+  font-size: .76rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition-fast),
+              border-color var(--transition-fast),
+              transform var(--transition-fast);
+}
+.lj-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--lj-cor) 30%, transparent);
+  border-color: var(--lj-cor);
+  transform: translateY(-1px);
+}
+.lj-btn:active:not(:disabled) { transform: translateY(0); }
+.lj-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--lj-cor) 30%, transparent);
+}
+/* Indisponível continua LEGÍVEL e diz o motivo — não é um botão morto. */
+.lj-btn:disabled {
+  cursor: not-allowed;
+  background: rgba(148,163,184,.08);
+  border-color: rgba(148,163,184,.2);
+  color: var(--text-muted);
+}
+
+/* Estados do cartão inteiro */
+.lj-card.travado { opacity: .72; }
+.lj-card.travado:hover { transform: none; }
+.lj-card.possuido { --lj-cor: var(--green-done); }
+
+/* ── Vazio e erro ─────────────────────────────────────────── */
+/* Estados que o antigo tratava de passagem, com um emoji e uma linha. */
+.lj-estado {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .5rem;
+  padding: 3rem 1rem;
+  text-align: center;
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: rgba(148,163,184,.03);
+}
+.lj-estado-glifo { color: var(--purple-soft); opacity: .55; }
+.lj-estado-titulo {
+  font-family: var(--font-section);
+  font-size: .95rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+.lj-estado-txt {
+  font-family: var(--font-body);
+  font-size: .78rem;
+  color: var(--text-muted);
+  max-width: 42ch;
+  line-height: 1.6;
+}
+
+/* ============================================================
+   A FORJA — onde os itens da prateleira nascem
+
+   Vive DENTRO da loja, e não numa tela de administração à parte,
+   porque quem define o que se vende precisa ver a vitrine no
+   mesmo instante. Ela é fechada por padrão: a loja é do hunter,
+   a forja é uma ferramenta que se abre quando se precisa dela.
+   ============================================================ */
+.lj-forja-abrir {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .55rem 1rem;
+  border-radius: var(--radius-md);
+  background: linear-gradient(100deg, rgba(251,191,36,.14), transparent);
+  border: 1px solid var(--border-gold);
+  color: var(--gold-bright);
+  font-family: var(--font-section);
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  cursor: pointer;
+  transition: background var(--transition-fast), box-shadow var(--transition-fast);
+}
+.lj-forja-abrir:hover {
+  background: linear-gradient(100deg, rgba(251,191,36,.24), transparent);
+  box-shadow: 0 0 18px -6px var(--gold-glow);
+}
+.lj-forja-sigilo { font-size: 1rem; text-shadow: 0 0 10px var(--gold-glow); }
+
+.lj-forja {
+  margin: 1rem 0;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-gold);
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(251,191,36,.07), transparent 55%),
+    var(--bg-card);
+  overflow: hidden;
+}
+.lj-forja.hidden { display: none; }
+
+/* Aviso de poder exclusivo — mesma marca da Sala de Poderes, para o
+   Arquiteto reconhecer na hora que está numa ferramenta restrita. */
+.lj-forja-aviso {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  padding: .8rem 1.1rem;
+  background: linear-gradient(100deg, rgba(239,68,68,.09), transparent);
+  border-bottom: 1px solid rgba(239,68,68,.24);
+  font-family: var(--font-section);
+  font-size: .74rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.lj-forja-aviso-ico {
+  font-size: 1.35rem;
+  color: var(--gold-bright);
+  flex-shrink: 0;
+  text-shadow: 0 0 12px var(--gold-glow);
+}
+
+.lj-forja-corpo {
+  display: grid;
+  grid-template-columns: 1fr 248px;
+  gap: 1.2rem;
+  padding: 1.1rem;
+}
+.lj-forja-campos { display: flex; flex-direction: column; gap: .85rem; min-width: 0; }
+.lj-forja-linha {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: .7rem;
+}
+.lj-campo { display: flex; flex-direction: column; gap: .35rem; min-width: 0; }
+.lj-campo-lbl {
+  font-family: var(--font-section);
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.lj-campo-lbl .req { color: var(--red-crit); }
+.lj-campo-dica {
+  font-family: var(--font-body);
+  font-size: .66rem;
+  color: var(--text-muted);
+}
+.lj-in {
+  width: 100%;
+  box-sizing: border-box;
+  padding: .6rem .8rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  border: 1.5px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-family: var(--font-section);
+  font-size: .85rem;
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.lj-in:focus {
+  border-color: var(--border-purple);
+  box-shadow: 0 0 0 3px rgba(124,58,237,.14);
+}
+.lj-in::placeholder { color: var(--text-dim); }
+textarea.lj-in { resize: vertical; min-height: 56px; max-height: 130px; }
+
+/* Escolha do tipo de item — o que decide todo o resto do formulário */
+.lj-tipos { display: flex; gap: .4rem; flex-wrap: wrap; }
+.lj-tipo {
+  flex: 1;
+  min-width: 96px;
+  padding: .6rem .5rem;
+  border-radius: var(--radius-sm);
+  background: rgba(148,163,184,.06);
+  border: 1.5px solid var(--border-glass);
+  color: var(--text-secondary);
+  font-family: var(--font-section);
+  font-size: .74rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+.lj-tipo:hover { color: var(--text-primary); border-color: var(--border-purple); }
+.lj-tipo.on {
+  background: rgba(124,58,237,.18);
+  border-color: var(--purple-glow);
+  color: #fff;
+}
+
+/* Galeria de cosméticos: escolher olhando, não digitando um id.
+   É isto que torna "adicionar um cosmético" fluido. */
+.lj-galeria {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: .5rem;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: .55rem;
+  border-radius: var(--radius-md);
+  background: rgba(5,5,8,.4);
+  border: 1px solid var(--border-glass);
+}
+.lj-galeria-vazia {
+  grid-column: 1 / -1;
+  padding: 1rem;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: .72rem;
+  color: var(--text-muted);
+}
+.lj-gal-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .3rem;
+  padding: .5rem .3rem;
+  border-radius: var(--radius-sm);
+  background: rgba(148,163,184,.05);
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+.lj-gal-item:hover { border-color: var(--border-purple); }
+.lj-gal-item.on {
+  border-color: var(--purple-glow);
+  background: rgba(124,58,237,.16);
+  box-shadow: 0 0 16px -6px var(--purple-glow);
+}
+.lj-gal-arte {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+/* Mesma armadilha do palco: sem isto a regra global de max-width colapsa o SVG. */
+.lj-gal-arte svg { max-width: none; }
+.lj-gal-nome {
+  font-family: var(--font-section);
+  font-size: .6rem;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.2;
+  color: var(--text-secondary);
+  word-break: break-word;
+}
+
+/* Prévia: o item como o hunter vai vê-lo, antes de existir */
+.lj-forja-previa { display: flex; flex-direction: column; gap: .5rem; }
+.lj-previa-lbl {
+  font-family: var(--font-section);
+  font-size: .66rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-align: center;
+}
+.lj-previa-palco { pointer-events: none; }
+
+.lj-forja-acoes {
+  display: flex;
+  gap: .6rem;
+  justify-content: flex-end;
+  padding: .9rem 1.1rem;
+  border-top: 1px solid var(--border-glass);
+  background: rgba(5,5,8,.28);
+}
+.lj-btn-forjar {
+  padding: .6rem 1.4rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(251,191,36,.55);
+  background: linear-gradient(135deg, var(--gold-xp), #b45309);
+  color: #1a1206;
+  font-family: var(--font-section);
+  font-size: .82rem;
+  font-weight: 800;
+  letter-spacing: .05em;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+.lj-btn-forjar:hover { filter: brightness(1.1); box-shadow: 0 0 20px -6px var(--gold-glow); }
+.lj-btn-forjar:disabled { filter: grayscale(.7); cursor: not-allowed; }
+.lj-btn-cancelar {
+  padding: .6rem 1.1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-glass);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-section);
+  font-size: .82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.lj-btn-cancelar:hover { color: var(--text-primary); border-color: var(--border-purple); }
+
+.lj-forja-erro {
+  margin: 0 1.1rem .6rem;
+  padding: .55rem .8rem;
+  border-radius: var(--radius-sm);
+  background: rgba(239,68,68,.1);
+  border: 1px solid rgba(239,68,68,.35);
+  color: #fca5a5;
+  font-family: var(--font-section);
+  font-size: .74rem;
+}
+.lj-forja-erro.hidden { display: none; }
+
+/* Gestão no próprio card, discreta: só quem forja enxerga. */
+.lj-gerir {
+  position: absolute;
+  bottom: .5rem; right: .5rem;
+  display: flex;
+  gap: .25rem;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+.lj-card:hover .lj-gerir,
+.lj-gerir:focus-within { opacity: 1; }
+.lj-gerir-btn {
+  width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-sm);
+  background: rgba(5,5,8,.8);
+  border: 1px solid var(--border-glass);
+  color: var(--text-secondary);
+  font-size: .7rem;
+  cursor: pointer;
+  backdrop-filter: blur(var(--glass-blur-sm));
+  transition: var(--transition-fast);
+}
+.lj-gerir-btn:hover { color: var(--gold-bright); border-color: var(--border-gold); }
+.lj-gerir-btn.perigo:hover { color: #fca5a5; border-color: rgba(239,68,68,.5); }
+
+@media (max-width: 860px) {
+  .lj-forja-corpo { grid-template-columns: 1fr; }
+  .lj-forja-previa { order: -1; }
+}
+
+/* ── Responsivo ───────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .lj-grade { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: .7rem; }
+  .lj-palco { height: 104px; }
+  .lj-nome { font-size: .85rem; }
+  .lj-rodape { flex-direction: column; align-items: stretch; gap: .5rem; }
+  .lj-btn { justify-content: center; }
+}
+
+/* Quem prefere menos movimento não deve pagar por enfeite. */
+@media (prefers-reduced-motion: reduce) {
+  .lj-card, .lj-card:hover,
+  .lj-palco-emoji, .lj-palco-aura, .lj-palco-medalha {
+    transition: none;
+    transform: none;
+  }
+}

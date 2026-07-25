@@ -1,0 +1,274 @@
+/* ============================================================
+   forja-testes.css — A Forja de Testes do Arquiteto
+
+   A anterior era uma lista plana de botões escritos à mão, com
+   estilo embutido em cada um. Crescia por acumulação: cada arte
+   nova exigia mais três linhas de botão, e quando o nome de uma
+   função mudava, o botão continuava lá — apontando para o vazio.
+
+   Esta versão é uma BANCADA: catálogo à esquerda, palco à
+   direita, busca no topo. E ela some sozinha quando um efeito
+   roda, porque testar animação olhando por trás de um painel
+   nunca foi teste de verdade.
+   ============================================================ */
+
+#forja-testes {
+  position: fixed;
+  inset: auto 1.2rem 1.2rem auto;
+  top: 4.2rem;
+  z-index: 9990;
+  display: none;
+  flex-direction: column;
+  width: min(860px, calc(100vw - 2.4rem));
+  max-height: min(80vh, 760px);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(170deg, #1a1206, var(--bg-card) 55%);
+  border: 1px solid rgba(251,191,36,.5);
+  box-shadow: 0 0 44px rgba(251,191,36,.18), var(--shadow-deep);
+  overflow: hidden;
+  transition: opacity .22s ease, transform .22s ease;
+}
+#forja-testes.aberta { display: flex; }
+
+/* O ECLIPSE: durante um efeito a bancada some, mas continua no
+   DOM — remover e recriar perderia a busca e a aba abertas. */
+#forja-testes.eclipse {
+  opacity: 0;
+  transform: scale(.97);
+  pointer-events: none;
+}
+
+/* ── Cabeçalho ────────────────────────────────────────────── */
+.ft-topo {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  padding: .7rem .9rem;
+  border-bottom: 1px solid rgba(251,191,36,.22);
+  cursor: grab;
+  user-select: none;
+}
+.ft-topo:active { cursor: grabbing; }
+.ft-sigilo { font-size: 1.15rem; color: var(--gold-bright); text-shadow: 0 0 12px var(--gold-glow); }
+.ft-titulo {
+  font-family: var(--font-title);
+  font-size: .9rem;
+  color: var(--gold-bright);
+  line-height: 1.1;
+}
+.ft-sub {
+  font-family: var(--font-section);
+  font-size: .54rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.ft-busca-wrap { flex: 1; max-width: 300px; margin-left: auto; }
+.ft-busca {
+  width: 100%;
+  box-sizing: border-box;
+  padding: .45rem .75rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-family: var(--font-section);
+  font-size: .78rem;
+  outline: none;
+}
+.ft-busca:focus { border-color: rgba(251,191,36,.55); }
+.ft-busca::placeholder { color: var(--text-dim); }
+.ft-fechar {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); font-size: 1.05rem; padding: .2rem .35rem;
+}
+.ft-fechar:hover { color: var(--gold-bright); }
+
+/* ── Corpo: abas + lista ──────────────────────────────────── */
+.ft-corpo { display: flex; min-height: 0; flex: 1; }
+
+.ft-abas {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+  padding: .6rem .5rem;
+  width: 178px;
+  flex: none;
+  border-right: 1px solid var(--border-glass);
+  overflow-y: auto;
+}
+.ft-aba {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .5rem .6rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-section);
+  font-size: .74rem;
+  font-weight: 700;
+  letter-spacing: .02em;
+  text-align: left;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+.ft-aba:hover { background: rgba(148,163,184,.08); color: var(--text-primary); }
+.ft-aba.on {
+  background: rgba(251,191,36,.14);
+  color: var(--gold-bright);
+  box-shadow: inset 2px 0 0 var(--gold-bright);
+}
+.ft-aba-n {
+  margin-left: auto;
+  font-family: var(--font-digits);
+  font-size: .6rem;
+  padding: .05rem .3rem;
+  border-radius: var(--radius-full);
+  background: rgba(0,0,0,.3);
+  color: var(--text-muted);
+}
+
+.ft-lista {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: .7rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: .55rem;
+  align-content: start;
+}
+
+/* ── A peça testável ──────────────────────────────────────── */
+.ft-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .4rem;
+  padding: .7rem .5rem .6rem;
+  border-radius: var(--radius-md);
+  background: rgba(148,163,184,.05);
+  border: 1px solid var(--border-glass);
+  cursor: pointer;
+  text-align: center;
+  transition: var(--transition-fast);
+}
+.ft-item:hover {
+  border-color: rgba(251,191,36,.5);
+  background: rgba(251,191,36,.08);
+  transform: translateY(-2px);
+}
+.ft-item:focus-visible {
+  outline: none;
+  border-color: var(--gold-bright);
+  box-shadow: 0 0 0 3px rgba(251,191,36,.22);
+}
+.ft-arte {
+  height: 62px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+/* Mesma armadilha de sempre: a regra global img,svg{max-width:100%}
+   colapsa SVG sem largura fixa. */
+.ft-arte svg { max-width: none; }
+.ft-nome {
+  font-family: var(--font-section);
+  font-size: .68rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+.ft-tag {
+  font-family: var(--font-section);
+  font-size: .54rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+/* Marca discreta de "ainda usa a medalha padrão" — a Forja também
+   serve de inventário do que falta desenhar. */
+.ft-item.sem-arte .ft-arte { opacity: .55; }
+.ft-selo-padrao {
+  position: absolute;
+  top: .35rem; right: .35rem;
+  font-size: .5rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: .1rem .3rem;
+  border-radius: var(--radius-full);
+  background: rgba(148,163,184,.14);
+  color: var(--text-muted);
+}
+
+/* Ações em texto (não são peças de arte, são gatilhos) */
+.ft-acao {
+  grid-column: span 2;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .6rem .8rem;
+  border-radius: var(--radius-md);
+  background: rgba(148,163,184,.05);
+  border: 1px solid var(--border-glass);
+  color: var(--text-primary);
+  font-family: var(--font-section);
+  font-size: .76rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+.ft-acao:hover { border-color: rgba(251,191,36,.5); background: rgba(251,191,36,.08); }
+.ft-acao-ico { font-size: 1rem; flex: none; }
+.ft-acao-desc {
+  display: block;
+  font-size: .62rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-top: .1rem;
+}
+.ft-acao.quebrado { border-color: rgba(239,68,68,.4); }
+.ft-acao.quebrado .ft-acao-desc { color: #fca5a5; }
+
+.ft-vazio {
+  grid-column: 1 / -1;
+  padding: 2.4rem 1rem;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: .8rem;
+  color: var(--text-muted);
+}
+
+.ft-rodape {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .45rem .9rem;
+  border-top: 1px solid var(--border-glass);
+  font-family: var(--font-section);
+  font-size: .58rem;
+  letter-spacing: .08em;
+  color: var(--text-dim);
+}
+.ft-rodape kbd {
+  font-family: var(--font-digits);
+  font-size: .56rem;
+  padding: .1rem .3rem;
+  border-radius: 4px;
+  background: rgba(148,163,184,.12);
+  color: var(--text-muted);
+}
+
+@media (max-width: 720px) {
+  #forja-testes { inset: 4.2rem .6rem .6rem; width: auto; }
+  .ft-corpo { flex-direction: column; }
+  .ft-abas { flex-direction: row; width: auto; border-right: none;
+             border-bottom: 1px solid var(--border-glass); }
+  .ft-busca-wrap { max-width: 150px; }
+}

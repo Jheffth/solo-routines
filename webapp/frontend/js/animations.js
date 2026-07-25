@@ -302,6 +302,7 @@ const ConquistaFX = {
     solo:          tam => window.SoloFX?._svgMedalhaSolo?.(tam),
     dominio_forja: tam => window.ForjaFX?._svgMedalhaForja?.(tam),
     diana:         tam => window.DianaFX?._svgMedalhaDiana?.(tam),
+    fenix_pioneira: tam => window.FenixFX?._svgMedalhaFenix?.(tam),
   },
 
   registrarInsignia(codigo, desenhar) {

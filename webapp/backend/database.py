@@ -277,6 +277,18 @@ class Recompensa(Base):
     nivel_minimo     = Column(Integer, default=1)
     estoque          = Column(Integer, default=-1)           # -1 = ilimitado
     ativo            = Column(Boolean, default=True)
+
+    # O QUE o item é, e não só quanto custa.
+    #   tipo="externa" → recompensa da vida real (um lanche, um dia de folga).
+    #                    O Sistema não tem como entregá-la; ela vale como
+    #                    promessa que o hunter faz a si mesmo. É o padrão,
+    #                    então tudo que já existe continua sendo isso.
+    #   tipo="aura"    → payload guarda o id da aura   (ex.: "bella-rosa")
+    #   tipo="emblema" → payload guarda o código do emblema
+    # Quem sabe ENTREGAR cada tipo é motors/loja_efeitos.py.
+    tipo             = Column(String(20), default="externa", index=True)
+    payload          = Column(String(80), nullable=True)
+
     criado_em        = Column(DateTime, default=datetime.utcnow)
 
     resgates         = relationship("RecompensaUsuario", back_populates="recompensa", lazy="dynamic")

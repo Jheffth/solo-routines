@@ -12,14 +12,10 @@ from auth.router import get_usuario_atual
 router = APIRouter(prefix="/auras", tags=["auras"])
 
 # Catalogo local (sincronizado com materiais.py)
-CATALOGO_AURAS = {
-    "bella-rosa": {
-        "id":        "bella-rosa",
-        "nome":      "Bella Rosa - Femme Fatale",
-        "descricao": "16 petalas em dupla espiral, halos rosa e branco.",
-        "cor":       "#f48fb1",
-    },
-}
+# O catálogo mora em motors/cosmeticos.py. Antes havia uma cópia aqui, e ela
+# já estava desatualizada: não conhecia "pink-spirit", então essa aura era
+# celebrada sem nome e branca. Alias mantido para não mexer no resto do arquivo.
+from motors.cosmeticos import AURAS as CATALOGO_AURAS
 
 @router.get("/pendentes")
 def pendentes(

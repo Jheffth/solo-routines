@@ -167,6 +167,19 @@ input, textarea, select, button {
   border: none;
   outline: none;
   background: none;
+  /* O app é escuro, mas o NAVEGADOR não sabia disso. Sem esta declaração,
+     tudo que ele desenha por conta própria — a lista aberta de um <select>,
+     o calendário de um input[type=date], a barra de rolagem — vinha em tema
+     claro. O caso mais visível era o dropdown: fundo branco do sistema com o
+     nosso texto claro por cima, ou seja, ilegível justamente na hora de
+     escolher. É a raiz do problema, e por isso mora aqui e não numa tela. */
+  color-scheme: dark;
+}
+
+/* Rede de segurança para os navegadores que ignoram color-scheme no popup. */
+select option {
+  background-color: #14102b;
+  color: #e2e8f0;
 }
 
 button {

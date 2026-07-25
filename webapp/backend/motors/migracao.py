@@ -51,6 +51,11 @@ COLUNAS = [
     ("mensagens",                 "oculta_de",           "BOOLEAN NOT NULL DEFAULT 0",  "BOOLEAN NOT NULL DEFAULT FALSE"),
     ("mensagens",                 "oculta_para",         "BOOLEAN NOT NULL DEFAULT 0",  "BOOLEAN NOT NULL DEFAULT FALSE"),
     ("mensagens",                 "apagada_todos",       "BOOLEAN NOT NULL DEFAULT 0",  "BOOLEAN NOT NULL DEFAULT FALSE"),
+    # Loja: o item passou a ter TIPO, para poder entregar cosméticos.
+    # 'externa' é o padrão e descreve o que a loja já vendia (recompensas da
+    # vida real), então as linhas antigas continuam corretas sem tocar nelas.
+    ("recompensas",               "tipo",                "VARCHAR(20) DEFAULT 'externa'", "VARCHAR(20) DEFAULT 'externa'"),
+    ("recompensas",               "payload",             "VARCHAR(80)",                 "VARCHAR(80)"),
 ]
 
 

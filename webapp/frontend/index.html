@@ -22,6 +22,8 @@
   <link rel="stylesheet" href="css/forja-missao.css">
   <link rel="stylesheet" href="css/painel-admin.css">
   <link rel="stylesheet" href="css/materiais.css">
+  <link rel="stylesheet" href="css/loja.css">
+  <link rel="stylesheet" href="css/forja-testes.css">
   <link rel="stylesheet" href="css/sala-poderes.css">
   <link rel="stylesheet" href="css/badges.css">
   <link rel="stylesheet" href="css/hunter-publico.css">
@@ -531,33 +533,26 @@
               <div id="extrato-filtros" style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.8rem">
 
                 <!-- Período: INTERVALO DE DATAS. Cada opção vira inicio/fim na
-                     consulta ao /extrato/ — nunca mais um tipo de recorrência. -->
-                <select id="filtro-periodo" style="
-                  font-family:var(--font-section);font-size:.68rem;padding:.28rem .55rem;border-radius:.45rem;
-                  background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.25);
-                  color:var(--text-primary);cursor:pointer;outline:none">
+                     consulta ao /extrato/ — nunca mais um tipo de recorrência.
+                     Padrão TUDO: um livro-caixa abre mostrando o que existe;
+                     quem quiser recortar o dia, recorta. -->
+                <select id="filtro-periodo" class="sr-filtro" style="--f-cor:#7c3aed">
+                  <option value="tudo" selected>♾ Tudo</option>
                   <option value="hoje">📅 Hoje</option>
                   <option value="7dias">🗓 Últimos 7 dias</option>
                   <option value="30dias">📆 Últimos 30 dias</option>
                   <option value="mes">🗃 Este mês</option>
-                  <option value="tudo">♾ Tudo</option>
                 </select>
 
                 <!-- Origem -->
-                <select id="filtro-origem" style="
-                  font-family:var(--font-section);font-size:.68rem;padding:.28rem .55rem;border-radius:.45rem;
-                  background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.25);
-                  color:var(--text-primary);cursor:pointer;outline:none">
+                <select id="filtro-origem" class="sr-filtro" style="--f-cor:#38bdf8">
                   <option value="">🌐 Todas as origens</option>
                   <option value="rotina">🔁 De rotinas</option>
                   <option value="geral">🎯 Gerais</option>
                 </select>
 
                 <!-- Tipo -->
-                <select id="filtro-tipo" style="
-                  font-family:var(--font-section);font-size:.68rem;padding:.28rem .55rem;border-radius:.45rem;
-                  background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.25);
-                  color:var(--text-primary);cursor:pointer;outline:none">
+                <select id="filtro-tipo" class="sr-filtro" style="--f-cor:#3b82f6">
                   <option value="">🔁 Todos os tipos</option>
                   <option value="DIARIA">🌅 Diária</option>
                   <option value="SEMANAL">📆 Semanal</option>
@@ -567,10 +562,7 @@
                 </select>
 
                 <!-- Categoria -->
-                <select id="filtro-categoria" style="
-                  font-family:var(--font-section);font-size:.68rem;padding:.28rem .55rem;border-radius:.45rem;
-                  background:rgba(6,182,212,.06);border:1px solid rgba(6,182,212,.22);
-                  color:var(--text-primary);cursor:pointer;outline:none">
+                <select id="filtro-categoria" class="sr-filtro" style="--f-cor:#06b6d4">
                   <option value="">🗂 Todas as categorias</option>
                   <option value="Saúde">❤️ Saúde</option>
                   <option value="Trabalho">💼 Trabalho</option>
@@ -581,10 +573,7 @@
                 </select>
 
                 <!-- Status -->
-                <select id="filtro-status-missao" style="
-                  font-family:var(--font-section);font-size:.68rem;padding:.28rem .55rem;border-radius:.45rem;
-                  background:rgba(168,85,247,.07);border:1px solid rgba(168,85,247,.22);
-                  color:var(--text-primary);cursor:pointer;outline:none">
+                <select id="filtro-status-missao" class="sr-filtro" style="--f-cor:#a855f7">
                   <option value="">⚡ Todos os status</option>
                   <option value="PENDENTE">⏳ Não Iniciada</option>
                   <option value="ATIVA">▶ Em Curso</option>
@@ -712,10 +701,7 @@
 
               <!-- Filtros -->
               <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.55rem;flex-wrap:wrap">
-                <select id="filtro-tarefa-status" style="
-                  font-family:var(--font-section);font-size:.68rem;padding:.28rem .55rem;border-radius:.45rem;
-                  background:rgba(168,85,247,.07);border:1px solid rgba(168,85,247,.22);
-                  color:var(--text-primary);cursor:pointer;outline:none">
+                <select id="filtro-tarefa-status" class="sr-filtro" style="--f-cor:#a855f7">
                   <option value="">&#9889; Todos os status</option>
                   <option value="ATIVA">&#9654; Em Curso</option>
                   <option value="PENDENTE">&#9203; Pendente</option>
@@ -723,10 +709,7 @@
                   <option value="CANCELADA">&#10005; Cancelada</option>
                   <option value="FRACASSADA">&#9760; Fracassada</option>
                 </select>
-                <select id="filtro-tarefa-prioridade" style="
-                  font-family:var(--font-section);font-size:.68rem;padding:.28rem .55rem;border-radius:.45rem;
-                  background:rgba(6,182,212,.06);border:1px solid rgba(6,182,212,.22);
-                  color:var(--text-primary);cursor:pointer;outline:none">
+                <select id="filtro-tarefa-prioridade" class="sr-filtro" style="--f-cor:#06b6d4">
                   <option value="">&#128194; Todas as prioridades</option>
                   <option value="CRITICA">&#128308; Cr&#237;tica</option>
                   <option value="ALTA">&#128992; Alta</option>
@@ -902,13 +885,32 @@
           <div class="page-header">
             <div>
               <h1 class="page-title">&#128717;&#65039; Loja do Hunter</h1>
-              <p class="page-subtitle">Troque suas Mana Coins por recompensas epicas</p>
+              <p class="page-subtitle">Auras, emblemas e recompensas — troque suas Mana Coins</p>
             </div>
-            <div style="font-family:var(--font-section);color:var(--gold-xp);font-size:1.1rem;display:flex;align-items:center;gap:.4rem;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);padding:.5rem 1rem;border-radius:8px">
-              &#128176; <span id="loja-moedas">0</span> Mana Coins
+            <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
+              <!-- A Forja só é desenhada se o SERVIDOR disser que este hunter
+                   pode forjar. A tela não conhece a lista de cargos. -->
+              <span id="loja-forja-acao"></span>
+              <div class="lj-carteira">
+                <svg class="lj-carteira-moeda" viewBox="0 0 24 24" fill="none"
+                     stroke="var(--gold-bright)" stroke-width="2" aria-hidden="true">
+                  <circle cx="12" cy="12" r="8"/>
+                  <path d="M12 8 L15 12 L12 16 L9 12 Z" fill="var(--gold-bright)" stroke="none"/>
+                </svg>
+                <span class="lj-carteira-valor" id="loja-moedas">0</span>
+                <span class="lj-carteira-lbl">Mana Coins</span>
+              </div>
             </div>
           </div>
-          <div id="grid-recompensas" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1.25rem">
+
+          <!-- Painel da Forja: nasce fechado e vazio. -->
+          <div class="lj-forja hidden" id="loja-forja"></div>
+
+          <!-- Abas por natureza do item. Preenchidas por Loja._pintarAbas(),
+               que também mostra a contagem de cada prateleira. -->
+          <div class="lj-abas" id="loja-abas" role="tablist"></div>
+
+          <div id="grid-recompensas" class="lj-grade" style="margin-top:1rem">
             <div class="loading-spinner-wrap" style="grid-column:1/-1"><div class="loading-spinner"></div></div>
           </div>
         </div>
@@ -1249,7 +1251,11 @@
   <script src="js/badges/jh3ffth.js"></script>
   <script src="js/badges/nexus-social.js"></script>
   <script src="js/badges/isabella.js"></script>
+  <script src="js/badges/fenix-pioneira.js"></script>
   <script src="js/arquiteto-console.js"></script>
+  <!-- A bancada nova. Carrega DEPOIS do console porque reaproveita
+       as acoes de teste que ja funcionam nele. -->
+  <script src="js/forja-testes.js"></script>
   <script src="js/badge-card.js"></script>
   <script src="js/altar-reliquias.js"></script>
   <script src="js/buddylist.js"></script>

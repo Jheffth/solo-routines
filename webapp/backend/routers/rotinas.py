@@ -6,7 +6,7 @@ Cada rotina gera um registro ExecucaoDia por dia que ela é devida.
 import json
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import date, datetime
@@ -193,10 +193,19 @@ def _obter_ou_criar_exec_dia(db: Session, rotina: Rotina,
 def listar_rotinas(
     tipo:  Optional[str]  = None,
     ativo: Optional[bool] = None,
+    incluir_arquivadas: bool = False,
     db:    Session        = Depends(get_db),
     usuario: Usuario      = Depends(get_usuario_atual),
 ):
     q = db.query(Rotina).filter(Rotina.usuario_id == usuario.id)
+    # Regra arquivada saiu da agenda: ela só existe para o extrato não perder
+    # o histórico. Filtrar por `ativo` não serviria aqui — uma regra PAUSADA
+    # também é inativa e precisa continuar à vista.
+    if not incluir_arquivadas:
+        # `status` é anulável e rotinas antigas vieram com NULL. Comparar só
+        # com != esconderia todas elas, porque em SQL NULL != 'X' não é
+        # verdadeiro — a agenda ficaria vazia sem ninguém entender por quê.
+        q = q.filter(or_(Rotina.status.is_(None), Rotina.status != "ARQUIVADA"))
     if tipo:
         q = q.filter(Rotina.tipo == tipo.upper())
     if ativo is not None:
@@ -356,6 +365,7 @@ def deletar_rotina(
         raise HTTPException(404, "Rotina não encontrada")
 
     if extinguir and usuario.nivel_acesso == "Arquiteto":
+        # EXTINGUIR: a regra e tudo que ela gerou deixam de ter existido.
         total = db.query(
             func.sum(Execucao.xp_ganho).label('xp'),
             func.sum(Execucao.moedas_ganhas).label('moedas')
@@ -365,10 +375,36 @@ def deletar_rotina(
         usuario.moedas   = max(0, (usuario.moedas   or 0) - (total.moedas or 0))
         db.query(Execucao).filter(Execucao.rotina_id == r.id).delete()
         db.query(ExecucaoDia).filter(ExecucaoDia.rotina_id == r.id).delete()
+        db.delete(r)
+        db.commit()
+        return {"ok": True, "modo": "extinta"}
 
+    # EXCLUIR (normal): apaga a REGRA, preserva o HISTÓRICO.
+    #
+    # As missões já vividas não são posse da regra — são o que o hunter fez.
+    # Apagar a rotina de segunda não desfaz as segundas em que ele cumpriu.
+    # Por isso, se existe histórico, a regra é ARQUIVADA: some da agenda e
+    # deixa de gerar missões novas, mas o extrato continua íntegro.
+    #
+    # Também é o que impede o erro que trouxe este código aqui: `db.delete(r)`
+    # fazia o SQLAlchemy tentar anular `execucao_dia.rotina_id`, coluna NOT NULL
+    # — IntegrityError na cara do hunter. Quem quer varrer tudo usa `extinguir`.
+    tem_historico = db.query(ExecucaoDia.id).filter(
+        ExecucaoDia.rotina_id == r.id
+    ).first() is not None
+
+    if tem_historico:
+        r.ativo  = False
+        r.status = "ARQUIVADA"
+        r.cancelada_em = datetime.utcnow()
+        db.commit()
+        return {"ok": True, "modo": "arquivada",
+                "msg": "Regra arquivada — o histórico dela segue no Extrato."}
+
+    # Sem histórico não há o que preservar: sai do banco de vez.
     db.delete(r)
     db.commit()
-    return {"ok": True}
+    return {"ok": True, "modo": "removida"}
 
 
 # ── Endpoints de ciclo de vida diário ────────────────────────────────────────

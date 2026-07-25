@@ -63,6 +63,9 @@ CONQUISTAS_PRESENTE = [
     # Legado — insígnia com arte própria (js/badges/mono-evelynn.js)
     ("mono_evelynn", "Mono Evelynn",
      "Legado — o abraço da agonia", "💜", "#ff2e9a", 2500, 500),
+    # Fênix — insígnia para os primeiros assinantes do serviço (js/badges/fenix-pioneira.js)
+    ("fenix_pioneira", "Fênix · Assinante Pioneiro",
+     "Comercialização — A chama imortal dos primeiros assinantes que acreditaram no Sistema", "🔥", "#f97316", 5000, 1000),
 ]
 
 
@@ -76,7 +79,7 @@ CONQUISTAS_PRESENTE = [
 TRANSFERIVEIS = {
     "solo", "jh3ffth", "dominio_forja",
     "diana", "pioneiro", "aliado", "mono_evelynn",
-    "nexus-social", "isabella",
+    "nexus-social", "isabella", "fenix_pioneira",
 }
 
 

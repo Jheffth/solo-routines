@@ -539,6 +539,8 @@ const Perfil = {
       jh3ffth:       () => window.Jh3ffthFX?._svgMedalhaArquiteto?.(tam),
       solo:          () => window.SoloFX?._svgMedalhaSolo?.(tam),
       dominio_forja: () => window.ForjaFX?._svgMedalhaForja?.(tam),
+      diana:         () => window.DianaFX?._svgMedalhaDiana?.(tam),
+      fenix_pioneira: () => window.FenixFX?._svgMedalhaFenix?.(tam),
     };
     try { return (mapa[codigo] && mapa[codigo]()) || null; }
     catch (_) { return null; }
