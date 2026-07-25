@@ -448,9 +448,11 @@ def decretos(
 
 # IDs de aura válidos (devem coincidir com os IDs registrados em auras.js)
 AURAS_VALIDAS = {
-    "arquiteto":  "A Forja Viva",
-    "admin":      "O Selo do Guardião",
-    "bella-rosa": "Bella Rosa — Femme Fatale",
+    "arquiteto":      "A Forja Viva",
+    "admin":          "O Selo do Guardião",
+    "bella-rosa":     "Bella Rosa — Femme Fatale",
+    "pink-spirit":    "Pink Spirit",
+    "fenix-pioneira": "Fênix — Chama Imortal",
 }
 
 

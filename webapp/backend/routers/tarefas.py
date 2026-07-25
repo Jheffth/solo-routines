@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
 from datetime import date, datetime
+from motors import tempo
 
 from database import get_db, TarefaDia, Usuario
 from auth.router import get_usuario_atual
@@ -59,6 +60,7 @@ def _tarefa_to_dict(t: TarefaDia) -> dict:
         "penalidade_xp":     t.penalidade_xp,
         "usuario_id":        t.usuario_id,
         "criado_em":         t.criado_em.isoformat() if t.criado_em else None,
+        "iniciada_em":       t.iniciada_em.isoformat() if getattr(t, "iniciada_em", None) else None,
         "concluida_em":      t.concluida_em.isoformat() if t.concluida_em else None,
     }
 
@@ -95,7 +97,7 @@ def tarefas_de_hoje(
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(get_usuario_atual),
 ):
-    hoje = date.today()
+    hoje = tempo.hoje()
     tarefas = db.query(TarefaDia).filter(
         TarefaDia.usuario_id == usuario.id,
         TarefaDia.data_prevista == hoje,
@@ -168,6 +170,11 @@ def iniciar_tarefa(
     if t.status not in ("PENDENTE", "PAUSADA"):
         raise HTTPException(400, f"Não é possível iniciar tarefa com status '{t.status}'")
     t.status = "ATIVA"
+    # O relógio começa a correr aqui. Só marcamos na PRIMEIRA largada: retomar
+    # depois de uma pausa não pode reiniciar a contagem, senão a missão que o
+    # hunter carregou o dia inteiro apareceria como se tivesse levado 2 minutos.
+    if not t.iniciada_em:
+        t.iniciada_em = tempo.agora()
     db.commit()
     db.refresh(t)
     return _tarefa_to_dict(t)
@@ -233,7 +240,7 @@ def concluir_tarefa(
         raise HTTPException(400, "Tarefa já foi concluída")
 
     t.status = "CONCLUIDA"
-    t.concluida_em = datetime.utcnow()
+    t.concluida_em = tempo.agora()
     db.flush()
 
     resultado = aplicar_xp(
@@ -241,7 +248,7 @@ def concluir_tarefa(
         usuario=usuario,
         xp_base=t.xp_recompensa,
         moedas=t.moedas_recompensa,
-        hoje=date.today(),
+        hoje=tempo.hoje(),
         tarefa_id=t.id,
         observacao=f"Tarefa concluída: {t.titulo}",
     )

@@ -861,11 +861,15 @@ const ArquitetoConsole = {
 
 
         ${sec('auras', '🌸 Auras Cosm\u00e9ticas', false, [
-          bt('Preview: Bella Rosa',      'window.Auras?.vitrine("bella-rosa")', 'rosa', true),
-          bt('Preview: todas as auras',  'window.Auras?.vitrine()', 'ouro', true),
+          bt('Preview: Fênix (Chama Imortal)', 'window.Auras?.vitrine("fenix-pioneira")', 'ouro', true),
+          bt('Preview: Bella Rosa',           'window.Auras?.vitrine("bella-rosa")', 'rosa', true),
+          bt('Preview: Pink Spirit',          'window.Auras?.vitrine("pink-spirit")', 'rosa', true),
+          bt('Preview: todas as auras',       'window.Auras?.vitrine()', 'ouro', true),
           bt('Diagn\u00f3stico de auras',     'window.Auras?.diagnostico?.()', 'cinza', true),
+          bt('\u2736 Forjar Fênix (meu)',       'ArquitetoConsole._forjarAura("fenix-pioneira")', 'ouro', false),
           bt('\u2736 Forjar Bella Rosa (meu)',  'ArquitetoConsole._forjarAura("bella-rosa")', 'rosa', false),
-          bt('\u2736 Enviar Aura a Hunter',    'ArquitetoConsole.enviarAura()', 'rosa', false),
+          bt('\u2736 Forjar Pink Spirit (meu)', 'ArquitetoConsole._forjarAura("pink-spirit")', 'rosa', false),
+          bt('\u2736 Enviar Aura a Hunter',     'ArquitetoConsole.enviarAura()', 'ouro', false),
         ])}
 
         ${sec('insignias', '🎖 Insígnias com arte própria', false, [
@@ -1864,9 +1868,11 @@ ArquitetoConsole.vitrineInsignia = function (codigo) {
    ENVIAR AURA — modal que lista hunters, seleciona aura e envia via API */
 ArquitetoConsole.enviarAura = async function () {
   const AURAS = [
-    { id: 'bella-rosa', nome: 'Bella Rosa \u2014 Femme Fatale', cor: '#f48fb1' },
-    { id: 'arquiteto',  nome: 'A Forja Viva',                 cor: '#fbbf24' },
-    { id: 'admin',      nome: 'O Selo do Guardi\u00e3o',           cor: '#38bdf8' },
+    { id: 'fenix-pioneira', nome: 'Fênix — Chama Imortal', cor: '#ff6d00' },
+    { id: 'bella-rosa',     nome: 'Bella Rosa — Femme Fatale', cor: '#f48fb1' },
+    { id: 'pink-spirit',    nome: 'Pink Spirit',                  cor: '#f48fb1' },
+    { id: 'arquiteto',      nome: 'A Forja Viva',                 cor: '#fbbf24' },
+    { id: 'admin',          nome: 'O Selo do Guardião',           cor: '#38bdf8' },
   ];
   document.getElementById('arq-enviar-aura')?.remove();
   let hunters = [];
@@ -1875,17 +1881,12 @@ ArquitetoConsole.enviarAura = async function () {
     hunters  = d.hunters || d || [];
   } catch (_) {}
 
-  const cx = document.createElement('div');
-  cx.id    = 'arq-enviar-aura';
-  cx.style.cssText = 'position:fixed;inset:0;z-index:9998;display:flex;align-items:center;' +
-    'justify-content:center;background:rgba(3,3,8,.92);backdrop-filter:blur(7px);padding:1rem';
-
   const auraOpts = AURAS.map(a => {
     const bloco = window.Auras?.bloco(a.id, 48) || '';
     return `<label style="display:flex;align-items:center;gap:.8rem;padding:.6rem .9rem;
       border-radius:10px;cursor:pointer;border:1px solid rgba(255,255,255,.08);
       background:rgba(255,255,255,.02)">
-      <input type="radio" name="arq-aura-sel" value="${a.id}" style="accent-color:${a.cor}" ${a.id==='bella-rosa'?'checked':''}>
+      <input type="radio" name="arq-aura-sel" value="${a.id}" style="accent-color:${a.cor}" ${a.id==='fenix-pioneira'?'checked':''}>
       <div style="position:relative;width:48px;height:48px;flex-shrink:0;display:flex;align-items:center;justify-content:center">
         ${bloco}
         <div style="position:relative;z-index:2;width:26px;height:26px;
@@ -1945,7 +1946,11 @@ ArquitetoConsole.enviarAura = async function () {
 ArquitetoConsole._forjarAura = async function (auraId) {
   /* Forja a aura no próprio inventário do Arquiteto.
      Chama o mesmo endpoint de conceder, passando o próprio id como destino. */
-  const nome = { "bella-rosa": "Bella Rosa \u2014 Femme Fatale" }[auraId] || auraId;
+  const nome = {
+    "fenix-pioneira": "Fênix — Chama Imortal",
+    "bella-rosa":     "Bella Rosa \u2014 Femme Fatale",
+    "pink-spirit":    "Pink Spirit",
+  }[auraId] || auraId;
   try {
     // busca o próprio perfil para obter o id (via API para capturar 401)
     const eu = await API.get('/me');

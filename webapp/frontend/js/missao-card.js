@@ -187,6 +187,89 @@ const MissaoCard = {
     return { texto, classe: seg < 1800 ? 'urgente' : '', pct };
   },
 
+  /* ── CRONÔMETRO ──────────────────────────────────────────
+     Quanto a missão levou, do play ao fim.
+
+     Duas leituras diferentes, e é importante não confundi-las:
+       • PRAZO    — quanto FALTA até o fim da janela. Conta para trás.
+       • DECORRIDO — há quanto tempo a missão está em curso. Conta para frente.
+
+     O prazo já existia. O decorrido é o que faltava: sem ele, o hunter
+     concluía a missão e não ficava sabendo quanto tempo ela custou — que é
+     justamente o dado que transforma execução em estatística.
+
+     A DURAÇÃO final vem pronta do servidor (`duracao_segundos`), porque
+     subtrair dois instantes lá é imune a fuso; aqui só formatamos. O contador
+     ao vivo é calculado no cliente, porque precisa correr a cada segundo. */
+
+  /* Lê um carimbo do servidor. Os horários de ciclo são gravados no fuso do
+     hunter e chegam SEM sufixo de fuso — deixar o navegador adivinhar faria
+     ele assumir UTC e errar por horas. Por isso quebramos à mão. */
+  _instante(iso) {
+    if (!iso) return null;
+    const [d, h] = String(iso).split('T');
+    if (!d) return null;
+    const [Y, M, D] = d.split('-').map(Number);
+    const [hh = 0, mm = 0, ss = 0] = (h || '').split(':').map(v => parseInt(v, 10) || 0);
+    return new Date(Y, (M || 1) - 1, D || 1, hh, mm, Math.floor(ss));
+  },
+
+  _hhmm(iso) {
+    const dt = this._instante(iso);
+    if (!dt) return null;
+    return `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
+  },
+
+  /* Duração legível. Segundos só aparecem abaixo de uma hora — "2h 14m 07s"
+     é ruído; o que importa numa missão longa é a ordem de grandeza. */
+  _dur(seg) {
+    if (seg === null || seg === undefined || seg < 0) return null;
+    const h = Math.floor(seg / 3600), m = Math.floor((seg % 3600) / 60), s = seg % 60;
+    if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m`;
+    if (m > 0) return `${m}m ${String(s).padStart(2, '0')}s`;
+    return `${s}s`;
+  },
+
+  _glifoRelogio() {
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+      stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/>
+      <path d="M12 7v5l3 2"/></svg>`;
+  },
+
+  /* O bloco do cronômetro, conforme o momento da missão. */
+  _cronometro(m, chave) {
+    const status = m.status_hoje || m.status || 'PENDENTE';
+    // PENDENTE não tem cronômetro, por definição — ela não largou.
+    // Esta guarda existe porque um dado antigo com `iniciada_em` preenchido
+    // fazia o cartão exibir um contador correndo há horas numa missão que
+    // nunca começou. O ESTADO manda; o carimbo é só o detalhe.
+    if (status === 'PENDENTE') return '';
+
+    const ini = m.iniciada_em, fim = m.concluida_em;
+    const rel = this._glifoRelogio();
+
+    // Terminada: mostra o trajeto completo e o quanto custou.
+    if (fim && ini) {
+      const d = this._dur(m.duracao_segundos);
+      return `<span class="mc-crono mc-crono-fim" title="Início e conclusão">
+        ${rel}<b>${this._hhmm(ini)}</b><span class="mc-crono-seta">→</span><b>${this._hhmm(fim)}</b>
+        ${d ? `<span class="mc-crono-dur">${d}</span>` : ''}</span>`;
+    }
+    // Concluída sem ter sido iniciada (o hunter pulou o play).
+    if (fim) {
+      return `<span class="mc-crono" title="Concluída sem cronômetro">
+        ${rel}<b>${this._hhmm(fim)}</b></span>`;
+    }
+    // Em curso: o contador corre para frente, atualizado pelo timer global.
+    if (ini) {
+      const decorrido = Math.max(0, Math.floor((Date.now() - this._instante(ini)) / 1000));
+      return `<span class="mc-crono mc-crono-vivo" title="Em curso desde ${this._hhmm(ini)}">
+        ${rel}<b>${this._hhmm(ini)}</b>
+        <span class="mc-crono-dur" data-mc-decorrido="${chave}">${this._dur(decorrido)}</span></span>`;
+    }
+    return '';
+  },
+
   /* O Arquiteto vê poderes que os demais hunters não têm */
   _ehArquiteto() {
     try { return window.Auth?.getUsuario?.()?.nivel_acesso === 'Arquiteto'; }
@@ -457,6 +540,7 @@ const MissaoCard = {
           <span class="mc-chip mc-chip-status">${st.rotulo}</span>
           ${m.categoria ? `<span class="mc-chip mc-chip-cat">${this._esc(m.categoria)}</span>` : ''}
           ${chipData}
+          ${this._cronometro(m, chave)}
           ${prazo ? `<span class="mc-div"></span>
           <span class="mc-prazo ${prazo.classe}" data-mc-prazo="${chave}">
             <span class="lbl">⏳ Prazo</span> <span data-mc-timer>${prazo.texto}</span>
@@ -551,13 +635,20 @@ const MissaoCard = {
     this._iniciarTimer();
   },
 
-  /* Um único intervalo atualiza TODOS os prazos da tela */
+  /* Um único intervalo move TODOS os relógios da tela: os prazos que correm
+     para trás e os cronômetros que correm para frente. Um timer por cartão
+     seria dezenas de intervalos disputando o mesmo segundo. */
   _iniciarTimer() {
     if (this._timer) return;
     this._timer = setInterval(() => {
-      const alvos = document.querySelectorAll('[data-mc-prazo]');
-      if (!alvos.length) { clearInterval(this._timer); this._timer = null; return; }
-      alvos.forEach(el => {
+      const prazos = document.querySelectorAll('[data-mc-prazo]');
+      const cronos = document.querySelectorAll('[data-mc-decorrido]');
+      // Nada para mover: o intervalo se encerra sozinho em vez de girar à toa.
+      if (!prazos.length && !cronos.length) {
+        clearInterval(this._timer); this._timer = null; return;
+      }
+
+      prazos.forEach(el => {
         const m = this._cache?.[el.dataset.mcPrazo];
         if (!m) return;
         const p = this._prazo(m);
@@ -567,6 +658,14 @@ const MissaoCard = {
         el.classList.toggle('vencido', p.classe === 'vencido');
         const barra = document.querySelector(`[data-mc-barra="${el.dataset.mcPrazo}"]`);
         if (barra) barra.style.width = p.pct + '%';
+      });
+
+      cronos.forEach(el => {
+        const m = this._cache?.[el.dataset.mcDecorrido];
+        if (!m || !m.iniciada_em || m.concluida_em) return;
+        const ini = this._instante(m.iniciada_em);
+        if (!ini) return;
+        el.textContent = this._dur(Math.max(0, Math.floor((Date.now() - ini) / 1000)));
       });
     }, 1000);
   },

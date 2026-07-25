@@ -37,6 +37,14 @@ AURAS = {
         "cor":       "#f48fb1",
         "enviavel":  True,
     },
+    "fenix-pioneira": {
+        "id":        "fenix-pioneira",
+        "nome":      "Fênix — Chama Imortal",
+        "descricao": "6 camadas térmicas: labaredas laranjas em rotação contínua, "
+                     "lanças solares, shimmer rúnico e 20 brasas crepitantes em órbita.",
+        "cor":       "#ff6d00",
+        "enviavel":  True,
+    },
 }
 
 

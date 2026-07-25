@@ -5,6 +5,7 @@ Centraliza toda a lógica de gamificação.
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from datetime import date, datetime, timedelta
+from motors import tempo
 from database import (
     Usuario, Nivel, Conquista, ConquistaUsuario, Execucao, TarefaDia,
     ExecucaoDia, Dungeon, DungeonSessao, DungeonMissao, DungeonMissaoExecucao,
@@ -177,7 +178,7 @@ def verificar_conquistas(db: Session, usuario: Usuario) -> list[dict]:
     }
 
     todas = db.query(Conquista).filter(Conquista.ativo == True).all()
-    hoje = date.today()
+    hoje = tempo.hoje()
 
     for conquista in todas:
         if conquista.id in ja_tem:

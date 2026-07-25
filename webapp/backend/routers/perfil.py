@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from datetime import date, timedelta
+from motors import tempo
 from collections import defaultdict
 from pydantic import BaseModel, field_validator
 from typing import Optional, List
@@ -213,7 +214,7 @@ def perfil_completo(
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(get_usuario_atual),
 ):
-    hoje = date.today()
+    hoje = tempo.hoje()
     um_ano_atras = hoje - timedelta(days=365)
 
     # ── Radar de habilidades por categoria ───────────────
@@ -424,9 +425,16 @@ _COSMETIC_PINK_SPIRIT = {
     "descricao": "Aura rosa tradicional. 16 pétalas com shimmers luminosos.",
     "cor": "#f48fb1"
 }
+_COSMETIC_FENIX_PIONEIRA = {
+    "id": "fenix-pioneira",
+    "nome": "Fênix — Chama Imortal",
+    "descricao": "6 camadas térmicas: labaredas laranjas em rotação contínua, lanças solares, shimmer rúnico e 20 brasas crepitantes em órbita.",
+    "cor": "#ff6d00"
+}
 AURAS_COSMETICAS = {
     "bella-rosa": _COSMETIC_BELLA_ROSA,
     "pink-spirit": _COSMETIC_PINK_SPIRIT,
+    "fenix-pioneira": _COSMETIC_FENIX_PIONEIRA,
 }
 
 

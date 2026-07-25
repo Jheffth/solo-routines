@@ -56,6 +56,8 @@ COLUNAS = [
     # vida real), então as linhas antigas continuam corretas sem tocar nelas.
     ("recompensas",               "tipo",                "VARCHAR(20) DEFAULT 'externa'", "VARCHAR(20) DEFAULT 'externa'"),
     ("recompensas",               "payload",             "VARCHAR(80)",                 "VARCHAR(80)"),
+    # Cronômetro: a missão geral passou a registrar quando começou.
+    ("tarefas_dia",               "iniciada_em",         "DATETIME",                    "TIMESTAMP"),
 ]
 
 

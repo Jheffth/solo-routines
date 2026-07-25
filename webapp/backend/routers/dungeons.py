@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import date, datetime, timedelta, timezone
+from motors import tempo
 
 from database import (
     get_db, Usuario,
@@ -30,7 +31,11 @@ from motors.gamificacao import aplicar_xp
 router = APIRouter(prefix="/dungeons", tags=["dungeons"])
 
 # Fuso de Brasília: UTC-3
-_TZ_BRASILIA = timezone(timedelta(hours=-3))
+# O relógio agora mora em motors/tempo.py. Este arquivo foi quem primeiro
+# acertou o fuso — e a lição custou caro no resto do sistema, que seguiu
+# usando date.today() e passou a fracassar missões de hoje às 21h. Manter
+# duas cópias do mesmo relógio é o que permite que elas divirjam.
+_TZ_BRASILIA = tempo.FUSO
 
 def _agora() -> datetime:
     """Hora atual no fuso de Brasília (UTC-3), sem tzinfo (naive), compatível com _parse_hhmm."""
@@ -376,7 +381,7 @@ def _sessao_to_dict(s: DungeonSessao) -> dict:
 
 def _dungeon_to_dict(d: Dungeon, sessao: DungeonSessao = None, hoje: date = None,
                      incluir_missoes: bool = False) -> dict:
-    hoje = hoje or date.today()
+    hoje = hoje or tempo.hoje()
     out = {
         "id": d.id, "titulo": d.titulo, "descricao": d.descricao,
         "tipo_permanencia": d.tipo_permanencia, "tipo_recorrencia": d.tipo_recorrencia,
@@ -443,7 +448,7 @@ def listar_dungeons(
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(get_usuario_atual),
 ):
-    hoje = date.today()
+    hoje = tempo.hoje()
     resultado = []
 
     # Higiene: sessões PENDENTES de dias anteriores = no-show consumado
@@ -562,7 +567,7 @@ def obter_dungeon(
     ).first()
     if not d:
         raise HTTPException(404, "Dungeon não encontrada")
-    hoje = date.today()
+    hoje = tempo.hoje()
     s = None
     if _eh_dungeon_de_hoje(d, hoje):
         s = _obter_ou_criar_sessao(db, d, usuario.id, hoje)
@@ -720,7 +725,7 @@ def estado_sessao(
 ):
     """Estado completo do interior: dungeon + sessão de hoje + execuções de missão."""
     d = _get_dungeon(db, dungeon_id, usuario)
-    hoje = date.today()
+    hoje = tempo.hoje()
     s = _obter_ou_criar_sessao(db, d, usuario.id, hoje)
     s = _verificar_no_show(db, d, s, usuario)
     relatorio_auto = _verificar_saida_automatica(db, d, s, usuario)
@@ -745,7 +750,7 @@ def entrar_dungeon(
 ):
     """Check-in: PENDENTE → ATIVA. Calcula atraso, credita/penaliza, arma as missões."""
     d = _get_dungeon(db, dungeon_id, usuario)
-    hoje = date.today()
+    hoje = tempo.hoje()
 
     if not _eh_dungeon_de_hoje(d, hoje):
         raise HTTPException(400, "Esta Dungeon não está aberta hoje")
@@ -878,7 +883,7 @@ def entrar_arquiteto(
         raise HTTPException(403, "Somente o Arquiteto pode atravessar este selo")
 
     d = _get_dungeon(db, dungeon_id, usuario)
-    hoje = date.today()
+    hoje = tempo.hoje()
     agora = _agora()
 
     s = _obter_ou_criar_sessao(db, d, usuario.id, hoje, teste=True)
@@ -941,7 +946,7 @@ def heartbeat(
     - Ocasionalmente devolve um sussurro (FLAVOR)
     """
     d = _get_dungeon(db, dungeon_id, usuario)
-    hoje = date.today()
+    hoje = tempo.hoje()
     if teste and usuario.nivel_acesso != "Arquiteto":
         raise HTTPException(403, "Somente o Arquiteto usa sessões de teste")
     s = _obter_ou_criar_sessao(db, d, usuario.id, hoje, teste=teste)
@@ -1149,7 +1154,7 @@ def cumprir_missao(
         s.moedas_ganhas = (s.moedas_ganhas or 0) + mc
     elif xp > 0 or mc > 0:
         eventos_xp = aplicar_xp(
-            db, usuario, xp, mc, date.today(),
+            db, usuario, xp, mc, tempo.hoje(),
             observacao=f"Dungeon [{d.titulo}] — missão: {m.titulo}",
         )
         e.xp_ganho      = eventos_xp["xp_ganho"]
@@ -1262,7 +1267,7 @@ def _resolver_sessao(db: Session, d: Dungeon, s: DungeonSessao, usuario: Usuario
     Retorna (relatorio, eventos_xp).
     """
     agora = agora or _agora()
-    hoje  = date.today()
+    hoje  = tempo.hoje()
 
     # Fecha o tempo da sessão
     ultimo = s.ultimo_heartbeat_em or s.entrada_em or agora
@@ -1380,7 +1385,7 @@ def sair_dungeon(
 ):
     """Check-out: resolve a sessão, calcula o rank de clear e paga a recompensa."""
     d = _get_dungeon(db, dungeon_id, usuario)
-    hoje = date.today()
+    hoje = tempo.hoje()
     if teste and usuario.nivel_acesso != "Arquiteto":
         raise HTTPException(403, "Somente o Arquiteto usa sessões de teste")
     s = _obter_ou_criar_sessao(db, d, usuario.id, hoje, teste=teste)
@@ -1414,7 +1419,7 @@ def resetar_sessao(
         raise HTTPException(403, "Somente o Arquiteto pode reverter o tempo de um portão")
 
     d = _get_dungeon(db, dungeon_id, usuario)
-    hoje  = date.today()
+    hoje  = tempo.hoje()
     agora = _agora()
 
     s = db.query(DungeonSessao).filter(
@@ -1469,7 +1474,7 @@ def fracassar_sessao(
 ):
     """Força a checagem de no-show (o servidor também faz isso sozinho ao listar)."""
     d = _get_dungeon(db, dungeon_id, usuario)
-    s = _obter_ou_criar_sessao(db, d, usuario.id, date.today())
+    s = _obter_ou_criar_sessao(db, d, usuario.id, tempo.hoje())
     s = _verificar_no_show(db, d, s, usuario)
     return {"sessao": _sessao_to_dict(s)}
 
@@ -1482,7 +1487,7 @@ def cancelar_sessao(
 ):
     """Cancela a sessão de hoje sem penalidade (PENDENTE|ATIVA → CANCELADA)."""
     d = _get_dungeon(db, dungeon_id, usuario)
-    s = _obter_ou_criar_sessao(db, d, usuario.id, date.today())
+    s = _obter_ou_criar_sessao(db, d, usuario.id, tempo.hoje())
     if s.status not in ("PENDENTE", "ATIVA"):
         raise HTTPException(400, f"Não é possível cancelar — status: {s.status}")
     s.status = "CANCELADA"

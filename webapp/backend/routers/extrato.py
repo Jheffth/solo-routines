@@ -20,6 +20,7 @@ Como os dois IDs vêm de sequências diferentes, um `uid` ("r123"/"g45") dá ao
 frontend uma chave única sem que precise saber de onde a missão veio.
 """
 from datetime import date, datetime, timedelta
+from motors import tempo
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -36,6 +37,24 @@ JANELA_MAXIMA_DIAS = 370
 LIMITE_PADRAO = 500
 
 FINAIS = ("CONCLUIDA", "FRACASSADA", "CANCELADA")
+
+
+def _duracao(inicio, fim) -> int | None:
+    """
+    Quanto a missão levou, em segundos.
+
+    Calculada AQUI, e não no navegador, de propósito: a subtração entre dois
+    instantes é imune a fuso, enquanto o cliente teria de adivinhar em que
+    fuso cada carimbo foi gravado. Devolvemos o número pronto; o cliente só
+    formata.
+
+    Devolve None quando a missão não foi iniciada ou ainda não terminou —
+    "sem duração" é diferente de "durou zero".
+    """
+    if not inicio or not fim:
+        return None
+    segundos = int((fim - inicio).total_seconds())
+    return segundos if segundos >= 0 else None
 
 
 def _missao_de_rotina(ed: ExecucaoDia, r: Rotina, hoje: date) -> dict:
@@ -73,6 +92,8 @@ def _missao_de_rotina(ed: ExecucaoDia, r: Rotina, hoje: date) -> dict:
         "concluida_em":  ed.concluida_em.isoformat()  if ed.concluida_em  else None,
         "fracassada_em": ed.fracassada_em.isoformat() if ed.fracassada_em else None,
         "cancelada_em":  ed.cancelada_em.isoformat()  if ed.cancelada_em  else None,
+        # Quanto levou, do play ao fim. Pronta para a tela apenas formatar.
+        "duracao_segundos": _duracao(ed.iniciada_em, ed.concluida_em),
 
         # Duas permissões diferentes, e confundi-las custa caro:
         #   editavel    → EXECUTAR (iniciar/concluir). Só faz sentido hoje:
@@ -116,10 +137,11 @@ def _missao_geral(t: TarefaDia, hoje: date) -> dict:
         "moedas_ganhas": t.moedas_recompensa if status == "CONCLUIDA" else 0,
         "xp_perdido":    (t.penalidade_xp or 0) if status == "FRACASSADA" else 0,
 
-        "iniciada_em":   None,
+        "iniciada_em":   t.iniciada_em.isoformat() if getattr(t, "iniciada_em", None) else None,
         "concluida_em":  t.concluida_em.isoformat() if t.concluida_em else None,
         "fracassada_em": None,
         "cancelada_em":  None,
+        "duracao_segundos": _duracao(getattr(t, "iniciada_em", None), t.concluida_em),
 
         "editavel":    t.data_prevista == hoje,
         "gerenciavel": t.data_prevista >= hoje if t.data_prevista else False,
@@ -146,7 +168,7 @@ def listar_extrato(
     dias em que o hunter não abriu o app — que é justamente quando ele mais
     precisa saber o que perdeu.
     """
-    hoje = date.today()
+    hoje = tempo.hoje()
     fim = fim or hoje
     inicio = inicio or (fim - timedelta(days=30))
     if (fim - inicio).days > JANELA_MAXIMA_DIAS:
@@ -221,7 +243,7 @@ def resumo_extrato(
     usuario: Usuario = Depends(get_usuario_atual),
 ):
     """Contadores do período — alimenta o cabeçalho do extrato."""
-    hoje   = date.today()
+    hoje   = tempo.hoje()
     inicio = hoje - timedelta(days=dias)
 
     contagem = {"CONCLUIDA": 0, "FRACASSADA": 0, "PENDENTE": 0,

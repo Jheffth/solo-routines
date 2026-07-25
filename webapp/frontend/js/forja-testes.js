@@ -338,8 +338,8 @@ const ForjaTestes = {
       return this._eclipsar(() => {
         // A cerimônia de aura reaproveita a de conquista: é a mesma
         // encenação, com o desenho da aura no lugar da medalha.
-        const cat = { 'bella-rosa': '#ff1493', 'pink-spirit': '#f48fb1',
-                      arquiteto: '#fbbf24', admin: '#38bdf8' };
+        const cat = { 'fenix-pioneira': '#ff6d00', 'bella-rosa': '#ff1493',
+                      'pink-spirit': '#f48fb1', arquiteto: '#fbbf24', admin: '#38bdf8' };
         ConquistaFX.show({
           id: 'aura_' + Date.now(),
           codigo: arg,

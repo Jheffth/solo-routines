@@ -846,4 +846,189 @@ Auras.registrar('pink-spirit', function (tam) {
   </svg>`;
 });
 
+/* ===================================================================
+   AURA FÊNIX — "Chama Imortal do Pioneiro"
+   Inspirada no modelo S-Rank da Fênix: labaredas laranjas, âmbar e
+   escarlates em rotação contínua, com coroas de penas em chamas,
+   shimmer solar e brasas ascendentes em órbita.
+   =================================================================== */
+Auras.registrar('fenix-pioneira', function (tam) {
+  const C = 150;
+
+  /* Lâminas Solares (penas de chamas curvas) */
+  const chamas = (n, aL, aC, rBase, larg, fill, op, curvar = 1) => {
+    const ps = [];
+    for (let i = 0; i < n; i++) {
+      const ang = (360 / n) * i;
+      const a = i % 2 === 0 ? aL : aC;
+      const w = larg * (a / aL);
+      const base = C - rBase, ponta = base - a;
+      const kx = w * 0.35 * curvar;
+      ps.push(
+        `<path d="M ${C} ${base}` +
+        ` C ${C - w} ${base - a * 0.15}, ${C - w * 0.8} ${base - a * 0.55}, ${C - w * 0.2 - kx} ${base - a * 0.85}` +
+        ` Q ${C - kx} ${base - a * 0.96}, ${C + kx} ${ponta}` +
+        ` Q ${C + w * 0.1 + kx} ${base - a * 0.94}, ${C + w * 0.25} ${base - a * 0.82}` +
+        ` C ${C + w * 0.75} ${base - a * 0.50}, ${C + w} ${base - a * 0.12}, ${C} ${base} Z"` +
+        ` transform="rotate(${ang} ${C} ${C})" fill="${fill}" opacity="${op}"/>`
+      );
+    }
+    return ps.join('');
+  };
+
+  /* Raios solares afiados (lanças térmicas) */
+  const lancas = (n, rBase, aL, larg, fill, op) => {
+    const ps = [];
+    for (let i = 0; i < n; i++) {
+      const ang = (360 / n) * i;
+      const w = larg;
+      const base = C - rBase, ponta = base - aL;
+      ps.push(
+        `<path d="M ${C - w} ${base}` +
+        ` Q ${C - w * 0.4} ${base - aL * 0.6}, ${C} ${ponta}` +
+        ` Q ${C + w * 0.4} ${base - aL * 0.6}, ${C + w} ${base}` +
+        ` Z" transform="rotate(${ang} ${C} ${C})" fill="${fill}" opacity="${op}"/>`
+      );
+    }
+    return ps.join('');
+  };
+
+  /* Shimmer solar (traços brilhantes) */
+  const shimmer = (n, r, w1, w2, sw, color, op) => {
+    const ps = [];
+    for (let i = 0; i < n; i++) {
+      const ang = (360 / n) * i, a = (ang - 90) * Math.PI / 180;
+      const x1 = C + (r - w1) * Math.cos(a), y1 = C + (r - w1) * Math.sin(a);
+      const x2 = C + (r + w2) * Math.cos(a), y2 = C + (r + w2) * Math.sin(a);
+      ps.push(
+        `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}"` +
+        ` x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"` +
+        ` stroke="${color}" stroke-width="${sw}" stroke-opacity="${op}" stroke-linecap="round"/>`
+      );
+    }
+    return ps.join('');
+  };
+
+  /* Brasas crepitantes (partículas de fogo em órbita) */
+  const brasas = (n, rMin, rMax) => {
+    const ps = [];
+    const cores = ['#ffeb3b', '#ff9800', '#ff3d00', '#ffe57f'];
+    for (let i = 0; i < n; i++) {
+      const ang = (360 / n) * i + (i * 13) % 30, a = (ang - 90) * Math.PI / 180;
+      const r = rMin + (rMax - rMin) * ((i * 7) % 10) / 10;
+      const x = C + r * Math.cos(a), y = C + r * Math.sin(a);
+      const cor = cores[i % cores.length];
+      const raio = (1.4 + (i % 3) * 0.6).toFixed(1);
+      const del = (i * 0.18).toFixed(2);
+      ps.push(
+        `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${raio}" fill="${cor}"` +
+        ` opacity="0.85" style="animation:fnx-spark 1.6s ${del}s ease-in-out infinite"/>`
+      );
+    }
+    return ps.join('');
+  };
+
+  const chExt = chamas(12, 78, 54, 62, 20, 'url(#fnxChamaExt)', .85, 1.2);
+  const chMed = chamas(16, 56, 40, 64, 14, 'url(#fnxChamaMed)', .90, -0.8);
+  const chInt = lancas(24, 64, 28, 5, 'url(#fnxChamaInt)', 1.0);
+  const shExt = shimmer(36, 122, 7, 5, 1.8, '#ffcc00', .75);
+  const shInt = shimmer(24, 86, 5, 3, 1.4, '#ff9800', .60);
+  const spks  = brasas(20, 76, 136);
+
+  return `
+  <svg viewBox="0 0 300 300" width="${tam}" height="${tam}"
+       class="aura-svg" aria-hidden="true" focusable="false"
+       style="display:block;overflow:visible;max-width:none;width:${tam}px;height:${tam}px">
+    <style>
+      .fnx-r1{transform-origin:150px 150px;animation:aura-girar 52s linear infinite}
+      .fnx-r2{transform-origin:150px 150px;animation:aura-girar 38s linear infinite reverse}
+      .fnx-r3{transform-origin:150px 150px;animation:aura-girar 26s linear infinite}
+      .fnx-r4{transform-origin:150px 150px;animation:aura-girar 75s linear infinite reverse}
+      .fnx-bloom{transform-origin:150px 150px;animation:fnx-bloom 3.5s ease-in-out infinite}
+      .fnx-pulse{transform-origin:150px 150px;animation:fnx-pulse 2.2s ease-in-out infinite reverse}
+      .fnx-halo{animation:fnx-halo 5s ease-in-out infinite}
+      @keyframes fnx-bloom{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.08);opacity:1}}
+      @keyframes fnx-pulse{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.04);opacity:1}}
+      @keyframes fnx-halo{0%,100%{opacity:.4}50%{opacity:.95}}
+      @keyframes fnx-spark{0%,100%{transform:scale(.8);opacity:.2}50%{transform:scale(1.3);opacity:1}}
+      @media(prefers-reduced-motion:reduce){
+        .fnx-r1,.fnx-r2,.fnx-r3,.fnx-r4,.fnx-bloom,.fnx-pulse,.fnx-halo{animation:none}
+        circle[style*="fnx-spark"]{animation:none!important}
+      }
+    </style>
+    <defs>
+      <!-- Gradientes labaredas Fênix -->
+      <radialGradient id="fnxChamaExt" cx="50%" cy="15%">
+        <stop offset="0%"   stop-color="#fffbdf" stop-opacity="1"/>
+        <stop offset="25%"  stop-color="#ffcc00" stop-opacity=".95"/>
+        <stop offset="60%"  stop-color="#ff6d00" stop-opacity=".75"/>
+        <stop offset="85%"  stop-color="#d00000" stop-opacity=".45"/>
+        <stop offset="100%" stop-color="#4a001f" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="fnxChamaMed" cx="50%" cy="18%">
+        <stop offset="0%"   stop-color="#ffffff" stop-opacity="1"/>
+        <stop offset="30%"  stop-color="#ffea00" stop-opacity=".95"/>
+        <stop offset="65%"  stop-color="#ff6d00" stop-opacity=".80"/>
+        <stop offset="100%" stop-color="#b71c1c" stop-opacity=".15"/>
+      </radialGradient>
+      <radialGradient id="fnxChamaInt" cx="50%" cy="10%">
+        <stop offset="0%"   stop-color="#ffffff" stop-opacity="1"/>
+        <stop offset="40%"  stop-color="#fff3e0" stop-opacity=".95"/>
+        <stop offset="75%"  stop-color="#ffab00" stop-opacity=".80"/>
+        <stop offset="100%" stop-color="#ff3d00" stop-opacity=".25"/>
+      </radialGradient>
+      <!-- Halos e Calor Magmático -->
+      <radialGradient id="fnxCalor" cx="50%" cy="50%">
+        <stop offset="0%"   stop-color="#ff6d00" stop-opacity="0"/>
+        <stop offset="44%"  stop-color="#ff6d00" stop-opacity="0"/>
+        <stop offset="56%"  stop-color="#ff9800" stop-opacity=".45"/>
+        <stop offset="74%"  stop-color="#ff6d00" stop-opacity=".28"/>
+        <stop offset="88%"  stop-color="#d00000" stop-opacity=".15"/>
+        <stop offset="100%" stop-color="#4a001f" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="fnxHalo" cx="50%" cy="50%">
+        <stop offset="0%"   stop-color="#ffcc00" stop-opacity="0"/>
+        <stop offset="44%"  stop-color="#ffcc00" stop-opacity="0"/>
+        <stop offset="58%"  stop-color="#ffe57f" stop-opacity=".35"/>
+        <stop offset="72%"  stop-color="#ff8f00" stop-opacity=".22"/>
+        <stop offset="86%"  stop-color="#b71c1c" stop-opacity=".10"/>
+        <stop offset="100%" stop-color="#6a040f" stop-opacity="0"/>
+      </radialGradient>
+      <!-- Filtros térmicos -->
+      <filter id="fnxBlur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="15"/></filter>
+      <filter id="fnxGlow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3.5"/></filter>
+      <filter id="fnxSharp" x="-25%" y="-25%" width="150%" height="150%"><feGaussianBlur stdDeviation="1.2"/></filter>
+    </defs>
+    <!-- Halos de fundo (Calor térmico e luz solar) -->
+    <circle cx="${C}" cy="${C}" r="135" fill="url(#fnxCalor)" class="fnx-halo" filter="url(#fnxBlur)"/>
+    <circle cx="${C}" cy="${C}" r="118" fill="url(#fnxHalo)" class="fnx-halo"/>
+    
+    <!-- Camada 1: Shimmer solar externo -->
+    <g class="fnx-r1" filter="url(#fnxSharp)">${shExt}</g>
+    
+    <!-- Camada 2: Asas/Labaredas externas (12 chamas longas e curvas) -->
+    <g class="fnx-r2"><g class="fnx-bloom" filter="url(#fnxGlow)">${chExt}</g></g>
+    
+    <!-- Camada 3: Labaredas intermediárias girando em sentido oposto -->
+    <g class="fnx-r1"><g class="fnx-pulse" filter="url(#fnxGlow)">${chMed}</g></g>
+    
+    <!-- Camada 4: Shimmer interno e Coroa rúnica -->
+    <g class="fnx-r3" filter="url(#fnxSharp)">${shInt}</g>
+    <g class="fnx-r3"><g class="fnx-bloom">${chInt}</g></g>
+    
+    <!-- Camada 5: Brasas e centelhas crepitantes em órbita livre -->
+    <g class="fnx-r4" filter="url(#fnxSharp)">${spks}</g>
+    
+    <!-- Camada 6: Anel duplo tracejado de fogo rúnico -->
+    <g class="fnx-r1">
+      <circle cx="${C}" cy="${C}" r="134" fill="none"
+              stroke="#ffab00" stroke-width="1.3" stroke-opacity=".65"
+              stroke-dasharray="14 8" filter="url(#fnxSharp)"/>
+      <circle cx="${C}" cy="${C}" r="138" fill="none"
+              stroke="#ff3d00" stroke-width="0.8" stroke-opacity=".40"
+              stroke-dasharray="4 16" filter="url(#fnxSharp)"/>
+    </g>
+  </svg>`;
+});
+
 window.Auras = Auras;

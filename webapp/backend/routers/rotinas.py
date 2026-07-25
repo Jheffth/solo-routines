@@ -10,6 +10,7 @@ from sqlalchemy import func, or_
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import date, datetime
+from motors import tempo
 
 from database import get_db, Rotina, Execucao, ExecucaoDia, Usuario
 from auth.router import get_usuario_atual
@@ -210,7 +211,7 @@ def listar_rotinas(
         q = q.filter(Rotina.tipo == tipo.upper())
     if ativo is not None:
         q = q.filter(Rotina.ativo == ativo)
-    hoje = date.today()
+    hoje = tempo.hoje()
     resultado = []
     for r in q.order_by(Rotina.criado_em.desc()).all():
         # Para a listagem geral, inclui exec_dia se for dia dela
@@ -226,7 +227,7 @@ def rotinas_de_hoje(
     db:    Session   = Depends(get_db),
     usuario: Usuario = Depends(get_usuario_atual),
 ):
-    hoje  = date.today()
+    hoje  = tempo.hoje()
     todas = db.query(Rotina).filter(
         Rotina.usuario_id == usuario.id, Rotina.ativo == True
     ).all()
@@ -257,7 +258,7 @@ def obter_rotina(
     ).first()
     if not r:
         raise HTTPException(404, "Rotina não encontrada")
-    hoje = date.today()
+    hoje = tempo.hoje()
     ed = None
     if _eh_rotina_de_hoje(r, hoje):
         ed = _obter_ou_criar_exec_dia(db, r, usuario.id, hoje)
@@ -302,7 +303,7 @@ def criar_rotina(
     db.refresh(rotina)
 
     # Cria ExecucaoDia de hoje se a rotina já é devida hoje
-    hoje = date.today()
+    hoje = tempo.hoje()
     ed = None
     if _eh_rotina_de_hoje(rotina, hoje):
         ed = _obter_ou_criar_exec_dia(db, rotina, usuario.id, hoje)
@@ -346,7 +347,7 @@ def atualizar_rotina(
 
     db.commit()
     db.refresh(r)
-    hoje = date.today()
+    hoje = tempo.hoje()
     ed = _obter_ou_criar_exec_dia(db, r, usuario.id, hoje) if _eh_rotina_de_hoje(r, hoje) else None
     return _rotina_to_dict(r, exec_dia=ed)
 
@@ -396,7 +397,7 @@ def deletar_rotina(
     if tem_historico:
         r.ativo  = False
         r.status = "ARQUIVADA"
-        r.cancelada_em = datetime.utcnow()
+        r.cancelada_em = tempo.agora()
         db.commit()
         return {"ok": True, "modo": "arquivada",
                 "msg": "Regra arquivada — o histórico dela segue no Extrato."}
@@ -422,14 +423,14 @@ def iniciar_rotina(
     if not r:
         raise HTTPException(404, "Rotina não encontrada")
 
-    hoje = date.today()
+    hoje = tempo.hoje()
     ed = _obter_ou_criar_exec_dia(db, r, usuario.id, hoje)
 
     if ed.status not in ("PENDENTE", "PAUSADA"):
         raise HTTPException(400, f"Não é possível iniciar — status atual: {ed.status}")
 
     ed.status     = "ATIVA"
-    ed.iniciada_em = datetime.utcnow()
+    ed.iniciada_em = tempo.agora()
     db.commit()
     db.refresh(ed)
     return _rotina_to_dict(r, exec_dia=ed)
@@ -448,7 +449,7 @@ def fracassar_rotina(
     if not r:
         raise HTTPException(404, "Rotina não encontrada")
 
-    hoje = date.today()
+    hoje = tempo.hoje()
     ed = _obter_ou_criar_exec_dia(db, r, usuario.id, hoje)
 
     if ed.status in ("CONCLUIDA", "FRACASSADA"):
@@ -457,7 +458,7 @@ def fracassar_rotina(
     pen = getattr(r, "penalidade_xp", 0) or 0
 
     ed.status       = "FRACASSADA"
-    ed.fracassada_em = datetime.utcnow()
+    ed.fracassada_em = tempo.agora()
     ed.xp_perdido   = pen
 
     # Aplica penalidade ao usuário
@@ -483,14 +484,14 @@ def cancelar_rotina(
     if not r:
         raise HTTPException(404, "Rotina não encontrada")
 
-    hoje = date.today()
+    hoje = tempo.hoje()
     ed = _obter_ou_criar_exec_dia(db, r, usuario.id, hoje)
 
     if ed.status not in ("PENDENTE", "ATIVA"):
         raise HTTPException(400, f"Não é possível cancelar — status: {ed.status}")
 
     ed.status       = "CANCELADA"
-    ed.cancelada_em  = datetime.utcnow()
+    ed.cancelada_em  = tempo.agora()
     db.commit()
     db.refresh(ed)
     return _rotina_to_dict(r, exec_dia=ed)
@@ -509,7 +510,7 @@ def retomar_rotina(
     if not r:
         raise HTTPException(404, "Rotina não encontrada")
 
-    hoje = date.today()
+    hoje = tempo.hoje()
     ed = _obter_ou_criar_exec_dia(db, r, usuario.id, hoje)
 
     if ed.status in ("PAUSADA", "CANCELADA"):
@@ -535,7 +536,7 @@ def pausar_rotina(
     ).first()
     if not r:
         raise HTTPException(404, "Rotina não encontrada")
-    hoje = date.today()
+    hoje = tempo.hoje()
     ed = _obter_ou_criar_exec_dia(db, r, usuario.id, hoje)
     if ed.status == "ATIVA":
         ed.status = "PAUSADA"

@@ -21,13 +21,15 @@ a virada — quem decide que hoje fracassou é o prazo da missão, não este job
 """
 import json
 from datetime import date, datetime, timedelta
+from motors import tempo
 
 from sqlalchemy.orm import Session
 
 from database import SessionLocal, Rotina, ExecucaoDia, TarefaDia, Usuario
 
-# Quantos dias para trás o job tenta materializar. Cobre uma ausência longa
-# sem varrer o banco inteiro toda madrugada.
+# Quantos dias para trás o fechamento OLHA ao fechar pendências.
+# Não é backfill: serve para o job encontrar dias que já existiam e ficaram
+# abertos, nunca para inventar dias que ninguém viveu.
 JANELA_DIAS = 30
 
 
@@ -55,23 +57,25 @@ def rotina_devida_em(rotina: Rotina, dia: date) -> bool:
     return False
 
 
-def _primeiro_dia(rotina: Rotina, limite: date) -> date:
+def materializar(db: Session, usuario_id: int, ate: date | None = None) -> int:
     """
-    Nunca materializamos antes de a rotina existir — senão inventaríamos
-    fracassos de dias em que ela nem tinha sido criada.
-    """
-    nascimento = rotina.criado_em.date() if rotina.criado_em else limite
-    return max(nascimento, limite)
-
-
-def materializar(db: Session, usuario_id: int, ate: date | None = None,
-                 janela: int = JANELA_DIAS) -> int:
-    """
-    Garante que exista um ExecucaoDia para cada dia devido dentro da janela.
+    Garante que exista o ExecucaoDia do DIA CORRENTE para cada rotina devida.
     Devolve quantas instâncias foram criadas. Idempotente.
+
+    SÓ O DIA CORRENTE, e isto é uma decisão, não um limite técnico.
+
+    A versão anterior varria 30 dias para trás e criava instâncias de dias
+    que o hunter nunca viveu — que o fechamento em seguida marcava como
+    FRACASSADA, com penalidade. Ou seja: inventava derrotas retroativas.
+    Isso contradizia a decisão tomada ("começar do zero: o que não foi
+    observado não vira registro") e podia zerar o XP de alguém por dias
+    anteriores à existência da funcionalidade.
+
+    Não perdemos histórico com isso: o job das 00h05 roda todo dia e
+    materializa o dia dele. Cada dia nasce no seu próprio dia, mesmo que o
+    hunter não abra o app.
     """
-    hoje = ate or date.today()
-    inicio_janela = hoje - timedelta(days=janela)
+    hoje = ate or tempo.hoje()
     criadas = 0
 
     rotinas = db.query(Rotina).filter(
@@ -80,26 +84,28 @@ def materializar(db: Session, usuario_id: int, ate: date | None = None,
     if not rotinas:
         return 0
 
-    # Uma consulta só para saber o que já existe — evita N+1 por dia/rotina.
+    # Uma consulta só para saber o que já existe hoje — nada de N+1.
     existentes = {
-        (ed.rotina_id, ed.data)
-        for ed in db.query(ExecucaoDia.rotina_id, ExecucaoDia.data).filter(
+        ed.rotina_id
+        for ed in db.query(ExecucaoDia.rotina_id).filter(
             ExecucaoDia.usuario_id == usuario_id,
-            ExecucaoDia.data >= inicio_janela,
-            ExecucaoDia.data <= hoje,
+            ExecucaoDia.data == hoje,
         ).all()
     }
 
     for r in rotinas:
-        dia = _primeiro_dia(r, inicio_janela)
-        while dia <= hoje:
-            if rotina_devida_em(r, dia) and (r.id, dia) not in existentes:
-                db.add(ExecucaoDia(
-                    rotina_id=r.id, usuario_id=usuario_id,
-                    data=dia, status="PENDENTE",
-                ))
-                criadas += 1
-            dia += timedelta(days=1)
+        # Uma rotina criada hoje à noite não deve gerar a missão de hoje se
+        # a janela dela já passou? Deve sim — quem cria decide. O que não
+        # pode é gerar dias ANTERIORES ao próprio nascimento.
+        nascimento = tempo.dia_de_utc(r.criado_em) or hoje
+        if nascimento > hoje:
+            continue
+        if rotina_devida_em(r, hoje) and r.id not in existentes:
+            db.add(ExecucaoDia(
+                rotina_id=r.id, usuario_id=usuario_id,
+                data=hoje, status="PENDENTE",
+            ))
+            criadas += 1
 
     if criadas:
         db.flush()
@@ -112,8 +118,8 @@ def fechar_vencidas(db: Session, usuario: Usuario, ate: date | None = None) -> d
     PENDENTE ou ATIVA viram FRACASSADA, com a penalidade declarada.
     O dia corrente nunca é tocado aqui.
     """
-    hoje = ate or date.today()
-    agora = datetime.utcnow()
+    hoje = ate or tempo.hoje()
+    agora = tempo.agora()
     rotinas_fechadas = 0
     gerais_fechadas = 0
     xp_perdido_total = 0
@@ -163,11 +169,75 @@ def fechar_vencidas(db: Session, usuario: Usuario, ate: date | None = None) -> d
     }
 
 
+def reparar_fechamento_indevido(db: Session, usuario: Usuario,
+                                ate: date | None = None) -> dict:
+    """
+    Desfaz as derrotas que o relógio errado provocou.
+
+    Enquanto o servidor decidia o dia em UTC, às 21:00 de Brasília ele já
+    considerava amanhã — e fechava como FRACASSADA as missões de HOJE que
+    ainda tinham prazo, descontando o XP. Uma rotina com janela 20:00–22:00
+    era punida uma hora antes de vencer, todo dia.
+
+    Este reparo é conservador de propósito: mexe apenas em instâncias de
+    HOJE OU DO FUTURO. O passado é histórico legítimo e não se reescreve.
+
+    Idempotente: rodar duas vezes não devolve XP duas vezes, porque ao
+    reabrir ele zera `xp_perdido` — na segunda passada não há o que devolver.
+    """
+    hoje = ate or tempo.hoje()
+
+    indevidas = db.query(ExecucaoDia).filter(
+        ExecucaoDia.usuario_id == usuario.id,
+        ExecucaoDia.data >= hoje,                    # hoje ou depois
+        ExecucaoDia.status == "FRACASSADA",
+    ).all()
+
+    xp_devolvido = 0
+    for ed in indevidas:
+        xp_devolvido += ed.xp_perdido or 0
+        ed.status = "PENDENTE"                       # volta a ser jogável
+        ed.fracassada_em = None
+        ed.xp_perdido = 0
+        # E o cronômetro volta ao zero. Sem isto, a missão reaberta ficava
+        # PENDENTE mas com a hora de início preservada — e o cartão exibia um
+        # contador correndo há 11 horas numa missão que nem começou. Voltar a
+        # PENDENTE significa, por definição, que ela ainda não teve largada.
+        ed.iniciada_em = None
+
+    tarefas = db.query(TarefaDia).filter(
+        TarefaDia.usuario_id == usuario.id,
+        TarefaDia.data_prevista >= hoje,
+        TarefaDia.status == "FRACASSADA",
+    ).all()
+    for t in tarefas:
+        xp_devolvido += t.penalidade_xp or 0
+        t.status = "PENDENTE"
+        t.iniciada_em = None      # mesma regra: PENDENTE não tem cronômetro
+
+    if xp_devolvido:
+        usuario.xp_total = (usuario.xp_total or 0) + xp_devolvido
+        usuario.xp_atual = (usuario.xp_atual or 0) + xp_devolvido
+        # O nível pode ter caído junto com o XP; devolve-o ao lugar.
+        try:
+            from motors.gamificacao import recalcular_nivel
+            recalcular_nivel(db, usuario)
+        except Exception:
+            pass
+
+    return {"reabertas": len(indevidas) + len(tarefas), "xp_devolvido": xp_devolvido}
+
+
 def processar_usuario(db: Session, usuario: Usuario, ate: date | None = None) -> dict:
     """Materializa e fecha, para um hunter. Não faz commit — quem chama decide."""
+    # O reparo vem PRIMEIRO: se o relógio errado fechou a missão de hoje,
+    # ela precisa voltar a existir antes que qualquer outra coisa a leia.
+    reparo = reparar_fechamento_indevido(db, usuario, ate=ate)
     criadas = materializar(db, usuario.id, ate=ate)
     resumo = fechar_vencidas(db, usuario, ate=ate)
     resumo["materializadas"] = criadas
+    resumo["reabertas"] = reparo["reabertas"]
+    resumo["xp_devolvido"] = reparo["xp_devolvido"]
     return resumo
 
 

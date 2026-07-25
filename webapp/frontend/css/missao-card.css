@@ -524,3 +524,63 @@
 @media (prefers-reduced-motion: reduce) {
   .mc-sigilo-anel, .mc-sigilo-arco, .mc-fio, .mc-barra-fill, .mc-prazo.urgente { animation: none !important; }
 }
+
+/* ── CRONÔMETRO ───────────────────────────────────────────
+   Quanto a missão levou. Fica ao lado dos chips, mas com peso
+   próprio: é dado de execução, não rótulo de classificação.
+   Números em fonte digital, como o resto dos contadores. */
+.mc-crono {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  padding: .16rem .5rem;
+  border-radius: var(--radius-sm, 6px);
+  background: rgba(148,163,184,.1);
+  border: 1px solid rgba(148,163,184,.18);
+  font-family: var(--font-digits, monospace);
+  font-size: .62rem;
+  letter-spacing: .04em;
+  color: var(--text-secondary, #94a3b8);
+  white-space: nowrap;
+}
+.mc-crono svg { width: 11px; height: 11px; flex: none; opacity: .75; max-width: none; }
+.mc-crono b { font-weight: 700; color: var(--text-primary, #e2e8f0); }
+.mc-crono-seta { opacity: .5; margin: 0 .05rem; }
+
+/* A duração é a informação que o hunter procura — destacada. */
+.mc-crono-dur {
+  margin-left: .12rem;
+  padding: .04rem .3rem;
+  border-radius: 4px;
+  background: rgba(124,58,237,.2);
+  color: #c4b5fd;
+  font-weight: 700;
+}
+
+/* Terminada: tom sóbrio, é registro. */
+.mc-crono-fim { border-color: rgba(148,163,184,.24); }
+.mc-crono-fim .mc-crono-dur { background: rgba(16,185,129,.18); color: #6ee7b7; }
+
+/* Em curso: o único elemento do cartão que pulsa, porque é o único
+   que está mesmo acontecendo agora. */
+.mc-crono-vivo {
+  border-color: color-mix(in srgb, var(--mc-cor, #7c3aed) 45%, transparent);
+  background: color-mix(in srgb, var(--mc-cor, #7c3aed) 12%, transparent);
+}
+.mc-crono-vivo svg {
+  opacity: 1;
+  color: var(--mc-cor, #7c3aed);
+  animation: mc-crono-tic 2s ease-in-out infinite;
+}
+@keyframes mc-crono-tic {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .45; }
+}
+
+/* No cartão compacto o cronômetro encolhe, mas não some: é o dado
+   que o extrato existe para mostrar. */
+.mc-compacto .mc-crono { font-size: .58rem; padding: .12rem .4rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mc-crono-vivo svg { animation: none; }
+}

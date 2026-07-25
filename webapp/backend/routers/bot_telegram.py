@@ -6,6 +6,7 @@ import os, json, requests as req_lib
 from fastapi import APIRouter, Depends, Request, HTTPException
 from sqlalchemy.orm import Session
 from datetime import date, timedelta
+from motors import tempo
 
 from database import (
     get_db, Usuario, Rotina, TarefaDia, Execucao, SessionLocal
@@ -44,7 +45,7 @@ def _processar(texto: str, chat_id: str, db: Session):
         _tg(chat_id, "❌ Nenhum usuário encontrado no sistema.")
         return
 
-    hoje = date.today()
+    hoje = tempo.hoje()
 
     # ── /start ou /ajuda ─────────────────────────────────
     if txt.lower() in ("/start", "/ajuda", "ajuda"):
@@ -273,7 +274,7 @@ def notificar_manha(db: Session):
     usuario = _get_usuario(db)
     if not usuario:
         return
-    hoje = date.today()
+    hoje = tempo.hoje()
     rotinas = [r for r in db.query(Rotina).filter(
         Rotina.usuario_id == usuario.id, Rotina.ativo == True
     ).all() if _rotina_de_hoje(r, hoje)]
@@ -299,7 +300,7 @@ def notificar_tarde(db: Session):
     usuario = _get_usuario(db)
     if not usuario:
         return
-    hoje = date.today()
+    hoje = tempo.hoje()
     pendentes = db.query(TarefaDia).filter(
         TarefaDia.usuario_id == usuario.id,
         TarefaDia.data_prevista == hoje,
@@ -320,7 +321,7 @@ def notificar_noite(db: Session):
     usuario = _get_usuario(db)
     if not usuario:
         return
-    hoje = date.today()
+    hoje = tempo.hoje()
     execs = db.query(Execucao).filter(
         Execucao.usuario_id == usuario.id,
         Execucao.data_execucao == hoje,

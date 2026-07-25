@@ -672,76 +672,10 @@
 
             </div>
 
-            <div class="card col-span-2" id="card-tarefas-hoje">
-              <!-- Header -->
-              <div class="d-flex justify-between align-center mb-1">
-                <div style="display:flex;align-items:center;gap:.6rem">
-                  <div>
-                    <h3 style="font-family:var(--font-section);margin:0">&#9876;&#65039; Miss&#245;es Gerais de Hoje</h3>
-                    <p style="font-family:var(--font-section);font-size:.62rem;color:var(--text-muted);margin:.1rem 0 0">
-                      Caixa de entrada do dia &#8212; o hist&#243;rico completo fica no Extrato
-                    </p>
-                  </div>
-                  <span id="tarefas-count" style="
-                    font-size:.7rem;font-family:var(--font-section);
-                    padding:.15rem .65rem;border-radius:100px;
-                    background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);
-                    color:#60a5fa;white-space:nowrap"></span>
-                </div>
-                <button onclick="if(window.App)App.navigate('tarefas')" style="
-                  font-family:var(--font-section);font-size:.72rem;font-weight:700;
-                  padding:.3rem .8rem;border-radius:.45rem;cursor:pointer;
-                  border:1px solid rgba(124,58,237,.4);background:rgba(124,58,237,.12);
-                  color:var(--purple-glow);transition:all .2s;display:flex;align-items:center;gap:.3rem"
-                  onmouseover="this.style.background='rgba(124,58,237,.25)'"
-                  onmouseout="this.style.background='rgba(124,58,237,.12)'">
-                  &#9876;&#65039; Ver Miss&#245;es
-                </button>
-              </div>
-
-              <!-- Filtros -->
-              <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.55rem;flex-wrap:wrap">
-                <select id="filtro-tarefa-status" class="sr-filtro" style="--f-cor:#a855f7">
-                  <option value="">&#9889; Todos os status</option>
-                  <option value="ATIVA">&#9654; Em Curso</option>
-                  <option value="PENDENTE">&#9203; Pendente</option>
-                  <option value="CONCLUIDA">&#10003; Conclu&#237;da</option>
-                  <option value="CANCELADA">&#10005; Cancelada</option>
-                  <option value="FRACASSADA">&#9760; Fracassada</option>
-                </select>
-                <select id="filtro-tarefa-prioridade" class="sr-filtro" style="--f-cor:#06b6d4">
-                  <option value="">&#128194; Todas as prioridades</option>
-                  <option value="CRITICA">&#128308; Cr&#237;tica</option>
-                  <option value="ALTA">&#128992; Alta</option>
-                  <option value="MEDIA">&#128993; M&#233;dia</option>
-                  <option value="BAIXA">&#128994; Baixa</option>
-                </select>
-                <!-- Toggle ocultar concluídas (Missões Gerais) -->
-                <label style="
-                  display:flex;align-items:center;gap:.35rem;cursor:pointer;
-                  font-family:var(--font-section);font-size:.68rem;color:var(--text-muted);
-                  padding:.28rem .55rem;border-radius:.45rem;
-                  border:1px solid rgba(100,116,139,.25);background:rgba(100,116,139,.07);
-                  white-space:nowrap;user-select:none">
-                  <input type="checkbox" id="toggle-ocultar-gerais" style="accent-color:var(--purple-main);cursor:pointer">
-                  <span>Ocultar conclu&#237;das</span>
-                </label>
-                <button id="btn-atualizar-tarefas-hoje" title="Atualizar" style="
-                  font-family:var(--font-section);font-size:.7rem;padding:.28rem .65rem;border-radius:.45rem;
-                  border:1px solid rgba(16,185,129,.3);background:rgba(16,185,129,.08);
-                  color:#10b981;cursor:pointer;transition:.2s"
-                  onmouseover="this.style.background='rgba(16,185,129,.2)'"
-                  onmouseout="this.style.background='rgba(16,185,129,.08)'">&#8635;</button>
-              </div>
-
-              <!-- Lista -->
-              <div id="lista-tarefas-hoje" style="max-height:300px;overflow-y:auto;overflow-x:hidden">
-                <div class="empty-state">
-                  <div class="empty-icon">&#9876;&#65039;</div>
-                  <div>Sem miss&#245;es lan&#231;adas hoje</div>
-                </div>
-              </div>
-            </div>
+            <!-- A secao "Missoes Gerais de Hoje" foi EXTINTA. As missoes gerais agora
+     vivem no Extrato de Missoes, com o MESMO cartao das de rotina. Manter
+     uma segunda vitrine, com cartao artesanal proprio, fazia a mesma missao
+     aparecer duas vezes e de dois jeitos diferentes na mesma tela. -->
             <div class="card">
               <h3 style="font-family:var(--font-section);margin-bottom:1rem">XP Ultimos 7 Dias</h3>
               <div class="chart-container">

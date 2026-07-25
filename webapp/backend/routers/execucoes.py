@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
 from datetime import date, datetime
+from motors import tempo
 
 from database import get_db, Rotina, Execucao, ExecucaoDia, Usuario
 from auth.router import get_usuario_atual
@@ -36,7 +37,7 @@ def concluir_rotina(
     if not rotina:
         raise HTTPException(404, "Rotina não encontrada")
 
-    hoje = payload.data_execucao or date.today()
+    hoje = payload.data_execucao or tempo.hoje()
 
     # Evita duplo registro no mesmo dia
     ja_executou = db.query(Execucao).filter(
@@ -76,7 +77,7 @@ def concluir_rotina(
         ed = ExecucaoDia(rotina_id=rotina.id, usuario_id=usuario.id, data=hoje)
         db.add(ed)
     ed.status       = "CONCLUIDA"
-    ed.concluida_em  = datetime.utcnow()
+    ed.concluida_em  = tempo.agora()
     ed.xp_ganho     = resultado.get("xp_ganho", 0) if isinstance(resultado, dict) else 0
     ed.moedas_ganhas = resultado.get("moedas_ganhas", 0) if isinstance(resultado, dict) else 0
     try:
@@ -96,7 +97,7 @@ def historico(
 ):
     """Histórico das últimas execuções do usuário."""
     from datetime import timedelta
-    desde = date.today() - timedelta(days=dias)
+    desde = tempo.hoje() - timedelta(days=dias)
     execs = db.query(Execucao).filter(
         Execucao.usuario_id == usuario.id,
         Execucao.data_execucao >= desde,
@@ -129,7 +130,7 @@ def heatmap(
     from datetime import timedelta
     from collections import defaultdict
 
-    um_ano_atras = date.today() - timedelta(days=365)
+    um_ano_atras = tempo.hoje() - timedelta(days=365)
     execs = db.query(
         Execucao.data_execucao,
     ).filter(

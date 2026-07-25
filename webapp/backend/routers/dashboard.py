@@ -4,6 +4,7 @@ Router de Dashboard — dados consolidados para a tela principal.
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from datetime import date, timedelta
+from motors import tempo
 
 from database import (
     get_db, Usuario, Rotina, TarefaDia, Execucao,
@@ -21,7 +22,7 @@ def dashboard_stats(
     usuario: Usuario = Depends(get_usuario_atual),
 ):
     """Stats rápidos + XP dos últimos 7 dias para o dashboard."""
-    hoje = date.today()
+    hoje = tempo.hoje()
     total_exec = db.query(Execucao).filter(Execucao.usuario_id == usuario.id).count()
     exec_hoje  = db.query(Execucao).filter(
         Execucao.usuario_id == usuario.id,
@@ -57,7 +58,7 @@ def dashboard(
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(get_usuario_atual),
 ):
-    hoje = date.today()
+    hoje = tempo.hoje()
 
     # ── Nível e progresso XP ──────────────────────────────
     nivel_info = db.query(Nivel).filter(Nivel.nivel == usuario.nivel_atual).first()

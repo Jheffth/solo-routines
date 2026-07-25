@@ -170,6 +170,11 @@ class TarefaDia(Base):
     # Controle
     usuario_id       = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
     criado_em        = Column(DateTime, default=datetime.utcnow)
+    # Quando o hunter apertou "iniciar". Sem isto não há como dizer QUANTO
+    # a missão durou — só que ela foi concluída. A instância diária de uma
+    # rotina (ExecucaoDia) já registrava; a missão geral não, e por isso o
+    # cronômetro era impossível deste lado.
+    iniciada_em      = Column(DateTime, nullable=True)
     concluida_em     = Column(DateTime, nullable=True)
 
     usuario          = relationship("Usuario", back_populates="tarefas")
