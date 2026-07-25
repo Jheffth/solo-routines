@@ -27,7 +27,14 @@ if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 APP_NAME = os.getenv("APP_NAME", "Solo Routines")
-APP_VERSION = "1.0.0"
+def _ler_versao_arquivo() -> str:
+    import pathlib
+    arq = pathlib.Path(__file__).parent.parent.parent / "VERSION"
+    if arq.exists():
+        return arq.read_text(encoding="utf-8").strip()
+    return "1.6.0"
+
+APP_VERSION = _ler_versao_arquivo()
 
 # ── Bot Telegram ──────────────────────────────────
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")

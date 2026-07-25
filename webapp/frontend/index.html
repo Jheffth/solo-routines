@@ -1241,6 +1241,7 @@
   <script src="js/pages/hunter-publico.js"></script>
   <script src="js/busca-hunters.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/version.js"></script>
   <script>
     // Injeta a insígnia Solo real (gerada pelo SoloFX) no login após todos os scripts carregarem
     document.addEventListener('DOMContentLoaded', () => {
@@ -1253,5 +1254,49 @@
       }
     });
   </script>
+<!-- FOOTER DE VERSÃO -->
+<footer id="version-footer" aria-label="Versão do sistema" style="
+  position:fixed;
+  bottom:0; left:0; right:0;
+  z-index:50;
+  pointer-events:none;
+  display:flex;
+  justify-content:flex-end;
+  align-items:center;
+  padding:0 1.2rem .35rem 0;
+">
+  <div id="version-badge" style="
+    pointer-events:auto;
+    display:flex; align-items:center; gap:.45rem;
+    background:rgba(5,5,8,.72);
+    border:1px solid rgba(124,58,237,.22);
+    border-radius:20px;
+    padding:.18rem .65rem .18rem .5rem;
+    backdrop-filter:blur(8px);
+    cursor:default;
+    opacity:.55;
+    transition:opacity .25s;
+    font-family:var(--font-section,Rajdhani,sans-serif);
+    font-size:.6rem;
+    letter-spacing:.08em;
+    color:var(--text-muted,#64748b);
+    user-select:none;
+  "
+  onmouseenter="this.style.opacity='.95'"
+  onmouseleave="this.style.opacity='.55'"
+  title="Clique para ver o changelog"
+  onclick="document.getElementById('version-changelog-modal')&&document.getElementById('version-changelog-modal').classList.toggle('hidden')">
+    <span style="color:var(--purple-main,#7c3aed);font-size:.75rem">◈</span>
+    <span id="version-text" style="color:var(--text-secondary,#94a3b8);font-weight:600;">carregando...</span>
+    <span id="version-env" style="
+      font-size:.52rem;
+      padding:.05rem .3rem;
+      border-radius:4px;
+      font-weight:700;
+      letter-spacing:.1em;
+    "></span>
+    <span id="version-sha" style="color:var(--text-muted,#64748b);font-size:.52rem;font-family:var(--font-mono,'Orbitron',monospace)"></span>
+  </div>
+</footer>
 </body>
 </html>

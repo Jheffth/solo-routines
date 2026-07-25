@@ -29,6 +29,7 @@ from routers.arquiteto import router as arquiteto_router
 from routers.hunters  import router as hunters_router
 from routers.social   import router as social_router
 from routers.auras    import router as auras_router
+from routers.versao   import router as versao_router
 
 # ==============================================================================
 # APP
@@ -89,6 +90,7 @@ app.include_router(arquiteto_router,     prefix="/api")
 app.include_router(hunters_router,       prefix="/api")
 app.include_router(social_router,        prefix="/api")
 app.include_router(auras_router,         prefix="/api")
+app.include_router(versao_router)
 
 # ==============================================================================
 # STATIC FILES (FRONTEND)
