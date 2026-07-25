@@ -206,6 +206,12 @@ const App = {
     if (this.currentPage === 'rotinas' && page !== 'rotinas') {
       if (typeof Rotinas !== 'undefined') Rotinas.destruir();
     }
+    // Tarefas ficava de fora desta limpeza: ao sair da guia, o timer global
+    // de prazo do MissaoCard continuava girando sobre cartões que já não
+    // existiam mais no DOM.
+    if (this.currentPage === 'tarefas' && page !== 'tarefas') {
+      if (typeof Tarefas !== 'undefined') Tarefas.destruir?.();
+    }
     if (this.currentPage === 'dashboard' && page !== 'dashboard') {
       if (typeof Dashboard !== 'undefined') Dashboard._pararTimerDash?.();
     }

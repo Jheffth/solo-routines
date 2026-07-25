@@ -499,7 +499,12 @@
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.85rem;flex-wrap:wrap;gap:.5rem">
                 <div style="display:flex;align-items:center;gap:.6rem">
                   <span style="font-size:1.1rem">📋</span>
-                  <h3 style="font-family:var(--font-section);font-size:.95rem;font-weight:700;color:var(--text-primary);margin:0">Extrato de Missões</h3>
+                  <div>
+                    <h3 style="font-family:var(--font-section);font-size:.95rem;font-weight:700;color:var(--text-primary);margin:0">Extrato de Missões</h3>
+                    <p style="font-family:var(--font-section);font-size:.62rem;color:var(--text-muted);margin:.1rem 0 0">
+                      Dia a dia — o que foi cumprido, o que fracassou, o que ficou em aberto
+                    </p>
+                  </div>
                   <span class="chip" id="rotinas-count" style="font-size:.65rem">0</span>
                 </div>
                 <div style="display:flex;gap:.5rem;align-items:center">
@@ -525,16 +530,27 @@
               <!-- Barra de filtros -->
               <div id="extrato-filtros" style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.8rem">
 
-                <!-- Período -->
+                <!-- Período: INTERVALO DE DATAS. Cada opção vira inicio/fim na
+                     consulta ao /extrato/ — nunca mais um tipo de recorrência. -->
                 <select id="filtro-periodo" style="
                   font-family:var(--font-section);font-size:.68rem;padding:.28rem .55rem;border-radius:.45rem;
                   background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.25);
                   color:var(--text-primary);cursor:pointer;outline:none">
                   <option value="hoje">📅 Hoje</option>
-                  <option value="semana">🗓 Esta Semana</option>
-                  <option value="mes">📆 Este Mês</option>
-                  <option value="ano">🗃 Este Ano</option>
-                  <option value="todas">♾ Todas</option>
+                  <option value="7dias">🗓 Últimos 7 dias</option>
+                  <option value="30dias">📆 Últimos 30 dias</option>
+                  <option value="mes">🗃 Este mês</option>
+                  <option value="tudo">♾ Tudo</option>
+                </select>
+
+                <!-- Origem -->
+                <select id="filtro-origem" style="
+                  font-family:var(--font-section);font-size:.68rem;padding:.28rem .55rem;border-radius:.45rem;
+                  background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.25);
+                  color:var(--text-primary);cursor:pointer;outline:none">
+                  <option value="">🌐 Todas as origens</option>
+                  <option value="rotina">🔁 De rotinas</option>
+                  <option value="geral">🎯 Gerais</option>
                 </select>
 
                 <!-- Tipo -->
@@ -547,6 +563,7 @@
                   <option value="SEMANAL">📆 Semanal</option>
                   <option value="MENSAL">🗓 Mensal</option>
                   <option value="ANUAL">🎯 Anual</option>
+                  <option value="AVULSA">⚡ Avulsa</option>
                 </select>
 
                 <!-- Categoria -->
@@ -598,11 +615,17 @@
                 </button>
               </div>
 
-              <!-- Lista de missões com scroll -->
-              <div id="lista-rotinas-hoje" style="max-height:300px;overflow-y:auto;overflow-x:hidden">
+              <!-- Placar do período (preenchido por /extrato/resumo) -->
+              <div id="extrato-resumo" style="
+                display:none;gap:1rem;flex-wrap:wrap;align-items:baseline;
+                margin-bottom:.7rem;padding:.4rem .7rem;border-radius:.5rem;
+                border:1px solid rgba(124,58,237,.18);background:rgba(124,58,237,.06)"></div>
+
+              <!-- Lista de missões, agrupada por dia, com scroll -->
+              <div id="lista-rotinas-hoje" style="max-height:380px;overflow-y:auto;overflow-x:hidden">
                 <div class="empty-state">
                   <div class="empty-icon">&#128260;</div>
-                  <div>Nenhuma missão encontrada</div>
+                  <div>Carregando extrato...</div>
                 </div>
               </div>
             </div>
@@ -664,7 +687,12 @@
               <!-- Header -->
               <div class="d-flex justify-between align-center mb-1">
                 <div style="display:flex;align-items:center;gap:.6rem">
-                  <h3 style="font-family:var(--font-section)">&#9876;&#65039; Miss&#245;es Gerais</h3>
+                  <div>
+                    <h3 style="font-family:var(--font-section);margin:0">&#9876;&#65039; Miss&#245;es Gerais de Hoje</h3>
+                    <p style="font-family:var(--font-section);font-size:.62rem;color:var(--text-muted);margin:.1rem 0 0">
+                      Caixa de entrada do dia &#8212; o hist&#243;rico completo fica no Extrato
+                    </p>
+                  </div>
                   <span id="tarefas-count" style="
                     font-size:.7rem;font-family:var(--font-section);
                     padding:.15rem .65rem;border-radius:100px;
@@ -753,8 +781,10 @@
         <div class="page hidden" id="page-rotinas">
           <div class="page-header" style="align-items:center">
             <div>
-              <h1 class="page-title">&#128260; Missões Recorrentes</h1>
-              <p class="page-subtitle">Suas rotinas diárias, semanais, mensais e anuais</p>
+              <!-- Esta guia é a AGENDA (as regras). Cumprir a missão do dia
+                   acontece no Dashboard — daí o subtítulo dizer onde procurar. -->
+              <h1 class="page-title">&#128260; Agenda de Rotinas</h1>
+              <p class="page-subtitle">Suas regras recorrentes — as missões do dia aparecem no Dashboard</p>
             </div>
             <button class="btn btn-primary" id="btn-nova-rotina" style="flex-shrink:0;white-space:nowrap;font-size:.85rem;padding:.6rem 1.25rem">
               + Nova Rotina

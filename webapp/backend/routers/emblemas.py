@@ -86,7 +86,13 @@ def pendentes(
             "xp_bonus": q.xp_bonus, "moedas_bonus": q.moedas_bonus,
             "presenteada_por": remetente, "mensagem": cu.mensagem,
         })
-    return {"novas_conquistas": saida}   # formato que o interceptador já entende
+    # NÃO carimbamos `sr_eventos` aqui, e isso é deliberado: este endpoint é
+    # uma LEITURA. Ele responde "o que ficou pendente de cerimônia?", não
+    # "acabou de acontecer". Quem decide a hora da festa é o app (App.celebrarPendentes),
+    # que lê esta lista e depois confirma em /emblemas/celebradas.
+    # Antes, o nome `novas_conquistas` bastava para a camada de API disparar a
+    # cerimônia sozinha — a cada leitura, inclusive repetida.
+    return {"novas_conquistas": saida}
 
 
 @router.post("/celebradas")

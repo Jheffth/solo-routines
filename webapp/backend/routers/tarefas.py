@@ -11,6 +11,7 @@ from datetime import date, datetime
 from database import get_db, TarefaDia, Usuario
 from auth.router import get_usuario_atual
 from motors.gamificacao import calcular_xp_tarefa, aplicar_xp
+from motors.celebracao import anexar
 
 router = APIRouter(prefix="/tarefas", tags=["tarefas"])
 
@@ -244,7 +245,7 @@ def concluir_tarefa(
         tarefa_id=t.id,
         observacao=f"Tarefa concluída: {t.titulo}",
     )
-    return {"tarefa": _tarefa_to_dict(t), "resultado": resultado}
+    return anexar({"tarefa": _tarefa_to_dict(t), "resultado": resultado}, resultado)
 
 
 # ── Edição / Exclusão ─────────────────────────────────────────────────────────

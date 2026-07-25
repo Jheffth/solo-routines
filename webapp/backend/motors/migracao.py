@@ -54,6 +54,49 @@ COLUNAS = [
 ]
 
 
+# Índices ÚNICOS a garantir em tabelas que já existem.
+# create_all() não altera tabela existente, então uma UniqueConstraint nova
+# num modelo antigo precisa virar DDL aqui.
+# (nome, tabela, colunas) — `CREATE UNIQUE INDEX IF NOT EXISTS` funciona
+# igual em SQLite e PostgreSQL 9.5+.
+INDICES_UNICOS = [
+    ("uq_execucao_dia", "execucao_dia", ["rotina_id", "usuario_id", "data"]),
+]
+
+
+def _garantir_indices_unicos(engine, resultado: dict, tabelas: set) -> None:
+    """
+    Cria os índices únicos que faltam. Antes, remove duplicatas — um índice
+    único não nasce sobre dados que já o violam, e falhar em silêncio aqui
+    deixaria o banco aceitando missões duplicadas para sempre.
+    """
+    for nome, tabela, colunas in INDICES_UNICOS:
+        if tabela not in tabelas:
+            continue
+        try:
+            insp = inspect(engine)
+            if any(ix.get("name") == nome for ix in insp.get_indexes(tabela)):
+                continue
+        except Exception as e:
+            resultado["erros"].append(f"índices de {tabela}: {e}")
+            continue
+
+        cols = ", ".join(colunas)
+        try:
+            with engine.begin() as conn:
+                # Mantém a linha de menor id em cada grupo repetido.
+                conn.execute(text(
+                    f"DELETE FROM {tabela} WHERE id NOT IN "
+                    f"(SELECT MIN(id) FROM {tabela} GROUP BY {cols})"
+                ))
+                conn.execute(text(
+                    f"CREATE UNIQUE INDEX IF NOT EXISTS {nome} ON {tabela} ({cols})"
+                ))
+            resultado["criadas"].append(f"{tabela}[{nome}]")
+        except Exception as e:
+            resultado["erros"].append(f"{tabela}[{nome}]: {e}")
+
+
 def migrar(verbose: bool = True) -> dict:
     """
     Garante tabelas e colunas em qualquer banco suportado.
@@ -96,6 +139,9 @@ def migrar(verbose: bool = True) -> dict:
             resultado["criadas"].append(f"{tabela}.{coluna}")
         except Exception as e:
             resultado["erros"].append(f"{tabela}.{coluna}: {e}")
+
+    # 3. Índices únicos em tabelas antigas
+    _garantir_indices_unicos(engine, resultado, tabelas)
 
     if verbose:
         print(f"[MIGRACAO] Banco: {resultado['dialeto']}")

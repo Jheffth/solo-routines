@@ -102,6 +102,34 @@
 .mc-rec-moeda { color: var(--cyan-glow); text-shadow: 0 0 8px rgba(34,211,238,.4); }
 .mc-rec-sep { width: 1px; height: 12px; background: rgba(251,191,36,.3); margin: 0 .15rem; }
 
+/* Realizado x prometido: o dourado é promessa. Quando a missão fecha, o selo
+   troca de cor para o hunter distinguir de relance o que ele DE FATO levou
+   (verde) do que ele DE FATO perdeu (vermelho). */
+.mc-rec-ganho {
+  background: linear-gradient(100deg, rgba(16,185,129,.16), rgba(16,185,129,.05));
+  border-color: rgba(16,185,129,.4);
+  color: #34d399;
+}
+.mc-rec-ganho b { text-shadow: 0 0 8px rgba(16,185,129,.45); }
+.mc-rec-ganho .mc-glifo-xp { color: #34d399; filter: drop-shadow(0 0 4px rgba(16,185,129,.5)); }
+.mc-rec-ganho .mc-rec-sep  { background: rgba(16,185,129,.32); }
+
+.mc-rec-perda {
+  background: linear-gradient(100deg, rgba(239,68,68,.16), rgba(239,68,68,.04));
+  border-color: rgba(239,68,68,.4);
+  color: #f87171;
+}
+.mc-rec-perda b { text-shadow: 0 0 8px rgba(239,68,68,.45); }
+.mc-rec-perda .mc-glifo-xp { color: #f87171; filter: drop-shadow(0 0 4px rgba(239,68,68,.5)); }
+
+/* Glifos miúdos (data, frequência, janela). max-width:none porque a regra
+   global img,svg{max-width:100%} colapsaria um SVG sem largura própria. */
+.mc-glifo-mini {
+  width: 12px; height: 12px; max-width: none;
+  flex-shrink: 0;
+  opacity: .85;
+}
+
 .mc-prazo {
   flex-shrink: 0;
   display: inline-flex; align-items: center; gap: .35rem;
@@ -130,6 +158,21 @@
 .mc-chip-rank  { color: #d8b4fe; border-color: rgba(168,85,247,.45); background: rgba(168,85,247,.1); }
 .mc-chip-status { color: var(--text-muted); border-color: rgba(148,163,184,.3); background: rgba(148,163,184,.06); }
 .mc-chip-cat { color: var(--text-secondary); border-color: rgba(148,163,184,.22); }
+
+/* Chip de data — só aparece em missão que NÃO é de hoje. Fica em âmbar frio
+   para não ser confundido com o chip de status. */
+.mc-chip-data {
+  display: inline-flex; align-items: center; gap: .3rem;
+  color: #cbd5e1;
+  border-color: rgba(203,213,225,.28);
+  background: rgba(203,213,225,.06);
+  font-variant-numeric: tabular-nums;
+}
+/* Estado da REGRA (agenda). Verde = agendando; cinza = suspensa. */
+.mc-chip-estado.on  { color: #34d399; border-color: rgba(16,185,129,.42); background: rgba(16,185,129,.09); }
+.mc-chip-estado.off { color: var(--text-muted); border-color: rgba(148,163,184,.28); background: rgba(148,163,184,.06); }
+.mc-chip-tipo { color: #c4b5fd; border-color: rgba(124,58,237,.4); background: rgba(124,58,237,.1); }
+
 .mc-div { width: 1px; height: 13px; background: rgba(148,163,184,.22); }
 .mc-premio {
   font-family: var(--font-section);
@@ -304,6 +347,107 @@
 .mc-selo-falha { color: #f87171; background: rgba(239,68,68,.08);  border: 1px solid rgba(239,68,68,.3); }
 .mc-selo-neutro{ color: var(--text-muted); background: rgba(148,163,184,.06); border: 1px solid rgba(148,163,184,.2); }
 
+/* ── Cartão selado (editavel:false) ──────────────────────────
+   Ocorrência de outro dia: registro histórico, não painel de controle.
+   Some o convite ao clique (hover neutro) e o sigilo para de girar — o
+   movimento é o que sugere "isto ainda está acontecendo". */
+.mc-selado { opacity: .9; }
+.mc-selado:hover {
+  transform: none;
+  box-shadow: 0 4px 14px rgba(0,0,0,.4);
+  border-color: rgba(148,163,184,.12);
+}
+.mc-selado .mc-sigilo-anel,
+.mc-selado .mc-sigilo-arco { animation: none; }
+.mc-selado .mc-fio { opacity: 0; }
+
+/* ══════════════════════════════════════════════════════════
+   MODO AGENDA — a REGRA, não a ocorrência.
+   Irmão do cartão de missão: mesmo casco, sigilo, chips e selo de
+   recompensa. Muda só o miolo: no lugar do contador de prazo entra
+   uma FICHA de agendamento, com rótulos alinhados em coluna fixa —
+   é um documento de cadastro, não uma ordem em curso.
+   ══════════════════════════════════════════════════════════ */
+
+/* Perfuração de pergaminho no topo: estática de propósito. O fio animado
+   é a marca de "missão correndo agora"; regra nenhuma corre. */
+.mc-agenda .mc-fio {
+  opacity: .4;
+  background: repeating-linear-gradient(90deg,
+    var(--mc-cor) 0 7px, transparent 7px 14px);
+  animation: none;
+}
+.mc-agenda {
+  border-left-style: dashed;                 /* o tracejado separa regra de ocorrência */
+  background:
+    radial-gradient(120% 140% at 0% 0%, var(--mc-cor-suave), transparent 55%),
+    linear-gradient(145deg, #0c0a17, #07060e);
+}
+.mc-agenda .mc-corpo { gap: .1rem; }
+
+/* Descrição: a única linha de prosa do componente. Uma linha só —
+   o cartão é índice, não leitura. */
+.mc-ag-desc {
+  margin-top: .5rem;
+  font-size: .78rem;
+  line-height: 1.35;
+  color: var(--text-secondary);
+  opacity: .8;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Ficha de agendamento. Coluna de rótulo FIXA para que Frequência,
+   Próxima e Janela alinhem os valores no mesmo eixo vertical. */
+.mc-ag-ficha {
+  margin-top: .6rem;
+  padding: .5rem .7rem;
+  display: grid;
+  gap: .3rem;
+  border-radius: 9px;
+  border: 1px solid rgba(124,58,237,.22);
+  border-left: 2px solid rgba(168,85,247,.55);
+  background: linear-gradient(120deg, rgba(124,58,237,.09), rgba(0,0,0,.25));
+}
+.mc-ag-linha {
+  display: grid;
+  grid-template-columns: 7.4rem 1fr;
+  align-items: center;
+  gap: .5rem;
+}
+.mc-ag-rot {
+  display: inline-flex; align-items: center; gap: .35rem;
+  font-family: var(--font-section);
+  font-size: .6rem; font-weight: 700;
+  letter-spacing: .11em; text-transform: uppercase;
+  color: #a78bfa;
+  white-space: nowrap;
+}
+.mc-ag-val {
+  font-size: .82rem;
+  color: var(--text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.mc-ag-num { font-family: 'Orbitron', monospace; font-size: .76rem; font-variant-numeric: tabular-nums; }
+
+/* Próxima ocorrência: hoje merece destaque, amanhã só um aceno. */
+.mc-ag-val.ag-hoje {
+  color: var(--gold-bright);
+  font-weight: 700;
+  text-shadow: 0 0 8px rgba(251,191,36,.35);
+}
+.mc-ag-val.ag-breve   { color: #e9d5ff; }
+.mc-ag-val.ag-suspensa{ color: var(--text-muted); font-style: italic; }
+
+/* Regra suspensa: continua legível (ela existe), mas apagada — e o sigilo
+   congela, sinal de que nada será gerado enquanto estiver assim. */
+.mc-agenda.ag-pausada { opacity: .62; }
+.mc-agenda.ag-pausada .mc-fio { opacity: .12; }
+.mc-agenda.ag-pausada .mc-sigilo-anel,
+.mc-agenda.ag-pausada .mc-sigilo-arco { animation-play-state: paused; }
+.mc-agenda.ag-pausada .mc-ag-ficha { border-color: rgba(148,163,184,.18); border-left-color: rgba(148,163,184,.4); }
+.mc-agenda.ag-pausada .mc-ag-rot   { color: var(--text-muted); }
+.mc-agenda.ag-pausada:hover { opacity: .85; }
+
 /* ══════════════════════════════════════════════════════════
    VARIANTE COMPACTA — faixa fina para o Extrato do Dashboard.
    Objetivo: ver muitas de relance sem perder a identidade.
@@ -371,6 +515,10 @@
   .mc-topo { flex-direction: column; gap: .3rem; }
   .mc-acoes { justify-content: stretch; }
   .mc-acoes .mc-btn { flex: 1; justify-content: center; }
+  /* Sem largura para a coluna de rótulos, a ficha vira rótulo-sobre-valor;
+     alinhar à força espremeria "Frequência" em duas linhas. */
+  .mc-ag-linha { grid-template-columns: 1fr; gap: .05rem; }
+  .mc-ag-ficha { gap: .5rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {

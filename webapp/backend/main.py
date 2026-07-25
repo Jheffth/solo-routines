@@ -28,6 +28,7 @@ from routers.materiais import router as materiais_router
 from routers.arquiteto import router as arquiteto_router
 from routers.hunters  import router as hunters_router
 from routers.social   import router as social_router
+from routers.extrato  import router as extrato_router
 from routers.auras    import router as auras_router
 from routers.versao   import router as versao_router
 
@@ -89,6 +90,7 @@ app.include_router(materiais_router,     prefix="/api")
 app.include_router(arquiteto_router,     prefix="/api")
 app.include_router(hunters_router,       prefix="/api")
 app.include_router(social_router,        prefix="/api")
+app.include_router(extrato_router,       prefix="/api")
 app.include_router(auras_router,         prefix="/api")
 app.include_router(versao_router)
 
@@ -152,6 +154,18 @@ def _job(fn):
 scheduler.add_job(lambda: _job(notificar_manha), 'cron', hour=7,  minute=0)
 scheduler.add_job(lambda: _job(notificar_tarde), 'cron', hour=14, minute=0)
 scheduler.add_job(lambda: _job(notificar_noite), 'cron', hour=21, minute=0)
+
+# Fechamento do dia: 00h05, logo após a virada. Materializa as missões dos
+# dias devidos e fecha as vencidas — é o que garante que o Extrato tenha
+# histórico mesmo nos dias em que o hunter não abriu o app.
+def _job_fechamento():
+    from motors import fechamento
+    try:
+        fechamento.rodar()
+    except Exception as e:
+        print(f"[FECHAMENTO] 🚨 falhou: {e}")
+
+scheduler.add_job(_job_fechamento, 'cron', hour=0, minute=5)
 
 # ==============================================================================
 # STARTUP / SHUTDOWN

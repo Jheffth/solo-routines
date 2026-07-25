@@ -19,9 +19,8 @@ const Dashboard = {
       }
 
       // Carrega dados em paralelo
-      const [perfil, rotinasHoje, tarefasHoje, conquistas, dashStats] = await Promise.allSettled([
+      const [perfil, tarefasHoje, conquistas, dashStats] = await Promise.allSettled([
         API.auth.me(),
-        API.rotinas.hoje(),
         API.tarefas.hoje(),
         API.conquistas.listar(),
         API.get('/dashboard/stats'),
@@ -32,9 +31,11 @@ const Dashboard = {
         this.renderPersonagem(perfil.value);
       }
 
-      // Rotinas de hoje
-      const listaRotinas = rotinasHoje.status === 'fulfilled' ? (rotinasHoje.value || []) : [];
-      this.renderRotinasHoje(listaRotinas);
+      // Extrato: fonte única das missões (rotinas + gerais, de todos os dias).
+      // Os filtros precisam estar ligados ANTES do primeiro carregamento —
+      // é deles que sai o intervalo de datas da consulta.
+      this._bindFiltrosExtrato();
+      const missoes = await this.carregarExtrato();
 
       // Tarefas de hoje
       const listaTarefas = tarefasHoje.status === 'fulfilled' ? (tarefasHoje.value || []) : [];
@@ -44,13 +45,14 @@ const Dashboard = {
       if (dashStats.status === 'fulfilled' && dashStats.value) {
         this.renderStats(dashStats.value);
       } else {
-        // Fallback: computa dos dados já carregados
-        const concHoje = listaRotinas.filter(r => r.status_hoje === 'CONCLUIDA').length
-                       + listaTarefas.filter(t => t.status  === 'CONCLUIDA').length;
+        // Fallback: computa do que o extrato acabou de trazer. Restringe a HOJE
+        // porque as placas são um retrato do dia, não do período filtrado.
+        const hojeISO = this._isoLocal(new Date());
+        const doDia = missoes.filter(m => String(m.data || '').slice(0, 10) === hojeISO);
         this.renderStats({
-          execucoes_hoje:  concHoje,
+          execucoes_hoje:  doDia.filter(m => m.status === 'CONCLUIDA').length,
           total_execucoes: 0,
-          rotinas_ativas:  listaRotinas.filter(r => r.status_hoje === 'ATIVA').length,
+          rotinas_ativas:  doDia.filter(m => m.status === 'ATIVA').length,
         });
       }
 
@@ -357,163 +359,261 @@ const Dashboard = {
     set('stat-rotinas-ativas',stats.rotinas_ativas  || 0);
   },
 
-  _PRIOR_CORES_DASH: {
-    CRITICA: { cor: '#ef4444', bg: 'rgba(239,68,68,.12)', label: '\uD83D\uDD34 CR\u00CDTICA' },
-    ALTA:    { cor: '#f97316', bg: 'rgba(249,115,22,.12)', label: '\uD83D\uDFE0 ALTA'    },
-    MEDIA:   { cor: '#f59e0b', bg: 'rgba(245,158,11,.12)', label: '\uD83D\uDFE1 M\u00C9DIA'   },
-    BAIXA:   { cor: '#10b981', bg: 'rgba(16,185,129,.12)', label: '\uD83D\uDFE2 BAIXA'   },
+  // As tabelas de cor/icone que viviam aqui saíram com os cartões artesanais:
+  // quem pinta status, tipo e categoria agora é o MissaoCard, sozinho.
+  _extratoLista: [],          // última página do extrato, na forma canônica
+
+  // ── Extrato de missões ─────────────────────────────────────────────────
+  // Data local em YYYY-MM-DD. toISOString() devolveria o dia em UTC e, a oeste
+  // de Greenwich, o extrato abriria mostrando "ontem" durante a madrugada.
+  _isoLocal(d) {
+    return d.getFullYear() + '-'
+      + String(d.getMonth() + 1).padStart(2, '0') + '-'
+      + String(d.getDate()).padStart(2, '0');
   },
 
-  _CAT_ICONS_DASH: { Saude:'\u2764\uFE0F', 'Sa\u00FAde':'\u2764\uFE0F', Trabalho:'\uD83D\uDCBC', Estudo:'\uD83D\uDCDA', Casa:'\uD83C\uDFE0', Pessoal:'\u26A1', Combate:'\u2694\uFE0F' },
-  _dashTimer: null,
-  _dashAutoCheck: null,
-  _rodinasHojeLista: [],      // inst\u00E2ncias de hoje (com status_hoje)
-  _todasRotinas:     [],      // todos os templates
+  // O filtro de per\u00EDodo agora \u00E9 um INTERVALO DE DATAS de verdade. Antes ele era
+  // traduzido para TIPO de rotina (semana -> SEMANAL), o que respondia a outra
+  // pergunta: "quais regras se repetem toda semana" em vez de "o que aconteceu
+  // nos \u00FAltimos sete dias". Era da\u00ED que vinha o extrato sempre vazio.
+  _intervaloExtrato(periodo) {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const fim = this._isoLocal(hoje);
+    const recuar = (n) => {
+      const d = new Date(hoje);
+      d.setDate(d.getDate() - n);
+      return this._isoLocal(d);
+    };
 
-  // \u2500\u2500 Tipo labels e \u00EDcones \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-  _TIPO_CFG: {
-    DIARIA:  { label: '\uD83C\uDF05 Di\u00E1ria',   cor: '#a855f7' },
-    SEMANAL: { label: '\uD83D\uDCC6 Semanal',  cor: '#3b82f6' },
-    MENSAL:  { label: '\uD83D\uDDD3 Mensal',   cor: '#06b6d4' },
-    ANUAL:   { label: '\uD83C\uDFAF Anual',    cor: '#f59e0b' },
-    AVULSA:  { label: '\u26A1 Avulsa',   cor: '#64748b' },
+    if (periodo === 'mes') {
+      const primeiro = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+      return { inicio: this._isoLocal(primeiro), fim, dias: hoje.getDate() };
+    }
+    // "tudo" respeita o teto do backend (JANELA_MAXIMA_DIAS = 370): pedir mais
+    // s\u00F3 faria a API recortar de volta em sil\u00EAncio.
+    if (periodo === 'tudo')  return { inicio: recuar(365), fim, dias: 365 };
+    if (periodo === '7dias') return { inicio: recuar(6),   fim, dias: 7  };
+    if (periodo === '30dias')return { inicio: recuar(29),  fim, dias: 30 };
+    return { inicio: fim, fim, dias: 1 };   // hoje
   },
 
-  _STATUS_CFG_DASH: {
-    PENDENTE:   { cor: '#a855f7', label: '\u23F3 N\u00E3o Iniciada' },
-    ATIVA:      { cor: '#3b82f6', label: '\u25B6 Em Curso'      },
-    CONCLUIDA:  { cor: '#10b981', label: '\u2713 Conclu\u00EDda'     },
-    FRACASSADA: { cor: '#ef4444', label: '\u2620 Fracassada'    },
-    CANCELADA:  { cor: '#64748b', label: '\u2715 Cancelada'     },
-    PAUSADA:    { cor: '#94a3b8', label: '\u23F8 Pausada'       },
-  },
-
-  // \u2500\u2500 Carregar extrato com filtros \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  // Retorna a lista can\u00F4nica para quem chamou (carregar() usa no fallback dos
+  // contadores) \u2014 assim ningu\u00E9m precisa refazer a mesma consulta.
   async carregarExtrato() {
     const periodo   = document.getElementById('filtro-periodo')?.value   || 'hoje';
+    const origem    = document.getElementById('filtro-origem')?.value    || '';
     const tipo      = document.getElementById('filtro-tipo')?.value      || '';
     const categoria = document.getElementById('filtro-categoria')?.value || '';
     const statusFil = document.getElementById('filtro-status-missao')?.value || '';
 
     const cont    = document.getElementById('lista-rotinas-hoje');
     const countEl = document.getElementById('rotinas-count');
-    if (!cont) return;
+    if (!cont) return [];
 
     cont.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-muted);font-family:var(--font-section);font-size:.75rem">\u23F3 Carregando...</div>';
 
+    const janela = this._intervaloExtrato(periodo);
+
     try {
-      let lista = [];
+      // Todos os filtros v\u00E3o para a API: o backend \u00E9 quem sabe unir as duas
+      // origens e normalizar o vocabul\u00E1rio de status entre elas.
+      const q = new URLSearchParams({ inicio: janela.inicio, fim: janela.fim });
+      if (origem)    q.set('origem', origem);
+      if (tipo)      q.set('tipo', tipo);
+      if (categoria) q.set('categoria', categoria);
+      if (statusFil) q.set('status', statusFil);
 
-      if (periodo === 'hoje') {
-        // Hoje: usa /rotinas/hoje que traz status_hoje
-        const hojeList = await API.get('/rotinas/hoje');
-        this._rodinasHojeLista = hojeList || [];
-        lista = [...this._rodinasHojeLista];
-      } else {
-        // Outros per\u00EDodos: lista todos e filtra por tipo correspondente
-        const tipoMap = { semana: 'SEMANAL', mes: 'MENSAL', ano: 'ANUAL' };
-        const tipoReq = tipoMap[periodo] || '';
-        const q = tipoReq ? `?tipo=${tipoReq}` : '/';
-        const todasResp = await API.get('/rotinas/' + (tipoReq ? `?tipo=${tipoReq}` : ''));
-        this._todasRotinas = todasResp || [];
-        // Para per\u00EDodos n\u00E3o-hoje, n\u00E3o temos exec_dia; mostramos como template
-        lista = this._todasRotinas.map(r => ({ ...r, status_hoje: r.status_hoje || 'PENDENTE' }));
-      }
+      const resp  = await API.get('/extrato/?' + q.toString());
+      const lista = (resp && resp.missoes) || [];
+      this._extratoLista = lista;
 
-      // Aplicar filtros locais
-      if (tipo)      lista = lista.filter(r => r.tipo === tipo);
-      if (categoria) lista = lista.filter(r => (r.categoria||'').toLowerCase() === categoria.toLowerCase() ||
-                                               r.categoria === categoria);
-      if (statusFil) lista = lista.filter(r => (r.status_hoje || 'PENDENTE') === statusFil);
-
-      // Atualiza contador
-      const naoFinal = lista.filter(r => !['CONCLUIDA','FRACASSADA','CANCELADA'].includes(r.status_hoje)).length;
       if (countEl) {
-        const total = lista.length;
-        countEl.textContent = `${total} miss\u00E3o${total !== 1 ? '\u00F5es' : ''} \u00B7 ${naoFinal} pendente${naoFinal !== 1 ? 's' : ''}`;
+        const total  = resp?.total ?? lista.length;
+        const abertas = lista.filter(m => !['CONCLUIDA', 'FRACASSADA', 'CANCELADA'].includes(m.status)).length;
+        countEl.textContent = `${total} miss\u00E3o${total !== 1 ? '\u00F5es' : ''} \u00B7 ${abertas} em aberto`;
       }
 
       this._renderExtrato(lista, cont);
+      this._renderResumoPeriodo(janela.dias);
+      return lista;
     } catch (err) {
       cont.innerHTML = `<div class="empty-state"><div class="empty-icon">\u26A0\uFE0F</div><div>${err.message||'Erro ao carregar'}</div></div>`;
+      return [];
     }
   },
 
+  // Placa de resumo do per\u00EDodo (taxa de sucesso, XP ganho/perdido). \u00C9 uma
+  // consulta barata e separada: se ela falhar, o extrato continua de p\u00E9.
+  async _renderResumoPeriodo(dias) {
+    const el = document.getElementById('extrato-resumo');
+    if (!el) return;
+    try {
+      const r = await API.get('/extrato/resumo?dias=' + Math.max(1, dias));
+      const c = r.contagem || {};
+      const taxa = (r.taxa_sucesso === null || r.taxa_sucesso === undefined)
+        ? '\u2014' : r.taxa_sucesso + '%';
+      const bloco = (rotulo, valor, cor) => `
+        <span style="display:inline-flex;align-items:baseline;gap:.28rem">
+          <span style="font-family:var(--font-section);font-size:.58rem;letter-spacing:.1em;
+            text-transform:uppercase;color:var(--text-muted)">${rotulo}</span>
+          <b style="font-family:var(--font-section);font-size:.72rem;color:${cor}">${valor}</b>
+        </span>`;
+      el.innerHTML =
+        bloco('Taxa', taxa, '#a855f7') +
+        bloco('Cumpridas', c.CONCLUIDA || 0, '#10b981') +
+        bloco('Fracassadas', c.FRACASSADA || 0, '#ef4444') +
+        bloco('XP', '+' + (r.xp_ganho || 0), 'var(--gold-xp)') +
+        ((r.xp_perdido || 0) > 0 ? bloco('Perdido', '\u2212' + r.xp_perdido, '#f87171') : '');
+      el.style.display = 'flex';
+    } catch (_) {
+      el.innerHTML = '';
+      el.style.display = 'none';
+    }
+  },
+
+  // Cabeçalho humano do dia. new Date("2026-07-24") seria lido como UTC e
+  // voltaria um dia aqui no fuso de Brasília — por isso a data ISO é quebrada
+  // à mão em componentes locais.
+  _rotuloDia(iso) {
+    if (!iso || iso === 'sem-data') return 'Sem data';
+    const [a, m, d] = iso.split('-').map(Number);
+    if (!a || !m || !d) return iso;
+    const dt = new Date(a, m - 1, d);
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const dif = Math.round((dt - hoje) / 86400000);
+    if (dif === 0)  return 'Hoje';
+    if (dif === -1) return 'Ontem';
+    if (dif === 1)  return 'Amanhã';
+    // pt-BR devolve "quarta-feira"; o "-feira" só rouba largura do cabeçalho.
+    const semana = dt.toLocaleDateString('pt-BR', { weekday: 'long' }).replace('-feira', '');
+    return `${semana}, ${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}`;
+  },
+
+  // Mini-placar do dia: o veredito antes dos detalhes. Ler "3 cumpridas ·
+  // 1 fracassada" vale mais do que contar cartões um a um.
+  _resumoDoDia(itens) {
+    const n = (st) => itens.filter(m => (m.status || 'PENDENTE') === st).length;
+    const ok = n('CONCLUIDA'), ko = n('FRACASSADA'), cc = n('CANCELADA');
+    const abertas = itens.length - ok - ko - cc;
+    const partes = [];
+    if (ok) partes.push(`<b style="color:#10b981">${ok}</b> cumprida${ok > 1 ? 's' : ''}`);
+    if (ko) partes.push(`<b style="color:#ef4444">${ko}</b> fracassada${ko > 1 ? 's' : ''}`);
+    if (cc) partes.push(`<b style="color:#64748b">${cc}</b> cancelada${cc > 1 ? 's' : ''}`);
+    if (abertas > 0) partes.push(`<b style="color:#a855f7">${abertas}</b> em aberto`);
+    return partes.join(' · ');
+  },
+
   _renderExtrato(lista, cont) {
-    // ── Ocultar concluídas (persistente) ───────────────────────
     const ocultar = localStorage.getItem('sr_ocultar_concluidas_extrato') === 'true';
     const toggle  = document.getElementById('toggle-ocultar-extrato');
     if (toggle) toggle.checked = ocultar;
 
-    const FINAIS = ['CONCLUIDA', 'FRACASSADA', 'CANCELADA'];
-    if (ocultar) lista = lista.filter(r => !FINAIS.includes(r.status_hoje || 'PENDENTE'));
+    // Esconde SÓ as concluídas, nunca as fracassadas: o extrato existe
+    // justamente para o hunter encarar o que perdeu. O rótulo do controle
+    // também promete apenas "ocultar concluídas".
+    if (ocultar) lista = lista.filter(m => (m.status || 'PENDENTE') !== 'CONCLUIDA');
 
     if (!lista.length) {
-      cont.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><div>Nenhuma missão encontrada com esses filtros</div></div>';
+      // Não existe backfill: os dias anteriores a esta versão simplesmente não
+      // têm registro. Sem esta explicação o extrato vazio parece defeito.
+      cont.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">📋</div>
+          <div>Nenhuma missão neste período</div>
+          <div style="font-size:.7rem;color:var(--text-muted);margin-top:.35rem;max-width:30rem;line-height:1.5">
+            O histórico começa a ser gravado a partir de agora — dias anteriores
+            não têm registro. Cumpra as missões de hoje e o extrato se preenche sozinho.
+          </div>
+        </div>`;
       return;
     }
 
-    // ── Ordenação: sem filtro → ATIVA primeiro; com filtro → filtro manda ──
-    const temFiltro = !!(
-      document.getElementById('filtro-tipo')?.value ||
-      document.getElementById('filtro-categoria')?.value ||
-      document.getElementById('filtro-status-missao')?.value
-    );
+    // ── Agrupamento por dia ──────────────────────────────────────────
+    // A API já devolve mais recente primeiro e, dentro do dia, o que ainda
+    // pede ação no topo. O Map preserva essa ordem de chegada, então basta
+    // empilhar; reordenar aqui só desfaria o critério do backend.
+    const porDia = new Map();
+    lista.forEach(m => {
+      const dia = String(m.data || '').slice(0, 10) || 'sem-data';
+      if (!porDia.has(dia)) porDia.set(dia, []);
+      porDia.get(dia).push(m);
+    });
 
-    if (!temFiltro) {
-      const ORD = { ATIVA: 0, PENDENTE: 1, PAUSADA: 1, CANCELADA: 2, FRACASSADA: 2, CONCLUIDA: 2 };
-      lista = [...lista].sort((a, b) => {
-        const sa = ORD[a.status_hoje || 'PENDENTE'] ?? 1;
-        const sb = ORD[b.status_hoje || 'PENDENTE'] ?? 1;
-        if (sa !== sb) return sa - sb;
-        return (b.criado_em || '').localeCompare(a.criado_em || '');
-      });
-    } else {
-      const ORD = { ATIVA: 0, PENDENTE: 1, PAUSADA: 2, CANCELADA: 3, FRACASSADA: 4, CONCLUIDA: 5 };
-      lista = [...lista].sort((a, b) => {
-        const sa = ORD[a.status_hoje || 'PENDENTE'] ?? 9;
-        const sb = ORD[b.status_hoje || 'PENDENTE'] ?? 9;
-        return sa - sb;
-      });
+    if (typeof MissaoCard === 'undefined') {
+      cont.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div>Componente de missão não carregado</div></div>';
+      return;
     }
 
-    // ── Normaliza campo status_hoje → status (MissaoCard usa .status_hoje ou .status) ──
-    lista.forEach(r => { if (!r.status) r.status = r.status_hoje || 'PENDENTE'; });
+    // A lista canônica do /extrato/ já traz uid — é ela que vai para o cache.
+    MissaoCard.cachear(lista, { modo: 'missao' });
 
-    // ── Usa o MissaoCard (mesmo componente da página de Rotinas) ──
-    if (typeof MissaoCard !== 'undefined') {
-      MissaoCard.cachear(lista);
-      // Extrato do Dashboard usa a variante COMPACTA (faixa fina) com gap
-      // apertado — o objetivo aqui é ver muitas de relance.
-      cont.innerHTML = '<div style="display:flex;flex-direction:column;gap:.5rem">'
-        + lista.map(r => MissaoCard.html(r, { compacto: true })).join('')
-        + '</div>';
-      MissaoCard.montar(cont, {
-        onMudou: () => this.carregarExtrato(),
-        onAcao: (acao, id, m) => {
-          if (acao === 'editar')  { if (window.Rotinas) Rotinas.abrirFormulario(m); }
-          if (acao === 'excluir') { if (window.Rotinas) Rotinas.confirmarExcluir(m); }
-        },
-      });
-    } else {
-      // Fallback se MissaoCard ainda não estiver carregado
-      cont.innerHTML = lista.map(r => this._buildRotinaDashCard(r)).join('');
-      this._bindRotinaDashCards(cont);
+    // Cabeçalho grudento: a lista rola dentro de uma caixa baixa, e sem o
+    // sticky o hunter perde de vista de que dia é a faixa que está lendo.
+    cont.innerHTML = [...porDia.entries()].map(([dia, itens]) => `
+      <section style="margin-bottom:.9rem">
+        <header style="position:sticky;top:0;z-index:3;display:flex;align-items:baseline;
+          gap:.5rem;flex-wrap:wrap;padding:.35rem .15rem;margin-bottom:.45rem;
+          background:var(--bg-card);border-bottom:1px solid rgba(124,58,237,.2)">
+          <span style="font-family:var(--font-section);font-size:.74rem;font-weight:700;
+            letter-spacing:.05em;color:var(--purple-glow);text-transform:capitalize">${this._rotuloDia(dia)}</span>
+          <span style="font-family:var(--font-section);font-size:.62rem;color:var(--text-muted)">${this._resumoDoDia(itens)}</span>
+        </header>
+        <div style="display:flex;flex-direction:column;gap:.5rem">
+          ${itens.map(m => MissaoCard.html(m, { compacto: true })).join('')}
+        </div>
+      </section>`).join('');
+
+    MissaoCard.montar(cont, {
+      onMudou: () => this.atualizarStatsMini(),
+      onAcao:  (acao, idAlvo, m) => this._gerirMissaoExtrato(acao, idAlvo, m),
+    });
+  },
+
+  // Editar/excluir não são executadas pelo card — ele delega para a página dona
+  // do formulário. E são páginas DIFERENTES conforme a origem: mandar uma
+  // missão geral para Rotinas abriria o formulário errado (e apagaria a rotina
+  // de mesmo id, já que ExecucaoDia.id e TarefaDia.id colidem).
+  async _gerirMissaoExtrato(acao, idAlvo, m) {
+    if (acao !== 'editar' && acao !== 'excluir') return;
+    const dados = m || {};
+    const geral = dados.origem === 'geral';
+
+    // Rotinas e Tarefas são const de topo: não viram propriedade de window.
+    const pagina = geral
+      ? (typeof Tarefas !== 'undefined' ? Tarefas : null)
+      : (typeof Rotinas !== 'undefined' ? Rotinas : null);
+    if (!pagina) {
+      if (typeof SoloDialog !== 'undefined')
+        SoloDialog.toast('Abra a guia correspondente para editar esta missão.', 'info');
+      return;
     }
 
-    this._iniciarTimerDash();
-    this._iniciarAutoCheckDash();
+    try {
+      if (geral) {
+        // Na origem geral a ocorrência É o registro editável: idAlvo (já
+        // roteado pelo card) é o id da TarefaDia. Só os nomes de campo mudam.
+        const alvo = { ...dados, id: idAlvo, hora_limite: dados.hora_fim, data_prevista: dados.data };
+        if (acao === 'editar') pagina.abrirFormulario(alvo);
+        else                   await pagina.confirmarExcluir(alvo);
+      } else if (acao === 'editar') {
+        // A missão canônica não carrega dias_semana/dia_mes/mes_dia — abrir o
+        // formulário só com o que ela tem zeraria a recorrência ao salvar.
+        // Por isso busca a REGRA crua antes.
+        pagina.abrirFormulario(await API.get('/rotinas/' + idAlvo));
+      } else {
+        await pagina.confirmarExcluir({ id: idAlvo, titulo: dados.titulo });
+      }
+    } catch (err) {
+      if (typeof SoloDialog !== 'undefined')
+        SoloDialog.toast('Não consegui abrir a missão: ' + (err.message || err), 'error');
+      return;
+    }
+    if (acao === 'excluir') this.carregarExtrato();
   },
 
 
-
-  renderRotinasHoje(lista) {
-    this._rodinasHojeLista = lista || [];
-    // Inicializa o extrato com "hoje" (chamada inicial)
-    this.carregarExtrato();
-    // Bind dos filtros (s\u00F3 une vez ap\u00F3s render do DOM)
-    this._bindFiltrosExtrato();
-  },
 
   _bindFiltrosExtrato() {
     const bind = (id) => {
@@ -523,7 +623,7 @@ const Dashboard = {
         el._extratoListenerAdded = true;
       }
     };
-    ['filtro-periodo','filtro-tipo','filtro-categoria','filtro-status-missao'].forEach(bind);
+    ['filtro-periodo','filtro-origem','filtro-tipo','filtro-categoria','filtro-status-missao'].forEach(bind);
 
     // Toggle ocultar concluídas (Extrato) — persistente
     const toggleExtrato = document.getElementById('toggle-ocultar-extrato');
@@ -543,682 +643,16 @@ const Dashboard = {
     }
   },
 
-  _buildRotinaDashCard(r) {
-    const id     = r.id;
-    const status = r.status_hoje || 'PENDENTE';
-    const scfg   = this._STATUS_CFG_DASH[status] || this._STATUS_CFG_DASH.PENDENTE;
-    const tcfg   = this._TIPO_CFG[r.tipo] || this._TIPO_CFG.AVULSA;
-    const prior  = this._PRIOR_CORES_DASH[r.prioridade] || this._PRIOR_CORES_DASH.MEDIA;
-    const icone  = this._CAT_ICONS_DASH[r.categoria] || '\u2694\uFE0F';
-    const xp     = r.xp_recompensa     || 0;
-    const moedas = r.moedas_recompensa || 0;
-    const penal  = r.penalidade_xp     || 0;
-
-    const isFinal      = ['CONCLUIDA','FRACASSADA','CANCELADA'].includes(status);
-    const isFracassada = status === 'FRACASSADA';
-    const isConcluida  = status === 'CONCLUIDA';
-    const isPendente   = status === 'PENDENTE';
-    const isAtiva      = status === 'ATIVA';
-
-    const bordaCor = isFinal ? scfg.cor : prior.cor;
-    const bgGrad   = `linear-gradient(135deg,${isFinal ? scfg.cor + '0a' : prior.bg},var(--bg-card))`;
-
-    // \u2500\u2500 Timer inteligente por status \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-    let cdHtml = '';
-    if (!isFinal) {
-      const agora = new Date();
-
-      if (isPendente && r.hora_inicio) {
-        // PENDENTE com hora_inicio: mostra countdown AT\u00C9 o in\u00EDcio
-        const [hI, mI] = r.hora_inicio.split(':').map(Number);
-        const inicio = new Date(agora); inicio.setHours(hI, mI, 0, 0);
-        const segsInicio = Math.floor((inicio - agora) / 1000);
-
-        if (segsInicio > 0) {
-          // Ainda n\u00E3o chegou a hora \u2014 countdown at\u00E9 in\u00EDcio
-          cdHtml = `
-            <div style="font-family:var(--font-section);font-size:.6rem;color:var(--cyan-skill);text-align:right;white-space:nowrap">
-              \u23F0 Inicia \u00E0s ${r.hora_inicio}
-            </div>
-            <div class="dash-cd-inicio" data-rid="${id}" data-hora="${r.hora_inicio}" style="
-              font-family:var(--font-section);font-size:.72rem;font-weight:700;
-              color:var(--cyan-skill);text-align:right">
-              ${this._fmtSegsCompact(segsInicio)}
-            </div>`;
-        } else {
-          // Passou da hora_inicio mas n\u00E3o foi iniciada \u2014 countdown at\u00E9 fim
-          const segs = this._calcSegsRestantesDash(r);
-          const cdNeg = segs < 0;
-          cdHtml = `
-            <div style="font-family:var(--font-section);font-size:.6rem;color:${cdNeg ? '#f87171' : '#f59e0b'};text-align:right">
-              ${cdNeg ? '\u26A0\uFE0F Atrasada' : '\u26A0\uFE0F Aguardando'}
-            </div>
-            <div class="dash-cd-val" data-rid="${id}" style="
-              font-family:var(--font-section);font-size:.72rem;font-weight:700;
-              color:${cdNeg ? '#f87171' : '#f59e0b'};text-align:right;
-              ${cdNeg ? 'animation:glowPulse 1.2s infinite' : ''}">
-              ${this._fmtCountdownDash(segs)}
-            </div>`;
-        }
-      } else if (isPendente && !r.hora_inicio) {
-        // PENDENTE sem hora_inicio: mostra prazo at\u00E9 fim do dia (sem countdown urgente)
-        const segs = this._calcSegsRestantesDash(r);
-        cdHtml = `
-          <div style="font-family:var(--font-section);font-size:.6rem;color:var(--text-muted);text-align:right">
-            \u231B Prazo
-          </div>
-          <div class="dash-cd-val" data-rid="${id}" style="
-            font-family:var(--font-section);font-size:.72rem;font-weight:700;
-            color:var(--text-muted);text-align:right">
-            ${this._fmtCountdownDash(segs)}
-          </div>`;
-      } else {
-        // ATIVA / PAUSADA: countdown do prazo
-        const segs = this._calcSegsRestantesDash(r);
-        const cdNeg = segs < 0;
-        cdHtml = `
-          <div style="font-family:var(--font-section);font-size:.6rem;color:${cdNeg ? '#f87171' : scfg.cor};text-align:right">
-            ${cdNeg ? '\u26A0\uFE0F Vencido' : '\u23F1 Restante'}
-          </div>
-          <div class="dash-cd-val" data-rid="${id}" style="
-            font-family:var(--font-section);font-size:.72rem;font-weight:700;
-            color:${cdNeg ? '#f87171' : scfg.cor};text-align:right;
-            ${cdNeg ? 'animation:glowPulse 1.2s infinite' : ''}">
-            ${this._fmtCountdownDash(segs)}
-          </div>`;
-      }
-    }
-
-    // Badge de janela de hor\u00E1rio
-    const janelaHtml = (r.hora_inicio || r.hora_fim) ? `
-      <span style="font-size:.58rem;color:var(--cyan-skill);
-        padding:.08rem .35rem;border-radius:100px;
-        background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.3)">
-        \u23F0 ${r.hora_inicio||'?'}\u2192${r.hora_fim||'?'}
-      </span>` : '';
-
-    // ── Badge ID instância (#ED-XXX) ────────────────────────────
-    const edId     = r.exec_dia_id;
-    const idBadge  = edId
-      ? `<span style="position:absolute;top:.45rem;right:.5rem;
-           font-family:var(--font-section);font-size:.55rem;
-           color:${scfg.cor};opacity:.75;letter-spacing:.04em;font-weight:700"
-         >#ED-${edId}</span>`
-      : '';
-
-    // ── Timestamp de encerramento ────────────────────────────────
-    let tsHtml = '';
-    if (isConcluida && r.concluida_em) {
-      const d = new Date(r.concluida_em);
-      tsHtml = `<div style="font-family:var(--font-section);font-size:.6rem;color:#10b981;text-align:right;margin-top:.15rem">
-        \u2713 ${d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})} ${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
-      </div>`;
-    } else if (isFracassada && r.fracassada_em) {
-      const d = new Date(r.fracassada_em);
-      tsHtml = `<div style="font-family:var(--font-section);font-size:.6rem;color:#ef4444;text-align:right;margin-top:.15rem">
-        \u2620 ${d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})} ${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
-      </div>`;
-    } else if (status === 'CANCELADA' && r.cancelada_em) {
-      const d = new Date(r.cancelada_em);
-      tsHtml = `<div style="font-family:var(--font-section);font-size:.6rem;color:#64748b;text-align:right;margin-top:.15rem">
-        \u2715 ${d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})} ${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
-      </div>`;
-    }
-
-    return `
-      <div class="dash-rotina-card" data-id="${id}" data-status="${status}"
-        style="
-          background:${bgGrad};border:1px solid ${bordaCor}44;
-          border-left:3px solid ${bordaCor};
-          border-radius:.75rem;padding:.7rem .9rem;
-          cursor:pointer;position:relative;overflow:hidden;
-          transition:transform .18s,box-shadow .18s;
-          margin-bottom:.45rem;
-          ${isFracassada ? 'opacity:.78' : ''}
-          ${status === 'CANCELADA' ? 'opacity:.5' : ''}
-          ${isConcluida ? 'opacity:.65' : ''}
-        "
-        onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 5px 18px rgba(0,0,0,.3)'"
-        onmouseout="this.style.transform='';this.style.boxShadow=''"
-      >
-        ${idBadge}
-        <div style="display:flex;align-items:center;gap:.7rem">
-          <!-- Icone categoria -->
-          <div style="
-            width:34px;height:34px;border-radius:.45rem;flex-shrink:0;
-            display:flex;align-items:center;justify-content:center;
-            font-size:1rem;background:${prior.bg};border:1px solid ${bordaCor}44
-            ${isFracassada ? ';filter:grayscale(.5)' : ''}
-          ">${icone}</div>
-
-          <!-- Corpo -->
-          <div style="flex:1;min-width:0">
-            <div style="
-              font-family:var(--font-section);font-size:.85rem;font-weight:700;
-              color:${scfg.cor};
-              white-space:nowrap;overflow:hidden;text-overflow:ellipsis
-              ${isConcluida ? ';text-decoration:line-through;opacity:.8' : ''}
-            ">${r.titulo}</div>
-
-            <div style="display:flex;gap:.3rem;align-items:center;margin-top:.25rem;flex-wrap:wrap">
-              <!-- Status badge -->
-              <span style="
-                font-size:.58rem;font-family:var(--font-section);font-weight:700;letter-spacing:.07em;
-                padding:.08rem .4rem;border-radius:100px;
-                background:${scfg.cor}18;border:1px solid ${scfg.cor}55;color:${scfg.cor}">
-                ${scfg.label}
-              </span>
-              <!-- Tipo badge -->
-              <span style="
-                font-size:.58rem;font-family:var(--font-section);font-weight:600;
-                padding:.08rem .4rem;border-radius:100px;
-                background:${tcfg.cor}12;border:1px solid ${tcfg.cor}40;color:${tcfg.cor}">
-                ${tcfg.label}
-              </span>
-              <!-- Janela -->
-              ${janelaHtml}
-              <!-- XP -->
-              <span style="font-family:var(--font-section);font-size:.65rem;color:var(--gold-xp);font-weight:700">
-                \u26A1${isConcluida ? '+' : ''}${isFracassada ? '-'+penal : xp}
-              </span>
-              ${moedas > 0 && !isFracassada ? `<span style="font-family:var(--font-section);font-size:.65rem;color:#fbbf24">+${moedas}\uD83E\uDE99</span>` : ''}
-            </div>
-          </div>
-
-          <!-- Timer + timestamp -->
-          <div style="flex-shrink:0;min-width:70px">
-            ${cdHtml}
-            ${isConcluida ? `<div style="font-family:var(--font-section);font-size:.7rem;font-weight:700;color:#10b981;text-align:right">\u2713 Conclu\u00EDda</div>` : ''}
-            ${isFracassada ? `<div style="font-family:var(--font-section);font-size:.7rem;font-weight:700;color:#ef4444;text-align:right">\u2620 Falhou</div>` : ''}
-            ${tsHtml}
-          </div>
-        </div>
-      </div>`;
-  },
-
-  _bindRotinaDashCards(cont) {
-    cont.querySelectorAll('.dash-rotina-card').forEach(card => {
-      card.addEventListener('click', () => {
-        const id   = parseInt(card.dataset.id);
-        const item = this._rodinasHojeLista.find(r => r.id === id)
-                  || this._todasRotinas.find(r => r.id === id);
-        if (item) this._abrirModalRotinaDash(item);
-      });
-    });
-  },
-
-  _iniciarTimerDash() {
-    if (this._dashTimer) clearInterval(this._dashTimer);
-    this._dashTimer = setInterval(() => {
-      const agora = new Date();
-      const allList = [...this._rodinasHojeLista, ...this._todasRotinas.filter(x =>
-        !this._rodinasHojeLista.find(h => h.id === x.id))];
-
-      allList.forEach(r => {
-        const status = r.status_hoje || 'PENDENTE';
-        if (['CONCLUIDA','FRACASSADA','CANCELADA'].includes(status)) return;
-
-        // Countdown de prazo (para ATIVA e PENDENTE sem hora_inicio ou hora_inicio j\u00E1 passou)
-        const el = document.querySelector(`.dash-cd-val[data-rid="${r.id}"]`);
-        if (el) {
-          const segs = this._calcSegsRestantesDash(r);
-          el.textContent = this._fmtCountdownDash(segs);
-          el.style.color = segs < 0 ? '#f87171' : (status === 'ATIVA' ? '#3b82f6' : 'var(--text-muted)');
-        }
-
-        // Countdown at\u00E9 in\u00EDcio (s\u00F3 para PENDENTE com hora_inicio ainda no futuro)
-        const elInicio = document.querySelector(`.dash-cd-inicio[data-rid="${r.id}"]`);
-        if (elInicio && r.hora_inicio) {
-          const [hI, mI] = r.hora_inicio.split(':').map(Number);
-          const inicio = new Date(agora); inicio.setHours(hI, mI, 0, 0);
-          const segsInicio = Math.floor((inicio - agora) / 1000);
-          if (segsInicio <= 0) {
-            // Hora chegou \u2014 recarrega card
-            this._recarregarCardDash(r.id);
-          } else {
-            elInicio.textContent = this._fmtSegsCompact(segsInicio);
-          }
-        }
-      });
-    }, 1000);
-  },
-
-  // Auto-check: inicia ou fracassa miss\u00F5es por hor\u00E1rio
-  _iniciarAutoCheckDash() {
-    if (this._dashAutoCheck) clearInterval(this._dashAutoCheck);
-    this._dashAutoCheck = setInterval(() => this._verificarAutoAcoesDash(), 30000);
-    setTimeout(() => this._verificarAutoAcoesDash(), 2000);
-  },
-
-  async _verificarAutoAcoesDash() {
-    const agora = new Date();
-    for (const r of this._rodinasHojeLista) {
-      const status = r.status_hoje || 'PENDENTE';
-      if (['CONCLUIDA','FRACASSADA','CANCELADA'].includes(status)) continue;
-
-      // Auto-start
-      if (status === 'PENDENTE' && r.hora_inicio) {
-        const [hI, mI] = r.hora_inicio.split(':').map(Number);
-        const inicio = new Date(agora); inicio.setHours(hI, mI, 0, 0);
-        if (agora >= inicio) {
-          try {
-            await API.post(`/rotinas/${r.id}/iniciar`, {});
-            r.status_hoje = 'ATIVA';
-            this._recarregarCardDash(r.id);
-            if (typeof SoloDialog !== 'undefined')
-              SoloDialog.toast(`\u25B6 Miss\u00E3o auto-iniciada: ${r.titulo}`, 'info');
-          } catch (_) {}
-        }
-      }
-
-      // Auto-fracassar
-      if (['ATIVA','PENDENTE'].includes(status)) {
-        const segs = this._calcSegsRestantesDash(r);
-        if (segs <= 0) {
-          try {
-            const resp = await API.post(`/rotinas/${r.id}/fracassar`, {});
-            r.status_hoje = 'FRACASSADA';
-            Object.assign(r, resp);
-            this._recarregarCardDash(r.id);
-            if (typeof SoloDialog !== 'undefined')
-              SoloDialog.toast(`\u2620\uFE0F Miss\u00E3o fracassada: ${r.titulo}`, 'error', 5000);
-          } catch (_) {}
-        }
-      }
-    }
-  },
-
-  _recarregarCardDash(id) {
-    const r = this._rodinasHojeLista.find(x => x.id === id)
-           || this._todasRotinas.find(x => x.id === id);
-    if (!r) return;
-    const card = document.querySelector(`.dash-rotina-card[data-id="${id}"]`);
-    if (card) {
-      const tmp = document.createElement('div');
-      tmp.innerHTML = this._buildRotinaDashCard(r);
-      card.replaceWith(tmp.firstElementChild);
-    }
-  },
-
+  // Todo relógio do Dashboard morre aqui. O app.js chama isto ao trocar de
+  // página; um setInterval esquecido continua repintando um DOM que já foi
+  // embora e, no caso do MissaoCard, segurando a lista inteira na memória.
   _pararTimerDash() {
-    if (this._dashTimer)    { clearInterval(this._dashTimer);    this._dashTimer    = null; }
-    if (this._dashAutoCheck){ clearInterval(this._dashAutoCheck); this._dashAutoCheck = null; }
-  },
-
-  _calcSegsRestantesDash(r) {
-    const agora = new Date();
-    if (r.hora_fim) {
-      const [hFh, hFm] = r.hora_fim.split(':').map(Number);
-      const prazo = new Date(agora);
-      prazo.setHours(hFh, hFm, 0, 0);
-      return Math.floor((prazo - agora) / 1000);
-    }
-    const fimDia = new Date(agora);
-    fimDia.setHours(23, 59, 59, 0);
-    return Math.floor((fimDia - agora) / 1000);
-  },
-
-  _fmtCountdownDash(segs) {
-    const abs = Math.abs(segs);
-    const h = Math.floor(abs / 3600);
-    const m = Math.floor((abs % 3600) / 60);
-    const s = abs % 60;
-    const str = `${String(h).padStart(2,'0')}h ${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s`;
-    return segs < 0 ? `-${str}` : str;
-  },
-
-  _fmtSegsCompact(segs) {
-    const abs = Math.abs(segs);
-    const h = Math.floor(abs / 3600);
-    const m = Math.floor((abs % 3600) / 60);
-    const s = abs % 60;
-    if (h > 0) return `${h}h ${String(m).padStart(2,'0')}m`;
-    if (m > 0) return `${m}m ${String(s).padStart(2,'0')}s`;
-    return `${s}s`;
-  },
-
-
-  _abrirModalRotinaDash(r) {
-    const PRIOR = {
-      CRITICA: { cor: '#ef4444', label: '\uD83D\uDD34 CR\u00CDTICA' },
-      ALTA:    { cor: '#f97316', label: '\uD83D\uDFE0 ALTA'    },
-      MEDIA:   { cor: '#f59e0b', label: '\uD83D\uDFE1 M\u00C9DIA'   },
-      BAIXA:   { cor: '#10b981', label: '\uD83D\uDFE2 BAIXA'   },
-    };
-    const STATUS_CFG = {
-      PENDENTE:   { cor: '#a855f7', label: '\u23F3 PENDENTE \u2014 Aguardando in\u00EDcio' },
-      ATIVA:      { cor: '#3b82f6', label: '\u25B6 EM CURSO' },
-      CONCLUIDA:  { cor: '#10b981', label: '\u2713 CONCLU\u00CDDA' },
-      FRACASSADA: { cor: '#ef4444', label: '\u2620 FRACASSADA' },
-      CANCELADA:  { cor: '#64748b', label: '\u2715 CANCELADA' },
-      PAUSADA:    { cor: '#64748b', label: '\u23F8 PAUSADA' },
-    };
-    const DIFIC_MULT = { FACIL: 0.5, NORMAL: 1.0, DIFICIL: 1.5, LENDARIO: 2.5 };
-    const PRIOR_MULT = { CRITICA: 1.5, ALTA: 1.2, MEDIA: 1.0, BAIXA: 0.7 };
-    const CAT_ICONS  = { Saude:'\u2764\uFE0F','Sa\u00FAde':'\u2764\uFE0F',Trabalho:'\uD83D\uDCBC',Estudo:'\uD83D\uDCDA',Casa:'\uD83C\uDFE0',Pessoal:'\u26A1',Combate:'\u2694\uFE0F' };
-
-    const prior      = PRIOR[r.prioridade] || PRIOR.MEDIA;
-    const icone      = CAT_ICONS[r.categoria] || '\u2694\uFE0F';
-    const status     = r.status_hoje || 'PENDENTE';
-    const scfg       = STATUS_CFG[status] || STATUS_CFG.PENDENTE;
-    const concluida  = status === 'CONCLUIDA';
-    const fracassada = status === 'FRACASSADA';
-    const isPendente = status === 'PENDENTE';
-    const isFinal    = ['CONCLUIDA','FRACASSADA','CANCELADA'].includes(status);
-    const exec       = r.exec_hoje;
-    const segs       = this._calcSegsRestantesDash(r);
-    const cdNeg      = segs < 0;
-
-    // Prazo formatado
-    const agora = new Date();
-    let prazoStr, prazoLabel;
-    if (r.hora_fim) {
-      prazoStr  = r.hora_fim;
-      prazoLabel = r.hora_inicio
-        ? `Janela ${r.hora_inicio} \u2192 ${r.hora_fim}`
-        : `Hoje at\u00E9 ${r.hora_fim}`;
-    } else {
-      const fimDia = new Date(agora);
-      fimDia.setHours(23, 59, 59, 0);
-      prazoStr  = fimDia.toLocaleString('pt-BR', { hour:'2-digit', minute:'2-digit' });
-      prazoLabel = `Hoje \u00E0s ${prazoStr}`;
-    }
-
-    let modal = document.getElementById('dash-rotina-modal');
-    if (!modal) {
-      modal = document.createElement('div');
-      modal.id = 'dash-rotina-modal';
-      modal.className = 'draggable-window';
-      modal.style.cssText = [
-        'position:fixed','top:8%','left:50%','transform:translateX(-50%)',
-        'width:min(560px,92vw)','z-index:9500',
-        'background:rgba(13,13,26,0.82)',
-        'backdrop-filter:blur(24px)',
-        '-webkit-backdrop-filter:blur(24px)',
-        'border:1px solid rgba(124,58,237,.35)',
-        'border-radius:1.1rem',
-        'box-shadow:0 12px 60px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.04)',
-        'display:none','overflow:hidden'
-      ].join(';');
-      document.body.appendChild(modal);
-      modal._drag = new DragWindow(modal);
-    }
-
-    const bordaCor = scfg.cor;
-
-    modal.innerHTML = `
-      <!-- Barra colorida de status no topo -->
-      <div style="height:3px;background:linear-gradient(90deg,${bordaCor},transparent)"></div>
-
-      <!-- Header arrast\u00E1vel -->
-      <div class="window-header" style="
-        display:flex;align-items:center;justify-content:space-between;
-        padding:.9rem 1.2rem;border-bottom:1px solid ${bordaCor}22;
-        cursor:move;background:${bordaCor}08
-      ">
-        <div style="display:flex;align-items:center;gap:.6rem">
-          <div style="
-            width:34px;height:34px;border-radius:.5rem;
-            display:flex;align-items:center;justify-content:center;
-            font-size:1.1rem;background:${bordaCor}20;border:1px solid ${bordaCor}44
-          ">${icone}</div>
-          <div>
-            <div style="font-family:var(--font-section);font-size:.95rem;font-weight:700;color:var(--text-primary)">${r.titulo}</div>
-            <div style="font-size:.65rem;font-family:var(--font-section);color:${scfg.cor};letter-spacing:.08em">${scfg.label} \u2022 ${r.tipo}</div>
-          </div>
-        </div>
-        <button class="window-close-btn" onclick="document.getElementById('dash-rotina-modal').style.display='none'" style="
-          background:none;border:none;color:var(--text-muted);font-size:1.3rem;cursor:pointer;
-          width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-          transition:.2s" onmouseover="this.style.background='rgba(239,68,68,.15)'" onmouseout="this.style.background='none'">\u00D7</button>
-      </div>
-
-      <!-- Corpo com glassmorphism -->
-      <div style="padding:1.2rem;display:flex;flex-direction:column;gap:1rem">
-
-        <!-- Status principal -->
-        ${isFinal ? `
-          <div style="
-            background:${scfg.cor}15;border:1px solid ${scfg.cor}44;
-            border-radius:.7rem;padding:.8rem;text-align:center
-          ">
-            <div style="font-family:var(--font-section);font-size:1rem;font-weight:700;color:${scfg.cor}">${scfg.label}</div>
-            ${concluida && exec?.criado_em ? `<div style="font-size:.75rem;color:var(--text-muted);margin-top:.2rem">
-              Conclu\u00EDda \u00E0s ${new Date(exec.criado_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
-            </div>` : ''}
-            ${fracassada && r.fracassada_em ? `<div style="font-size:.75rem;color:#f87171;margin-top:.2rem">
-              Fracassou \u00E0s ${new Date(r.fracassada_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
-            </div>` : ''}
-          </div>` : `
-          <div style="
-            display:flex;align-items:center;justify-content:space-between;
-            background:${cdNeg ? 'rgba(239,68,68,.08)' : scfg.cor + '12'};
-            border:1px solid ${cdNeg ? 'rgba(239,68,68,.25)' : scfg.cor + '35'};
-            border-radius:.7rem;padding:.8rem 1rem
-          ">
-            <div>
-              <div style="font-family:var(--font-section);font-size:.65rem;color:var(--text-muted);letter-spacing:.1em;text-transform:uppercase">
-                ${cdNeg ? '\u26A0\uFE0F Prazo Vencido' : (isPendente ? '\u23F3 Prazo para Iniciar' : '\u23F1 Prazo Restante')}
-              </div>
-              <div id="dash-modal-cd" style="
-                font-family:var(--font-section);font-size:1.3rem;font-weight:900;
-                color:${cdNeg ? '#f87171' : scfg.cor};
-                letter-spacing:.05em;margin-top:.1rem
-              ">${this._fmtCountdownDash(segs)}</div>
-            </div>
-            <div style="text-align:right">
-              <div style="font-family:var(--font-section);font-size:.65rem;color:var(--text-muted);letter-spacing:.08em">PRAZO LIMITE</div>
-              <div style="font-family:var(--font-section);font-size:.88rem;font-weight:700;color:var(--text-primary);margin-top:.1rem">${prazoLabel}</div>
-            </div>
-          </div>`
-        }
-
-        <!-- Recompensas / Puni\u00E7\u00F5es -->
-        <div style="display:grid;grid-template-columns:repeat(${r.penalidade_xp > 0 ? 3 : 2},1fr);gap:.6rem">
-          <div style="
-            text-align:center;background:rgba(16,185,129,.06);
-            border:1px solid rgba(16,185,129,.2);border-radius:.6rem;padding:.65rem
-          ">
-            <div style="font-family:var(--font-section);font-size:.6rem;color:var(--text-muted);letter-spacing:.1em;text-transform:uppercase">XP ${fracassada ? 'PERDIDO' : (concluida ? 'GANHO' : 'RECOMPENSA')}</div>
-            <div style="font-family:var(--font-title);font-size:1.25rem;font-weight:700;color:${fracassada ? '#f87171' : '#10b981'};margin-top:.2rem">
-              ${fracassada ? '-' + (r.xp_perdido_hoje || r.penalidade_xp || 0) : ('+' + (concluida && exec ? exec.xp_ganho : r.xp_recompensa))}
-            </div>
-          </div>
-          <div style="
-            text-align:center;background:rgba(245,158,11,.06);
-            border:1px solid rgba(245,158,11,.2);border-radius:.6rem;padding:.65rem
-          ">
-            <div style="font-family:var(--font-section);font-size:.6rem;color:var(--text-muted);letter-spacing:.1em;text-transform:uppercase">MOEDAS</div>
-            <div style="font-family:var(--font-title);font-size:1.25rem;font-weight:700;color:var(--gold-xp);margin-top:.2rem">
-              +${concluida && exec ? exec.moedas_ganhas : r.moedas_recompensa}
-            </div>
-          </div>
-          ${r.penalidade_xp > 0 ? `
-          <div style="
-            text-align:center;background:rgba(239,68,68,.06);
-            border:1px solid rgba(239,68,68,.2);border-radius:.6rem;padding:.65rem
-          ">
-            <div style="font-family:var(--font-section);font-size:.6rem;color:var(--text-muted);letter-spacing:.1em;text-transform:uppercase">PUNI\u00C7\u00C3O</div>
-            <div style="font-family:var(--font-title);font-size:1.25rem;font-weight:700;color:#f87171;margin-top:.2rem">-${r.penalidade_xp}</div>
-          </div>` : ''}
-        </div>
-
-        ${concluida && exec?.streak > 0 ? `
-        <div style="
-          display:flex;align-items:center;justify-content:center;gap:.5rem;
-          background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.25);
-          border-radius:.6rem;padding:.6rem
-        ">
-          <span style="font-size:1.3rem">\uD83D\uDD25</span>
-          <div>
-            <span style="font-family:var(--font-section);font-size:.85rem;font-weight:700;color:#f97316">Streak: ${exec.streak} dias</span>
-            ${exec.bonus_streak > 0 ? `<span style="font-size:.72rem;color:var(--gold-xp);margin-left:.5rem">+${exec.bonus_streak} XP b\u00F4nus</span>` : ''}
-          </div>
-        </div>` : ''}
-
-        <!-- Atributos -->
-        <div>
-          <div style="font-family:var(--font-section);font-size:.65rem;letter-spacing:.12em;
-            text-transform:uppercase;color:var(--text-muted);margin-bottom:.5rem">Detalhes da Miss\u00E3o</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem">
-            ${[
-              ['Categoria',   r.categoria || 'Pessoal',     `${CAT_ICONS[r.categoria] || '\u2694\uFE0F'} ${r.categoria}`, 'var(--cyan-skill)'],
-              ['Prioridade',  r.prioridade,                 `\u00D7${PRIOR_MULT[r.prioridade]||1} XP`,               prior.cor],
-              ['Dificuldade', r.dificuldade || 'NORMAL',    `\u00D7${DIFIC_MULT[r.dificuldade]||1}`,                 'var(--purple-glow)'],
-              ['Frequ\u00EAncia',  r.tipo,                       r.tipo.toLowerCase(),                                '#64748b'],
-            ].map(([lbl, val, sub, cor]) => `
-              <div style="
-                background:rgba(100,116,139,.06);border:1px solid rgba(100,116,139,.12);
-                border-radius:.5rem;padding:.5rem .7rem;
-                display:flex;align-items:center;justify-content:space-between
-              ">
-                <span style="font-family:var(--font-section);font-size:.7rem;color:var(--text-muted)">${lbl}</span>
-                <div style="text-align:right">
-                  <div style="font-family:var(--font-section);font-size:.72rem;font-weight:700;color:${cor}">${val}</div>
-                  <div style="font-size:.6rem;color:var(--text-muted)">${sub}</div>
-                </div>
-              </div>`).join('')}
-          </div>
-        </div>
-
-        ${r.descricao ? `
-        <div style="
-          background:rgba(100,116,139,.05);border:1px solid rgba(100,116,139,.12);
-          border-radius:.5rem;padding:.6rem .8rem
-        ">
-          <div style="font-family:var(--font-section);font-size:.65rem;color:var(--text-muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.3rem">Descri\u00E7\u00E3o</div>
-          <div style="font-size:.8rem;color:var(--text-primary)">${r.descricao}</div>
-        </div>` : ''}
-
-        <!-- A\u00E7\u00F5es -->
-        ${isPendente ? `
-        <div style="display:flex;gap:.5rem;padding-top:.25rem">
-          <button onclick="Dashboard._iniciarDoModal(${r.id})" style="
-            flex:1;font-family:var(--font-section);font-size:.78rem;font-weight:700;
-            padding:.5rem;border-radius:.5rem;cursor:pointer;
-            border:1px solid #a855f7;background:rgba(168,85,247,.18);color:#a855f7;
-            letter-spacing:.05em;transition:all .2s
-            " onmouseover="this.style.background='rgba(168,85,247,.3)'" onmouseout="this.style.background='rgba(168,85,247,.18)'"
-          >\u25B6 Iniciar Miss\u00E3o</button>
-          <button onclick="App.navigate('rotinas')" style="
-            font-family:var(--font-section);font-size:.78rem;padding:.5rem .9rem;border-radius:.5rem;
-            cursor:pointer;border:1px solid rgba(124,58,237,.3);background:rgba(124,58,237,.1);
-            color:var(--purple-glow);transition:all .2s
-            ">Ver Rotinas</button>
-        </div>` : ''}
-        ${status === 'ATIVA' ? `
-        <div style="display:flex;gap:.5rem;padding-top:.25rem">
-          <button onclick="Dashboard._concluirDoModal(${r.id})" style="
-            flex:1;font-family:var(--font-section);font-size:.78rem;font-weight:700;
-            padding:.5rem;border-radius:.5rem;cursor:pointer;
-            border:1px solid #10b981;background:rgba(16,185,129,.15);color:#10b981;
-            letter-spacing:.05em;transition:all .2s
-            " onmouseover="this.style.background='rgba(16,185,129,.3)'" onmouseout="this.style.background='rgba(16,185,129,.15)'"
-          >\u25B6 Concluir Miss\u00E3o</button>
-          <button onclick="App.navigate('rotinas')" style="
-            font-family:var(--font-section);font-size:.78rem;padding:.5rem .9rem;border-radius:.5rem;
-            cursor:pointer;border:1px solid rgba(124,58,237,.3);background:rgba(124,58,237,.1);
-            color:var(--purple-glow);transition:all .2s
-            ">Ver Rotinas</button>
-        </div>` : ''}
-        ${isFinal ? `
-        <button onclick="App.navigate('rotinas')" style="
-          width:100%;font-family:var(--font-section);font-size:.78rem;font-weight:700;
-          padding:.5rem;border-radius:.5rem;cursor:pointer;
-          border:1px solid ${scfg.cor}44;background:${scfg.cor}10;
-          color:${scfg.cor};letter-spacing:.05em;transition:all .2s
-          ">\uD83D\uDCCA Ver Detalhes em Rotinas</button>` : ''}
-
-      </div><!-- /corpo -->
-    `;
-
-    modal.style.display = 'block';
-    if (modal._drag) modal._drag.rebind();
-
-    // Atualiza countdown do modal em tempo real
-    if (!isFinal) {
-      if (this._modalCdTimer) clearInterval(this._modalCdTimer);
-      this._modalCdTimer = setInterval(() => {
-        const el = document.getElementById('dash-modal-cd');
-        if (!el || modal.style.display === 'none') {
-          clearInterval(this._modalCdTimer); return;
-        }
-        const s2 = this._calcSegsRestantesDash(r);
-        el.textContent = this._fmtCountdownDash(s2);
-        el.style.color = s2 < 0 ? '#f87171' : scfg.cor;
-      }, 1000);
-    }
-  },
-
-  async _iniciarDoModal(id) {
-    const r = this._rodinasHojeLista.find(x => x.id === id);
-    if (!r) return;
-    const btn = document.querySelector(`[onclick="Dashboard._iniciarDoModal(${id})"]`);
-    if (btn) { btn.disabled = true; btn.textContent = '\u23F3 Iniciando...'; }
-    try {
-      const resp = await API.post(`/rotinas/${id}/iniciar`, {});
-      r.status_hoje = 'ATIVA';
-      Object.assign(r, resp);
-      if (typeof Rotinas !== 'undefined') Rotinas._statusCache[id] = 'ATIVA';
-      document.getElementById('dash-rotina-modal').style.display = 'none';
-      this._recarregarCardDash(id);
-      this._abrirModalRotinaDash(r);
-      if (typeof SoloDialog !== 'undefined')
-        SoloDialog.toast(`\u25B6 Miss\u00E3o iniciada: ${r.titulo}`, 'info');
-    } catch (err) {
-      if (btn) { btn.disabled = false; btn.textContent = '\u25B6 Iniciar Miss\u00E3o'; }
-      if (typeof SoloDialog !== 'undefined')
-        SoloDialog.toast('Erro ao iniciar: ' + (err.message || err), 'error');
-    }
-  },
-
-  async _concluirDoModal(id) {
-    const r = this._rodinasHojeLista.find(x => x.id === id);
-    if (!r) return;
-    const btn = document.querySelector(`[onclick="Dashboard._concluirDoModal(${id})"]`);
-    if (btn) { btn.disabled = true; btn.textContent = '\u23F3 Concluindo...'; }
-    try {
-      const hoje = new Date().toISOString().split('T')[0];
-      const res  = await API.post('/execucoes/rotina', { rotina_id: id, data_execucao: hoje });
-      r.status_hoje    = 'CONCLUIDA';
-      r.concluida_hoje = true;
-      r.exec_hoje      = res.resultado || {};
-
-      // Sincroniza com Rotinas.js
-      if (typeof Rotinas !== 'undefined') {
-        Rotinas._statusCache[id] = 'CONCLUIDA';
-        Rotinas._execCache[id]   = r.exec_hoje;
-        const itemRotinas = Rotinas._lista?.find(x => x.id === id);
-        if (itemRotinas) {
-          itemRotinas.concluida_hoje = true;
-          itemRotinas.exec_hoje      = r.exec_hoje;
-        }
-      }
-
-      // Fecha modal
-      document.getElementById('dash-rotina-modal').style.display = 'none';
-
-      // Float XP
-      const xpFloat = document.getElementById('xp-float');
-      if (xpFloat) {
-        xpFloat.textContent = `+${r.xp_recompensa} XP`;
-        xpFloat.classList.add('visible');
-        setTimeout(() => xpFloat.classList.remove('visible'), 1800);
-      }
-
-      // Atualização completa do dashboard (card + stats + XP)
-      setTimeout(() => this.atualizarStatsMini(), 400);
-
-    } catch (err) {
-      if (err.message?.includes('j\u00E1 foi conclu\u00EDda')) {
-        r.concluida_hoje = true;
-        document.getElementById('dash-rotina-modal').style.display = 'none';
-        setTimeout(() => this.atualizarStatsMini(), 400);
-      } else {
-        SoloDialog.toast('Erro: ' + (err.message || err), 'error');
-        if (btn) { btn.disabled = false; btn.textContent = '\u25B6 Concluir Miss\u00E3o'; }
-      }
-    }
+    if (this._tarefaTimer)   { clearInterval(this._tarefaTimer);   this._tarefaTimer   = null; }
+    if (this._modalCdTimer)  { clearInterval(this._modalCdTimer);  this._modalCdTimer  = null; }
+    // Zerar a referência importa: _iniciarSussurros usa ela como trava de
+    // idempotência, então sem isso a placa nunca voltaria a falar.
+    if (this._sussurroTimer) { clearInterval(this._sussurroTimer); this._sussurroTimer = null; }
+    if (typeof MissaoCard !== 'undefined' && MissaoCard.pararTimer) MissaoCard.pararTimer();
   },
 
   // ── Bind double-click nos cards de tarefa ────────────────────────────────
@@ -1931,7 +1365,8 @@ const Dashboard = {
         this._renderTarefasFiltradas();
       }
 
-      // Recarrega o extrato de rotinas (busca fresh do servidor)
+      // Extrato por último: ele reflete o estado que as chamadas acima acabaram
+      // de mudar, e o backend ainda aproveita para fechar os dias vencidos.
       await this.carregarExtrato();
 
     } catch (_) {}

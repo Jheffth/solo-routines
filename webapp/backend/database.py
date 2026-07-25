@@ -136,6 +136,14 @@ class ExecucaoDia(Base):
     moedas_ganhas = Column(Integer, default=0)
     criado_em     = Column(DateTime, default=datetime.utcnow)
 
+    # Uma rotina só pode ter UMA instância por dia. Sem isto, duas requisições
+    # simultâneas (ou o job + o app abrindo junto) criavam missões duplicadas
+    # para o mesmo dia — e o extrato mostraria "Carregar Dolphin" duas vezes
+    # no mesmo 14/07. A migração cria o índice único correspondente.
+    __table_args__ = (
+        UniqueConstraint("rotina_id", "usuario_id", "data", name="uq_execucao_dia"),
+    )
+
     rotina        = relationship("Rotina", back_populates="exec_dias")
 
 

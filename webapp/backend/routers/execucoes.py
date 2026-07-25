@@ -10,6 +10,7 @@ from datetime import date, datetime
 from database import get_db, Rotina, Execucao, ExecucaoDia, Usuario
 from auth.router import get_usuario_atual
 from motors.gamificacao import calcular_xp_rotina, aplicar_xp
+from motors.celebracao import anexar
 
 router = APIRouter(prefix="/execucoes", tags=["execucoes"])
 
@@ -84,7 +85,7 @@ def concluir_rotina(
         db.rollback()
     # ──────────────────────────────────────────────────────
 
-    return {"rotina_id": rotina.id, "resultado": resultado}
+    return anexar({"rotina_id": rotina.id, "resultado": resultado}, resultado)
 
 
 @router.get("/historico")

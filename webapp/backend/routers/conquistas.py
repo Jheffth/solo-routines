@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from database import get_db, Conquista, ConquistaUsuario, Usuario
 from auth.router import get_usuario_atual
 from motors.gamificacao import verificar_conquistas, creditar_bonus, recalcular_nivel
+from motors.celebracao import anexar
 
 router = APIRouter(prefix="/conquistas", tags=["conquistas"])
 
@@ -78,7 +79,7 @@ def checar_conquistas(
     """Executa verificação manual de conquistas (útil para testes)."""
     novas = verificar_conquistas(db, usuario)
     db.commit()
-    return {"novas_conquistas": novas}
+    return anexar({"novas_conquistas": novas}, conquistas=novas)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -162,13 +163,14 @@ def conceder_comemorativa(
     db.commit()
 
     # 'codigo' -> insígnia própria na Cerimônia | 'level_ups' -> Ascensão antes dela
-    return {
-        "level_ups": level_ups,
-        "novas_conquistas": [{
-            "id": c.id, "codigo": c.codigo, "titulo": c.titulo, "descricao": c.descricao,
-            "icone": c.icone, "xp_bonus": c.xp_bonus,
-        }],
-    }
+    insignia = [{
+        "id": c.id, "codigo": c.codigo, "titulo": c.titulo, "descricao": c.descricao,
+        "icone": c.icone, "xp_bonus": c.xp_bonus,
+    }]
+    return anexar(
+        {"level_ups": level_ups, "novas_conquistas": insignia},
+        level_ups=level_ups, conquistas=insignia,
+    )
 
 
 @router.post("/sincronizar-nivel")
@@ -194,7 +196,8 @@ def sincronizar_nivel(
             "titulo": estado["titulo"], "moedas_bonus": 0,
             "niveis_ganhos": ganhou, "nivel_anterior": antes["nivel"],
         }]
-    return {"ok": True, "antes": antes, "depois": estado, "level_ups": level_ups}
+    return anexar({"ok": True, "antes": antes, "depois": estado,
+                   "level_ups": level_ups}, level_ups=level_ups)
 
 
 @router.delete("/{conquista_id}/revogar")

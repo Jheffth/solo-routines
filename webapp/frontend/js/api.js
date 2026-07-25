@@ -38,23 +38,32 @@ class API {
 
       // ── Canal ÚNICO de celebração ────────────────────────────────
       // Ordem sagrada: ASCENSÃO (level-up) primeiro, CERIMÔNIA depois.
-      // Cobre rotinas/tarefas (resultado.* | novas_conquistas) e
-      // dungeons (eventos_xp.*). ConquistaFX deduplica sozinho.
-      let conquistasNovas = [];
-      if (data?.resultado?.conquistas?.length)       conquistasNovas = data.resultado.conquistas;
-      else if (data?.novas_conquistas?.length)       conquistasNovas = data.novas_conquistas;
-      else if (data?.eventos_xp?.conquistas?.length) conquistasNovas = data.eventos_xp.conquistas;
+      //
+      // O backend DECLARA o que celebrar, num campo com um só nome:
+      // `sr_eventos`. Sem ele, não há festa — e nenhum campo chamado
+      // `xp_ganho`, `total_xp` ou parecido volta a ligar fogos por acidente.
+      //
+      // Antes, isto era adivinhado pelo NOME dos campos, vasculhando cinco
+      // formatos diferentes. O preço apareceu do pior jeito: /extrato/resumo
+      // devolve o XP SOMADO do período (um relato, não um ganho), o app leu
+      // como recompensa, recarregou a página, refez a leitura — laço infinito
+      // martelando o servidor. O mesmo mecanismo fazia /emblemas/pendentes
+      // reexibir a cerimônia de medalhas a cada leitura.
+      //
+      // A guarda de método continua como segunda linha de defesa: uma leitura
+      // jamais é uma recompensa, mesmo que um dia alguém carimbe o envelope
+      // num GET por engano.
+      if (method.toUpperCase() === 'GET') return data;
 
-      let levelUps = [];
-      if (data?.level_ups?.length)                   levelUps = data.level_ups;
-      else if (data?.resultado?.level_ups?.length)   levelUps = data.resultado.level_ups;
-      else if (data?.eventos_xp?.level_ups?.length)  levelUps = data.eventos_xp.level_ups;
+      const ev = data?.sr_eventos;
+      if (!ev) return data;
 
-      // Ganho de XP sem cerimônia (missão comum): ainda assim a Janela de
-      // Status precisa refletir o novo XP/moedas.
-      const houveGanho = !!(data?.xp_ganho || data?.resultado?.xp_ganho ||
-                            data?.eventos_xp?.xp_ganho);
-      if (houveGanho && !levelUps.length && !conquistasNovas.length) {
+      const conquistasNovas = ev.conquistas || [];
+      const levelUps        = ev.level_ups  || [];
+
+      // Ganho sem cerimônia (missão comum): ainda assim a Janela de Status
+      // precisa refletir o novo XP/moedas.
+      if ((ev.xp_ganho || ev.moedas_ganhas) && !levelUps.length && !conquistasNovas.length) {
         window.dispatchEvent(new CustomEvent('sr:recompensa', { detail: { xp: true } }));
       }
 

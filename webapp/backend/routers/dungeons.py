@@ -24,6 +24,7 @@ from database import (
     Dungeon, DungeonSessao, DungeonMissao, DungeonMissaoExecucao,
 )
 from auth.router import get_usuario_atual
+from motors.celebracao import anexar
 from motors.gamificacao import aplicar_xp
 
 router = APIRouter(prefix="/dungeons", tags=["dungeons"])
@@ -849,7 +850,7 @@ def entrar_dungeon(
     execs = db.query(DungeonMissaoExecucao).filter(
         DungeonMissaoExecucao.dungeon_sessao_id == s.id
     ).all()
-    return {
+    return anexar({
         "sessao": _sessao_to_dict(s),
         "dungeon": _dungeon_to_dict(d, sessao=s, hoje=hoje, incluir_missoes=True),
         "execucoes": [_exec_to_dict(e) for e in execs],
@@ -857,7 +858,7 @@ def entrar_dungeon(
         "atraso_minutos": atraso,
         "eventos_xp": eventos_xp,
         "agora_server": _agora().isoformat(),
-    }
+    }, eventos_xp)
 
 
 @router.post("/{dungeon_id}/entrar-arquiteto")
@@ -1071,7 +1072,7 @@ def heartbeat(
         DungeonMissaoExecucao.dungeon_sessao_id == s.id
     ).all()
 
-    return {
+    return anexar({
         "sessao": _sessao_to_dict(s),
         "execucoes": [_exec_to_dict(e) for e in execs],
         "novos_eventos": novos_eventos,
@@ -1081,7 +1082,7 @@ def heartbeat(
         "eventos_xp": eventos_xp,
         "relatorio_auto": None,
         "agora": agora.isoformat(),
-    }
+    }, eventos_xp)
 
 
 @router.post("/execucoes/{exec_id}/cumprir")
@@ -1158,11 +1159,11 @@ def cumprir_missao(
 
     db.commit()
     db.refresh(e)
-    return {
+    return anexar({
         "execucao": _exec_to_dict(e),
         "sessao": _sessao_to_dict(s),
         "eventos_xp": eventos_xp,
-    }
+    }, eventos_xp)
 
 
 # ── Ciclo de vida da missão de livre execução (PADRAO/AGENDADA) ──────────────
@@ -1388,11 +1389,11 @@ def sair_dungeon(
         raise HTTPException(400, f"Não é possível sair — status: {s.status}")
 
     relatorio, eventos_xp = _resolver_sessao(db, d, s, usuario)
-    return {
+    return anexar({
         "relatorio": relatorio,
         "sessao": _sessao_to_dict(s),
         "eventos_xp": eventos_xp,
-    }
+    }, eventos_xp)
 
 
 @router.post("/{dungeon_id}/resetar")
