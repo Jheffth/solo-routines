@@ -368,7 +368,7 @@ const Estandarte = {
           <div class="pt-nucleo">
             <div class="pt-linha-xp">
               <div class="pt-sigilo" title="${(typeof Gemas!=='undefined'&&Gemas.nomeRank)?Gemas.nomeRank(letra):('Rank '+letra)}">
-                ${this._medalhaRank(letra, 110)}
+                ${this._medalhaRank(letra, 72)}
               </div>
               <div class="pt-feixe-caixa">
                 <div class="pt-xp-num">${xp.toLocaleString('pt-BR')} / ${alvo.toLocaleString('pt-BR')} XP</div>
@@ -451,7 +451,7 @@ const Estandarte = {
           <div class="pt-nucleo">
             <div class="pt-linha-xp">
               <div class="pt-sigilo" title="${(typeof Gemas!=='undefined'&&Gemas.nomeRank)?Gemas.nomeRank(letra):('Rank '+letra)}">
-                ${this._medalhaRank(letra, 110)}
+                ${typeof EscudosImg !== 'undefined' ? EscudosImg.rank(letra, 95) : this._medalhaRank(letra, 72)}
               </div>
               <div class="pt-feixe-caixa">
                 <div class="pt-xp-num">${xp.toLocaleString('pt-BR')} / ${alvo.toLocaleString('pt-BR')} XP</div>
@@ -799,7 +799,6 @@ const Estandarte = {
      raios, anéis e — no S e no N — coroa e louros. A diferença se vê na
      silhueta, de longe, sem precisar ler a letra. */
   _medalhaRank(letra, tam = 46) {
-    if (typeof EscudosImg !== 'undefined' && EscudosImg.rank) return EscudosImg.rank(letra, tam);
     if (typeof Gemas !== 'undefined' && Gemas.rank) return Gemas.rank(letra, tam);
     return `<span class="pt-rank-fallback">${letra}</span>`;
   },
