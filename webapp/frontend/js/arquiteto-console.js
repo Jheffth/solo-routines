@@ -645,7 +645,11 @@ const ArquitetoConsole = {
       // MOVER DE VOLTA
       if (avatarNode) document.getElementById('pl-avatar')?.replaceWith(avatarNode);
       if (relicarioNode) document.getElementById('pl-relic')?.replaceWith(relicarioNode);
-      if (cristaisNode) document.getElementById('pl-cristais')?.replaceWith(cristaisNode);
+      if (cristaisNode) {
+        // Remover overlays 3D ao desligar
+        cristaisNode.querySelectorAll('.arq-gem-overlay').forEach(el => el.remove());
+        document.getElementById('pl-cristais')?.replaceWith(cristaisNode);
+      }
 
       janela.querySelector('#arq-ultra-layout')?.remove();
       
@@ -713,10 +717,19 @@ const ArquitetoConsole = {
     <div style="display:flex; align-items:center; gap:10px; width:100%; max-width:500px;">
       <div style="flex-shrink:0;">${escudoVetor}</div>
       <!-- Barra Plasma -->
-      <div style="flex:1; position:relative; height:12px; background:rgba(0,0,0,0.7); border-radius:10px; box-shadow:inset 0 2px 5px rgba(0,0,0,0.9); border:1px solid rgba(255,255,255,0.1);">
-        <div style="position:absolute; right:0; top:-18px; font-family:'Orbitron'; font-size:0.65rem; color:#ccc;">${xpTxt}</div>
+      <div style="flex:1; position:relative; height:12px; background:rgba(0,0,0,0.7); border-radius:10px; box-shadow:inset 0 2px 5px rgba(0,0,0,0.9); border:1px solid rgba(255,255,255,0.1); overflow:visible;">
+        <!-- O feixe animado (Sine Wave) -->
+        <div style="position:absolute; inset:-15px -5px; z-index:10; pointer-events:none;">
+          <svg viewBox="0 0 300 40" preserveAspectRatio="none" style="width:100%; height:100%; filter:drop-shadow(0 0 6px #22d3ee);">
+            <path d="M 0 20 Q 37 0 75 20 T 150 20 T 225 20 T 300 20" stroke="#22d3ee" stroke-width="1.5" fill="none" opacity="0.9">
+              <animate attributeName="d" values="M 0 20 Q 37 0 75 20 T 150 20 T 225 20 T 300 20; M 0 20 Q 37 40 75 20 T 150 20 T 225 20 T 300 20; M 0 20 Q 37 0 75 20 T 150 20 T 225 20 T 300 20" dur="2s" repeatCount="indefinite"/>
+            </path>
+          </svg>
+        </div>
+        <!-- O preenchimento da barra -->
+        <div style="position:absolute; right:0; top:-22px; font-family:'Orbitron'; font-size:0.75rem; color:#fff; text-shadow:0 0 5px #22d3ee;">${xpTxt}</div>
         <div style="width:${xpFill}; height:100%; border-radius:10px; background:linear-gradient(90deg, transparent, #22d3ee); box-shadow:0 0 15px #22d3ee; position:relative;">
-           <div style="position:absolute; right:-2px; top:-2px; bottom:-2px; width:10px; background:#fff; border-radius:5px; box-shadow:0 0 15px #fff, 0 0 25px #22d3ee;"></div>
+           <div style="position:absolute; right:-2px; top:-4px; bottom:-4px; width:10px; background:#fff; border-radius:5px; box-shadow:0 0 15px #fff, 0 0 25px #22d3ee;"></div>
         </div>
       </div>
     </div>
@@ -732,7 +745,25 @@ const ArquitetoConsole = {
     // Mover os nós para a injeção
     if (avatarNode) document.getElementById('arq-inj-avatar').appendChild(avatarNode);
     if (relicarioNode) document.getElementById('arq-inj-relic').appendChild(relicarioNode);
-    if (cristaisNode) document.getElementById('arq-inj-cristais').appendChild(cristaisNode);
+    if (cristaisNode) {
+      document.getElementById('arq-inj-cristais').appendChild(cristaisNode);
+      const gemas = janela.querySelectorAll('#arq-inj-cristais .cristal-gema');
+      gemas.forEach(g => {
+        const overlay = document.createElement('div');
+        overlay.className = 'arq-gem-overlay';
+        overlay.innerHTML = `
+        <svg viewBox="0 0 100 100" style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:2;">
+          <polygon points="50,0 100,25 75,35 50,20" fill="rgba(255,255,255,0.6)"/>
+          <polygon points="100,25 100,75 75,65 75,35" fill="rgba(0,0,0,0.3)"/>
+          <polygon points="100,75 50,100 50,80 75,65" fill="rgba(0,0,0,0.8)"/>
+          <polygon points="50,100 0,75 25,65 50,80" fill="rgba(0,0,0,0.9)"/>
+          <polygon points="0,75 0,25 25,35 25,65" fill="rgba(0,0,0,0.5)"/>
+          <polygon points="0,25 50,0 50,20 25,35" fill="rgba(255,255,255,0.3)"/>
+          <polygon points="50,20 75,35 75,65 50,80 25,65 25,35" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
+        </svg>`;
+        g.appendChild(overlay);
+      });
+    }
 
     // Emoji de Fogo
     const chama = janela.querySelector('.cristal-chama');
@@ -743,26 +774,24 @@ const ArquitetoConsole = {
 
     const css = `
 #hunter-card.bannerPremium { padding: 0 !important; }
-#arq-inj-avatar .hunter-hex-wrap { margin: 0 !important; transform: scale(1.1); }
-#arq-inj-relic .hunter-relicario { margin: 0 !important; }
+#arq-inj-avatar .hunter-hex-wrap { position: relative !important; margin: 0 !important; top: 0 !important; transform: scale(1.1); }
+.arq-col1 { align-items: center !important; }
+#arq-inj-relic .hunter-reliquia { transform: scale(1.4) !important; margin: 0 10px !important; }
+#arq-inj-relic { gap: 15px !important; margin-top: 25px !important; }
 
 /* Facetas das Joias */
 #arq-inj-cristais .hunter-cristais { display:flex; gap:1.2rem; }
 #arq-inj-cristais .cristal-gema {
-  width: 76px !important; height: 86px !important;
+  width: 90px !important; height: 104px !important;
   clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%) !important;
   border: none !important; border-radius:0 !important;
   position:relative; margin-bottom: 5px;
 }
-/* O vetor mágico injetado que desenha a pedra lapidada e joga sombras duras */
-#arq-inj-cristais .cristal-gema::after {
-  content: ''; position: absolute; inset: 0; pointer-events: none;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' preserveAspectRatio='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='50,0 100,25 85,35 50,15' fill='rgba(255,255,255,0.4)'/%3E%3Cpolygon points='100,25 100,75 85,65 85,35' fill='rgba(0,0,0,0.2)'/%3E%3Cpolygon points='100,75 50,100 50,85 85,65' fill='rgba(0,0,0,0.6)'/%3E%3Cpolygon points='50,100 0,75 15,65 50,85' fill='rgba(0,0,0,0.8)'/%3E%3Cpolygon points='0,75 0,25 15,35 15,65' fill='rgba(0,0,0,0.4)'/%3E%3Cpolygon points='0,25 50,0 50,15 15,35' fill='rgba(255,255,255,0.2)'/%3E%3Cpolygon points='50,15 85,35 85,65 50,85 15,65 15,35' fill='rgba(255,255,255,0.05)' stroke='rgba(255,255,255,0.4)' stroke-width='1.5'/%3E%3C/svg%3E");
-  background-size: 100% 100%;
-}
-#arq-inj-cristais .cristal-nivel .cristal-gema { background: radial-gradient(circle at 50% 20%, #9333ea, #4c1d95, #2e1065) !important; box-shadow: 0 10px 20px rgba(0,0,0,0.8), 0 0 25px rgba(147,51,234,0.4) !important;}
-#arq-inj-cristais .cristal-moedas .cristal-gema { background: radial-gradient(circle at 50% 20%, #d97706, #92400e, #451a03) !important; box-shadow: 0 10px 20px rgba(0,0,0,0.8), 0 0 25px rgba(217,119,6,0.4) !important;}
-#arq-inj-cristais .cristal-streak .cristal-gema { background: radial-gradient(circle at 50% 20%, #ea580c, #9a3412, #431407) !important; box-shadow: 0 10px 20px rgba(0,0,0,0.8), 0 0 25px rgba(234,88,12,0.4) !important;}
+/* Esconder o pseudo ::before original que tentava fazer a borda */
+#arq-inj-cristais .cristal-gema::before { display: none !important; }
+#arq-inj-cristais .cristal-nivel .cristal-gema { background: radial-gradient(circle at 50% 30%, #a855f7, #581c87, #2e1065) !important; box-shadow: 0 15px 25px rgba(0,0,0,0.8), 0 0 35px rgba(147,51,234,0.6) !important;}
+#arq-inj-cristais .cristal-moedas .cristal-gema { background: radial-gradient(circle at 50% 30%, #f59e0b, #b45309, #78350f) !important; box-shadow: 0 15px 25px rgba(0,0,0,0.8), 0 0 35px rgba(245,158,11,0.6) !important;}
+#arq-inj-cristais .cristal-streak .cristal-gema { background: radial-gradient(circle at 50% 30%, #f97316, #c2410c, #7c2d12) !important; box-shadow: 0 15px 25px rgba(0,0,0,0.8), 0 0 35px rgba(249,115,22,0.6) !important;}
 
 /* Media Queries Responsividade */
 @media (max-width: 1100px) {
