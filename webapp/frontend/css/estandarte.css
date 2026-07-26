@@ -1,0 +1,957 @@
+/* ============================================================
+   estandarte.css — O Estandarte do Hunter
+
+   Prefixo `est-` em TUDO, de propósito: existe outra proposta de banner
+   sendo trabalhada em paralelo (`bannerPremium`, em arquiteto-console.js),
+   e as duas precisam poder conviver no mesmo app sem que um seletor de uma
+   alcance a outra. Nada aqui toca `#hunter-card`.
+
+   A linguagem é heráldica, não HUD: tecido, trilho de metal, cera, fio de
+   ouro, bainha rasgada. A referência mostrada era ciano-circuito; ir para o
+   lado oposto é o que torna as duas comparáveis de relance.
+   ============================================================ */
+
+/* ══════════════════════════════════════════════════════════
+   V2 · O PORTAL — a proposta fiel à referência
+
+   Prefixo `pt-`. Linguagem de HUD: campo petróleo, arcos de circuito no
+   canto direito, hexágono com anel de luz, feixe ciano de XP e gemas de
+   estatística. É o oposto do V1 (tecido, cera, heráldica) de propósito —
+   as duas precisam ser distinguíveis de relance para serem comparáveis.
+   ══════════════════════════════════════════════════════════ */
+/* CANTOS NO FORMATO DO PROJETO. A janela do Sistema
+   (`.sys-plate` em css/status-window.css) não tem os quatro cantos
+   redondos: dois são arredondados e dois, CHANFRADOS em diagonal. Copiei o
+   mesmo clip-path para o banner pertencer à mesma família.
+
+   `border-radius` continua declarado porque o clip-path recorta a caixa,
+   mas quem desenha as duas curvas que sobram é o raio. */
+.pt-banner {
+  position: relative;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 1.5rem 1.8rem;
+  border-radius: 14px;
+  clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 22px,
+                     100% 100%, 22px 100%, 0 calc(100% - 22px));
+  overflow: hidden;
+  background:
+    radial-gradient(120% 180% at 78% 30%, color-mix(in srgb, var(--pt-feixe) 9%, transparent), transparent 60%),
+    linear-gradient(112deg, var(--pt-fundo) 0%, var(--pt-fundo2) 62%, var(--pt-fundo) 100%);
+  border: 1px solid color-mix(in srgb, var(--pt-circuito) 65%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 20px 44px rgba(0,0,0,.6);
+}
+
+/* Arcos de circuito — atmosfera, não desenho para olhar. Ficam presos à
+   direita porque é de lá que a "energia" chega na referência. */
+.pt-circuito {
+  position: absolute; top: 0; right: 0; bottom: 0;
+  width: 62%; height: 100%; max-width: none;
+  color: var(--pt-circuito);
+  opacity: .5;
+  pointer-events: none;
+}
+
+/* AS QUATRO COLUNAS. O núcleo (emblema + barra) é a única que ESTICA —
+   `minmax(340px, 1fr)`. Antes a identidade também podia crescer e roubava
+   espaço, deixando a barra curta e o emblema aparentemente distante dela.
+   O gap caiu de 1.6 para 1.15rem pelo mesmo motivo: a barra pedia fôlego. */
+.pt-conteudo {
+  position: relative; z-index: 2;
+  display: grid;
+  grid-template-columns: auto max-content minmax(340px, 1fr) max-content;
+  align-items: center;
+  gap: 1.15rem;
+}
+
+/* ── Retrato hexagonal ───────────────────────────────────── */
+.pt-retrato { flex: none; }
+/* O hexágono é feito por clip-path em dois níveis: o de fora é o anel de
+   luz, o de dentro é a foto. Uma borda comum não acompanha o recorte. */
+.pt-hex, .pt-hex-foto {
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+.pt-hex {
+  position: relative; z-index: 2;
+  width: 96px; height: 108px;
+  padding: 3px;
+  background: linear-gradient(160deg, #f5d488, #b8892f 45%, #f7e6b0);
+  filter: drop-shadow(0 0 14px color-mix(in srgb, var(--pt-feixe) 45%, transparent));
+}
+.pt-hex-luz {
+  position: absolute; inset: 0;
+  background: linear-gradient(200deg, transparent 40%, rgba(255,255,255,.5) 50%, transparent 60%);
+  background-size: 100% 260%;
+  animation: pt-lustro 5.5s linear infinite;
+  pointer-events: none;
+}
+@keyframes pt-lustro {
+  from { background-position: 0 200%; }
+  to   { background-position: 0 -60%; }
+}
+.pt-hex-foto {
+  width: 100%; height: 100%;
+  background: radial-gradient(circle at 40% 28%, #123840, #050d10);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.pt-hex-foto img { width: 100%; height: 100%; object-fit: cover; max-width: none; }
+.pt-inicial {
+  font-family: var(--font-title);
+  font-size: 2.3rem;
+  color: var(--pt-feixe2);
+  text-shadow: 0 0 14px var(--pt-feixe);
+}
+/* SELO HEXAGONAL DO RANK.
+   Encostado no vértice inferior-direito do hexágono da foto: as duas
+   formas conversam e viram um conjunto só, em vez de "uma foto com um
+   distintivo pendurado". A posição em % acompanha o tamanho do retrato. */
+.pt-selo-hex {
+  position: absolute;
+  right: 20%; bottom: 12%;
+  z-index: 4;
+  width: 48px; height: 48px;
+  display: inline-flex; align-items: center; justify-content: center;
+  line-height: 0;
+  filter: drop-shadow(0 3px 6px rgba(0,0,0,.8));
+}
+.pt-selo-hex svg { position: absolute; inset: 0; max-width: none; }
+.pt-selo-letra {
+  position: relative; z-index: 2;
+  font-family: var(--font-title);
+  font-size: 1.15rem; font-weight: 700; line-height: 1;
+  text-shadow:
+    -1px -1px 0 rgba(0,0,0,.9), 1px -1px 0 rgba(0,0,0,.9),
+    -1px  1px 0 rgba(0,0,0,.9), 1px  1px 0 rgba(0,0,0,.9),
+    0 0 10px currentColor;
+}
+
+/* ── Identidade ──────────────────────────────────────────── */
+.pt-identidade { min-width: 0; }
+.pt-nome {
+  font-family: var(--font-title);
+  font-size: 1.9rem; letter-spacing: .045em; line-height: 1.05;
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(0,0,0,.7);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pt-titulo {
+  margin-top: .12rem;
+  font-size: .82rem; font-style: italic;
+  color: color-mix(in srgb, var(--pt-feixe2) 70%, transparent);
+}
+.pt-chips { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: .6rem; }
+.pt-chip {
+  padding: .22rem .7rem;
+  border-radius: 100px;
+  font-family: var(--font-section);
+  font-size: .6rem; font-weight: 700; letter-spacing: .1em;
+  white-space: nowrap;
+}
+.pt-chip-rank {
+  color: var(--pt-feixe2);
+  border: 1px solid color-mix(in srgb, var(--pt-feixe) 55%, transparent);
+  background: color-mix(in srgb, var(--pt-feixe) 10%, transparent);
+}
+.pt-chip-cargo {
+  color: #fde68a;
+  border: 1px solid rgba(251,191,36,.5);
+  background: rgba(251,191,36,.1);
+}
+
+/* ── Núcleo: sigilo + feixe de XP + relíquias ────────────── */
+.pt-nucleo { 
+  min-width: 0; 
+  position: relative;
+}
+/* ALINHAMENTO. O emblema e a barra precisam da MESMA linha de centro.
+   O que desalinhava: o bloco da direita tem o número do XP em cima, o que
+   empurra a barra para baixo enquanto o emblema fica centrado no conjunto.
+   Agora o número flutua sobre a barra (posição absoluta), então os dois
+   itens do flex têm a mesma altura útil e o `center` funciona. */
+.pt-linha-xp {
+  display: flex;
+  align-items: center;
+  gap: .3rem;          /* colada: a insígnia guarda a barra, não a observa */
+}
+/* O escudo é SVG puro, sem moldura: a peça já traz corpo, bisel, louros e
+   coroa. A sombra vai no `drop-shadow` (e não num pseudo-elemento) porque
+   precisa seguir a silhueta dos louros e das asas, que escapam do escudo. */
+.pt-sigilo {
+  flex: none;
+  display: flex; align-items: center; justify-content: center;
+  line-height: 0;
+  filter: drop-shadow(0 4px 7px rgba(0,0,0,.75));
+}
+.pt-sigilo svg { max-width: none; display: block; }
+.pt-rank-fallback {
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  font-family: var(--font-title); font-size: 1.1rem;
+  color: var(--pt-feixe2);
+  border: 2px solid color-mix(in srgb, var(--pt-feixe) 50%, transparent);
+}
+
+.pt-feixe-caixa { flex: 1; min-width: 0; position: relative; }
+.pt-xp-num {
+  position: absolute; right: 2px; bottom: 100%;
+  margin-bottom: -2px;
+  font-family: 'Orbitron', monospace;
+  font-size: .66rem;
+  color: color-mix(in srgb, var(--pt-feixe2) 78%, transparent);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 4px rgba(0,0,0,.9);
+  pointer-events: none;
+}
+
+/* ══════════════════════════════════════════════════════════
+   A BARRA DE XP — como o brilho circular é feito
+
+   O pedido era "aquele efeito circular em volta da barra". Ele vem de
+   TRÊS camadas empilhadas, e nenhuma delas sozinha resolve:
+
+   1. CALHA (`.pt-calha`) — um envelope maior que a barra, com
+      `overflow: visible`. Sem ele o halo seria recortado na altura de
+      9px da barra e viraria um retângulo aceso. O halo precisa de espaço
+      para escapar, e o espaço é este.
+
+   2. HALO (`.pt-feixe-halo`) — um `radial-gradient` de 90px CENTRADO NA
+      PONTA do preenchimento, desenhado fora dos limites da barra. É ele o
+      "círculo" — a luz que a energia joga no ambiente ao redor. Como fica
+      preso ao fim do `.pt-feixe-fill`, ele ANDA junto com o XP.
+
+   3. LUSTRO (`.pt-feixe-lustro`) — um brilho que atravessa o interior do
+      feixe, da esquerda para a direita, em laço. É o que dá a sensação de
+      corrente passando dentro do tubo em vez de tinta parada.
+
+   A ordem importa: halo por baixo (z-index 0), lustro dentro (1), ponta
+   por cima (2). Invertida, a ponta some no meio do borrão.
+   ══════════════════════════════════════════════════════════ */
+/* A barra é SVG (ver `_barraXP` em estandarte.js). O CSS só a posiciona e
+   anima — o brilho vive dentro do SVG, onde nenhum `overflow` alcança. */
+.pt-barra {
+  display: block;
+  width: 100%;
+  max-width: none;
+  /* Margem vertical negativa recolhe o excesso do viewBox alto.
+     A margem horizontal foi zerada porque o escudo foi removido. */
+  margin: -23px 0;
+  overflow: visible;
+}
+
+/* A faísca que corria o CONTORNO da barra foi removida: ao lado da fita
+   orbitando, as duas disputavam a mesma leitura e o conjunto virava
+   ruído. Efeito bom fica pior encostado em outro parecido. */
+
+/* ══════════════════════════════════════════════════════════
+   A FITA QUE ORBITA A BARRA
+
+   O desenho é uma onda senoidal ao longo do trecho aceso, desenhada DUAS
+   vezes com meia fase de diferença: uma antes do trilho, outra depois.
+   A de trás fica encoberta pela barra; a da frente passa por cima.
+
+   Não há 3D nisso — é oclusão pura. Duas cópias e uma ordem de desenho.
+   Animar as duas em sentidos opostos completa a ilusão: onde uma sobe, a
+   outra desce, e o olho lê como uma única fita dando a volta.
+   ══════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════
+   A LINHA DA BARRA — contínua, entrelaçada, respirando
+
+   TRÊS MUDANÇAS, e cada uma resolve um defeito que se via na tela:
+
+   1. NÃO É MAIS TRACEJADO. Era `stroke-dashoffset`, que produz uma linha
+      PICOTADA andando. O pedido é uma linha contínua — então o grupo
+      inteiro DESLIZA no eixo X, exatamente um comprimento de onda
+      (`--lam`, calculado no JS). Como a onda é periódica, o fim do ciclo
+      coincide com o começo e a emenda não aparece.
+
+   2. ELA PASSA POR TRÁS DE VERDADE. Antes o mesmo caminho inteiro era
+      desenhado duas vezes, e a cópia de trás nunca ficava escondida. Agora
+      a onda é cortada em segmentos de meio período: pares atrás da barra,
+      ímpares na frente. A cada meia volta ela some e reaparece — que é o
+      que uma fita enrolada num cilindro faz.
+
+   3. A OPACIDADE VAI E VEM. O gradiente do traço é FIXO no lugar e a onda
+      desliza por baixo dele, atravessando zonas mais claras e mais
+      apagadas. O brilho pulsa sem que nada pisque.
+
+   As duas camadas usam a MESMA animação e a mesma duração: se
+   divergissem, a linha se partiria em duas na primeira meia volta.
+   ══════════════════════════════════════════════════════════ */
+/* A hélice desliza. As duas camadas usam a MESMA animação e duração: se
+   divergissem, a linha se partiria em duas na primeira meia volta. */
+.pt-onda {
+  animation: pt-deslizar 9s linear infinite;
+}
+
+/* OS TRÊS FEIXES QUE NASCEM DO ESCUDO.
+   Pulsam em tempos diferentes — feixes idênticos e sincronizados parecem
+   um desenho estático de três linhas; defasados, parecem energia
+   chegando em ondas. O de cima e o de baixo são mais tênues que o do
+   meio, que é o que continua na hélice. */
+.pt-feixe-nasce {
+  animation: pt-alimentar 3.2s ease-in-out infinite;
+}
+.pt-feixe-n0 { animation-delay: -.9s; opacity: .55; }
+.pt-feixe-n1 { animation-delay: 0s;   opacity: .95; }
+.pt-feixe-n2 { animation-delay: -1.8s; opacity: .55; }
+@keyframes pt-alimentar {
+  0%, 100% { opacity: .3; }
+  45%      { opacity: .95; }
+}
+@keyframes pt-deslizar {
+  from { transform: translateX(0); }
+  to   { transform: translateX(var(--lam, 200px)); }
+}
+
+/* ══════════════════════════════════════════════════════════
+   O ANEL QUE GIRA EM TORNO DO HEXÁGONO — o do PROJETO
+
+   Eu havia inventado um contorno com `stroke-dasharray` correndo. Estava
+   errado: o projeto já tem esse efeito em `.hunter-hex-ring`
+   (css/status-window.css), e a técnica é outra —
+
+     conic-gradient com dois arcos claros
+     + clip-path hexagonal (levemente MAIOR que a foto, para o anel
+       aparecer nas bordas)
+     + rotação contínua + blur(1px)
+
+   Traço percorrendo contorno é uma linha viajando. Cone girando é LUZ
+   VARRENDO a superfície. A segunda é a linguagem do app, e a diferença
+   entre as duas se vê de imediato.
+
+   As medidas em % (e não px) fazem o anel acompanhar o tamanho do
+   hexágono sem recalibrar nada.
+   ══════════════════════════════════════════════════════════ */
+.pt-anel {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 108px; height: 122px;      /* ~6% maior que o hexágono da foto */
+  transform: translate(-50%, -50%);
+  z-index: 1;                       /* atrás da foto (2), na frente da aura (0) */
+  pointer-events: none;
+  background: conic-gradient(from 0deg,
+    transparent 0%, var(--pt-rank, #a855f7) 12%, transparent 30%,
+    transparent 50%, var(--pt-rank, #a855f7) 62%, transparent 80%);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  filter: blur(1px);
+  animation: pt-anel-girar 6s linear infinite;
+}
+@keyframes pt-anel-girar { to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+/* A centelha na cabeça do feixe respira — é o único ponto que pulsa. */
+.pt-centelha { animation: pt-respirar 1.9s ease-in-out infinite; transform-origin: center; }
+@keyframes pt-respirar {
+  0%, 100% { opacity: 1;  r: 4.5; }
+  50%      { opacity: .55; r: 3.2; }
+}
+
+/* AS RELÍQUIAS — as badges do altar. Elas é que precisavam crescer (li
+   errado da primeira vez e aumentei os cristais). São o acervo do hunter:
+   merecem tamanho e o mesmo assentamento das pedras. */
+/* ALINHAMENTO DAS RELÍQUIAS COM A BARRA.
+   Antes era um `padding-left` chutado, que só acertava por acaso e
+   desalinhava assim que o brasão mudava de tamanho. Agora a fileira repete
+   a MESMA estrutura da linha do XP — um vão do tamanho do brasão, o mesmo
+   gap, e a fila ocupando o resto. Quando o brasão cresce, o vão cresce
+   junto e o alinhamento se mantém sozinho. */
+.pt-reliquias {
+  display: flex; align-items: center; justify-content: center;
+  gap: .3rem;
+  
+  /* Retiramos as relíquias do fluxo normal para que a Barra de XP
+     seja o único elemento que o CSS Grid leva em conta ao centralizar 
+     verticalmente. Assim a barra fica no centro exato do Estandarte. */
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: -0.5rem; /* Ajuste fino para aproximá-las da barra */
+}
+.pt-reliquias-vao {
+  flex: none;
+  width: 72px;             /* = tamanho do brasão em .pt-sigilo */
+}
+.pt-reliquias-fila {
+  flex: none;
+  display: flex; align-items: center; justify-content: center; gap: .7rem;
+  flex-wrap: wrap;
+}
+.pt-reliquias .est-reliquia {
+  position: relative;
+  display: inline-flex;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,.7));
+}
+/* A mesma elipse borrada no chão que assenta as pedras. Sem ela a
+   relíquia flutua; com ela, pousa. */
+.pt-reliquias .est-reliquia::after {
+  content: '';
+  position: absolute;
+  left: 50%; bottom: -6px;
+  width: 60%; height: 8px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: rgba(0,0,0,.55);
+  filter: blur(4px);
+  z-index: -1;
+  pointer-events: none;
+}
+.pt-vazio {
+  font-size: .64rem; font-style: italic;
+  color: color-mix(in srgb, var(--pt-feixe2) 45%, transparent);
+}
+
+/* ── Pedras de estatística (js/gemas.js) ───────────────────
+   ALINHADAS À BARRA: o rótulo sai do fluxo (absoluto), então a altura útil
+   da coluna passa a ser só a da pedra — e o `align-items: center` da grade
+   coloca as três na mesma linha de centro do feixe de XP. Com o rótulo no
+   fluxo, ele empurrava as pedras para cima. */
+.pt-gemas { display: flex; gap: .55rem; align-items: center; }
+.pt-gema {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  padding-bottom: 0;
+}
+/* SOMBRA PROJETADA embaixo: uma elipse borrada no chão. É ela que tira a
+   pedra da sensação de adesivo colado e a assenta sobre a superfície. */
+.pt-gema::after {
+  content: '';
+  position: absolute;
+  left: 50%; bottom: -7px;
+  width: 62%; height: 9px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: rgba(0,0,0,.6);
+  filter: blur(4px);
+  z-index: -1;
+  pointer-events: none;
+}
+.pt-gema-rot {
+  position: absolute;
+  top: 100%; left: 50%;
+  transform: translateX(-50%);
+  margin-top: 2px;
+  font-family: var(--font-section);
+  font-size: .47rem; letter-spacing: .14em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--pt-feixe2) 60%, transparent);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.pt-gema-fallback {
+  width: 54px; height: 54px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.14);
+}
+.pt-gema-val {
+  font-family: 'Orbitron', monospace;
+  font-size: .96rem; font-weight: 700; color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── A pedra em si ───────────────────────────────────────────
+   O valor fica SOBRE a gema, centrado. `pointer-events:none` para o número
+   não roubar o tooltip da pedra. E `max-width:none` no SVG, sempre: a
+   regra global do projeto colapsa desenho sem tamanho próprio. */
+.gema-slot {
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center;
+  line-height: 0;
+}
+.gema-slot svg { max-width: none; display: block; }
+.gema-valor {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Orbitron', monospace;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  text-shadow: 0 1px 3px rgba(0,0,0,.9), 0 0 8px rgba(0,0,0,.6);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+/* O EMBLEMA NÃO GIRA. Pedido do Arquiteto, e ele tem razão: peça que gira
+   é indicador de carregando, não insígnia. Insígnia fica parada e é
+   olhada. O que ela ganha é lustro e profundidade, desenhados no SVG. */
+.gema-rank { display: block; }
+
+@media (max-width: 900px) {
+  .pt-conteudo { grid-template-columns: auto 1fr; gap: 1.1rem; }
+  .pt-nucleo   { grid-column: 1 / -1; }
+  .pt-gemas    { grid-column: 1 / -1; justify-content: space-around; width: 100%; }
+  .pt-nome     { font-size: 1.4rem; }
+  .pt-reliquias{ padding-left: 0; }
+}
+
+/* ── Vitrine ─────────────────────────────────────────────── */
+.est-overlay {
+  position: fixed; inset: 0; z-index: 9600;
+  display: flex; align-items: center; justify-content: center;
+  padding: 1.2rem;
+  background: rgba(3, 3, 8, .86);
+  backdrop-filter: blur(7px);
+  animation: est-entrar .2s ease;
+}
+@keyframes est-entrar { from { opacity: 0 } to { opacity: 1 } }
+
+.est-painel {
+  width: min(1080px, 100%);
+  max-height: 92vh;
+  display: flex; flex-direction: column;
+  background: linear-gradient(170deg, #0c0a15, #06060c 65%);
+  border: 1px solid rgba(212, 169, 74, .3);
+  border-radius: 16px;
+  box-shadow: 0 0 60px rgba(0, 0, 0, .8);
+  overflow: hidden;
+}
+.est-topo {
+  display: flex; align-items: center; gap: .8rem;
+  padding: 1rem 1.3rem .85rem;
+  border-bottom: 1px solid rgba(212, 169, 74, .16);
+}
+.est-topo > div { flex: 1; min-width: 0; }
+.est-topo h2 {
+  margin: 0; font-family: var(--font-title);
+  font-size: 1rem; color: #e8c877; font-weight: 600; letter-spacing: .04em;
+}
+.est-topo p {
+  margin: .2rem 0 0;
+  font-family: var(--font-section);
+  font-size: .53rem; letter-spacing: .16em; color: var(--text-muted);
+}
+.est-x {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); font-size: 1rem; padding: .3rem .5rem;
+  border-radius: 6px; transition: all .16s;
+}
+.est-x:hover { color: #f87171; background: rgba(239, 68, 68, .1); }
+
+.est-palco {
+  flex: 1; overflow: auto;
+  padding: 2.2rem 1.6rem 1.4rem;
+  background:
+    radial-gradient(80% 120% at 50% 0%, rgba(212, 169, 74, .06), transparent 60%),
+    repeating-linear-gradient(45deg, rgba(255,255,255,.012) 0 2px, transparent 2px 8px);
+}
+
+/* ══════════════════════════════════════════════════════════
+   O ESTANDARTE
+   ══════════════════════════════════════════════════════════ */
+.est-conjunto {
+  position: relative;
+  max-width: 940px;
+  margin: 0 auto;
+  transform-origin: top center;
+}
+
+/* ── Trilho de metal ─────────────────────────────────────
+   Os dois anéis nas pontas são o que faz o estandarte parecer PENDURADO
+   em vez de colado na tela. Sem eles, é um retângulo com uma barra em cima. */
+.est-trilho {
+  position: relative; z-index: 3;
+  display: flex; align-items: center;
+  margin: 0 -10px -3px;
+}
+.est-barra {
+  flex: 1; height: 9px;
+  border-radius: 5px;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--est-trilho) 55%, #cbb98a),
+    var(--est-trilho) 45%,
+    color-mix(in srgb, var(--est-trilho) 70%, #000));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 2px 8px rgba(0,0,0,.6);
+  position: relative; overflow: hidden;
+}
+/* Um brilho lento atravessa o metal — a única luz que se move na peça. */
+.est-barra::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.5) 50%, transparent 65%);
+  background-size: 260% 100%;
+  animation: est-brilho 6s linear infinite;
+}
+@keyframes est-brilho {
+  from { background-position: 200% 0; }
+  to   { background-position: -60% 0; }
+}
+.est-anel {
+  width: 15px; height: 15px; flex: none;
+  border-radius: 50%;
+  border: 3px solid var(--est-trilho);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 2px 6px rgba(0,0,0,.6);
+}
+.est-anel.esq { margin-right: -4px; }
+.est-anel.dir { margin-left: -4px; }
+
+/* ── A flâmula (o pano) ──────────────────────────────────── */
+.est-flamula {
+  position: relative;
+  padding: 1.4rem 1.6rem 1.5rem;
+  background:
+    linear-gradient(160deg, var(--est-pano-alto), var(--est-pano) 45%, var(--est-pano2));
+  border-left: 1px solid rgba(255,255,255,.05);
+  border-right: 1px solid rgba(255,255,255,.05);
+  box-shadow:
+    inset 0 14px 26px rgba(0,0,0,.55),      /* sombra sob o trilho */
+    inset 22px 0 34px -22px rgba(0,0,0,.7), /* dobra à esquerda */
+    inset -22px 0 34px -22px rgba(0,0,0,.7),/* dobra à direita */
+    0 22px 44px rgba(0,0,0,.6);
+  color: var(--est-fio);
+}
+/* Balanço: o pano oscila devagar a partir do trilho. Uma animação só, no
+   elemento inteiro — duas no mesmo elemento se cancelam nesta base. */
+.est-balanco { animation: est-balancar 7s ease-in-out infinite; transform-origin: top center; }
+@keyframes est-balancar {
+  0%, 100% { transform: rotate(-.22deg); }
+  50%      { transform: rotate(.22deg); }
+}
+
+/* Trama do tecido — linhas finíssimas cruzadas. É o que impede o pano de
+   parecer um degradê liso. */
+.est-trama {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  opacity: .5;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.028) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(0,0,0,.22) 0 1px, transparent 1px 4px);
+}
+
+.est-brasao {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%; max-width: none;
+  color: var(--est-fio);
+  opacity: .16;
+  pointer-events: none;
+}
+
+/* Bainha rasgada — recorta a base do pano. É a maior diferença de
+   silhueta em relação a um cartão retangular, e silhueta é o que se
+   reconhece primeiro, antes de qualquer cor. */
+.est-bainha {
+  position: absolute; left: 0; right: 0; bottom: -1px;
+  width: 100%; height: 14px; max-width: none;
+  display: block;
+  fill: var(--bg-card, #0a0a12);
+  filter: drop-shadow(0 -2px 3px rgba(0,0,0,.5));
+}
+.est-flamula:not(.est-rasgado) { border-bottom: 2px solid color-mix(in srgb, var(--est-fio) 35%, transparent); }
+
+/* ── Conteúdo ────────────────────────────────────────────── */
+.est-conteudo {
+  position: relative; z-index: 2;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 1.6rem;
+}
+
+/* ── Retrato + selo de cera ──────────────────────────────── */
+.est-retrato { position: relative; flex: none; }
+.est-moldura {
+  width: 92px; height: 92px;
+  padding: 4px;
+  border-radius: 50%;
+  background: conic-gradient(from 140deg,
+    var(--est-fio), color-mix(in srgb, var(--est-fio) 25%, #000),
+    var(--est-fio-alto), color-mix(in srgb, var(--est-fio) 25%, #000), var(--est-fio));
+  box-shadow: 0 0 18px var(--est-luz), inset 0 0 8px rgba(0,0,0,.6);
+}
+.est-foto {
+  width: 100%; height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  background: radial-gradient(circle at 40% 30%, #2a2440, #0b0812);
+  display: flex; align-items: center; justify-content: center;
+}
+.est-foto img { width: 100%; height: 100%; object-fit: cover; max-width: none; }
+.est-inicial {
+  font-family: var(--font-title);
+  font-size: 2.1rem;
+  color: var(--est-fio-alto);
+  text-shadow: 0 0 12px var(--est-luz);
+}
+/* O selo de cera: pressionado no canto do retrato, com a letra em relevo.
+   É a peça que carrega a cor do RANK — a única coisa do hunter que não
+   pertence ao tecido. */
+/* O SELO DE CERA — a letra do rank estava sumindo.
+
+   Duas causas somadas: ele tinha 40px (a letra de 1rem mal cabia) e
+   ficava na mesma camada da aura, que agora é grande e passava por cima.
+   Cresceu para 52px, ganhou `z-index: 5` — acima da aura (0), da moldura
+   (2) e de qualquer coisa que venha depois — e a letra ganhou contorno
+   escuro para se destacar de qualquer cor de cera. */
+.est-selo {
+  position: absolute; right: 12px; bottom: 14px;
+  z-index: 5;
+  width: 52px; height: 52px;
+  display: flex; align-items: center; justify-content: center;
+  filter: drop-shadow(0 3px 6px rgba(0,0,0,.85));
+}
+.est-selo svg { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; }
+.est-cera-borda {
+  fill: var(--est-cera);
+  stroke: var(--est-cera-alto);
+  stroke-width: 1.4;
+}
+.est-letra {
+  position: relative; z-index: 2;
+  font-family: var(--font-title);
+  font-size: 1.5rem; font-weight: 700; line-height: 1;
+  color: var(--est-rank);
+  /* Contorno escuro por fora + glow por dentro: legível sobre cera
+     vermelha, azul ou preta, sem depender da cor de baixo. */
+  text-shadow:
+    -1px -1px 0 rgba(0,0,0,.9), 1px -1px 0 rgba(0,0,0,.9),
+    -1px  1px 0 rgba(0,0,0,.9), 1px  1px 0 rgba(0,0,0,.9),
+    0 0 12px var(--est-rank);
+}
+
+/* ── Nome e título, em fio de ouro ───────────────────────── */
+.est-centro { min-width: 0; }
+.est-nome {
+  font-family: var(--font-title);
+  font-size: 1.85rem;
+  letter-spacing: .06em;
+  line-height: 1.1;
+  color: var(--est-fio-alto);
+  /* Bordado: um alto e um baixo-relevo, sem brilho de neon. Fio refletindo
+     luz é diferente de LED aceso — é o que separa herança de tecnologia. */
+  text-shadow:
+    0 1px 0 rgba(0,0,0,.85),
+    0 -1px 0 color-mix(in srgb, var(--est-fio) 40%, transparent),
+    0 0 22px var(--est-luz);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.est-titulo {
+  margin-top: .1rem;
+  font-family: var(--font-section);
+  font-size: .68rem; letter-spacing: .16em;
+  color: color-mix(in srgb, var(--est-fio) 70%, transparent);
+  font-style: italic;
+}
+
+/* ── Fita de XP ──────────────────────────────────────────── */
+.est-fita {
+  position: relative;
+  margin-top: .8rem;
+  display: flex; align-items: stretch;
+}
+.est-fita-corpo {
+  position: relative;
+  flex: 1;
+  height: 21px;
+  border-radius: 2px;
+  background: rgba(0,0,0,.55);
+  border-top: 1px solid rgba(255,255,255,.09);
+  border-bottom: 1px solid rgba(0,0,0,.7);
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.est-fita-preenche {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--est-fio) 40%, transparent),
+    var(--est-fio));
+  box-shadow: 0 0 14px var(--est-luz);
+  transition: width .5s cubic-bezier(.22,.9,.3,1);
+}
+.est-fita-txt {
+  position: relative; z-index: 2;
+  font-family: 'Orbitron', monospace;
+  font-size: .64rem; letter-spacing: .06em;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,.95);
+  font-variant-numeric: tabular-nums;
+}
+/* As caudas em V — o que faz virar FITA e não barra de progresso. */
+.est-fita-cauda {
+  width: 15px; flex: none;
+  background: color-mix(in srgb, var(--est-fio) 55%, #000);
+}
+.est-fita-cauda.esq { clip-path: polygon(100% 0, 100% 100%, 0 100%, 40% 50%, 0 0); }
+.est-fita-cauda.dir { clip-path: polygon(0 0, 100% 0, 60% 50%, 100% 100%, 0 100%); }
+
+/* ── Medalhas penduradas ─────────────────────────────────── */
+.est-medalhas { display: flex; gap: 1rem; align-items: flex-start; }
+.est-medalha {
+  display: flex; flex-direction: column; align-items: center;
+  padding-top: 10px;
+  position: relative;
+}
+/* A corrente. É o detalhe que vende a ideia: sem ela são três caixinhas
+   de estatística com borda. */
+.est-corrente {
+  position: absolute; top: -2px;
+  width: 2px; height: 14px;
+  background: repeating-linear-gradient(180deg,
+    var(--est-fio) 0 3px, transparent 3px 5px);
+  opacity: .7;
+}
+.est-disco {
+  width: 52px; height: 52px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 30%,
+    color-mix(in srgb, var(--est-fio) 34%, #000), #08060e 70%);
+  border: 2px solid color-mix(in srgb, var(--est-fio) 60%, transparent);
+  box-shadow: inset 0 2px 5px rgba(255,255,255,.14), 0 3px 8px rgba(0,0,0,.7);
+}
+.est-valor {
+  font-family: 'Orbitron', monospace;
+  font-size: .92rem; font-weight: 700;
+  color: var(--est-fio-alto);
+  text-shadow: 0 0 9px var(--est-luz);
+  font-variant-numeric: tabular-nums;
+}
+.est-med-rot {
+  margin-top: .3rem;
+  font-family: var(--font-section);
+  font-size: .5rem; letter-spacing: .16em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--est-fio) 62%, transparent);
+}
+/* Cada medalha puxa um pouco para a própria cor — sem sair do tecido. */
+.est-med-mana  .est-disco { border-color: rgba(56,189,248,.5); }
+.est-med-mana  .est-valor { color: #7dd3fc; text-shadow: 0 0 9px rgba(56,189,248,.5); }
+.est-med-chama .est-disco { border-color: rgba(249,115,22,.5); }
+.est-med-chama .est-valor { color: #fdba74; text-shadow: 0 0 9px rgba(249,115,22,.5); }
+
+/* ── Controles da vitrine ────────────────────────────────── */
+.est-controles {
+  display: flex; flex-wrap: wrap; gap: 1.4rem;
+  padding: 1rem 1.4rem;
+  border-top: 1px solid rgba(212,169,74,.14);
+  background: rgba(0,0,0,.3);
+}
+.est-grupo { display: flex; flex-direction: column; gap: .4rem; }
+.est-rot {
+  font-family: var(--font-section);
+  font-size: .52rem; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--text-muted);
+}
+.est-ops { display: flex; gap: .4rem; flex-wrap: wrap; }
+.est-op {
+  display: inline-flex; align-items: center; gap: .4rem;
+  padding: .4rem .75rem;
+  font-family: var(--font-section);
+  font-size: .62rem; font-weight: 700; letter-spacing: .06em;
+  color: var(--text-muted);
+  background: rgba(255,255,255,.02);
+  border: 1px solid rgba(148,163,184,.22);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all .16s;
+}
+.est-op:hover { color: var(--text-primary); border-color: rgba(212,169,74,.45); }
+.est-op.on {
+  color: #f4d98a;
+  background: rgba(212,169,74,.12);
+  border-color: rgba(212,169,74,.6);
+  box-shadow: 0 0 10px rgba(212,169,74,.2);
+}
+.est-swatch {
+  width: 13px; height: 13px; border-radius: 3px; flex: none;
+  background: var(--amostra);
+  border: 1px solid var(--amostra-fio);
+}
+
+/* Seletores de aura e rank — é o que faz a vitrine SERVIR para testar.
+   Sem eles ela mostrava o banner e nada mais; não dava para ver a aura de
+   outro cargo nem como o selo fica num S-Rank. */
+.est-sel {
+  padding: .4rem .6rem;
+  font-family: var(--font-section);
+  font-size: .64rem;
+  color: var(--text-primary);
+  background: rgba(0,0,0,.45);
+  border: 1px solid rgba(148,163,184,.26);
+  border-radius: 8px;
+  cursor: pointer;
+  min-width: 190px;
+}
+.est-sel:focus { outline: none; border-color: rgba(212,169,74,.6); }
+
+/* Troca de versão, no cabeçalho */
+.est-versoes { display: flex; gap: .35rem; }
+.est-v {
+  padding: .38rem .8rem;
+  font-family: var(--font-section);
+  font-size: .6rem; font-weight: 700; letter-spacing: .08em;
+  color: var(--text-muted);
+  background: rgba(255,255,255,.02);
+  border: 1px solid rgba(148,163,184,.22);
+  border-radius: 8px; cursor: pointer; transition: all .16s; white-space: nowrap;
+}
+.est-v:hover { color: var(--text-primary); }
+.est-v.on {
+  color: #7dd3fc;
+  background: rgba(56,189,248,.12);
+  border-color: rgba(56,189,248,.55);
+  box-shadow: 0 0 10px rgba(56,189,248,.2);
+}
+
+/* Relíquias reais dentro do V1. `max-width:none` pela armadilha global de
+   sempre — `svg { max-width:100% }` colapsa medalha sem largura própria. */
+.est-reliquias { display: flex; gap: .4rem; margin-top: .6rem; flex-wrap: wrap; }
+.est-reliquia, .pt-banner .est-reliquia { line-height: 0; }
+.est-reliquia svg, .pt-reliquias svg { max-width: none; }
+
+/* ══════════════════════════════════════════════════════════
+   A AURA — estava pequena demais nos dois banners
+
+   `Auras.bloco` posiciona em absoluto no centro do PAI. O pai era do
+   tamanho da foto, então a aura nascia do tamanho da foto: em vez de
+   envolver o retrato, ela ficava atrás dele, quase toda escondida.
+
+   Correção em duas partes, e as duas são necessárias:
+     • o retrato ganha caixa MAIOR que a foto, com a foto centrada — é o
+       espaço em que a aura tem para existir;
+     • `overflow: visible` em toda a cadeia, senão o banner recorta o
+       excedente e volta ao mesmo problema.
+   ══════════════════════════════════════════════════════════ */
+.est-retrato, .pt-retrato {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  overflow: visible;
+}
+.est-retrato { width: 150px; height: 150px; }
+.pt-retrato  { width: 168px; height: 168px; }
+.est-retrato .aura-wrap, .pt-retrato .aura-wrap { z-index: 0; }
+.est-retrato .aura-wrap svg, .pt-retrato .aura-wrap svg { max-width: none; }
+.est-moldura, .pt-hex { position: relative; z-index: 2; }
+/* O conteúdo não pode recortar a aura que transborda do retrato. */
+.pt-conteudo, .est-conteudo { overflow: visible; }
+
+.est-rodape {
+  display: flex; align-items: center; gap: .8rem;
+  padding: .8rem 1.4rem;
+  border-top: 1px solid rgba(148,163,184,.12);
+}
+.est-rodape span {
+  flex: 1;
+  font-size: .66rem; color: var(--text-dim);
+}
+.est-btn {
+  padding: .45rem 1rem;
+  font-family: var(--font-section);
+  font-size: .64rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: #f4d98a;
+  background: rgba(212,169,74,.1);
+  border: 1px solid rgba(212,169,74,.42);
+  border-radius: 8px; cursor: pointer; transition: all .17s;
+}
+.est-btn:hover { background: rgba(212,169,74,.22); }
+
+/* ── Estreito ────────────────────────────────────────────── */
+@media (max-width: 760px) {
+  .est-conteudo { grid-template-columns: auto 1fr; gap: 1rem; }
+  .est-medalhas { grid-column: 1 / -1; justify-content: space-around; width: 100%; }
+  .est-nome { font-size: 1.35rem; }
+  .est-moldura { width: 68px; height: 68px; }
+  .est-controles { gap: 1rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .est-balanco, .est-barra::after { animation: none !important; }
+}
