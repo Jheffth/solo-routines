@@ -622,6 +622,169 @@ const ArquitetoConsole = {
     }
   },
 
+  /* Banner Premium — preview de melhorias visuais na Forja de Testes.
+     Toggle: chama de novo para remover tudo. */
+  bannerMelhorado() {
+    const janela = document.getElementById('hunter-card');
+    if (!janela) { SoloDialog?.toast?.('Abra o Dashboard primeiro', 'warn'); return; }
+
+    const STYLE_ID = 'arq-banner-premium-css';
+    const FLAG     = 'bannerPremium';
+
+    // ---- TOGGLE OFF --------------------------------------------------------
+    if (janela.dataset[FLAG]) {
+      delete janela.dataset[FLAG];
+      document.getElementById(STYLE_ID)?.remove();
+      // Restaura estilos que alteramos inline
+      const nome   = document.getElementById('dash-nome');
+      const titulo = document.getElementById('dash-titulo');
+      const ring   = janela.querySelector('.hunter-hex-ring');
+      const wrap   = janela.querySelector('.hunter-hex-wrap');
+      if (nome)   { nome.style.textShadow = ''; nome.style.background = ''; nome.style.webkitBackgroundClip = ''; nome.style.webkitTextFillColor = ''; nome.style.backgroundClip = ''; }
+      if (titulo) { titulo.style.cssText = ''; }
+      if (ring)   { ring.style.cssText   = ''; }
+      if (wrap)   { wrap.style.filter    = ''; }
+      janela.querySelector('#arq-premium-badge')?.remove();
+      janela.classList.remove(FLAG);
+      SoloDialog?.toast?.('Banner Premium removido', 'info');
+      return;
+    }
+
+    // ---- TOGGLE ON ---------------------------------------------------------
+    janela.dataset[FLAG] = '1';
+
+    // -- CSS injetado (não toca nos arquivos reais) --
+    const css = `
+      /* === BANNER PREMIUM PREVIEW (Forja de Testes) === */
+
+      /* 1. Brilho extra no container: vinheta mais densa na cor do rank */
+      #hunter-card.${FLAG}::after {
+        background: radial-gradient(
+          110% 160% at 10% 25%,
+          var(--rank-aura, rgba(124,58,237,.2)) 0%,
+          transparent 58%
+        );
+      }
+
+      /* 2. Anel do hexágono mais vivo: segundo layer pulsante */
+      #hunter-card.${FLAG} .hunter-hex-ring {
+        filter: blur(.5px) drop-shadow(0 0 6px var(--rank-cor, #a855f7));
+        opacity: .95;
+      }
+
+      /* 3. Hex-wrap com aura radial sutil ao redor */
+      #hunter-card.${FLAG} .hunter-hex-wrap::after {
+        content: '';
+        position: absolute;
+        inset: -8px;
+        border-radius: 50%;
+        background: radial-gradient(circle, var(--rank-cor, #a855f7) 0%, transparent 72%);
+        opacity: .12;
+        pointer-events: none;
+        animation: hw-aura-pulsa 3s ease-in-out infinite;
+      }
+      @keyframes hw-aura-pulsa {
+        0%,100% { opacity: .10; transform: scale(.95); }
+        50%     { opacity: .22; transform: scale(1.05); }
+      }
+
+      /* 4. Nome mais presente */
+      #hunter-card.${FLAG} .hunter-nome {
+        text-shadow:
+          0 0 28px rgba(168,85,247,.6),
+          0 0 6px  rgba(255,255,255,.15),
+          0 2px 4px rgba(0,0,0,.5);
+        letter-spacing: .09em;
+      }
+
+      /* 5. Título em gradiente dourado */
+      #hunter-card.${FLAG} .hunter-titulo {
+        background: linear-gradient(90deg, #fbbf24 20%, #f97316 80%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-style: italic;
+        font-weight: 600;
+        filter: drop-shadow(0 0 6px rgba(251,191,36,.35));
+      }
+
+      /* 6. Bordas dos cristais mais brilhantes */
+      #hunter-card.${FLAG} .cristal-nivel  .cristal-gema { border-color: rgba(168,85,247,.8);  box-shadow: 0 0 14px rgba(168,85,247,.35); }
+      #hunter-card.${FLAG} .cristal-moedas .cristal-gema { border-color: rgba(251,191,36,.8);  box-shadow: 0 0 14px rgba(251,191,36,.35); }
+      #hunter-card.${FLAG} .cristal-streak .cristal-gema { border-color: rgba(249,115,22,.8);  box-shadow: 0 0 14px rgba(249,115,22,.35); }
+
+      /* 7. Barra de XP: trilho com borda mais visível + fill mais brilhante */
+      #hunter-card.${FLAG} .hunter-xp-track {
+        border-color: rgba(124,58,237,.55);
+        box-shadow: 0 0 8px rgba(124,58,237,.15) inset;
+      }
+      #hunter-card.${FLAG} .hunter-xp-fill {
+        box-shadow: 0 0 22px rgba(168,85,247,.9);
+      }
+
+      /* 8. Pin de XP: ponto de partida do nível atual */
+      #hunter-card.${FLAG} .hunter-xp-track::before {
+        content: '';
+        position: absolute;
+        left: 1px;
+        top: -2px;
+        bottom: -2px;
+        width: 2px;
+        background: rgba(168,85,247,.5);
+        border-radius: 2px;
+        z-index: 2;
+      }
+
+      /* 9. Badges com glow na cor do rank */
+      #hunter-card.${FLAG} #dash-rank-badge span:first-child {
+        box-shadow: 0 0 10px var(--rank-cor, #a855f7)44;
+        text-shadow: 0 0 10px var(--rank-cor, #a855f7);
+      }
+
+      /* 10. Medalhas do relicário ligeiramente maiores */
+      #hunter-card.${FLAG} .hunter-reliquia svg {
+        width: 42px !important;
+        height: 42px !important;
+      }
+
+      /* 11. Seló do rank com glow mais intenso */
+      #hunter-card.${FLAG} .hunter-hex-rank {
+        box-shadow: 0 0 14px var(--rank-cor, #a855f7), inset 0 0 6px rgba(0,0,0,.5);
+        font-size: 1.12rem;
+      }
+    `;
+
+    // Injeta a tag <style> com ID controlado
+    const tag = document.createElement('style');
+    tag.id = STYLE_ID;
+    tag.textContent = css;
+    document.head.appendChild(tag);
+
+    // Adiciona a class .bannerPremium ao elemento para os seletores CSS funcionarem
+    janela.classList.add(FLAG);
+
+    // Badge visual de modo preview no canto do card
+    const badge = document.createElement('div');
+    badge.id = 'arq-premium-badge';
+    badge.style.cssText = `
+      position:absolute;top:8px;right:12px;z-index:10;
+      font-family:var(--font-section);font-size:.52rem;font-weight:700;
+      letter-spacing:.14em;color:#fbbf24;
+      background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);
+      padding:.15rem .5rem;border-radius:4px;pointer-events:none;
+    `;
+    badge.textContent = 'PREVIEW PREMIUM';
+    janela.style.position = 'relative';
+    janela.appendChild(badge);
+
+    // Aplica classe de banner cosmético se ainda não tiver
+    if (!janela.dataset.banner) {
+      janela.dataset.banner = 'monarca';
+    }
+
+    SoloDialog?.toast?.('✨ Banner Premium ativo — clique de novo para remover', 'success');
+  },
+
   /* Insígnias com arte própria — fonte única: o registro do ConquistaFX.
      Não duplicar o mapa aqui: badge nova se registra num lugar só. */
   _insignia(codigo, tam = 44) {
@@ -841,6 +1004,7 @@ const ArquitetoConsole = {
           bt('Cartão de Missão',        'cardMissao()',   'roxo'),
           bt('Forja de Missões',        'forjaMissao()',  'roxo'),
           bt('Banner "O Monarca"',      'banner()',       'roxo'),
+          bt('Banner Premium (melhorias)', 'bannerMelhorado()', 'violeta'),
         ])}
 
         ${sec('hunters', '📜 Hunters & Convites', false, [
