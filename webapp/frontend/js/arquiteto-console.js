@@ -695,7 +695,7 @@ const ArquitetoConsole = {
       btn.innerHTML = '✦ AURA';
     }
 
-    const css = \`
+    const css = `
 /* Fundo glass e sombra */
 #hunter-card.bannerPremium {
   background: linear-gradient(135deg, rgba(8,8,12,0.95), rgba(4,4,8,0.98)) !important;
@@ -729,7 +729,7 @@ const ArquitetoConsole = {
 
 @keyframes aq-spin { 100% { transform: translate(-50%,-50%) rotate(360deg); } }
 @keyframes aq-spin-rev { 100% { transform: translate(-50%,-50%) rotate(-360deg); } }
-\`;
+`;
 
     const tag = document.createElement('style');
     tag.id = STYLE_ID;
