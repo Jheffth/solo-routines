@@ -269,9 +269,10 @@ const ForjaTestes = {
       { id: 'som_carimbo',   rotulo: 'Som: carimbo',      desc: '' },
     ],
     interface: [
-      { id: 'cardMissao', rotulo: 'Cartão de Missão',  desc: 'proposta de interface' },
-      { id: 'forjaMissao',rotulo: 'Forja de Missões',  desc: 'proposta de interface' },
-      { id: 'banner',     rotulo: 'Banner "O Monarca"',desc: 'proposta de interface' },
+      { id: 'cardMissao',     rotulo: 'Cartão de Missão',          desc: 'proposta de interface' },
+      { id: 'forjaMissao',    rotulo: 'Forja de Missões',           desc: 'proposta de interface' },
+      { id: 'banner',         rotulo: 'Banner "O Monarca"',         desc: 'proposta de interface' },
+      { id: 'bannerPremium',  rotulo: 'Banner Premium (melhorias)', desc: 'preview — toggle on/off' },
     ],
     hunters: [
       { id: 'convites',      rotulo: 'Convocar hunters',    desc: 'gera convites reais' },
@@ -365,9 +366,10 @@ const ForjaTestes = {
       som_conquista: () => SFX?.play('conquista'),
       som_mensagem:  () => SFX?.play('mensagem'),
       som_carimbo:   () => SFX?.play('carimbo'),
-      cardMissao:  () => A?.cardMissao(),
-      forjaMissao: () => A?.forjaMissao(),
-      banner:      () => A?.banner(),
+      cardMissao:    () => A?.cardMissao(),
+      forjaMissao:   () => A?.forjaMissao(),
+      banner:        () => A?.banner(),
+      bannerPremium: () => A?.bannerMelhorado(),
       convites:    () => A?.convites(),
       comemorativas: () => A?.comemorativas(),
       enviarAura:  () => A?.enviarAura(),
@@ -378,7 +380,7 @@ const ForjaTestes = {
     // Painéis (convites, comemorativas, enviar aura) precisam da bancada
     // visível para serem usados — eclipsar só o que é animação.
     const painel = ['convites', 'comemorativas', 'enviarAura',
-                    'cardMissao', 'forjaMissao', 'banner'].includes(arg);
+                    'cardMissao', 'forjaMissao', 'banner', 'bannerPremium'].includes(arg);
     const som = arg.startsWith('som_');
     if (painel || som) {
       try { fn(); }
