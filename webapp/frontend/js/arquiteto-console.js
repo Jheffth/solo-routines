@@ -646,8 +646,6 @@ const ArquitetoConsole = {
       if (avatarNode) document.getElementById('pl-avatar')?.replaceWith(avatarNode);
       if (relicarioNode) document.getElementById('pl-relic')?.replaceWith(relicarioNode);
       if (cristaisNode) {
-        // Remover overlays 3D ao desligar
-        cristaisNode.querySelectorAll('.arq-gem-overlay').forEach(el => el.remove());
         document.getElementById('pl-cristais')?.replaceWith(cristaisNode);
       }
 
@@ -717,19 +715,14 @@ const ArquitetoConsole = {
     <div style="display:flex; align-items:center; gap:10px; width:100%; max-width:500px;">
       <div style="flex-shrink:0;">${escudoVetor}</div>
       <!-- Barra Plasma -->
-      <div style="flex:1; position:relative; height:12px; background:rgba(0,0,0,0.7); border-radius:10px; box-shadow:inset 0 2px 5px rgba(0,0,0,0.9); border:1px solid rgba(255,255,255,0.1); overflow:visible;">
-        <!-- O feixe animado (Sine Wave) -->
-        <div style="position:absolute; inset:-15px -5px; z-index:10; pointer-events:none;">
-          <svg viewBox="0 0 300 40" preserveAspectRatio="none" style="width:100%; height:100%; filter:drop-shadow(0 0 6px #22d3ee);">
-            <path d="M 0 20 Q 37 0 75 20 T 150 20 T 225 20 T 300 20" stroke="#22d3ee" stroke-width="1.5" fill="none" opacity="0.9">
-              <animate attributeName="d" values="M 0 20 Q 37 0 75 20 T 150 20 T 225 20 T 300 20; M 0 20 Q 37 40 75 20 T 150 20 T 225 20 T 300 20; M 0 20 Q 37 0 75 20 T 150 20 T 225 20 T 300 20" dur="2s" repeatCount="indefinite"/>
-            </path>
-          </svg>
-        </div>
-        <!-- O preenchimento da barra -->
-        <div style="position:absolute; right:0; top:-22px; font-family:'Orbitron'; font-size:0.75rem; color:#fff; text-shadow:0 0 5px #22d3ee;">${xpTxt}</div>
-        <div style="width:${xpFill}; height:100%; border-radius:10px; background:linear-gradient(90deg, transparent, #22d3ee); box-shadow:0 0 15px #22d3ee; position:relative;">
-           <div style="position:absolute; right:-2px; top:-4px; bottom:-4px; width:10px; background:#fff; border-radius:5px; box-shadow:0 0 15px #fff, 0 0 25px #22d3ee;"></div>
+      <div style="flex:1; position:relative;">
+        <div style="position:absolute; right:15px; top:-20px; font-family:'Orbitron'; font-size:0.75rem; color:#fff; text-shadow:0 0 8px #22d3ee; pointer-events:none; z-index:15;">${xpTxt}</div>
+        <div style="height:12px; background:rgba(0,0,0,0.7); border-radius:10px; box-shadow:inset 0 2px 5px rgba(0,0,0,0.9); border:1px solid rgba(255,255,255,0.05); overflow:hidden;">
+          <!-- Preenchimento com gradiente de alta energia -->
+          <div style="width:${xpFill}; height:100%; border-radius:10px; background:linear-gradient(90deg, transparent, rgba(34,211,238,0.5) 60%, #22d3ee); position:relative;">
+             <div style="position:absolute; inset:0; background:linear-gradient(90deg, transparent, rgba(255,255,255,0.8)); opacity:0.6;"></div>
+             <div style="position:absolute; right:0; top:0; bottom:0; width:15px; background:#fff; box-shadow:0 0 15px #fff, -5px 0 20px #22d3ee;"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -747,22 +740,6 @@ const ArquitetoConsole = {
     if (relicarioNode) document.getElementById('arq-inj-relic').appendChild(relicarioNode);
     if (cristaisNode) {
       document.getElementById('arq-inj-cristais').appendChild(cristaisNode);
-      const gemas = janela.querySelectorAll('#arq-inj-cristais .cristal-gema');
-      gemas.forEach(g => {
-        const overlay = document.createElement('div');
-        overlay.className = 'arq-gem-overlay';
-        overlay.innerHTML = `
-        <svg viewBox="0 0 100 100" style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:2;">
-          <polygon points="50,0 100,25 75,35 50,20" fill="rgba(255,255,255,0.6)"/>
-          <polygon points="100,25 100,75 75,65 75,35" fill="rgba(0,0,0,0.3)"/>
-          <polygon points="100,75 50,100 50,80 75,65" fill="rgba(0,0,0,0.8)"/>
-          <polygon points="50,100 0,75 25,65 50,80" fill="rgba(0,0,0,0.9)"/>
-          <polygon points="0,75 0,25 25,35 25,65" fill="rgba(0,0,0,0.5)"/>
-          <polygon points="0,25 50,0 50,20 25,35" fill="rgba(255,255,255,0.3)"/>
-          <polygon points="50,20 75,35 75,65 50,80 25,65 25,35" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
-        </svg>`;
-        g.appendChild(overlay);
-      });
     }
 
     // Emoji de Fogo
@@ -774,24 +751,40 @@ const ArquitetoConsole = {
 
     const css = `
 #hunter-card.bannerPremium { padding: 0 !important; }
-#arq-inj-avatar .hunter-hex-wrap { position: relative !important; margin: 0 !important; top: 0 !important; transform: scale(1.1); }
+#arq-inj-avatar .hunter-hex-wrap { position: relative !important; margin: 0 !important; margin-top: -20px !important; top: 0 !important; transform: scale(1.1); }
 .arq-col1 { align-items: center !important; }
 #arq-inj-relic .hunter-reliquia { transform: scale(1.4) !important; margin: 0 10px !important; }
 #arq-inj-relic { gap: 15px !important; margin-top: 25px !important; }
 
-/* Facetas das Joias */
+/* Pedras Preciosas de Vidro Translúcido */
 #arq-inj-cristais .hunter-cristais { display:flex; gap:1.2rem; }
 #arq-inj-cristais .cristal-gema {
   width: 90px !important; height: 104px !important;
   clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%) !important;
   border: none !important; border-radius:0 !important;
   position:relative; margin-bottom: 5px;
+  background: rgba(10, 10, 20, 0.5) !important;
+  backdrop-filter: blur(10px) !important;
+  box-shadow: inset 0 0 15px rgba(255,255,255,0.05), inset 0 -15px 25px rgba(0,0,0,0.9) !important;
 }
-/* Esconder o pseudo ::before original que tentava fazer a borda */
-#arq-inj-cristais .cristal-gema::before { display: none !important; }
-#arq-inj-cristais .cristal-nivel .cristal-gema { background: radial-gradient(circle at 50% 30%, #a855f7, #581c87, #2e1065) !important; box-shadow: 0 15px 25px rgba(0,0,0,0.8), 0 0 35px rgba(147,51,234,0.6) !important;}
-#arq-inj-cristais .cristal-moedas .cristal-gema { background: radial-gradient(circle at 50% 30%, #f59e0b, #b45309, #78350f) !important; box-shadow: 0 15px 25px rgba(0,0,0,0.8), 0 0 35px rgba(245,158,11,0.6) !important;}
-#arq-inj-cristais .cristal-streak .cristal-gema { background: radial-gradient(circle at 50% 30%, #f97316, #c2410c, #7c2d12) !important; box-shadow: 0 15px 25px rgba(0,0,0,0.8), 0 0 35px rgba(249,115,22,0.6) !important;}
+/* Faceta Reflexiva Superior (A Casca de Vidro) */
+#arq-inj-cristais .cristal-gema::before {
+  content: '' !important; display: block !important; position: absolute !important; inset: 1px !important;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%) !important;
+  background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 35%, rgba(0,0,0,0.7) 100%) !important;
+  z-index: 1 !important; pointer-events: none !important; display: block !important;
+}
+/* O Núcleo de Energia (Ponto de Cor Radiante Interno) */
+#arq-inj-cristais .cristal-gema::after {
+  content: '' !important; position: absolute !important; inset: 20px !important;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%) !important;
+  filter: blur(6px) !important; z-index: 0 !important;
+}
+#arq-inj-cristais .cristal-nivel .cristal-gema::after { background: #9333ea !important; box-shadow: 0 0 40px #a855f7 !important; }
+#arq-inj-cristais .cristal-moedas .cristal-gema::after { background: #d97706 !important; box-shadow: 0 0 40px #f59e0b !important; }
+#arq-inj-cristais .cristal-streak .cristal-gema::after { background: #ea580c !important; box-shadow: 0 0 40px #f97316 !important; }
+/* Garantir que o texto fique acima do vidro e legível */
+#arq-inj-cristais .cristal-gema > * { position: relative; z-index: 5 !important; }
 
 /* Media Queries Responsividade */
 @media (max-width: 1100px) {
