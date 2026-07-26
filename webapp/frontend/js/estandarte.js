@@ -413,7 +413,7 @@ const Estandarte = {
 
     const cargo = u.nivel_acesso && u.nivel_acesso !== 'User' ? u.nivel_acesso : null;
 
-    const css = \`
+    const css = `
       .v3-banner {
         position: relative; width: 100%; min-height: 140px; margin: 0 auto;
         background: radial-gradient(circle at 50% 0%, var(--v3-fundo2), var(--v3-fundo));
@@ -448,64 +448,64 @@ const Estandarte = {
 
       /* Coluna 3: Gemas */
       .v3-col-gemas { display: flex; gap: 15px; flex-shrink: 0; z-index: 1; }
-    \`;
+    `;
 
-    const escudoVetor = \`
-      <svg viewBox="0 0 50 50" style="width:100%; height:100%; filter:drop-shadow(0 0 8px \${corRank});">
-        <polygon points="25,4 46,14 46,36 25,48 4,36 4,14" fill="#0a0a10" stroke="\${corRank}" stroke-width="1.5"/>
+    const escudoVetor = `
+      <svg viewBox="0 0 50 50" style="width:100%; height:100%; filter:drop-shadow(0 0 8px ${corRank});">
+        <polygon points="25,4 46,14 46,36 25,48 4,36 4,14" fill="#0a0a10" stroke="${corRank}" stroke-width="1.5"/>
         <circle cx="25" cy="25" r="9" fill="url(#v3core)"/>
         <defs>
           <radialGradient id="v3core" cx="50%" cy="50%" r="50%">
             <stop offset="0%" stop-color="#fff"/>
-            <stop offset="60%" stop-color="\${corRank}"/>
+            <stop offset="60%" stop-color="${corRank}"/>
             <stop offset="100%" stop-color="#000" stop-opacity="0"/>
           </radialGradient>
         </defs>
-      </svg>\`;
+      </svg>`;
 
-    return \`
-      <style>\${css}</style>
-      <div class="v3-banner" style="\${estilo}">
-        <div class="v3-circuito-bg">\${this._circuito()}</div>
+    return `
+      <style>${css}</style>
+      <div class="v3-banner" style="${estilo}">
+        <div class="v3-circuito-bg">${this._circuito()}</div>
         
         <div class="v3-col-avatar">
           <div class="v3-hex-box">
-            <div class="v3-hex-aura">\${this._aura(u, 180)}</div>
-            \${this._orbitaHex()}
+            <div class="v3-hex-aura">${this._aura(u, 180)}</div>
+            ${this._orbitaHex()}
             <div class="v3-hex-foto">
-              \${u.avatar_url ? \`<img src="\${this._esc(u.avatar_url)}" alt="">\` : \`<span class="pt-inicial" style="display:flex;align-items:center;justify-content:center;height:100%;font-size:2rem;">\${this._esc((u.nome || 'H')[0]).toUpperCase()}</span>\`}
+              ${u.avatar_url ? `<img src="${this._esc(u.avatar_url)}" alt="">` : `<span class="pt-inicial" style="display:flex;align-items:center;justify-content:center;height:100%;font-size:2rem;">${this._esc((u.nome || 'H')[0]).toUpperCase()}</span>`}
             </div>
-            <div class="v3-selo">\${this._seloHex(letra, corRank)}</div>
+            <div class="v3-selo">${this._seloHex(letra, corRank)}</div>
           </div>
           <div class="v3-identidade">
-            <div class="v3-nome">\${this._esc(u.nome || 'Hunter')}</div>
-            <div class="v3-titulo">"\${this._esc(u.titulo || 'Sem título')}"</div>
+            <div class="v3-nome">${this._esc(u.nome || 'Hunter')}</div>
+            <div class="v3-titulo">"${this._esc(u.titulo || 'Sem título')}"</div>
             <div style="display:flex; gap:6px;">
-              <span class="v3-cargo" style="color:var(--v3-rank)">\${letra}-Rank</span>
-              \${cargo ? \`<span class="v3-cargo">★ \${this._esc(cargo).toUpperCase()} ★</span>\` : ''}
+              <span class="v3-cargo" style="color:var(--v3-rank)">${letra}-Rank</span>
+              ${cargo ? `<span class="v3-cargo">★ ${this._esc(cargo).toUpperCase()} ★</span>` : ''}
             </div>
           </div>
         </div>
 
         <div class="v3-col-plasma">
           <div class="v3-plasma-box">
-            <div class="v3-escudo">\${escudoVetor}</div>
+            <div class="v3-escudo">${escudoVetor}</div>
             <div class="v3-tubo">
-              <div class="v3-xp-txt">\${xp.toLocaleString('pt-BR')} / \${alvo.toLocaleString('pt-BR')} XP</div>
-              \${this._barraXP(pct, c)}
+              <div class="v3-xp-txt">${xp.toLocaleString('pt-BR')} / ${alvo.toLocaleString('pt-BR')} XP</div>
+              ${this._barraXP(pct, c)}
             </div>
           </div>
           <div class="v3-reliquias">
-            \${this._reliquias(44) || '<span style="opacity:0.5;font-size:0.8rem;">nenhuma relíquia</span>'}
+            ${this._reliquias(44) || '<span style="opacity:0.5;font-size:0.8rem;">nenhuma relíquia</span>'}
           </div>
         </div>
 
         <div class="v3-col-gemas">
-          \${this._gema('ametista', u.nivel_atual ?? 1, 'Nível')}
-          \${this._gema('ambar', (u.moedas ?? 0).toLocaleString('pt-BR'), 'Mana Coins')}
-          \${this._gema('rubi', u.streak_atual ?? 0, 'Streak')}
+          ${this._gema('ametista', u.nivel_atual ?? 1, 'Nível')}
+          ${this._gema('ambar', (u.moedas ?? 0).toLocaleString('pt-BR'), 'Mana Coins')}
+          ${this._gema('rubi', u.streak_atual ?? 0, 'Streak')}
         </div>
-      </div>\`;
+      </div>`;
   }
 
   /* O ANEL QUE GIRA EM TORNO DO HEXÁGONO.
