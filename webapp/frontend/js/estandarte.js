@@ -451,7 +451,7 @@ const Estandarte = {
           <div class="pt-nucleo">
             <div class="pt-linha-xp">
               <div class="pt-sigilo" title="${(typeof Gemas!=='undefined'&&Gemas.nomeRank)?Gemas.nomeRank(letra):('Rank '+letra)}">
-                ${typeof EscudosImg !== 'undefined' ? EscudosImg.rank(letra, 95) : this._medalhaRank(letra, 72)}
+                ${this._medalhaRank(letra, 95)}
               </div>
               <div class="pt-feixe-caixa">
                 <div class="pt-xp-num">${xp.toLocaleString('pt-BR')} / ${alvo.toLocaleString('pt-BR')} XP</div>
