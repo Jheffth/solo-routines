@@ -818,7 +818,22 @@
   }
 }
 
-/* ── Responsivo ──────────────────────────────────────────── */
+/* ── Responsivo do cartão CHEIO (Rotinas, Missões Gerais) ──
+   Mesma correção do compacto: quem manda é a largura da COLUNA. A media
+   query fica como rede de segurança para navegador antigo. */
+@container mclista (max-width: 620px) {
+  .mc { gap: .8rem; padding: .85rem .9rem; }
+  .mc-sigilo { width: 50px; height: 50px; }
+  .mc-titulo { font-size: .95rem; white-space: normal; overflow: visible; }
+  .mc-topo { flex-direction: column; gap: .3rem; }
+  .mc-acoes { justify-content: stretch; }
+  .mc-acoes .mc-btn { flex: 1; justify-content: center; }
+  /* Sem largura para a coluna de rótulos, a ficha vira rótulo-sobre-valor;
+     alinhar à força espremeria "Frequência" em duas linhas. */
+  .mc-ag-linha { grid-template-columns: 1fr; gap: .05rem; }
+  .mc-ag-ficha { gap: .5rem; }
+}
+
 @media (max-width: 620px) {
   .mc { gap: .8rem; padding: .85rem .9rem; }
   .mc-sigilo { width: 50px; height: 50px; }
@@ -826,8 +841,6 @@
   .mc-topo { flex-direction: column; gap: .3rem; }
   .mc-acoes { justify-content: stretch; }
   .mc-acoes .mc-btn { flex: 1; justify-content: center; }
-  /* Sem largura para a coluna de rótulos, a ficha vira rótulo-sobre-valor;
-     alinhar à força espremeria "Frequência" em duas linhas. */
   .mc-ag-linha { grid-template-columns: 1fr; gap: .05rem; }
   .mc-ag-ficha { gap: .5rem; }
 }

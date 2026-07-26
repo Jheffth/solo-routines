@@ -135,6 +135,8 @@ const Tarefas = {
     // cacheado o extrato antes — os dois espaços de chave convivem.
     MissaoCard.cachear(missoes, { modo: 'missao', merge: true });
 
+    // mc-lista: o cartão mede ESTA coluna, não a janela (missao-card.css).
+    cont.classList.add('mc-lista');
     let html = this._avisoDia() + '<div style="display:flex;flex-direction:column;gap:.9rem">';
     html += ativas.map(m => MissaoCard.html(m, { modo: 'missao' })).join('');
     if (finais.length) {

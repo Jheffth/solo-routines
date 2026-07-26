@@ -635,124 +635,98 @@ const ArquitetoConsole = {
     if (janela.dataset[FLAG]) {
       delete janela.dataset[FLAG];
       document.getElementById(STYLE_ID)?.remove();
-      // Restaura estilos que alteramos inline
-      const nome   = document.getElementById('dash-nome');
-      const titulo = document.getElementById('dash-titulo');
-      const ring   = janela.querySelector('.hunter-hex-ring');
-      const wrap   = janela.querySelector('.hunter-hex-wrap');
-      if (nome)   { nome.style.textShadow = ''; nome.style.background = ''; nome.style.webkitBackgroundClip = ''; nome.style.webkitTextFillColor = ''; nome.style.backgroundClip = ''; }
-      if (titulo) { titulo.style.cssText = ''; }
-      if (ring)   { ring.style.cssText   = ''; }
-      if (wrap)   { wrap.style.filter    = ''; }
+      
+      const cnv = janela.querySelector('canvas#arq-premium-canvas');
+      if (cnv) cnv.remove();
+      
+      if (window._arqPremiumAnimFrame) {
+        cancelAnimationFrame(window._arqPremiumAnimFrame);
+        delete window._arqPremiumAnimFrame;
+      }
+      
+      if (window._arqPremiumResize) {
+        window.removeEventListener('resize', window._arqPremiumResize);
+        delete window._arqPremiumResize;
+      }
+
       janela.querySelector('#arq-premium-badge')?.remove();
       janela.classList.remove(FLAG);
-      SoloDialog?.toast?.('Banner Premium removido', 'info');
+      SoloDialog?.toast?.('Banner Premium Ultra removido', 'info');
       return;
     }
 
     // ---- TOGGLE ON ---------------------------------------------------------
     janela.dataset[FLAG] = '1';
 
-    // -- CSS injetado (não toca nos arquivos reais) --
+    // -- CSS injetado --
     const css = `
-      /* === BANNER PREMIUM PREVIEW (Forja de Testes) === */
+/* Glassmorphism Dark HUD */
+#hunter-card.bannerPremium {
+  background: linear-gradient(160deg, rgba(8,8,12,0.95), rgba(2,2,4,0.98)) !important;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05), inset 0 2px 20px rgba(0,0,0,0.8), 0 20px 40px rgba(0,0,0,0.8) !important;
+  border: none !important;
+  overflow: hidden !important;
+}
+#hunter-card.bannerPremium::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 1;
+  background: linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: 100% 4px; opacity: 0.6;
+}
+#hunter-card.bannerPremium::after {
+  content: ''; position: absolute; inset: -100% 0; pointer-events: none; z-index: 2;
+  background: linear-gradient(to bottom, transparent, var(--rank-cor), transparent);
+  height: 30%; opacity: 0.15;
+  animation: aq-scanline 7s linear infinite;
+}
+@keyframes aq-scanline { 0% { transform: translateY(-100%); } 100% { transform: translateY(400%); } }
 
-      /* 1. Brilho extra no container: vinheta mais densa na cor do rank */
-      #hunter-card.${FLAG}::after {
-        background: radial-gradient(
-          110% 160% at 10% 25%,
-          var(--rank-aura, rgba(124,58,237,.2)) 0%,
-          transparent 58%
-        );
-      }
+/* Reator Hexagonal - Avatar afundado */
+#hunter-card.bannerPremium .hunter-hex {
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.9) !important;
+}
+#hunter-card.bannerPremium .hunter-hex-wrap {
+  filter: drop-shadow(0 0 20px var(--rank-aura)) !important;
+}
+#hunter-card.bannerPremium .hunter-hex-ring {
+  filter: drop-shadow(0 0 10px var(--rank-cor)) !important;
+  opacity: 1 !important;
+}
+#hunter-card.bannerPremium .hunter-hex-wrap::before {
+  content: ''; position: absolute; inset: -15px; border-radius: 50%;
+  background: radial-gradient(circle, var(--rank-aura) 0%, transparent 70%);
+  animation: aq-pulse 3s ease-in-out infinite; z-index: 1; pointer-events: none;
+}
+@keyframes aq-pulse { 0%,100% { opacity:0.3; transform:scale(0.9); } 50% { opacity:0.6; transform:scale(1.1); } }
 
-      /* 2. Anel do hexágono mais vivo: segundo layer pulsante */
-      #hunter-card.${FLAG} .hunter-hex-ring {
-        filter: blur(.5px) drop-shadow(0 0 6px var(--rank-cor, #a855f7));
-        opacity: .95;
-      }
+/* Cristais Neumorfismo Falso 3D */
+#hunter-card.bannerPremium .cristal-gema {
+  border: none !important;
+  box-shadow: 
+    inset 0 1px 2px rgba(255,255,255,0.25), 
+    inset 0 -4px 6px rgba(0,0,0,0.7), 
+    0 8px 12px rgba(0,0,0,0.6),
+    0 0 20px var(--rank-aura) !important;
+}
+#hunter-card.bannerPremium .cristal-nivel .cristal-gema { background: linear-gradient(145deg, #5b21b6, #2e1065) !important; text-shadow: 0 0 8px #d8b4fe !important; }
+#hunter-card.bannerPremium .cristal-moedas .cristal-gema { background: linear-gradient(145deg, #b45309, #78350f) !important; text-shadow: 0 0 8px #fde68a !important; }
+#hunter-card.bannerPremium .cristal-streak .cristal-gema { background: linear-gradient(145deg, #c2410c, #7c2d12) !important; text-shadow: 0 0 8px #fed7aa !important; }
 
-      /* 3. Hex-wrap com aura radial sutil ao redor */
-      #hunter-card.${FLAG} .hunter-hex-wrap::after {
-        content: '';
-        position: absolute;
-        inset: -8px;
-        border-radius: 50%;
-        background: radial-gradient(circle, var(--rank-cor, #a855f7) 0%, transparent 72%);
-        opacity: .12;
-        pointer-events: none;
-        animation: hw-aura-pulsa 3s ease-in-out infinite;
-      }
-      @keyframes hw-aura-pulsa {
-        0%,100% { opacity: .10; transform: scale(.95); }
-        50%     { opacity: .22; transform: scale(1.05); }
-      }
-
-      /* 4. Nome mais presente */
-      #hunter-card.${FLAG} .hunter-nome {
-        text-shadow:
-          0 0 28px rgba(168,85,247,.6),
-          0 0 6px  rgba(255,255,255,.15),
-          0 2px 4px rgba(0,0,0,.5);
-        letter-spacing: .09em;
-      }
-
-      /* 5. Título em gradiente dourado */
-      #hunter-card.${FLAG} .hunter-titulo {
-        background: linear-gradient(90deg, #fbbf24 20%, #f97316 80%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        font-style: italic;
-        font-weight: 600;
-        filter: drop-shadow(0 0 6px rgba(251,191,36,.35));
-      }
-
-      /* 6. Bordas dos cristais mais brilhantes */
-      #hunter-card.${FLAG} .cristal-nivel  .cristal-gema { border-color: rgba(168,85,247,.8);  box-shadow: 0 0 14px rgba(168,85,247,.35); }
-      #hunter-card.${FLAG} .cristal-moedas .cristal-gema { border-color: rgba(251,191,36,.8);  box-shadow: 0 0 14px rgba(251,191,36,.35); }
-      #hunter-card.${FLAG} .cristal-streak .cristal-gema { border-color: rgba(249,115,22,.8);  box-shadow: 0 0 14px rgba(249,115,22,.35); }
-
-      /* 7. Barra de XP: trilho com borda mais visível + fill mais brilhante */
-      #hunter-card.${FLAG} .hunter-xp-track {
-        border-color: rgba(124,58,237,.55);
-        box-shadow: 0 0 8px rgba(124,58,237,.15) inset;
-      }
-      #hunter-card.${FLAG} .hunter-xp-fill {
-        box-shadow: 0 0 22px rgba(168,85,247,.9);
-      }
-
-      /* 8. Pin de XP: ponto de partida do nível atual */
-      #hunter-card.${FLAG} .hunter-xp-track::before {
-        content: '';
-        position: absolute;
-        left: 1px;
-        top: -2px;
-        bottom: -2px;
-        width: 2px;
-        background: rgba(168,85,247,.5);
-        border-radius: 2px;
-        z-index: 2;
-      }
-
-      /* 9. Badges com glow na cor do rank */
-      #hunter-card.${FLAG} #dash-rank-badge span:first-child {
-        box-shadow: 0 0 10px var(--rank-cor, #a855f7)44;
-        text-shadow: 0 0 10px var(--rank-cor, #a855f7);
-      }
-
-      /* 10. Medalhas do relicário ligeiramente maiores */
-      #hunter-card.${FLAG} .hunter-reliquia svg {
-        width: 42px !important;
-        height: 42px !important;
-      }
-
-      /* 11. Seló do rank com glow mais intenso */
-      #hunter-card.${FLAG} .hunter-hex-rank {
-        box-shadow: 0 0 14px var(--rank-cor, #a855f7), inset 0 0 6px rgba(0,0,0,.5);
-        font-size: 1.12rem;
-      }
-    `;
+/* Barra de XP HUD de precisão */
+#hunter-card.bannerPremium .hunter-xp-track {
+  background: #000 !important;
+  border: 1px solid rgba(255,255,255,0.05) !important;
+  box-shadow: inset 0 2px 8px rgba(0,0,0,0.9), 0 1px 0 rgba(255,255,255,0.05) !important;
+}
+#hunter-card.bannerPremium .hunter-xp-fill {
+  box-shadow: 0 0 20px var(--rank-cor) !important;
+}
+/* O Pino de Plasma na frente da barra */
+#hunter-card.bannerPremium .hunter-xp-fill::before {
+  content: ''; position: absolute; right: 0; top: -3px; bottom: -3px; width: 4px;
+  background: #fff; box-shadow: 0 0 12px #fff, 0 0 20px var(--rank-cor);
+  border-radius: 2px; z-index: 3;
+}
+`;
 
     // Injeta a tag <style> com ID controlado
     const tag = document.createElement('style');
@@ -767,22 +741,69 @@ const ArquitetoConsole = {
     const badge = document.createElement('div');
     badge.id = 'arq-premium-badge';
     badge.style.cssText = `
-      position:absolute;top:8px;right:12px;z-index:10;
-      font-family:var(--font-section);font-size:.52rem;font-weight:700;
-      letter-spacing:.14em;color:#fbbf24;
-      background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);
-      padding:.15rem .5rem;border-radius:4px;pointer-events:none;
+      position:absolute;top:10px;right:14px;z-index:10;
+      font-family:var(--font-section);font-size:.55rem;font-weight:700;
+      letter-spacing:.15em;color:#fcd34d;
+      background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.4);
+      padding:.2rem .6rem;border-radius:4px;pointer-events:none;
+      box-shadow: 0 0 10px rgba(251,191,36,.2);
     `;
-    badge.textContent = 'PREVIEW PREMIUM';
+    badge.textContent = 'PREVIEW PREMIUM ULTRA';
     janela.style.position = 'relative';
     janela.appendChild(badge);
 
-    // Aplica classe de banner cosmético se ainda não tiver
-    if (!janela.dataset.banner) {
-      janela.dataset.banner = 'monarca';
+    // Canvas de partículas atrelado ao rank
+    const bodyPanel = janela.querySelector('.hunter-window-body');
+    if (bodyPanel) {
+      const cnv = document.createElement('canvas');
+      cnv.id = 'arq-premium-canvas';
+      cnv.style.cssText = 'position:absolute; inset:0; z-index:0; pointer-events:none; mix-blend-mode:screen;';
+      janela.insertBefore(cnv, bodyPanel);
+
+      const ctx = cnv.getContext('2d');
+      const rankColorRaw = getComputedStyle(janela).getPropertyValue('--rank-cor').trim();
+      const rankColor = rankColorRaw || '#a855f7';
+      
+      const resize = () => {
+        cnv.width = janela.clientWidth;
+        cnv.height = janela.clientHeight;
+      };
+      resize();
+      window._arqPremiumResize = resize;
+      window.addEventListener('resize', resize);
+
+      const particles = [];
+      for(let i = 0; i < 40; i++) {
+        particles.push({
+          x: Math.random() * cnv.width,
+          y: Math.random() * cnv.height,
+          size: Math.random() * 2 + 0.5,
+          speedY: Math.random() * 1.5 + 0.5,
+          opacity: Math.random() * 0.5 + 0.2
+        });
+      }
+
+      const draw = () => {
+        ctx.clearRect(0, 0, cnv.width, cnv.height);
+        particles.forEach(p => {
+          p.y -= p.speedY;
+          if (p.y < -10) {
+            p.y = cnv.height + 10;
+            p.x = Math.random() * cnv.width;
+          }
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fillStyle = rankColor;
+          ctx.globalAlpha = p.opacity;
+          ctx.fill();
+        });
+        ctx.globalAlpha = 1;
+        window._arqPremiumAnimFrame = requestAnimationFrame(draw);
+      };
+      draw();
     }
 
-    SoloDialog?.toast?.('✨ Banner Premium ativo — clique de novo para remover', 'success');
+    SoloDialog?.toast?.('✨ Banner Ultra Premium ativo — clique de novo para remover', 'success');
   },
 
   /* Insígnias com arte própria — fonte única: o registro do ConquistaFX.

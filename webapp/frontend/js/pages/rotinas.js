@@ -98,6 +98,8 @@ const Rotinas = {
     // extrato, então merge:true não atropela o que o Dashboard já cacheou.
     MissaoCard.cachear(lista, { modo: 'agenda', merge: true });
 
+    // mc-lista: o cartão mede ESTA coluna, não a janela (missao-card.css).
+    cont.classList.add('mc-lista');
     cont.innerHTML = this._notaDePapel()
       + '<div style="display:flex;flex-direction:column;gap:.9rem">'
       + lista.map(r => MissaoCard.html(r, { modo: 'agenda' })).join('')
