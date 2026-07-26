@@ -651,7 +651,7 @@ const ArquitetoConsole = {
     janela.dataset[FLAG] = '1';
     
     // Extrair dados atuais
-    const avatarHtml = janela.querySelector('.hunter-avatar-wrap')?.innerHTML || '';
+    const avatarHtml = janela.querySelector('.hunter-hex-wrap')?.outerHTML || '';
     const nome = janela.querySelector('.hunter-nome')?.textContent || 'Hunter';
     const titulo = janela.querySelector('.hunter-titulo')?.textContent || '';
     const seloRank = janela.querySelector('.hunter-rank')?.textContent || 'D';
@@ -662,7 +662,7 @@ const ArquitetoConsole = {
     const xpBarra = janela.querySelector('.hunter-xp-fill');
     const xpFill = xpBarra ? xpBarra.style.width : '0%';
     
-    const relicarioClone = janela.querySelector('.hunter-reliquia-box')?.cloneNode(true);
+    const relicarioClone = janela.querySelector('.hunter-relicario')?.cloneNode(true);
     const cristaisClone = janela.querySelector('.hunter-cristais')?.cloneNode(true);
 
     if (bodyOriginal) {
@@ -717,14 +717,14 @@ const ArquitetoConsole = {
       </div>
     </div>
     <!-- Relicário no meio -->
-    <div id="arq-relicario-inj" style="display:flex; justify-content:center; width:100%;">
-       ${relicarioClone ? relicarioClone.innerHTML : ''}
+    <div id="arq-relicario-inj" style="display:flex; justify-content:center; width:100%; margin-top:8px;">
+       ${relicarioClone ? relicarioClone.outerHTML : ''}
     </div>
   </div>
 
   <!-- COL 3: Direita (Cristais Hexagonais 3D) -->
-  <div style="display:flex; align-items:center; gap:20px; z-index:2; flex-shrink:0;" id="arq-cristais-inj">
-     ${cristaisClone ? cristaisClone.innerHTML : ''}
+  <div style="display:flex; align-items:center; justify-content:center; gap:20px; z-index:2; flex-shrink:0; padding-right:20px;" id="arq-cristais-inj">
+     ${cristaisClone ? cristaisClone.outerHTML : ''}
   </div>
 </div>
 `;
