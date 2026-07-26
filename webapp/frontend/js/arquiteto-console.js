@@ -751,40 +751,34 @@ const ArquitetoConsole = {
 
     const css = `
 #hunter-card.bannerPremium { padding: 0 !important; }
-#arq-inj-avatar .hunter-hex-wrap { position: relative !important; margin: 0 !important; margin-top: -20px !important; top: 0 !important; transform: scale(1.1); }
+#arq-inj-avatar .hunter-hex-wrap { position: relative !important; margin: 0 !important; margin-top: -30px !important; top: 0 !important; transform: scale(1.1); }
 .arq-col1 { align-items: center !important; }
 #arq-inj-relic .hunter-reliquia { transform: scale(1.4) !important; margin: 0 10px !important; }
 #arq-inj-relic { gap: 15px !important; margin-top: 25px !important; }
 
-/* Pedras Preciosas de Vidro Translúcido */
+/* Pedras Preciosas (3D Lapidadas V2 - Cores Vibrantes com Sombras SVG) */
 #arq-inj-cristais .hunter-cristais { display:flex; gap:1.2rem; }
 #arq-inj-cristais .cristal-gema {
   width: 90px !important; height: 104px !important;
   clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%) !important;
   border: none !important; border-radius:0 !important;
   position:relative; margin-bottom: 5px;
-  background: rgba(10, 10, 20, 0.5) !important;
-  backdrop-filter: blur(10px) !important;
-  box-shadow: inset 0 0 15px rgba(255,255,255,0.05), inset 0 -15px 25px rgba(0,0,0,0.9) !important;
+  background-size: 100% 100% !important;
 }
-/* Faceta Reflexiva Superior (A Casca de Vidro) */
-#arq-inj-cristais .cristal-gema::before {
-  content: '' !important; display: block !important; position: absolute !important; inset: 1px !important;
-  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%) !important;
-  background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 35%, rgba(0,0,0,0.7) 100%) !important;
-  z-index: 1 !important; pointer-events: none !important; display: block !important;
+#arq-inj-cristais .cristal-nivel .cristal-gema { 
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' preserveAspectRatio='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='50,0 100,25 75,35 50,20' fill='rgba(255,255,255,0.6)'/%3E%3Cpolygon points='0,25 50,0 50,20 25,35' fill='rgba(255,255,255,0.4)'/%3E%3Cpolygon points='100,25 100,75 75,65 75,35' fill='rgba(0,0,0,0.3)'/%3E%3Cpolygon points='100,75 50,100 50,80 75,65' fill='rgba(0,0,0,0.7)'/%3E%3Cpolygon points='50,100 0,75 25,65 50,80' fill='rgba(0,0,0,0.8)'/%3E%3Cpolygon points='0,75 0,25 25,35 25,65' fill='rgba(0,0,0,0.5)'/%3E%3Cpolygon points='50,20 75,35 75,65 50,80 25,65 25,35' fill='transparent' stroke='rgba(255,255,255,0.4)' stroke-width='2'/%3E%3Cpolygon points='50,0 100,25 100,75 50,100 0,75 0,25' fill='none' stroke='rgba(255,255,255,0.3)' stroke-width='1'/%3E%3C/svg%3E") center/cover no-repeat, radial-gradient(circle at 50% 30%, #a855f7, #581c87, #2e1065) !important; 
+  box-shadow: 0 15px 25px rgba(0,0,0,0.8), 0 0 35px rgba(147,51,234,0.6) !important;
 }
-/* O Núcleo de Energia (Ponto de Cor Radiante Interno) */
-#arq-inj-cristais .cristal-gema::after {
-  content: '' !important; position: absolute !important; inset: 20px !important;
-  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%) !important;
-  filter: blur(6px) !important; z-index: 0 !important;
+#arq-inj-cristais .cristal-moedas .cristal-gema { 
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' preserveAspectRatio='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='50,0 100,25 75,35 50,20' fill='rgba(255,255,255,0.6)'/%3E%3Cpolygon points='0,25 50,0 50,20 25,35' fill='rgba(255,255,255,0.4)'/%3E%3Cpolygon points='100,25 100,75 75,65 75,35' fill='rgba(0,0,0,0.3)'/%3E%3Cpolygon points='100,75 50,100 50,80 75,65' fill='rgba(0,0,0,0.7)'/%3E%3Cpolygon points='50,100 0,75 25,65 50,80' fill='rgba(0,0,0,0.8)'/%3E%3Cpolygon points='0,75 0,25 25,35 25,65' fill='rgba(0,0,0,0.5)'/%3E%3Cpolygon points='50,20 75,35 75,65 50,80 25,65 25,35' fill='transparent' stroke='rgba(255,255,255,0.4)' stroke-width='2'/%3E%3Cpolygon points='50,0 100,25 100,75 50,100 0,75 0,25' fill='none' stroke='rgba(255,255,255,0.3)' stroke-width='1'/%3E%3C/svg%3E") center/cover no-repeat, radial-gradient(circle at 50% 30%, #f59e0b, #b45309, #78350f) !important; 
+  box-shadow: 0 15px 25px rgba(0,0,0,0.8), 0 0 35px rgba(245,158,11,0.6) !important;
 }
-#arq-inj-cristais .cristal-nivel .cristal-gema::after { background: #9333ea !important; box-shadow: 0 0 40px #a855f7 !important; }
-#arq-inj-cristais .cristal-moedas .cristal-gema::after { background: #d97706 !important; box-shadow: 0 0 40px #f59e0b !important; }
-#arq-inj-cristais .cristal-streak .cristal-gema::after { background: #ea580c !important; box-shadow: 0 0 40px #f97316 !important; }
-/* Garantir que o texto fique acima do vidro e legível */
-#arq-inj-cristais .cristal-gema > * { position: relative; z-index: 5 !important; }
+#arq-inj-cristais .cristal-streak .cristal-gema { 
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' preserveAspectRatio='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='50,0 100,25 75,35 50,20' fill='rgba(255,255,255,0.6)'/%3E%3Cpolygon points='0,25 50,0 50,20 25,35' fill='rgba(255,255,255,0.4)'/%3E%3Cpolygon points='100,25 100,75 75,65 75,35' fill='rgba(0,0,0,0.3)'/%3E%3Cpolygon points='100,75 50,100 50,80 75,65' fill='rgba(0,0,0,0.7)'/%3E%3Cpolygon points='50,100 0,75 25,65 50,80' fill='rgba(0,0,0,0.8)'/%3E%3Cpolygon points='0,75 0,25 25,35 25,65' fill='rgba(0,0,0,0.5)'/%3E%3Cpolygon points='50,20 75,35 75,65 50,80 25,65 25,35' fill='transparent' stroke='rgba(255,255,255,0.4)' stroke-width='2'/%3E%3Cpolygon points='50,0 100,25 100,75 50,100 0,75 0,25' fill='none' stroke='rgba(255,255,255,0.3)' stroke-width='1'/%3E%3C/svg%3E") center/cover no-repeat, radial-gradient(circle at 50% 30%, #f97316, #c2410c, #7c2d12) !important; 
+  box-shadow: 0 15px 25px rgba(0,0,0,0.8), 0 0 35px rgba(249,115,22,0.6) !important;
+}
+/* Esconder qualquer pseudo-elemento antigo */
+#arq-inj-cristais .cristal-gema::before, #arq-inj-cristais .cristal-gema::after { display: none !important; }
 
 /* Media Queries Responsividade */
 @media (max-width: 1100px) {
