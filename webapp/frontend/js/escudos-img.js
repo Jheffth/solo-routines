@@ -24,13 +24,12 @@ const EscudosImg = {
         position: relative;
         overflow: visible;
       ">
-        <img src="assets/img/rank-${r.toLowerCase()}.jpg" style="
+        <img src="assets/img/rank-${r.toLowerCase()}.png" style="
           width: 100%;
           height: 100%;
           object-fit: contain;
           transform: scale(1.6);
-          mix-blend-mode: screen;
-          filter: drop-shadow(0 0 10px rgba(255,255,255,0.1));
+          filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
           pointer-events: none;
         " alt="Rank ${r}">
       </div>
