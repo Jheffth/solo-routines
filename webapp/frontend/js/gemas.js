@@ -194,9 +194,47 @@ const Gemas = {
       pav.push(`M ${x.toFixed(2)} ${y.toFixed(2)} L ${cx} ${cy + 14}`);
     }
 
+    const particulasFable = Array.from({length: 16}).map((_, i) => {
+      // Distribuição orgânica ao redor da pedra (padrão Fable5)
+      const ang = (i * 22.5 + (i % 3) * 7) % 360;
+      const raio = 38 + (i % 4) * 8 + (i % 2) * 5;
+      const sz = 1.0 + (i % 3) * 0.5;
+      
+      const rad = ang * Math.PI / 180;
+      const cxP = 50 + Math.cos(rad) * raio;
+      const cyP = 50 + Math.sin(rad) * raio;
+
+      const op = i % 3 === 0 ? '.95' : (i % 2 === 0 ? '.75' : '.55');
+      const delay = (i * 0.15).toFixed(2);
+      const dur   = (2.0 + (i % 4) * 0.5).toFixed(2);
+
+      return `
+      <g class="gem-brasa-item" style="transform-origin: ${cxP.toFixed(2)}px ${cyP.toFixed(2)}px; animation-delay: ${delay}s; animation-duration: ${dur}s">
+        <!-- Núcleo quente (tom mais claro) -->
+        <circle cx="${cxP.toFixed(2)}" cy="${cyP.toFixed(2)}" r="${sz.toFixed(2)}"
+                fill="${p.mesa}" fill-opacity="${op}" filter="url(#brilhoParticula)"/>
+        <!-- Halo da brasa (tom médio da gema) -->
+        <circle cx="${cxP.toFixed(2)}" cy="${cyP.toFixed(2)}" r="${(sz * 2.2).toFixed(2)}"
+                fill="${p.brilho}" fill-opacity="${(op * 0.6).toFixed(2)}" filter="url(#brilhoParticula)"/>
+      </g>`;
+    }).join('');
+
     return this._unico(`
 <svg viewBox="0 0 100 100" width="${tam}" height="${tam}"
-     class="gema-svg" aria-hidden="true" style="max-width:none">
+     class="gema-svg" aria-hidden="true" style="max-width:none;overflow:visible;">
+  <style>
+    .gem-brasa-item {
+      animation: gem-crepitar 2.8s ease-in-out infinite alternate;
+    }
+    @keyframes gem-crepitar {
+      0%   { transform: scale(0.7) translate(0, 0); opacity: 0.5; }
+      50%  { transform: scale(1.3) translate(0, -6px); opacity: 1; }
+      100% { transform: scale(0.85) translate(0, -2px); opacity: 0.7; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .gem-brasa-item { animation: none !important; }
+    }
+  </style>
   <defs>
     <radialGradient id="corpo" cx="38%" cy="30%">
       <stop offset="0%"   stop-color="${p.brilho}"/>
@@ -219,7 +257,7 @@ const Gemas = {
       <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
     <filter id="brilhoParticula" x="-100%" y="-100%" width="300%" height="300%">
-      <feGaussianBlur stdDeviation="1.2" result="b"/>
+      <feGaussianBlur stdDeviation="1.0" result="b"/>
       <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
     <clipPath id="corteBase">
@@ -233,23 +271,9 @@ const Gemas = {
   <polygon points="${this._poligono(cx, cy, rExt + 3, lados)}"
            fill="${p.mesa}" opacity=".65" filter="url(#brilhoExt)"/>
 
-  <!-- partículas flutuantes (Aura da Fênix) aprimoradas -->
+  <!-- partículas flutuantes (Aura da Fênix replicada com CSS Keyframes) -->
   <g class="pt-particulas">
-    ${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(i => {
-      const x = 15 + (i * 37) % 70; 
-      const yIni = 85 + (i * 17) % 15; 
-      const yFim = 5 + (i * 23) % 30; 
-      const r = 1.5 + (i * 7) % 2.5; 
-      const dur = 2.5 + (i * 11) % 4; 
-      const delay = (i * 13) % 5; 
-      const dx = (i % 2 === 0 ? -1 : 1) * (5 + (i % 6));
-      return `
-      <circle cx="${x}" cy="${yIni}" r="${r}" fill="${p.mesa}" filter="url(#brilhoParticula)" opacity="0">
-        <animate attributeName="cy" values="${yIni}; ${yFim}" begin="${delay}s" dur="${dur}s" repeatCount="indefinite"/>
-        <animate attributeName="opacity" values="0; 1; 1; 0" keyTimes="0; 0.2; 0.8; 1" begin="${delay}s" dur="${dur}s" repeatCount="indefinite"/>
-        <animate attributeName="cx" values="${x}; ${x + dx}; ${x}" keyTimes="0; 0.5; 1" begin="${delay}s" dur="${dur}s" repeatCount="indefinite"/>
-      </circle>`;
-    }).join('')}
+    ${particulasFable}
   </g>
 
   <!-- corpo -->
