@@ -215,7 +215,11 @@ const Gemas = {
       <stop offset="100%" stop-color="${p.sombra}" stop-opacity="0"/>
     </radialGradient>
     <filter id="brilhoExt" x="-45%" y="-45%" width="190%" height="190%">
-      <feGaussianBlur stdDeviation="3.2" result="b"/>
+      <feGaussianBlur stdDeviation="3.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="brilhoParticula" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="1.2" result="b"/>
       <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
     <clipPath id="corteBase">
@@ -223,24 +227,26 @@ const Gemas = {
     </clipPath>
   </defs>
 
-  <!-- halo externo: suave e estático, apenas para volume -->
-  <polygon points="${this._poligono(cx, cy, rExt + 4, lados)}"
-           fill="${p.corpo}" opacity=".25" filter="url(#brilhoExt)"/>
+  <!-- Aura intensa: dupla camada de brilho usando os tons mais claros da gema -->
+  <polygon points="${this._poligono(cx, cy, rExt + 8, lados)}"
+           fill="${p.brilho}" opacity=".5" filter="url(#brilhoExt)"/>
+  <polygon points="${this._poligono(cx, cy, rExt + 3, lados)}"
+           fill="${p.mesa}" opacity=".65" filter="url(#brilhoExt)"/>
 
-  <!-- partículas flutuantes (estilo Aura da Fênix) com pseudo-randomização determinística -->
+  <!-- partículas flutuantes (Aura da Fênix) aprimoradas -->
   <g class="pt-particulas">
-    ${[0, 1, 2, 3, 4, 5].map(i => {
-      const x = 25 + (i * 37) % 50; 
+    ${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(i => {
+      const x = 15 + (i * 37) % 70; 
       const yIni = 85 + (i * 17) % 15; 
-      const yFim = 15 + (i * 23) % 25; 
-      const r = 1.2 + (i * 7) % 2; 
-      const dur = 3 + (i * 11) % 4; 
-      const delay = (i * 13) % 4; 
-      const dx = (i % 2 === 0 ? -1 : 1) * (4 + (i % 4));
+      const yFim = 5 + (i * 23) % 30; 
+      const r = 1.5 + (i * 7) % 2.5; 
+      const dur = 2.5 + (i * 11) % 4; 
+      const delay = (i * 13) % 5; 
+      const dx = (i % 2 === 0 ? -1 : 1) * (5 + (i % 6));
       return `
-      <circle cx="${x}" cy="${yIni}" r="${r}" fill="${p.brilho}" filter="url(#brilhoExt)" opacity="0">
+      <circle cx="${x}" cy="${yIni}" r="${r}" fill="${p.mesa}" filter="url(#brilhoParticula)" opacity="0">
         <animate attributeName="cy" values="${yIni}; ${yFim}" begin="${delay}s" dur="${dur}s" repeatCount="indefinite"/>
-        <animate attributeName="opacity" values="0; 0.9; 0" keyTimes="0; 0.2; 1" begin="${delay}s" dur="${dur}s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0; 1; 1; 0" keyTimes="0; 0.2; 0.8; 1" begin="${delay}s" dur="${dur}s" repeatCount="indefinite"/>
         <animate attributeName="cx" values="${x}; ${x + dx}; ${x}" keyTimes="0; 0.5; 1" begin="${delay}s" dur="${dur}s" repeatCount="indefinite"/>
       </circle>`;
     }).join('')}
