@@ -628,28 +628,18 @@ const ArquitetoConsole = {
     const janela = document.getElementById('hunter-card');
     if (!janela) { SoloDialog?.toast?.('Abra o Dashboard primeiro', 'warn'); return; }
 
-    const STYLE_ID = 'arq-banner-premium-css';
+    const STYLE_ID = 'arq-ultra-css';
     const FLAG     = 'bannerPremium';
+    const bodyOriginal = janela.querySelector('.hunter-window-body');
 
     // ---- TOGGLE OFF --------------------------------------------------------
     if (janela.dataset[FLAG]) {
       delete janela.dataset[FLAG];
       document.getElementById(STYLE_ID)?.remove();
+      janela.querySelector('#arq-ultra-layout')?.remove();
       
-      const cnv = janela.querySelector('canvas#arq-premium-canvas');
-      if (cnv) cnv.remove();
+      if (bodyOriginal) bodyOriginal.style.display = 'flex';
       
-      if (window._arqPremiumAnimFrame) {
-        cancelAnimationFrame(window._arqPremiumAnimFrame);
-        delete window._arqPremiumAnimFrame;
-      }
-      
-      if (window._arqPremiumResize) {
-        window.removeEventListener('resize', window._arqPremiumResize);
-        delete window._arqPremiumResize;
-      }
-
-      janela.querySelector('#arq-premium-badge')?.remove();
       janela.classList.remove(FLAG);
       SoloDialog?.toast?.('Banner Premium Ultra removido', 'info');
       return;
@@ -657,152 +647,93 @@ const ArquitetoConsole = {
 
     // ---- TOGGLE ON ---------------------------------------------------------
     janela.dataset[FLAG] = '1';
+    if (bodyOriginal) bodyOriginal.style.display = 'none';
 
-    // -- CSS injetado --
-    const css = `
-/* Glassmorphism Dark HUD */
-#hunter-card.bannerPremium {
-  background: linear-gradient(160deg, rgba(8,8,12,0.95), rgba(2,2,4,0.98)) !important;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05), inset 0 2px 20px rgba(0,0,0,0.8), 0 20px 40px rgba(0,0,0,0.8) !important;
-  border: none !important;
-  overflow: hidden !important;
-}
-#hunter-card.bannerPremium::before {
-  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 1;
-  background: linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px);
-  background-size: 100% 4px; opacity: 0.6;
-}
-#hunter-card.bannerPremium::after {
-  content: ''; position: absolute; inset: -100% 0; pointer-events: none; z-index: 2;
-  background: linear-gradient(to bottom, transparent, var(--rank-cor), transparent);
-  height: 30%; opacity: 0.15;
-  animation: aq-scanline 7s linear infinite;
-}
-@keyframes aq-scanline { 0% { transform: translateY(-100%); } 100% { transform: translateY(400%); } }
+    const avatarHtml = janela.querySelector('#dash-avatar')?.innerHTML || '';
+    const nome = janela.querySelector('#dash-nome')?.textContent || 'Hunter';
+    const titulo = janela.querySelector('#dash-titulo')?.textContent || 'Sem Título';
+    const seloRank = janela.querySelector('#dash-rank-selo')?.textContent || 'E';
+    const xpTxt = janela.querySelector('#dash-xp-txt')?.textContent || '0 / 100 XP';
+    const xpFill = janela.querySelector('#dash-xp-bar')?.style.width || '0%';
+    const cristaisOriginais = janela.querySelector('.hunter-cristais');
+    const cristaisClone = cristaisOriginais ? cristaisOriginais.cloneNode(true) : '';
+    const relicarioOriginais = janela.querySelector('.hunter-relicario');
+    const relicarioClone = relicarioOriginais ? relicarioOriginais.cloneNode(true) : '';
 
-/* Reator Hexagonal - Avatar afundado */
-#hunter-card.bannerPremium .hunter-hex {
-  box-shadow: inset 0 0 20px rgba(0,0,0,0.9) !important;
-}
-#hunter-card.bannerPremium .hunter-hex-wrap {
-  filter: drop-shadow(0 0 20px var(--rank-aura)) !important;
-}
-#hunter-card.bannerPremium .hunter-hex-ring {
-  filter: drop-shadow(0 0 10px var(--rank-cor)) !important;
-  opacity: 1 !important;
-}
-#hunter-card.bannerPremium .hunter-hex-wrap::before {
-  content: ''; position: absolute; inset: -15px; border-radius: 50%;
-  background: radial-gradient(circle, var(--rank-aura) 0%, transparent 70%);
-  animation: aq-pulse 3s ease-in-out infinite; z-index: 1; pointer-events: none;
-}
-@keyframes aq-pulse { 0%,100% { opacity:0.3; transform:scale(0.9); } 50% { opacity:0.6; transform:scale(1.1); } }
+    const html = `
+<div id="arq-ultra-layout" style="position:relative; z-index:10; width:100%; height:260px; display:flex; align-items:center; justify-content:space-between; padding: 0 40px; box-sizing:border-box;">
+  
+  <!-- FUNDO: Sunburst e Runas Mágicas -->
+  <div style="position:absolute; inset:0; z-index:-1; overflow:hidden; border-radius:6px; background: radial-gradient(circle at center, rgba(15,15,20,0.8) 0%, rgba(5,5,10,0.95) 100%);">
+    <div class="arq-sunburst" style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:800px; height:800px; background:conic-gradient(from 0deg, transparent 0deg, var(--rank-aura) 20deg, transparent 40deg, var(--rank-aura) 60deg, transparent 80deg, var(--rank-aura) 100deg, transparent 120deg, var(--rank-aura) 140deg, transparent 160deg, var(--rank-aura) 180deg, transparent 200deg, var(--rank-aura) 220deg, transparent 240deg, var(--rank-aura) 260deg, transparent 280deg, var(--rank-aura) 300deg, transparent 320deg, var(--rank-aura) 340deg, transparent 360deg); animation: arq-spin 40s linear infinite; opacity: 0.25; filter:blur(8px) drop-shadow(0 0 20px var(--rank-cor));"></div>
+    <svg class="arq-runic-ring" viewBox="0 0 200 200" style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:450px; height:450px; opacity:0.35; animation: arq-spin-rev 60s linear infinite;">
+      <circle cx="100" cy="100" r="95" fill="none" stroke="var(--rank-cor)" stroke-width="0.5" stroke-dasharray="2 4" />
+      <circle cx="100" cy="100" r="80" fill="none" stroke="var(--rank-cor)" stroke-width="1.5" stroke-dasharray="20 10 5 10 40 5" />
+      <circle cx="100" cy="100" r="60" fill="none" stroke="var(--rank-cor)" stroke-width="0.5" opacity="0.5"/>
+      <polygon points="100,20 169.28,60 169.28,140 100,180 30.72,140 30.72,60" fill="none" stroke="var(--rank-cor)" stroke-width="0.5" opacity="0.3"/>
+    </svg>
+  </div>
 
-/* Cristais Neumorfismo Falso 3D */
-#hunter-card.bannerPremium .cristal-gema {
-  border: none !important;
-  box-shadow: 
-    inset 0 1px 2px rgba(255,255,255,0.25), 
-    inset 0 -4px 6px rgba(0,0,0,0.7), 
-    0 8px 12px rgba(0,0,0,0.6),
-    0 0 20px var(--rank-aura) !important;
-}
-#hunter-card.bannerPremium .cristal-nivel .cristal-gema { background: linear-gradient(145deg, #5b21b6, #2e1065) !important; text-shadow: 0 0 8px #d8b4fe !important; }
-#hunter-card.bannerPremium .cristal-moedas .cristal-gema { background: linear-gradient(145deg, #b45309, #78350f) !important; text-shadow: 0 0 8px #fde68a !important; }
-#hunter-card.bannerPremium .cristal-streak .cristal-gema { background: linear-gradient(145deg, #c2410c, #7c2d12) !important; text-shadow: 0 0 8px #fed7aa !important; }
+  <!-- ESQUERDA: Identidade (Shimmer) -->
+  <div style="flex:1; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; padding-right:20px; z-index:2;">
+    <div style="font-family:var(--font-title); font-size:2.4rem; font-weight:700; line-height:1.1; letter-spacing:0.08em; background:linear-gradient(100deg, #fff 20%, var(--rank-cor) 50%, #fff 80%); background-size:200% auto; -webkit-background-clip:text; color:transparent; animation: arq-shimmer 3s linear infinite; filter:drop-shadow(0 5px 15px rgba(0,0,0,0.9));">${nome}</div>
+    <div style="font-family:var(--font-section); font-size:1rem; letter-spacing:0.15em; color:var(--gold-bright); text-transform:uppercase; margin-top:5px; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">${titulo}</div>
+    <div style="margin-top:20px; filter:drop-shadow(0 5px 10px rgba(0,0,0,0.5));" id="arq-relicario-inj">${relicarioClone ? relicarioClone.outerHTML : ''}</div>
+  </div>
 
-/* Barra de XP HUD de precisão */
-#hunter-card.bannerPremium .hunter-xp-track {
-  background: #000 !important;
-  border: 1px solid rgba(255,255,255,0.05) !important;
-  box-shadow: inset 0 2px 8px rgba(0,0,0,0.9), 0 1px 0 rgba(255,255,255,0.05) !important;
-}
-#hunter-card.bannerPremium .hunter-xp-fill {
-  box-shadow: 0 0 20px var(--rank-cor) !important;
-}
-/* O Pino de Plasma na frente da barra */
-#hunter-card.bannerPremium .hunter-xp-fill::before {
-  content: ''; position: absolute; right: 0; top: -3px; bottom: -3px; width: 4px;
-  background: #fff; box-shadow: 0 0 12px #fff, 0 0 20px var(--rank-cor);
-  border-radius: 2px; z-index: 3;
-}
+  <!-- CENTRO: Reator Hexagonal Gigante -->
+  <div style="width:180px; height:180px; position:relative; flex-shrink:0; display:flex; align-items:center; justify-content:center; z-index:3;">
+    <div style="position:absolute; inset:-40px; background:radial-gradient(circle, var(--rank-cor) 0%, transparent 65%); opacity:0.3; filter:blur(15px); animation: arq-pulse 3s ease-in-out infinite;"></div>
+    
+    <div class="hunter-hex" style="width:144px; height:144px; clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%); background:#000; position:relative; z-index:2; box-shadow:inset 0 0 40px #000;">
+      ${avatarHtml}
+      <div style="position:absolute; inset:0; box-shadow:inset 0 0 25px rgba(0,0,0,0.95); pointer-events:none;"></div>
+    </div>
+    
+    <!-- Anéis Tecnológicos Frontais -->
+    <svg style="position:absolute; inset:-20px; width:220px; height:220px; z-index:3; pointer-events:none; animation: arq-spin 20s linear infinite;" viewBox="0 0 100 100">
+       <circle cx="50" cy="50" r="48" fill="none" stroke="var(--rank-cor)" stroke-width="2" stroke-dasharray="30 5 5 5" opacity="0.9" filter="drop-shadow(0 0 4px var(--rank-cor))"/>
+    </svg>
+
+    <!-- Badge Centralizado na Base -->
+    <div style="position:absolute; bottom:-15px; z-index:5; background:#07070f; border:2px solid var(--rank-cor); color:var(--rank-cor); font-family:var(--font-title); font-size:1.6rem; font-weight:900; width:54px; height:54px; display:flex; align-items:center; justify-content:center; clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%); box-shadow: 0 10px 20px rgba(0,0,0,0.9), inset 0 0 10px rgba(0,0,0,0.8); text-shadow: 0 0 12px var(--rank-cor);">${seloRank}</div>
+  </div>
+
+  <!-- DIREITA: Cristais -->
+  <div style="flex:1; display:flex; justify-content:flex-end; padding-left:20px; z-index:2;" id="arq-cristais-inj">
+    ${cristaisClone ? cristaisClone.outerHTML : ''}
+  </div>
+
+  <!-- BASE: Barra de XP Curvada Estilo HUD -->
+  <div style="position:absolute; bottom:15px; left:40px; right:40px; display:flex; flex-direction:column; gap:6px; z-index:4;">
+     <div style="align-self:flex-end; font-family:'Orbitron'; font-size:0.75rem; color:var(--gold-bright); letter-spacing:0.1em; text-shadow:0 2px 4px rgba(0,0,0,0.8);">${xpTxt}</div>
+     <div style="width:100%; height:8px; background:rgba(0,0,0,0.7); border-radius:4px; border:1px solid rgba(255,255,255,0.1); position:relative; box-shadow:inset 0 2px 6px rgba(0,0,0,0.9);">
+        <div style="width:${xpFill}; height:100%; background:linear-gradient(90deg, transparent, var(--rank-cor)); border-radius:4px; box-shadow: 0 0 15px var(--rank-cor); position:relative;">
+           <div style="position:absolute; right:0; top:-3px; bottom:-3px; width:6px; background:#fff; border-radius:3px; box-shadow:0 0 15px #fff, 0 0 30px var(--rank-cor);"></div>
+        </div>
+     </div>
+  </div>
+</div>
 `;
 
-    // Injeta a tag <style> com ID controlado
+    janela.insertAdjacentHTML('beforeend', html);
+
+    const css = `
+@keyframes arq-spin { 100% { transform: translate(-50%,-50%) rotate(360deg); } }
+@keyframes arq-spin-rev { 100% { transform: translate(-50%,-50%) rotate(-360deg); } }
+@keyframes arq-shimmer { 100% { background-position: -200% center; } }
+@keyframes arq-pulse { 0%,100% { opacity: 0.3; transform: scale(0.95); } 50% { opacity: 0.5; transform: scale(1.05); } }
+/* Garanta que os cristais e relicário clonados funcionem visualmente */
+#arq-cristais-inj .hunter-cristais { margin-left: auto; display:flex; gap:1.2rem; }
+#arq-cristais-inj .cristal-gema { width:84px; height:84px; font-size:1.6rem; border:1px solid rgba(255,255,255,0.15) !important; box-shadow:inset 0 0 15px rgba(0,0,0,0.8), 0 10px 20px rgba(0,0,0,0.6) !important; }
+`;
+
     const tag = document.createElement('style');
     tag.id = STYLE_ID;
     tag.textContent = css;
     document.head.appendChild(tag);
-
-    // Adiciona a class .bannerPremium ao elemento para os seletores CSS funcionarem
+    
     janela.classList.add(FLAG);
-
-    // Badge visual de modo preview no canto do card
-    const badge = document.createElement('div');
-    badge.id = 'arq-premium-badge';
-    badge.style.cssText = `
-      position:absolute;top:10px;right:14px;z-index:10;
-      font-family:var(--font-section);font-size:.55rem;font-weight:700;
-      letter-spacing:.15em;color:#fcd34d;
-      background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.4);
-      padding:.2rem .6rem;border-radius:4px;pointer-events:none;
-      box-shadow: 0 0 10px rgba(251,191,36,.2);
-    `;
-    badge.textContent = 'PREVIEW PREMIUM ULTRA';
-    janela.style.position = 'relative';
-    janela.appendChild(badge);
-
-    // Canvas de partículas atrelado ao rank
-    const bodyPanel = janela.querySelector('.hunter-window-body');
-    if (bodyPanel) {
-      const cnv = document.createElement('canvas');
-      cnv.id = 'arq-premium-canvas';
-      cnv.style.cssText = 'position:absolute; inset:0; z-index:0; pointer-events:none; mix-blend-mode:screen;';
-      janela.insertBefore(cnv, bodyPanel);
-
-      const ctx = cnv.getContext('2d');
-      const rankColorRaw = getComputedStyle(janela).getPropertyValue('--rank-cor').trim();
-      const rankColor = rankColorRaw || '#a855f7';
-      
-      const resize = () => {
-        cnv.width = janela.clientWidth;
-        cnv.height = janela.clientHeight;
-      };
-      resize();
-      window._arqPremiumResize = resize;
-      window.addEventListener('resize', resize);
-
-      const particles = [];
-      for(let i = 0; i < 40; i++) {
-        particles.push({
-          x: Math.random() * cnv.width,
-          y: Math.random() * cnv.height,
-          size: Math.random() * 2 + 0.5,
-          speedY: Math.random() * 1.5 + 0.5,
-          opacity: Math.random() * 0.5 + 0.2
-        });
-      }
-
-      const draw = () => {
-        ctx.clearRect(0, 0, cnv.width, cnv.height);
-        particles.forEach(p => {
-          p.y -= p.speedY;
-          if (p.y < -10) {
-            p.y = cnv.height + 10;
-            p.x = Math.random() * cnv.width;
-          }
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-          ctx.fillStyle = rankColor;
-          ctx.globalAlpha = p.opacity;
-          ctx.fill();
-        });
-        ctx.globalAlpha = 1;
-        window._arqPremiumAnimFrame = requestAnimationFrame(draw);
-      };
-      draw();
-    }
-
     SoloDialog?.toast?.('✨ Banner Ultra Premium ativo — clique de novo para remover', 'success');
   },
 
