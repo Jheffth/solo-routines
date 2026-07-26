@@ -579,7 +579,7 @@ const Estandarte = {
        saem do escudo e se juntam. O CSS puxa o SVG para a esquerda com
        margem negativa, de modo que essa faixa caia sobre o escudo. */
     const W = 980, H = 78;
-    const zona = 10;                    // faixa de convergência mínima (só para não cortar o blur)
+    const zona = 45;                    // faixa de convergência e ancoragem do nodo
     const bx = zona, bw = W - zona - 14;
     const cy = H / 2, bh = 11;
     const by = cy - bh / 2;
@@ -637,10 +637,27 @@ const Estandarte = {
       (k % 2 === 0 ? tras : frente).push(seg);
     }
 
-    /* OS TRÊS FEIXES foram removidos junto com o escudo.
-       A barra agora nasce naturalmente do seu próprio ponto de origem,
-       sem precisar de linhas de convergência. */
-    const feixes = '';
+    /* O NODO DE ORIGEM E OS FEIXES.
+       Como a barra estava 'flutuando', criamos um ancoradouro tecnológico (um losango).
+       Os três feixes convergem das extremidades (perspectiva do circuito) 
+       e injetam energia no nodo, que por sua vez ejeta a barra de XP. */
+    const feixes = [-1.5, 0, 1.5].map((n, i) => {
+      const yIni = cy + n * 18;
+      const xIni = -10; // Nascem de fora da tela
+      const yFim = cy;
+      const d = `M ${xIni} ${yIni} C ${bx * 0.4} ${yIni} ${bx * 0.6} ${yFim} ${bx} ${yFim}`;
+      return `<path class="pt-feixe-nasce pt-feixe-n${i}" d="${d}" fill="none"
+                    stroke="url(#feixeNasce)" stroke-width="${2.5 - Math.abs(n) * .5}"
+                    stroke-linecap="round" filter="url(#linhaBrilho)"/>`;
+    }).join('');
+
+    const nodoOrigem = `
+      <g class="pt-nodo-ancora">
+        <polygon points="${bx-10},${cy} ${bx},${cy-10} ${bx+10},${cy} ${bx},${cy+10}" fill="${campo.fundo2}" stroke="${campo.feixe}" stroke-width="1.5" filter="url(#linhaBrilho)"/>
+        <circle cx="${bx}" cy="${cy}" r="3" fill="#fff" filter="url(#linhaBrilho)"/>
+        <path d="M 0 ${cy} L ${bx} ${cy}" stroke="${campo.circuito}" stroke-width="1.5" stroke-dasharray="2 4" opacity="0.5"/>
+      </g>
+    `;
 
     return `
       <svg class="pt-barra" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"
