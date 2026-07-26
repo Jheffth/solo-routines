@@ -133,6 +133,7 @@ const ForjaTestes = {
 
   /* ── Abas ────────────────────────────────────────────────── */
   ABAS: [
+    { id: 'escudosimg',rotulo: '🛡 Escudos'     },
     { id: 'emblemas',  rotulo: '🎖 Emblemas'   },
     { id: 'auras',     rotulo: '✦ Auras'       },
     { id: 'cerimonias',rotulo: '🎬 Cerimônias' },
@@ -221,6 +222,16 @@ const ForjaTestes = {
   },
 
   _itens(aba) {
+    if (aba === 'escudosimg') {
+      const ranks = ['E', 'D', 'C', 'B', 'A', 'S', 'N'];
+      return ranks.map(r => ({
+        chave: 'escudo:' + r,
+        nome: 'Rank ' + r,
+        tag: 'Escudo HD (Sprite)',
+        arte: typeof EscudosImg !== 'undefined' ? EscudosImg.rank(r, 90) : '🛡',
+        busca: `escudo rank ${r}`
+      }));
+    }
     if (aba === 'emblemas') {
       return this._catalogoEmblemas().map(c => ({
         chave: 'emb:' + c.codigo,
