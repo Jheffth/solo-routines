@@ -464,9 +464,9 @@ const Estandarte = {
 
           <!-- Coluna 3: Gemas -->
           <div class="pt-gemas">
-            ${this._gema('ametista', u.nivel_atual ?? 1, 'Nível')}
-            ${this._gema('ambar', (u.moedas ?? 0).toLocaleString('pt-BR'), 'Mana Coins')}
-            ${this._gema('rubi', u.streak_atual ?? 0, 'Streak')}
+            ${this._gema('ametista', u.nivel_atual ?? 1, 'Nível', { auraV3: true })}
+            ${this._gema('ambar', (u.moedas ?? 0).toLocaleString('pt-BR'), 'Mana Coins', { auraV3: true })}
+            ${this._gema('rubi', u.streak_atual ?? 0, 'Streak', { auraV3: true })}
           </div>
 
         </div>
@@ -783,11 +783,11 @@ const Estandarte = {
      processo das badges (SVG forjado em código, IDs únicos, tamanho
      explícito). Sem a forja carregada, cai num disco simples em vez de
      sumir: a vitrine tem que abrir sempre. */
-  _gema(pedra, valor, rotulo) {
+  _gema(pedra, valor, rotulo, opts = {}) {
     if (typeof Gemas !== 'undefined' && Gemas.pedraComValor) {
       return `
         <div class="pt-gema" title="${rotulo}">
-          ${Gemas.pedraComValor(pedra, valor, 56)}
+          ${Gemas.pedraComValor(pedra, valor, 56, opts)}
           <span class="pt-gema-rot">${rotulo}</span>
         </div>`;
     }

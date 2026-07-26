@@ -194,7 +194,9 @@ const Gemas = {
       pav.push(`M ${x.toFixed(2)} ${y.toFixed(2)} L ${cx} ${cy + 14}`);
     }
 
-    const particulasFable = Array.from({length: 16}).map((_, i) => {
+    const hasAura = opts.auraV3 === true;
+
+    const particulasFable = !hasAura ? '' : Array.from({length: 16}).map((_, i) => {
       // Distribuição orgânica ao redor da pedra (padrão Fable5)
       const ang = (i * 22.5 + (i % 3) * 7) % 360;
       const raio = 38 + (i % 4) * 8 + (i % 2) * 5;
@@ -210,18 +212,19 @@ const Gemas = {
 
       return `
       <g class="gem-brasa-item" style="transform-origin: ${cxP.toFixed(2)}px ${cyP.toFixed(2)}px; animation-delay: ${delay}s; animation-duration: ${dur}s">
-        <!-- Núcleo quente (tom mais claro) -->
+        <!-- Núcleo quente (fogo da própria gema) -->
         <circle cx="${cxP.toFixed(2)}" cy="${cyP.toFixed(2)}" r="${sz.toFixed(2)}"
-                fill="${p.mesa}" fill-opacity="${op}" filter="url(#brilhoParticula)"/>
-        <!-- Halo da brasa (tom médio da gema) -->
+                fill="${p.fogo}" fill-opacity="${op}" filter="url(#brilhoExt)"/>
+        <!-- Halo da brasa (brilho da gema) -->
         <circle cx="${cxP.toFixed(2)}" cy="${cyP.toFixed(2)}" r="${(sz * 2.2).toFixed(2)}"
-                fill="${p.brilho}" fill-opacity="${(op * 0.6).toFixed(2)}" filter="url(#brilhoParticula)"/>
+                fill="${p.brilho}" fill-opacity="${(op * 0.6).toFixed(2)}" filter="url(#brilhoExt)"/>
       </g>`;
     }).join('');
 
     return this._unico(`
 <svg viewBox="0 0 100 100" width="${tam}" height="${tam}"
      class="gema-svg" aria-hidden="true" style="max-width:none;overflow:visible;">
+  ${hasAura ? `
   <style>
     .gem-brasa-item {
       animation: gem-crepitar 2.8s ease-in-out infinite alternate;
@@ -234,7 +237,7 @@ const Gemas = {
     @media (prefers-reduced-motion: reduce) {
       .gem-brasa-item { animation: none !important; }
     }
-  </style>
+  </style>` : ''}
   <defs>
     <radialGradient id="corpo" cx="38%" cy="30%">
       <stop offset="0%"   stop-color="${p.brilho}"/>
@@ -253,28 +256,24 @@ const Gemas = {
       <stop offset="100%" stop-color="${p.sombra}" stop-opacity="0"/>
     </radialGradient>
     <filter id="brilhoExt" x="-45%" y="-45%" width="190%" height="190%">
-      <feGaussianBlur stdDeviation="3.5" result="b"/>
+      <feGaussianBlur stdDeviation="3.2" result="b"/>
       <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
-    <filter id="brilhoParticula" x="-100%" y="-100%" width="300%" height="300%">
-      <feGaussianBlur stdDeviation="1.0" result="b"/>
-      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
-    <clipPath id="corteBase">
-      <polygon points="${this._poligono(cx, cy, rExt, lados)}" />
-    </clipPath>
   </defs>
 
-  <!-- Aura intensa: dupla camada de brilho usando os tons mais claros da gema -->
+  ${hasAura ? `
+  <!-- Aura intensa S-Rank -->
   <polygon points="${this._poligono(cx, cy, rExt + 8, lados)}"
-           fill="${p.brilho}" opacity=".5" filter="url(#brilhoExt)"/>
+           fill="${p.fogo}" opacity=".4" filter="url(#brilhoExt)"/>
   <polygon points="${this._poligono(cx, cy, rExt + 3, lados)}"
-           fill="${p.mesa}" opacity=".65" filter="url(#brilhoExt)"/>
+           fill="${p.brilho}" opacity=".6" filter="url(#brilhoExt)"/>
+  ` : `
+  <!-- halo externo original Opus (V2) -->
+  <polygon points="${this._poligono(cx, cy, rExt + 4, lados)}"
+           fill="${p.corpo}" opacity=".22" filter="url(#brilhoExt)"/>
+  `}
 
-  <!-- partículas flutuantes (Aura da Fênix replicada com CSS Keyframes) -->
-  <g class="pt-particulas">
-    ${particulasFable}
-  </g>
+  ${hasAura ? `<g class="pt-particulas">${particulasFable}</g>` : ''}
 
   <!-- corpo -->
   <polygon points="${this._poligono(cx, cy, rExt, lados)}" fill="url(#corpo)"/>
@@ -295,30 +294,23 @@ const Gemas = {
   <polygon points="${this._poligono(cx, cy, rMesa, lados)}" fill="none"
            stroke="${p.brilho}" stroke-opacity=".55" stroke-width=".8"/>
 
-  <!-- feixe de luz varrendo a gema por dentro (efeito reflexo de lente) -->
-  <g clip-path="url(#corteBase)">
-    <rect x="-10" y="-20" width="15" height="150" fill="#ffffff" opacity="0.3" transform="rotate(35 50 50)">
-      <animate attributeName="x" values="-100; 150; 150" keyTimes="0; 0.4; 1" dur="5s" repeatCount="indefinite"/>
-    </rect>
-  </g>
-
-  <!-- cintilação estática -->
+  <!-- cintilação: fora do centro, senão parece um reflexo de estúdio -->
   <ellipse cx="38" cy="32" rx="9" ry="5.5" fill="${p.brilho}" opacity=".7"
            transform="rotate(-32 38 32)"/>
   <circle cx="63" cy="63" r="2.4" fill="${p.brilho}" opacity=".45"/>
 
   <!-- aresta da cintura -->
   <polygon points="${this._poligono(cx, cy, rExt, lados)}" fill="none"
-           stroke="${p.brilho}" stroke-opacity=".6" stroke-width="1.2"/>
+           stroke="${p.brilho}" stroke-opacity=".5" stroke-width="1.1"/>
 </svg>`);
   },
 
   /* Pedra com número dentro — é o que o banner usa nas estatísticas. */
-  pedraComValor(id, valor, tam = 58) {
+  pedraComValor(id, valor, tam = 58, opts = {}) {
     const p = this.PEDRAS[id] || this.PEDRAS.ametista;
     return `
       <span class="gema-slot" style="width:${tam}px;height:${tam}px">
-        ${this.pedra(id, tam)}
+        ${this.pedra(id, tam, opts)}
         <span class="gema-valor" style="font-size:${Math.max(10, Math.round(tam * .26))}px;
               color:${p.brilho}">${valor}</span>
       </span>`;
