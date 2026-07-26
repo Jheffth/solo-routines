@@ -97,49 +97,49 @@ const EscudosV2 = {
     const out = p(oR);
     const inn = p(iR);
 
-    const lLight = \`url(#\${material}Luz)\`;
-    const lMid   = \`url(#\${material}Mid)\`;
-    const lDark  = \`url(#\${material}Sombra)\`;
+    const lLight = `url(#${material}Luz)`;
+    const lMid   = `url(#${material}Mid)`;
+    const lDark  = `url(#${material}Sombra)`;
 
     // 6 Facetas perfeitamente iluminadas (TopLeft é luz, BotRight é sombra)
-    return \`
+    return `
       <g filter="url(#shadowForte)">
         <!-- Top Left (Luz máxima) -->
-        <polygon points="\${out[5].x},\${out[5].y} \${out[0].x},\${out[0].y} \${inn[0].x},\${inn[0].y} \${inn[5].x},\${inn[5].y}" fill="\${lLight}"/>
+        <polygon points="${out[5].x},${out[5].y} ${out[0].x},${out[0].y} ${inn[0].x},${inn[0].y} ${inn[5].x},${inn[5].y}" fill="${lLight}"/>
         <!-- Top Right (Luz média) -->
-        <polygon points="\${out[0].x},\${out[0].y} \${out[1].x},\${out[1].y} \${inn[1].x},\${inn[1].y} \${inn[0].x},\${inn[0].y}" fill="\${lMid}"/>
+        <polygon points="${out[0].x},${out[0].y} ${out[1].x},${out[1].y} ${inn[1].x},${inn[1].y} ${inn[0].x},${inn[0].y}" fill="${lMid}"/>
         <!-- Right (Sombra) -->
-        <polygon points="\${out[1].x},\${out[1].y} \${out[2].x},\${out[2].y} \${inn[2].x},\${inn[2].y} \${inn[1].x},\${inn[1].y}" fill="\${lDark}"/>
+        <polygon points="${out[1].x},${out[1].y} ${out[2].x},${out[2].y} ${inn[2].x},${inn[2].y} ${inn[1].x},${inn[1].y}" fill="${lDark}"/>
         <!-- Bottom Right (Sombra máxima) -->
-        <polygon points="\${out[2].x},\${out[2].y} \${out[3].x},\${out[3].y} \${inn[3].x},\${inn[3].y} \${inn[2].x},\${inn[2].y}" fill="#111"/>
+        <polygon points="${out[2].x},${out[2].y} ${out[3].x},${out[3].y} ${inn[3].x},${inn[3].y} ${inn[2].x},${inn[2].y}" fill="#111"/>
         <!-- Bottom Left (Sombra) -->
-        <polygon points="\${out[3].x},\${out[3].y} \${out[4].x},\${out[4].y} \${inn[4].x},\${inn[4].y} \${inn[3].x},\${inn[3].y}" fill="\${lDark}"/>
+        <polygon points="${out[3].x},${out[3].y} ${out[4].x},${out[4].y} ${inn[4].x},${inn[4].y} ${inn[3].x},${inn[3].y}" fill="${lDark}"/>
         <!-- Left (Luz média) -->
-        <polygon points="\${out[4].x},\${out[4].y} \${out[5].x},\${out[5].y} \${inn[5].x},\${inn[5].y} \${inn[4].x},\${inn[4].y}" fill="\${lMid}"/>
+        <polygon points="${out[4].x},${out[4].y} ${out[5].x},${out[5].y} ${inn[5].x},${inn[5].y} ${inn[4].x},${inn[4].y}" fill="${lMid}"/>
         
         <!-- Friso Interno Extra Metálico para destaque -->
-        <polygon points="\${inn.map(v => v.x+','+v.y).join(' ')}" fill="none" stroke="\${lLight}" stroke-width="1.5" opacity="0.8"/>
+        <polygon points="${inn.map(v => v.x+','+v.y).join(' ')}" fill="none" stroke="${lLight}" stroke-width="1.5" opacity="0.8"/>
         
         <!-- Fundo Escudo (Buraco Escuro) -->
-        <polygon points="\${inn.map(v => v.x+','+v.y).join(' ')}" fill="var(--fundo)" filter="url(#innerGlow)"/>
+        <polygon points="${inn.map(v => v.x+','+v.y).join(' ')}" fill="var(--fundo)" filter="url(#innerGlow)"/>
       </g>
-    \`;
+    `;
   },
 
   /* =========================================================================
      2. LUA CRESCENTE E ESTRELA (3D REAL)
      ========================================================================= */
   _luaEstrela(material, scale = 1, cx = 100, cy = 100) {
-    const sLuz = \`url(#\${material}Luz)\`;
-    const sSombra = \`url(#\${material}Sombra)\`;
+    const sLuz = `url(#${material}Luz)`;
+    const sSombra = `url(#${material}Sombra)`;
     const rArc = 15 * scale;
     const rIn = 12 * scale;
     
     // Desenho de crescente perfeito via Comandos Arc
     // Inicia no topo, desce no arco externo, sobe no arco interno
-    const luaBase = \`M \${cx-5*scale},\${cy-15*scale} 
-                     A \${rArc} \${rArc} 0 0 0 \${cx-5*scale},\${cy+15*scale} 
-                     A \${rIn} \${rIn} 0 0 1 \${cx-5*scale},\${cy-15*scale} Z\`;
+    const luaBase = `M ${cx-5*scale},${cy-15*scale} 
+                     A ${rArc} ${rArc} 0 0 0 ${cx-5*scale},${cy+15*scale} 
+                     A ${rIn} ${rIn} 0 0 1 ${cx-5*scale},${cy-15*scale} Z`;
 
     // Estrela 3D (5 pirâmides)
     const eR = 6 * scale;
@@ -153,19 +153,19 @@ const EscudosV2 = {
       p.push({ x: eCx + raio * Math.cos(ang), y: eCy + raio * Math.sin(ang) });
     }
     for(let i=0; i<5; i++) {
-      facesEstrela += \`<polygon points="\${eCx},\${eCy} \${p[i*2].x},\${p[i*2].y} \${p[(i*2+9)%10].x},\${p[(i*2+9)%10].y}" fill="\${sSombra}"/>\`;
-      facesEstrela += \`<polygon points="\${eCx},\${eCy} \${p[i*2].x},\${p[i*2].y} \${p[(i*2+1)%10].x},\${p[(i*2+1)%10].y}" fill="\${sLuz}"/>\`;
+      facesEstrela += `<polygon points="${eCx},${eCy} ${p[i*2].x},${p[i*2].y} ${p[(i*2+9)%10].x},${p[(i*2+9)%10].y}" fill="${sSombra}"/>`;
+      facesEstrela += `<polygon points="${eCx},${eCy} ${p[i*2].x},${p[i*2].y} ${p[(i*2+1)%10].x},${p[(i*2+1)%10].y}" fill="${sLuz}"/>`;
     }
 
-    return \`
+    return `
       <g filter="url(#shadowForte)">
         <!-- Lua 3D Sombra e Luz (Offset simulando espessura) -->
-        <path d="\${luaBase}" fill="\${sSombra}" transform="translate(1, 2)"/>
-        <path d="\${luaBase}" fill="\${sLuz}"/>
+        <path d="${luaBase}" fill="${sSombra}" transform="translate(1, 2)"/>
+        <path d="${luaBase}" fill="${sLuz}"/>
         <!-- Estrela Facetada -->
-        \${facesEstrela}
+        ${facesEstrela}
       </g>
-    \`;
+    `;
   },
 
   /* =========================================================================
@@ -174,16 +174,16 @@ const EscudosV2 = {
      A asa é um arranjo radial destas penas ao redor do escudo.
      ========================================================================= */
   _penaGeometrica(x, y, scale, rotation, material) {
-    return \`
-      <g transform="translate(\${x},\${y}) rotate(\${rotation}) scale(\${scale})" filter="url(#shadowPenas)">
+    return `
+      <g transform="translate(${x},${y}) rotate(${rotation}) scale(${scale})" filter="url(#shadowPenas)">
         <!-- Lado Luz (Esquerdo da folha) -->
-        <path d="M0,0 Q-8,-15 0,-40 Z" fill="url(#\${material}Luz)"/>
+        <path d="M0,0 Q-8,-15 0,-40 Z" fill="url(#${material}Luz)"/>
         <!-- Lado Sombra (Direito da folha) -->
-        <path d="M0,0 Q8,-15 0,-40 Z" fill="url(#\${material}Sombra)"/>
+        <path d="M0,0 Q8,-15 0,-40 Z" fill="url(#${material}Sombra)"/>
         <!-- Haste central fina -->
         <path d="M0,0 L0,-38" stroke="#fff" stroke-width="0.5" opacity="0.6"/>
       </g>
-    \`;
+    `;
   },
 
   _asaAnjo(cx, cy, side, material, rank) {
@@ -240,7 +240,7 @@ const EscudosV2 = {
     }
     
     // Como a asa é gerada com o ponto base (0,0) perto do escudo, agrupamos tudo.
-    return \`<g>\${penas}</g>\`;
+    return `<g>${penas}</g>`;
   },
 
   /* =========================================================================
@@ -248,21 +248,21 @@ const EscudosV2 = {
      ========================================================================= */
   _joia(cx, cy, r) {
     const l = r * 0.8;
-    return \`
+    return `
       <g filter="url(#shadowPenas)">
         <!-- Top -->
-        <polygon points="\${cx},\${cy-r} \${cx+l},\${cy-l} \${cx-l},\${cy-l}" fill="url(#cianoLuz)"/>
+        <polygon points="${cx},${cy-r} ${cx+l},${cy-l} ${cx-l},${cy-l}" fill="url(#cianoLuz)"/>
         <!-- Right -->
-        <polygon points="\${cx+r},\${cy} \${cx+l},\${cy+l} \${cx+l},\${cy-l}" fill="url(#cianoLuz)"/>
+        <polygon points="${cx+r},${cy} ${cx+l},${cy+l} ${cx+l},${cy-l}" fill="url(#cianoLuz)"/>
         <!-- Bottom -->
-        <polygon points="\${cx},\${cy+r} \${cx-l},\${cy+l} \${cx+l},\${cy+l}" fill="url(#cianoSombra)"/>
+        <polygon points="${cx},${cy+r} ${cx-l},${cy+l} ${cx+l},${cy+l}" fill="url(#cianoSombra)"/>
         <!-- Left -->
-        <polygon points="\${cx-r},\${cy} \${cx-l},\${cy-l} \${cx-l},\${cy+l}" fill="url(#cianoSombra)"/>
+        <polygon points="${cx-r},${cy} ${cx-l},${cy-l} ${cx-l},${cy+l}" fill="url(#cianoSombra)"/>
         <!-- Mesa Central -->
-        <polygon points="\${cx-l},\${cy-l} \${cx+l},\${cy-l} \${cx+l},\${cy+l} \${cx-l},\${cy+l}" fill="#00ffff"/>
-        <circle cx="\${cx-l*0.5}" cy="\${cy-l*0.5}" r="\${r*0.2}" fill="#fff"/>
+        <polygon points="${cx-l},${cy-l} ${cx+l},${cy-l} ${cx+l},${cy+l} ${cx-l},${cy+l}" fill="#00ffff"/>
+        <circle cx="${cx-l*0.5}" cy="${cy-l*0.5}" r="${r*0.2}" fill="#fff"/>
       </g>
-    \`;
+    `;
   },
 
   /* =========================================================================
@@ -286,20 +286,20 @@ const EscudosV2 = {
 
       case 'D':
         asa = this._asaAnjo(CX, CY, -1, 'prata', 'D') + this._asaAnjo(CX, CY, 1, 'prata', 'D');
-        magia = \`<circle cx="\${CX}" cy="\${CY}" r="65" fill="none" stroke="#00ced1" stroke-width="0.5" opacity="0.3" filter="url(#glowDivino)" />\`;
+        magia = `<circle cx="${CX}" cy="${CY}" r="65" fill="none" stroke="#00ced1" stroke-width="0.5" opacity="0.3" filter="url(#glowDivino)" />`;
         break;
 
       case 'C':
         materialBase = 'prata';
         varFundo = 'url(#fundoCosmo)';
-        magia = \`<circle cx="\${CX}" cy="\${CY}" r="75" fill="none" stroke="#00ced1" stroke-width="1.5" opacity="0.6" filter="url(#glowDivino)" />\`;
+        magia = `<circle cx="${CX}" cy="${CY}" r="75" fill="none" stroke="#00ced1" stroke-width="1.5" opacity="0.6" filter="url(#glowDivino)" />`;
         asa = this._asaAnjo(CX, CY, -1, 'prata', 'C') + this._asaAnjo(CX, CY, 1, 'prata', 'C');
         break;
 
       case 'B':
         materialBase = 'ouro';
         varFundo = 'url(#fundoCosmo)';
-        magia = \`<circle cx="\${CX}" cy="\${CY}" r="85" fill="none" stroke="#ffd700" stroke-width="1.5" opacity="0.5" filter="url(#glowDivino)" />\`;
+        magia = `<circle cx="${CX}" cy="${CY}" r="85" fill="none" stroke="#ffd700" stroke-width="1.5" opacity="0.5" filter="url(#glowDivino)" />`;
         asa = this._asaAnjo(CX, CY, -1, 'ouro', 'B') + this._asaAnjo(CX, CY, 1, 'ouro', 'B');
         break;
 
@@ -307,12 +307,12 @@ const EscudosV2 = {
         materialBase = 'ouro';
         varFundo = 'url(#fundoAzul)';
         // Halo de Anjo
-        magia = \`
+        magia = `
           <g filter="url(#glowDivino)">
-            <ellipse cx="\${CX}" cy="20" rx="40" ry="10" fill="none" stroke="#ffd700" stroke-width="3"/>
-            <ellipse cx="\${CX}" cy="20" rx="40" ry="10" fill="none" stroke="#ffffff" stroke-width="1"/>
+            <ellipse cx="${CX}" cy="20" rx="40" ry="10" fill="none" stroke="#ffd700" stroke-width="3"/>
+            <ellipse cx="${CX}" cy="20" rx="40" ry="10" fill="none" stroke="#ffffff" stroke-width="1"/>
           </g>
-        \`;
+        `;
         asa = this._asaAnjo(CX, CY, -1, 'bronze', 'A') + this._asaAnjo(CX, CY, 1, 'bronze', 'A');
         break;
 
@@ -320,15 +320,15 @@ const EscudosV2 = {
         materialBase = 'ouro';
         varFundo = 'url(#fundoCosmo)';
         // Roda Rúnica
-        magia = \`
+        magia = `
           <g filter="url(#glowDivino)" opacity="0.9">
-            <circle cx="\${CX}" cy="\${CY}" r="95" fill="none" stroke="#ffd700" stroke-width="2" stroke-dasharray="15 8"/>
-            <circle cx="\${CX}" cy="\${CY}" r="85" fill="none" stroke="#fff" stroke-width="0.5"/>
+            <circle cx="${CX}" cy="${CY}" r="95" fill="none" stroke="#ffd700" stroke-width="2" stroke-dasharray="15 8"/>
+            <circle cx="${CX}" cy="${CY}" r="85" fill="none" stroke="#fff" stroke-width="0.5"/>
             <!-- Hexagrama Mágico perfeito -->
             <polygon points="100,5 182,147 18,147" fill="none" stroke="#ffd700" stroke-width="1.5" opacity="0.6"/>
             <polygon points="100,195 182,53 18,53" fill="none" stroke="#ffd700" stroke-width="1.5" opacity="0.6"/>
           </g>
-        \`;
+        `;
         asa = this._asaAnjo(CX, CY, -1, 'ouro', 'S') + this._asaAnjo(CX, CY, 1, 'ouro', 'S');
         // Cravando joias nas asas S
         joias = this._joia(45, 60, 5) + this._joia(155, 60, 5)
@@ -339,9 +339,9 @@ const EscudosV2 = {
         materialBase = 'ouro';
         varFundo = 'url(#fundoCosmo)';
         // Fundo Galáxia e Roda Cósmica
-        magia = \`
-          <circle cx="\${CX}" cy="\${CY}" r="115" fill="none" stroke="#00ced1" stroke-width="3" filter="url(#glowDivino)"/>
-          <circle cx="\${CX}" cy="\${CY}" r="108" fill="none" stroke="#ffd700" stroke-width="1.5" stroke-dasharray="4 8" filter="url(#glowDivino)"/>
+        magia = `
+          <circle cx="${CX}" cy="${CY}" r="115" fill="none" stroke="#00ced1" stroke-width="3" filter="url(#glowDivino)"/>
+          <circle cx="${CX}" cy="${CY}" r="108" fill="none" stroke="#ffd700" stroke-width="1.5" stroke-dasharray="4 8" filter="url(#glowDivino)"/>
           
           <!-- Luas Orbitais Nacionais -->
           <circle cx="100" cy="-15" r="5" fill="#00ffff" filter="url(#glowDivino)"/>
@@ -352,7 +352,7 @@ const EscudosV2 = {
           <!-- Poeira Nebular Atrás -->
           <circle cx="80" cy="80" r="40" fill="#6a1b9a" opacity="0.4" filter="url(#glowDivino)"/>
           <circle cx="120" cy="120" r="35" fill="#00e5ff" opacity="0.3" filter="url(#glowDivino)"/>
-        \`;
+        `;
         
         asa = this._asaAnjo(CX, CY, -1, 'ouro', 'N') + this._asaAnjo(CX, CY, 1, 'ouro', 'N');
         
@@ -366,26 +366,26 @@ const EscudosV2 = {
 
     const vb = "-50 -50 300 300";
 
-    return this._unico(\`
-<svg viewBox="\${vb}" width="\${tam}" height="\${tam}" class="escudo-v2 escudo-\${L}" style="max-width:none; overflow:visible; --fundo:\${varFundo};">
+    return this._unico(`
+<svg viewBox="${vb}" width="${tam}" height="${tam}" class="escudo-v2 escudo-${L}" style="max-width:none; overflow:visible; --fundo:${varFundo};">
   <defs>
-    \${this._gradientes}
+    ${this._gradientes}
   </defs>
 
   <!-- 1. Magia Cósmica (Atrás de tudo) -->
-  \${magia}
+  ${magia}
 
   <!-- 2. Asas Geométricas (Atrás do Escudo) -->
-  \${asa}
+  ${asa}
 
   <!-- 3. Moldura 3D Facetada e Fundo Encavado -->
-  \${this._moldura3D(materialBase, 1.2, CX, CY)}
+  ${this._moldura3D(materialBase, 1.2, CX, CY)}
 
   <!-- 4. Lua, Estrela e Joias em Alto Relevo -->
-  \${this._luaEstrela(materialBase, 1.2, CX, CY)}
+  ${this._luaEstrela(materialBase, 1.2, CX, CY)}
   
-  \${joias}
-</svg>\`);
+  ${joias}
+</svg>`);
   }
 };
 
