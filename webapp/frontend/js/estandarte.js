@@ -799,6 +799,7 @@ const Estandarte = {
      raios, anéis e — no S e no N — coroa e louros. A diferença se vê na
      silhueta, de longe, sem precisar ler a letra. */
   _medalhaRank(letra, tam = 46) {
+    if (typeof EscudosImg !== 'undefined' && EscudosImg.rank) return EscudosImg.rank(letra, tam);
     if (typeof Gemas !== 'undefined' && Gemas.rank) return Gemas.rank(letra, tam);
     return `<span class="pt-rank-fallback">${letra}</span>`;
   },
