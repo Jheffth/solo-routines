@@ -223,12 +223,28 @@ const Gemas = {
     </clipPath>
   </defs>
 
-  <!-- halo externo pulsante: a pedra ilumina e respira -->
-  <polygon points="${this._poligono(cx, cy, rExt + 5, lados)}"
-           fill="${p.brilho}" opacity=".3" filter="url(#brilhoExt)">
-    <animate attributeName="opacity" values="0.15; 0.5; 0.15" dur="3s" repeatCount="indefinite"/>
-    <animateTransform attributeName="transform" type="scale" values="0.95; 1.05; 0.95" origin="50 50" dur="3s" repeatCount="indefinite" />
-  </polygon>
+  <!-- halo externo: suave e estático, apenas para volume -->
+  <polygon points="${this._poligono(cx, cy, rExt + 4, lados)}"
+           fill="${p.corpo}" opacity=".25" filter="url(#brilhoExt)"/>
+
+  <!-- partículas flutuantes (estilo Aura da Fênix) com pseudo-randomização determinística -->
+  <g class="pt-particulas">
+    ${[0, 1, 2, 3, 4, 5].map(i => {
+      const x = 25 + (i * 37) % 50; 
+      const yIni = 85 + (i * 17) % 15; 
+      const yFim = 15 + (i * 23) % 25; 
+      const r = 1.2 + (i * 7) % 2; 
+      const dur = 3 + (i * 11) % 4; 
+      const delay = (i * 13) % 4; 
+      const dx = (i % 2 === 0 ? -1 : 1) * (4 + (i % 4));
+      return `
+      <circle cx="${x}" cy="${yIni}" r="${r}" fill="${p.brilho}" filter="url(#brilhoExt)" opacity="0">
+        <animate attributeName="cy" values="${yIni}; ${yFim}" begin="${delay}s" dur="${dur}s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0; 0.9; 0" keyTimes="0; 0.2; 1" begin="${delay}s" dur="${dur}s" repeatCount="indefinite"/>
+        <animate attributeName="cx" values="${x}; ${x + dx}; ${x}" keyTimes="0; 0.5; 1" begin="${delay}s" dur="${dur}s" repeatCount="indefinite"/>
+      </circle>`;
+    }).join('')}
+  </g>
 
   <!-- corpo -->
   <polygon points="${this._poligono(cx, cy, rExt, lados)}" fill="url(#corpo)"/>
@@ -260,17 +276,6 @@ const Gemas = {
   <ellipse cx="38" cy="32" rx="9" ry="5.5" fill="${p.brilho}" opacity=".7"
            transform="rotate(-32 38 32)"/>
   <circle cx="63" cy="63" r="2.4" fill="${p.brilho}" opacity=".45"/>
-
-  <!-- centelha estrela 4 pontas animada -->
-  <g transform="translate(35, 29)">
-    <g>
-      <animateTransform attributeName="transform" type="rotate" values="0; 180" dur="6s" repeatCount="indefinite"/>
-      <path d="M 0 -10 Q 0 0 -10 0 Q 0 0 0 10 Q 0 0 10 0 Q 0 0 0 -10 Z" fill="#ffffff" filter="url(#brilhoExt)">
-        <animate attributeName="opacity" values="0; 1; 0; 0" keyTimes="0; 0.15; 0.3; 1" dur="4s" repeatCount="indefinite"/>
-        <animateTransform attributeName="transform" type="scale" values="0.2; 1.3; 0.2; 0.2" keyTimes="0; 0.15; 0.3; 1" dur="4s" repeatCount="indefinite" additive="sum"/>
-      </path>
-    </g>
-  </g>
 
   <!-- aresta da cintura -->
   <polygon points="${this._poligono(cx, cy, rExt, lados)}" fill="none"
