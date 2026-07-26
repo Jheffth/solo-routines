@@ -457,7 +457,6 @@ const Estandarte = {
               </div>
             </div>
             <div class="pt-reliquias">
-              <span class="pt-reliquias-vao" aria-hidden="true"></span>
               <span class="pt-reliquias-fila">${this._reliquias(50)
                 || '<span class="pt-vazio">nenhuma relíquia no altar</span>'}</span>
             </div>
