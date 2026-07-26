@@ -628,7 +628,7 @@ const ArquitetoConsole = {
     const janela = document.getElementById('hunter-card');
     if (!janela) { SoloDialog?.toast?.('Abra o Dashboard primeiro', 'warn'); return; }
 
-    const STYLE_ID = 'arq-ultra-css';
+    const STYLE_ID = 'arq-banner-premium-css';
     const FLAG     = 'bannerPremium';
     const bodyOriginal = janela.querySelector('.hunter-window-body');
 
@@ -636,97 +636,100 @@ const ArquitetoConsole = {
     if (janela.dataset[FLAG]) {
       delete janela.dataset[FLAG];
       document.getElementById(STYLE_ID)?.remove();
-      janela.querySelector('#arq-ultra-layout')?.remove();
+      janela.querySelector('#arq-premium-bg')?.remove();
       
-      if (bodyOriginal) bodyOriginal.style.display = 'flex';
+      if (bodyOriginal) {
+        bodyOriginal.style.position = '';
+        bodyOriginal.style.zIndex = '';
+      }
+
+      const chama = janela.querySelector('.cristal-chama');
+      if (chama && janela.dataset.fogo) {
+        chama.innerHTML = janela.dataset.fogo;
+        delete janela.dataset.fogo;
+      }
+
+      const btn = document.getElementById('dash-btn-trocar-aura');
+      if (btn && janela.dataset.btnAura) {
+        btn.innerHTML = janela.dataset.btnAura;
+        delete janela.dataset.btnAura;
+      }
       
       janela.classList.remove(FLAG);
-      SoloDialog?.toast?.('Banner Premium Ultra removido', 'info');
+      SoloDialog?.toast?.('Banner Premium removido', 'info');
       return;
     }
 
     // ---- TOGGLE ON ---------------------------------------------------------
     janela.dataset[FLAG] = '1';
-    if (bodyOriginal) bodyOriginal.style.display = 'none';
+    
+    if (bodyOriginal) {
+      bodyOriginal.style.position = 'relative';
+      bodyOriginal.style.zIndex = '2';
+    }
 
-    const avatarHtml = janela.querySelector('#dash-avatar')?.innerHTML || '';
-    const nome = janela.querySelector('#dash-nome')?.textContent || 'Hunter';
-    const titulo = janela.querySelector('#dash-titulo')?.textContent || 'Sem Título';
-    const seloRank = janela.querySelector('#dash-rank-selo')?.textContent || 'E';
-    const xpTxt = janela.querySelector('#dash-xp-txt')?.textContent || '0 / 100 XP';
-    const xpFill = janela.querySelector('#dash-xp-bar')?.style.width || '0%';
-    const cristaisOriginais = janela.querySelector('.hunter-cristais');
-    const cristaisClone = cristaisOriginais ? cristaisOriginais.cloneNode(true) : '';
-    const relicarioOriginais = janela.querySelector('.hunter-relicario');
-    const relicarioClone = relicarioOriginais ? relicarioOriginais.cloneNode(true) : '';
-
-    const html = `
-<div id="arq-ultra-layout" style="position:relative; z-index:10; width:100%; height:260px; display:flex; align-items:center; justify-content:space-between; padding: 0 40px; box-sizing:border-box;">
-  
-  <!-- FUNDO: Sunburst e Runas Mágicas -->
-  <div style="position:absolute; inset:0; z-index:-1; overflow:hidden; border-radius:6px; background: radial-gradient(circle at center, rgba(15,15,20,0.8) 0%, rgba(5,5,10,0.95) 100%);">
-    <div class="arq-sunburst" style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:800px; height:800px; background:conic-gradient(from 0deg, transparent 0deg, var(--rank-aura) 20deg, transparent 40deg, var(--rank-aura) 60deg, transparent 80deg, var(--rank-aura) 100deg, transparent 120deg, var(--rank-aura) 140deg, transparent 160deg, var(--rank-aura) 180deg, transparent 200deg, var(--rank-aura) 220deg, transparent 240deg, var(--rank-aura) 260deg, transparent 280deg, var(--rank-aura) 300deg, transparent 320deg, var(--rank-aura) 340deg, transparent 360deg); animation: arq-spin 40s linear infinite; opacity: 0.25; filter:blur(8px) drop-shadow(0 0 20px var(--rank-cor));"></div>
-    <svg class="arq-runic-ring" viewBox="0 0 200 200" style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:450px; height:450px; opacity:0.35; animation: arq-spin-rev 60s linear infinite;">
+    const htmlBg = `
+<div id="arq-premium-bg" style="position:absolute; inset:0; z-index:1; overflow:hidden; border-radius:inherit;">
+  <div style="position:absolute; left:50%; top:50%; transform:translate(-50%, -50%); width:800px; height:800px; opacity:0.15; pointer-events:none;">
+    <div style="position:absolute; inset:0; background:conic-gradient(from 0deg, transparent 0deg, var(--rank-aura) 20deg, transparent 40deg, var(--rank-aura) 60deg, transparent 80deg, var(--rank-aura) 100deg, transparent 120deg, var(--rank-aura) 140deg, transparent 160deg, var(--rank-aura) 180deg, transparent 200deg, var(--rank-aura) 220deg, transparent 240deg, var(--rank-aura) 260deg, transparent 280deg, var(--rank-aura) 300deg, transparent 320deg, var(--rank-aura) 340deg, transparent 360deg); animation: aq-spin 40s linear infinite; filter:blur(4px);"></div>
+    <svg viewBox="0 0 200 200" style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:600px; height:600px; opacity:0.8; animation: aq-spin-rev 60s linear infinite;">
       <circle cx="100" cy="100" r="95" fill="none" stroke="var(--rank-cor)" stroke-width="0.5" stroke-dasharray="2 4" />
       <circle cx="100" cy="100" r="80" fill="none" stroke="var(--rank-cor)" stroke-width="1.5" stroke-dasharray="20 10 5 10 40 5" />
       <circle cx="100" cy="100" r="60" fill="none" stroke="var(--rank-cor)" stroke-width="0.5" opacity="0.5"/>
       <polygon points="100,20 169.28,60 169.28,140 100,180 30.72,140 30.72,60" fill="none" stroke="var(--rank-cor)" stroke-width="0.5" opacity="0.3"/>
     </svg>
   </div>
-
-  <!-- ESQUERDA: Identidade (Shimmer) -->
-  <div style="flex:1; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; padding-right:20px; z-index:2;">
-    <div style="font-family:var(--font-title); font-size:2.4rem; font-weight:700; line-height:1.1; letter-spacing:0.08em; background:linear-gradient(100deg, #fff 20%, var(--rank-cor) 50%, #fff 80%); background-size:200% auto; -webkit-background-clip:text; color:transparent; animation: arq-shimmer 3s linear infinite; filter:drop-shadow(0 5px 15px rgba(0,0,0,0.9));">${nome}</div>
-    <div style="font-family:var(--font-section); font-size:1rem; letter-spacing:0.15em; color:var(--gold-bright); text-transform:uppercase; margin-top:5px; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">${titulo}</div>
-    <div style="margin-top:20px; filter:drop-shadow(0 5px 10px rgba(0,0,0,0.5));" id="arq-relicario-inj">${relicarioClone ? relicarioClone.outerHTML : ''}</div>
-  </div>
-
-  <!-- CENTRO: Reator Hexagonal Gigante -->
-  <div style="width:180px; height:180px; position:relative; flex-shrink:0; display:flex; align-items:center; justify-content:center; z-index:3;">
-    <div style="position:absolute; inset:-40px; background:radial-gradient(circle, var(--rank-cor) 0%, transparent 65%); opacity:0.3; filter:blur(15px); animation: arq-pulse 3s ease-in-out infinite;"></div>
-    
-    <div class="hunter-hex" style="width:144px; height:144px; clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%); background:#000; position:relative; z-index:2; box-shadow:inset 0 0 40px #000;">
-      ${avatarHtml}
-      <div style="position:absolute; inset:0; box-shadow:inset 0 0 25px rgba(0,0,0,0.95); pointer-events:none;"></div>
-    </div>
-    
-    <!-- Anéis Tecnológicos Frontais -->
-    <svg style="position:absolute; inset:-20px; width:220px; height:220px; z-index:3; pointer-events:none; animation: arq-spin 20s linear infinite;" viewBox="0 0 100 100">
-       <circle cx="50" cy="50" r="48" fill="none" stroke="var(--rank-cor)" stroke-width="2" stroke-dasharray="30 5 5 5" opacity="0.9" filter="drop-shadow(0 0 4px var(--rank-cor))"/>
-    </svg>
-
-    <!-- Badge Centralizado na Base -->
-    <div style="position:absolute; bottom:-15px; z-index:5; background:#07070f; border:2px solid var(--rank-cor); color:var(--rank-cor); font-family:var(--font-title); font-size:1.6rem; font-weight:900; width:54px; height:54px; display:flex; align-items:center; justify-content:center; clip-path:polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%); box-shadow: 0 10px 20px rgba(0,0,0,0.9), inset 0 0 10px rgba(0,0,0,0.8); text-shadow: 0 0 12px var(--rank-cor);">${seloRank}</div>
-  </div>
-
-  <!-- DIREITA: Cristais -->
-  <div style="flex:1; display:flex; justify-content:flex-end; padding-left:20px; z-index:2;" id="arq-cristais-inj">
-    ${cristaisClone ? cristaisClone.outerHTML : ''}
-  </div>
-
-  <!-- BASE: Barra de XP Curvada Estilo HUD -->
-  <div style="position:absolute; bottom:15px; left:40px; right:40px; display:flex; flex-direction:column; gap:6px; z-index:4;">
-     <div style="align-self:flex-end; font-family:'Orbitron'; font-size:0.75rem; color:var(--gold-bright); letter-spacing:0.1em; text-shadow:0 2px 4px rgba(0,0,0,0.8);">${xpTxt}</div>
-     <div style="width:100%; height:8px; background:rgba(0,0,0,0.7); border-radius:4px; border:1px solid rgba(255,255,255,0.1); position:relative; box-shadow:inset 0 2px 6px rgba(0,0,0,0.9);">
-        <div style="width:${xpFill}; height:100%; background:linear-gradient(90deg, transparent, var(--rank-cor)); border-radius:4px; box-shadow: 0 0 15px var(--rank-cor); position:relative;">
-           <div style="position:absolute; right:0; top:-3px; bottom:-3px; width:6px; background:#fff; border-radius:3px; box-shadow:0 0 15px #fff, 0 0 30px var(--rank-cor);"></div>
-        </div>
-     </div>
-  </div>
 </div>
 `;
+    janela.insertAdjacentHTML('afterbegin', htmlBg);
 
-    janela.insertAdjacentHTML('beforeend', html);
+    const chama = janela.querySelector('.cristal-chama');
+    if (chama) {
+      janela.dataset.fogo = chama.innerHTML;
+      chama.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 6px currentColor); vertical-align:-3px"><path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 11-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 002.5 2.5z"></path></svg>';
+    }
 
-    const css = `
-@keyframes arq-spin { 100% { transform: translate(-50%,-50%) rotate(360deg); } }
-@keyframes arq-spin-rev { 100% { transform: translate(-50%,-50%) rotate(-360deg); } }
-@keyframes arq-shimmer { 100% { background-position: -200% center; } }
-@keyframes arq-pulse { 0%,100% { opacity: 0.3; transform: scale(0.95); } 50% { opacity: 0.5; transform: scale(1.05); } }
-/* Garanta que os cristais e relicário clonados funcionem visualmente */
-#arq-cristais-inj .hunter-cristais { margin-left: auto; display:flex; gap:1.2rem; }
-#arq-cristais-inj .cristal-gema { width:84px; height:84px; font-size:1.6rem; border:1px solid rgba(255,255,255,0.15) !important; box-shadow:inset 0 0 15px rgba(0,0,0,0.8), 0 10px 20px rgba(0,0,0,0.6) !important; }
-`;
+    const btn = document.getElementById('dash-btn-trocar-aura');
+    if (btn) {
+      janela.dataset.btnAura = btn.innerHTML;
+      btn.innerHTML = '✦ AURA';
+    }
+
+    const css = \`
+/* Fundo glass e sombra */
+#hunter-card.bannerPremium {
+  background: linear-gradient(135deg, rgba(8,8,12,0.95), rgba(4,4,8,0.98)) !important;
+  box-shadow: inset 0 2px 2px rgba(255,255,255,0.05), inset 0 0 40px rgba(0,0,0,0.8), 0 10px 30px rgba(0,0,0,0.5) !important;
+  border: 1px solid rgba(255,255,255,0.05) !important;
+}
+
+/* Tipografia Shimmer Premium */
+#hunter-card.bannerPremium .hunter-nome {
+  background: linear-gradient(100deg, #fff 20%, var(--rank-cor) 50%, #fff 80%);
+  background-size: 200% auto; -webkit-background-clip: text; color: transparent;
+  animation: aq-shimmer 3s linear infinite; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.6));
+}
+@keyframes aq-shimmer { 100% { background-position: -200% center; } }
+
+/* Botão de Aura Integrado */
+#hunter-card.bannerPremium #dash-btn-trocar-aura {
+  width: auto !important; height: 22px !important; padding: 0 10px !important;
+  bottom: -6px !important; border-radius: 4px !important;
+  background: rgba(0,0,0,0.85) !important; border: 1px solid var(--rank-cor) !important;
+  color: var(--rank-cor) !important; box-shadow: 0 4px 10px rgba(0,0,0,0.8), inset 0 0 8px var(--rank-aura) !important;
+  font-family: var(--font-section) !important; font-size: 0.6rem !important; letter-spacing: 0.1em !important;
+  clip-path: polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px) !important;
+}
+
+/* Cristais Premium 3D */
+#hunter-card.bannerPremium .cristal-gema {
+  border: none !important;
+  box-shadow: inset 0 2px 2px rgba(255,255,255,0.2), inset 0 -4px 6px rgba(0,0,0,0.8), 0 5px 15px rgba(0,0,0,0.6), 0 0 15px var(--rank-aura) !important;
+}
+
+@keyframes aq-spin { 100% { transform: translate(-50%,-50%) rotate(360deg); } }
+@keyframes aq-spin-rev { 100% { transform: translate(-50%,-50%) rotate(-360deg); } }
+\`;
 
     const tag = document.createElement('style');
     tag.id = STYLE_ID;
@@ -734,7 +737,7 @@ const ArquitetoConsole = {
     document.head.appendChild(tag);
     
     janela.classList.add(FLAG);
-    SoloDialog?.toast?.('✨ Banner Ultra Premium ativo — clique de novo para remover', 'success');
+    SoloDialog?.toast?.('✨ Banner Premium Clássico ativo', 'success');
   },
 
   /* Insígnias com arte própria — fonte única: o registro do ConquistaFX.
