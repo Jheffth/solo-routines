@@ -133,6 +133,7 @@ const ForjaTestes = {
 
   /* ── Abas ────────────────────────────────────────────────── */
   ABAS: [
+    { id: 'escudos',   rotulo: '🛡 Escudos'    },
     { id: 'emblemas',  rotulo: '🎖 Emblemas'   },
     { id: 'auras',     rotulo: '✦ Auras'       },
     { id: 'cerimonias',rotulo: '🎬 Cerimônias' },
@@ -221,6 +222,16 @@ const ForjaTestes = {
   },
 
   _itens(aba) {
+    if (aba === 'escudos') {
+      const ranks = ['E', 'D', 'C', 'B', 'A', 'S', 'N'];
+      return ranks.map(r => ({
+        chave: 'escudo:' + r,
+        nome: 'Rank ' + r,
+        tag: 'Escudo S-Rank',
+        arte: typeof Escudos !== 'undefined' ? Escudos.rank(r, 58) : '🛡',
+        busca: `escudo rank ${r}`
+      }));
+    }
     if (aba === 'emblemas') {
       return this._catalogoEmblemas().map(c => ({
         chave: 'emb:' + c.codigo,
@@ -328,6 +339,9 @@ const ForjaTestes = {
 
   /* ── Execução ────────────────────────────────────────────── */
   _executar(grupo, arg) {
+    if (grupo === 'escudo') {
+      return SoloDialog?.toast?.('Os Escudos são implementados no Estandarte (V3). Este é apenas um catálogo visual.', 'info');
+    }
     // Emblema: dispara a cerimônia REAL, com o código verdadeiro —
     // que é o que faz a arte própria aparecer. A Forja antiga
     // omitia o código, e por isso só mostrava a medalha genérica.
