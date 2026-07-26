@@ -133,8 +133,6 @@ const ForjaTestes = {
 
   /* ── Abas ────────────────────────────────────────────────── */
   ABAS: [
-    { id: 'escudosv2', rotulo: '🛡 Escudos V2'  },
-    { id: 'escudos',   rotulo: '🛡 Escudos V1'  },
     { id: 'emblemas',  rotulo: '🎖 Emblemas'   },
     { id: 'auras',     rotulo: '✦ Auras'       },
     { id: 'cerimonias',rotulo: '🎬 Cerimônias' },
@@ -223,26 +221,6 @@ const ForjaTestes = {
   },
 
   _itens(aba) {
-    if (aba === 'escudosv2') {
-      const ranks = ['E', 'D', 'C', 'B', 'A', 'S', 'N'];
-      return ranks.map(r => ({
-        chave: 'escudo:' + r,
-        nome: 'Rank ' + r,
-        tag: 'Escudo S-Rank (V2 3D)',
-        arte: typeof EscudosV2 !== 'undefined' ? EscudosV2.rank(r, 58) : '🛡',
-        busca: `escudo rank ${r}`
-      }));
-    }
-    if (aba === 'escudos') {
-      const ranks = ['E', 'D', 'C', 'B', 'A', 'S', 'N'];
-      return ranks.map(r => ({
-        chave: 'escudo:' + r,
-        nome: 'Rank ' + r,
-        tag: 'Escudo S-Rank',
-        arte: typeof Escudos !== 'undefined' ? Escudos.rank(r, 58) : '🛡',
-        busca: `escudo rank ${r}`
-      }));
-    }
     if (aba === 'emblemas') {
       return this._catalogoEmblemas().map(c => ({
         chave: 'emb:' + c.codigo,
