@@ -20,7 +20,7 @@ Como os dois IDs vêm de sequências diferentes, um `uid` ("r123"/"g45") dá ao
 frontend uma chave única sem que precise saber de onde a missão veio.
 """
 from datetime import date, datetime, timedelta
-from motors import tempo
+from motors import tempo, prazos
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -36,7 +36,10 @@ router = APIRouter(prefix="/extrato", tags=["extrato"])
 JANELA_MAXIMA_DIAS = 370
 LIMITE_PADRAO = 500
 
-FINAIS = ("CONCLUIDA", "FRACASSADA", "CANCELADA")
+# CONFESSADA entra aqui: é desfecho, não pendência. Sem ela, a missão
+# confessada continuaria oferecendo botões de execução no cartão e contaria
+# como "em aberto" no resumo do dia.
+FINAIS = ("CONCLUIDA", "FRACASSADA", "CANCELADA", "CONFESSADA")
 
 
 def _duracao(inicio, fim) -> int | None:
@@ -95,6 +98,21 @@ def _missao_de_rotina(ed: ExecucaoDia, r: Rotina, hoje: date) -> dict:
         # Quanto levou, do play ao fim. Pronta para a tela apenas formatar.
         "duracao_segundos": _duracao(ed.iniciada_em, ed.concluida_em),
 
+        # QUANDO VENCE. O cartão conta para este instante, não para a duração:
+        # uma missão de janela iniciada faltando 10 minutos mostra 10 minutos,
+        # não "acabou de começar". Calculado pelo servidor porque o relógio do
+        # navegador é do hunter — e o placar não pode depender dele.
+        **prazos.para_json(prazos.da_execucao(ed, r)),
+        "reerguida": bool(getattr(ed, "reerguida", False)),
+        "mana_gasta": getattr(ed, "mana_gasta", 0) or 0,
+
+        # MISSÃO PASSIVA — o cartão precisa saber, porque tudo se inverte:
+        # o botão vira Confessar, o desfecho do prazo é vitória, e o tom do
+        # cronômetro é de vigília, não de corrida.
+        "natureza": getattr(r, "natureza", "ATIVA") or "ATIVA",
+        "confessada_em": ed.confessada_em.isoformat()
+                         if getattr(ed, "confessada_em", None) else None,
+
         # Duas permissões diferentes, e confundi-las custa caro:
         #   editavel    → EXECUTAR (iniciar/concluir). Só faz sentido hoje:
         #                 ninguém conclui ontem, ninguém adianta amanhã.
@@ -142,6 +160,15 @@ def _missao_geral(t: TarefaDia, hoje: date) -> dict:
         "fracassada_em": None,
         "cancelada_em":  None,
         "duracao_segundos": _duracao(getattr(t, "iniciada_em", None), t.concluida_em),
+
+        # Missão geral: o prazo conta desde a INTENÇÃO (a criação), não desde
+        # o play. Ver motors/prazos.py.
+        **prazos.para_json(prazos.da_tarefa(t)),
+        "reerguida": False,
+        "mana_gasta": 0,
+        # Missão geral nunca é passiva: passiva é protocolo que se repete.
+        "natureza": "ATIVA",
+        "confessada_em": None,
 
         "editavel":    t.data_prevista == hoje,
         "gerenciavel": t.data_prevista >= hoje if t.data_prevista else False,

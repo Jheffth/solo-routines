@@ -97,10 +97,31 @@ class Rotina(Base):
     hora_fim         = Column(String(5), nullable=True)      # "HH:MM"
     dificuldade      = Column(String(20), default="NORMAL")  # FACIL | NORMAL | DIFICIL | LENDARIO
 
+    # NATUREZA — a inversão que cria a missão passiva.
+    #
+    #   ATIVA   (padrão): o estado natural é o FRACASSO. O hunter age para
+    #                     VENCER. É toda missão que o app teve até aqui.
+    #   PASSIVA         : o estado natural é o SUCESSO. O hunter age para
+    #                     PERDER. "Sem cafeína após as 16h" corre das 16:00
+    #                     às 05:00 e se conclui sozinha — a menos que ele
+    #                     mesmo vá até o cartão e confesse que quebrou.
+    #
+    # Não é um quarto tipo de missão: é um ADJETIVO da rotina. A passiva
+    # continua sendo DIARIA/SEMANAL/MENSAL/ANUAL, continua vivendo em
+    # ExecucaoDia e continua aparecendo no extrato como qualquer outra.
+    # Só o desfecho do prazo muda de lado (motors/fechamento.py).
+    natureza         = Column(String(20), default="ATIVA")   # ATIVA | PASSIVA
+
     # Controle
     ativo            = Column(Boolean, default=True)
     status           = Column(String(20), default="ATIVA")    # ATIVA | PAUSADA | CANCELADA | CONCLUIDA
     usuario_id       = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    # PRAZO da missão, em minutos, do play ao fim. Calculado por
+    # prioridade x dificuldade (motors/economia.py). `prazo_personalizado`
+    # marca quando o hunter escolheu o tempo à mão — aí o recálculo respeita
+    # a escolha dele em vez de sobrescrever.
+    prazo_minutos       = Column(Integer, nullable=True)
+    prazo_personalizado = Column(Boolean, default=False)
     ultima_execucao  = Column(Date, nullable=True)
     concluida_em     = Column(DateTime, nullable=True)
     cancelada_em     = Column(DateTime, nullable=True)
@@ -135,6 +156,31 @@ class ExecucaoDia(Base):
     xp_perdido    = Column(Integer, default=0)         # penalidade aplicada
     moedas_ganhas = Column(Integer, default=0)
     criado_em     = Column(DateTime, default=datetime.utcnow)
+
+    # REERGUER — a segunda chance que custa Mana.
+    # Uma rotina de janela (Banho Revigorante, 20:00–22:00) é uma corrida
+    # contra o tempo: às 22:00 ela fecha e acabou. Mas o hábito importa mais
+    # que o placar — não faz sentido dormir sem tomar banho porque o relógio
+    # passou. Então o hunter pode reerguê-la pagando Mana: ela volta a ser
+    # jogável até as 23:59 daquele dia (à meia-noite nasce a de amanhã).
+    #
+    # O preço é o desconforto; a missão reerguida NÃO paga XP nem Mana ao ser
+    # concluída. Sem esta marca, reerguer viraria uma forma de transformar
+    # Mana em XP — e a economia já foi furada uma vez por menos que isso.
+    reerguida     = Column(Boolean, default=False)
+    reerguida_em  = Column(DateTime, nullable=True)
+    mana_gasta    = Column(Integer, default=0)         # quanto custou reerguer
+
+    # CONFISSÃO — o desfecho exclusivo da missão passiva.
+    #
+    # Ninguém consegue verificar se o hunter tomou café às 22h. Se confessar
+    # custasse o mesmo que ficar calado, o silêncio seria a jogada racional —
+    # e o registro, do qual o app inteiro depende, viraria ficção.
+    # Por isso confessar custa METADE da punição e NÃO quebra o streak.
+    #
+    # Ela merece campo próprio porque não é fracasso nem conclusão: é a
+    # terceira coisa, e o extrato precisa saber diferenciar as três.
+    confessada_em = Column(DateTime, nullable=True)
 
     # Uma rotina só pode ter UMA instância por dia. Sem isto, duas requisições
     # simultâneas (ou o job + o app abrindo junto) criavam missões duplicadas
@@ -174,6 +220,12 @@ class TarefaDia(Base):
     # a missão durou — só que ela foi concluída. A instância diária de uma
     # rotina (ExecucaoDia) já registrava; a missão geral não, e por isso o
     # cronômetro era impossível deste lado.
+    # PRAZO da missão, em minutos, do play ao fim. Calculado por
+    # prioridade x dificuldade (motors/economia.py). `prazo_personalizado`
+    # marca quando o hunter escolheu o tempo à mão — aí o recálculo respeita
+    # a escolha dele em vez de sobrescrever.
+    prazo_minutos       = Column(Integer, nullable=True)
+    prazo_personalizado = Column(Boolean, default=False)
     iniciada_em      = Column(DateTime, nullable=True)
     concluida_em     = Column(DateTime, nullable=True)
 
@@ -612,6 +664,42 @@ class IdentidadeOAuth(Base):
 # ==============================================================================
 # CONFIGURAÇÕES DO APP (Logo, Fontes, Tema)
 # ==============================================================================
+class ParametroEconomia(Base):
+    """
+    As tabelas que precificam e cronometram uma missão — no banco, para o
+    Arquiteto ajustar sem esperar um deploy.
+
+    Formato deliberadamente simples: uma linha por (grupo, chave) com um
+    número. Não é a modelagem mais "elegante", é a mais EDITÁVEL — vira uma
+    grade na tela sem tradução nenhuma, e acrescentar uma dimensão nova não
+    exige migração, só linhas novas.
+
+    Grupos usados hoje:
+      xp_prioridade      CRITICA|ALTA|MEDIA|BAIXA  → XP base da missão avulsa
+      mc_prioridade      idem                      → Mana base
+      xp_tipo            DIARIA|SEMANAL|...        → XP base da rotina
+      mc_tipo            idem                      → Mana base
+      mult_dificuldade   FACIL|NORMAL|...          → multiplica XP e prazo
+      mult_prioridade    CRITICA|...               → multiplica XP
+      bonus_categoria    Saude|Trabalho|...        → tempero por natureza
+      penal_prioridade   CRITICA|...               → fração do XP perdida ao falhar
+      prazo_prioridade   CRITICA|...               → MINUTOS de prazo base
+    """
+    __tablename__ = "parametros_economia"
+
+    id        = Column(Integer, primary_key=True, index=True)
+    grupo     = Column(String(40), nullable=False, index=True)
+    chave     = Column(String(40), nullable=False)
+    valor     = Column(Float, nullable=False)
+    rotulo    = Column(String(80), nullable=True)   # texto amigável na tela
+    ordem     = Column(Integer, default=0)          # ordem de exibição
+    editado_em = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("grupo", "chave", name="uq_parametro_economia"),
+    )
+
+
 class ConfiguracaoApp(Base):
     __tablename__ = "configuracoes_app"
 

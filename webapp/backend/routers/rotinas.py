@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import date, datetime
 from motors import tempo
+from motors import economia, especiais
 
 from database import get_db, Rotina, Execucao, ExecucaoDia, Usuario
 from auth.router import get_usuario_atual
@@ -42,6 +43,7 @@ class RotinaCreate(BaseModel):
     penalidade_xp:     Optional[int]       = None
     hora_inicio:       Optional[str]       = None   # "HH:MM" janela de execução
     hora_fim:          Optional[str]       = None   # "HH:MM" prazo da janela
+    natureza:          Optional[str]       = None   # ATIVA | PASSIVA (premium)
 
 
 class RotinaUpdate(BaseModel):
@@ -62,6 +64,7 @@ class RotinaUpdate(BaseModel):
     ativo:             Optional[bool]      = None
     hora_inicio:       Optional[str]       = None
     hora_fim:          Optional[str]       = None
+    natureza:          Optional[str]       = None
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -102,6 +105,7 @@ def _rotina_to_dict(r: Rotina, exec_dia: "ExecucaoDia | None" = None,
         "categoria":        r.categoria,
         "prioridade":       r.prioridade,
         "dificuldade":      getattr(r, "dificuldade", "NORMAL"),
+        "natureza":         getattr(r, "natureza", "ATIVA") or "ATIVA",
         "icone":            r.icone,
         "cor":              r.cor,
         "xp_recompensa":    r.xp_recompensa,
@@ -190,6 +194,17 @@ def _obter_ou_criar_exec_dia(db: Session, rotina: Rotina,
 
 # ── Endpoints CRUD ───────────────────────────────────────────────────────────
 
+@router.get("/especiais/permissao")
+def permissao_especiais(usuario: Usuario = Depends(get_usuario_atual)):
+    """O que o lançador pode OFERECER a este hunter.
+
+    A tela pergunta em vez de deduzir do cargo que tem em mãos. Deduzir no
+    cliente significa que a regra passa a existir em dois lugares — e quando
+    as outorgas com prazo chegarem (Insígnia VIP), o cliente ficaria com a
+    versão velha."""
+    return especiais.permissao(usuario)
+
+
 @router.get("/")
 def listar_rotinas(
     tipo:  Optional[str]  = None,
@@ -275,9 +290,25 @@ def criar_rotina(
     prior = payload.prioridade.upper()
     dific = payload.dificuldade.upper()
 
-    xp  = payload.xp_recompensa  or _calcular_xp(tipo, prior, dific)
-    mc  = payload.moedas_recompensa or _calcular_mc(tipo, dific)
-    pen = payload.penalidade_xp if payload.penalidade_xp is not None else _calcular_penalidade(xp, prior)
+    # PORTA 1 DE 4 — criar. As outras três: editar (abaixo), e as duas do
+    # frontend. A tela é a mais fácil de lembrar e a menos importante: quem
+    # quiser burlar usa a API direto, e é aqui que a porta precisa estar.
+    natureza = especiais.normalizar(payload.natureza)
+    if not especiais.pode_criar(usuario, natureza):
+        raise HTTPException(403, "Missões especiais são exclusivas da Staff por enquanto.")
+
+    # Uma missão passiva SEM janela seria um protocolo que dura o dia todo e
+    # se cumpre sozinho à meia-noite — XP de graça, todo dia. A janela é o que
+    # dá sentido ao protocolo ("das 16:00 às 05:00"), então é obrigatória.
+    if especiais.eh_premium(natureza) and not (payload.hora_inicio and payload.hora_fim):
+        raise HTTPException(400, "Missão passiva exige janela de horário: "
+                                 "ela vale de um horário a outro.")
+
+    # QUEM PRECIFICA É O SERVIDOR. O que o cliente mandou em `xp_recompensa`
+    # é ignorado: aceitá-lo permitia criar uma rotina de 999.999 XP e subir ao
+    # nível 100 numa requisição. O valor sai da tabela em motors/economia.py.
+    _v = economia.recompensa_rotina(tipo, prior, dific, payload.categoria, db)
+    xp, mc, pen = _v["xp_recompensa"], _v["moedas_recompensa"], _v["penalidade_xp"]
 
     rotina = Rotina(
         titulo=payload.titulo, descricao=payload.descricao,
@@ -289,7 +320,11 @@ def criar_rotina(
         xp_recompensa=xp, moedas_recompensa=mc,
         usuario_id=usuario.id, ativo=True,
     )
+    try: rotina.natureza      = natureza
+    except Exception: pass
     try: rotina.dificuldade   = dific
+    except Exception: pass
+    try: rotina.prazo_minutos = _v["prazo_minutos"]
     except Exception: pass
     try: rotina.penalidade_xp = pen
     except Exception: pass
@@ -334,16 +369,36 @@ def atualizar_rotina(
     if payload.prioridade   is not None: r.prioridade   = payload.prioridade.upper()
     if payload.icone        is not None: r.icone        = payload.icone
     if payload.cor          is not None: r.cor          = payload.cor
-    if payload.xp_recompensa     is not None: r.xp_recompensa     = payload.xp_recompensa
-    if payload.moedas_recompensa is not None: r.moedas_recompensa = payload.moedas_recompensa
     if payload.ativo        is not None: r.ativo        = payload.ativo
+
+    # PORTA 2 DE 4 — editar. Era a porta discreta no exploit de XP: criar
+    # honesto e depois editar pedindo o que não pode. Aqui vale o mesmo:
+    # sem esta checagem, qualquer hunter transformaria uma rotina comum em
+    # passiva com um PUT.
+    if payload.natureza is not None:
+        nova = especiais.normalizar(payload.natureza)
+        if not especiais.pode_criar(usuario, nova):
+            raise HTTPException(403, "Missões especiais são exclusivas da Staff por enquanto.")
+        r.natureza = nova
+
+    if especiais.eh_premium(getattr(r, "natureza", None)):
+        h_ini = payload.hora_inicio if payload.hora_inicio is not None else r.hora_inicio
+        h_fim = payload.hora_fim    if payload.hora_fim    is not None else r.hora_fim
+        if not (h_ini and h_fim):
+            raise HTTPException(400, "Missão passiva exige janela de horário.")
+
     try:
         if payload.dificuldade   is not None: r.dificuldade   = payload.dificuldade.upper()
-        if payload.penalidade_xp is not None: r.penalidade_xp = payload.penalidade_xp
         if payload.hora_inicio   is not None: r.hora_inicio   = payload.hora_inicio or None
         if payload.hora_fim      is not None: r.hora_fim      = payload.hora_fim or None
     except Exception:
         pass
+
+    # A EDIÇÃO era a segunda porta do mesmo buraco: bastava criar uma rotina
+    # honesta e depois editá-la pedindo 999.999 XP. A recompensa é sempre
+    # RECALCULADA do que a rotina passou a ser, nunca copiada do pedido.
+    economia.aplicar(r, economia.recompensa_rotina(
+        r.tipo, r.prioridade, getattr(r, "dificuldade", "NORMAL"), r.categoria, db))
 
     db.commit()
     db.refresh(r)

@@ -239,9 +239,78 @@
 }
 .fm-toggle:hover { border-color: var(--fm-cor); }
 .fm-toggle input { accent-color: var(--fm-cor); cursor: pointer; }
-.fm-toggle-txt { font-family: var(--font-section); font-size: .78rem; color: var(--text-secondary); }
+/* O corpo do toggle empilha título e legenda. Era um <br> entre dois spans,
+   e o <br> só funcionava porque o texto era texto. Com o glifo do relógio na
+   frente, o SVG herdou o `display:block` global (design-system.css) e caiu
+   numa linha própria ACIMA do título — feio e desalinhado.
+   Duas correções, e as duas são a mesma ideia: quem alinha é o flex, não o
+   fluxo de texto. A coluna substitui o <br>; a linha põe o relógio ao lado
+   do título em vez de sobre ele. */
+.fm-toggle-corpo { display: flex; flex-direction: column; gap: .15rem; }
+.fm-toggle-txt {
+  display: inline-flex; align-items: center; gap: .4rem;
+  font-family: var(--font-section); font-size: .78rem; color: var(--text-secondary);
+}
+.fm-toggle-txt svg { max-width: none; flex: none; }
 .fm-toggle-sub { font-size: .62rem; color: var(--text-dim); }
 .fm-horarios { display: none; gap: .6rem; margin-top: .6rem; }
+
+/* ── Natureza da missão (premium) ─────────────────────────── */
+.fm-selo-premium {
+  display: inline-block;
+  margin-left: .4rem;
+  padding: .08rem .4rem;
+  border-radius: 100px;
+  font-family: var(--font-section);
+  font-size: .5rem; font-weight: 700;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: #c7d2fe;
+  background: rgba(99, 102, 241, .18);
+  border: 1px solid rgba(99, 102, 241, .45);
+  vertical-align: middle;
+}
+/* A nota explica a inversão em uma frase. Sem ela, "Passiva" é só uma
+   palavra — e o hunter só descobriria o que ela faz no dia seguinte, quando
+   a missão se concluísse sozinha e ele achasse que era defeito. */
+.fm-nota-natureza {
+  display: flex; align-items: flex-start; gap: .4rem;
+  margin-top: .55rem;
+  padding: .5rem .65rem;
+  border-radius: 8px;
+  border: 1px solid rgba(99, 102, 241, .26);
+  background: rgba(99, 102, 241, .07);
+  font-size: .68rem; line-height: 1.55;
+  color: var(--text-secondary);
+}
+.fm-nota-natureza svg { max-width: none; flex: none; margin-top: .1rem; color: #818cf8; }
+.fm-nota-natureza b { color: #c7d2fe; }
+.fm-nota-natureza i { color: var(--text-muted); font-style: italic; }
+
+/* ── Agenda por frequência (semanal/mensal/anual) ─────────── */
+.fm-agenda { margin-top: .7rem; }
+.fm-input-curto { max-width: 180px; }
+
+.fm-dias { display: flex; gap: .35rem; flex-wrap: wrap; }
+.fm-dia {
+  min-width: 44px;
+  padding: .42rem .5rem;
+  font-family: var(--font-section);
+  font-size: .66rem; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--text-muted);
+  background: rgba(255,255,255,.02);
+  border: 1px solid rgba(148,163,184,.24);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.fm-dia:hover { border-color: var(--fm-cor); color: var(--text-secondary); }
+.fm-dia.sel {
+  color: #fff;
+  background: color-mix(in srgb, var(--fm-cor) 24%, transparent);
+  border-color: var(--fm-cor);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--fm-cor) 35%, transparent);
+}
 .fm-horarios.on { display: grid; grid-template-columns: 1fr 1fr; }
 
 /* ── Recompensa x Punição ────────────────────────────────── */
@@ -377,3 +446,109 @@
 @media (prefers-reduced-motion: reduce) {
   .fm-fio, .fm-sigilo-anel, .fm-sigilo-orb, .fm-op.sel::after, .fm-btn-forjar::after { animation: none; }
 }
+
+/* ============================================================
+   GLIFOS — o alfabeto do Sistema no lugar dos emojis
+
+   Emoji não é ilustração: cada sistema operacional desenha o
+   seu, a cor não obedece ao tema e o peso briga com o traço do
+   app. Agora os ícones vêm de js/glifos.js, herdam a cor da
+   opção (--op-cor) e acompanham o estado de seleção.
+   ============================================================ */
+
+/* A regra global `img, svg { max-width:100% }` já colapsou SVG
+   neste projeto mais de uma vez. Aqui a largura é explícita. */
+.fm-op .ico svg,
+.fm-rotulo svg,
+.fm-previa-lbl svg,
+.fm-btn svg { max-width: none; flex: none; }
+
+.fm-op .ico {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  /* O glifo nasce apagado e ganha vida ao ser escolhido — a cor
+     da opção só se acende quando ela é a opção. */
+  color: var(--text-muted);
+  transition: color .2s ease, transform .2s ease;
+}
+.fm-op:hover .ico { color: color-mix(in srgb, var(--op-cor) 70%, var(--text-secondary)); }
+.fm-op.sel .ico {
+  color: var(--op-cor);
+  transform: scale(1.08);
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--op-cor) 55%, transparent));
+}
+
+/* Rótulos de seção: o glifo é etiqueta, não protagonista. */
+.fm-rotulo svg { opacity: .75; }
+
+/* Botão de forjar: a bigorna acompanha o texto. */
+.fm-btn-forjar svg { margin-right: .1rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fm-op .ico, .fm-op.sel .ico { transition: none; transform: none; }
+}
+
+/* ── O QUE O SISTEMA VAI CONCEDER ─────────────────────────
+   Eram campos digitáveis. Viraram exibição quando o servidor
+   passou a precificar sozinho: manter o campo editável era
+   prometer um número que a missão não teria. */
+.fm-valor {
+  font-family: var(--font-digits, 'Orbitron', monospace);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: .03em;
+  color: var(--gold-bright);
+  padding: .45rem .2rem .2rem;
+  line-height: 1;
+  text-shadow: 0 0 14px rgba(251,191,36,.35);
+}
+.fm-valor-perda {
+  color: #fca5a5;
+  text-shadow: 0 0 14px rgba(239,68,68,.3);
+}
+.fm-valor-prazo {
+  color: var(--cyan-glow, #22d3ee);
+  font-size: 1rem;
+  text-shadow: 0 0 14px rgba(34,211,238,.3);
+}
+.fm-nota-calc {
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+  margin-top: .45rem;
+  font-family: var(--font-section);
+  font-size: .58rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.fm-nota-calc svg { opacity: .7; max-width: none; }
+
+/* ── Alinhamento do glifo nos botões ──────────────────────
+   O botão não era flex, então o SVG caía na linha de base do
+   texto e ficava alguns pixels abaixo do centro — o que lia
+   como "torto" mesmo com o desenho correto. Flex + gap
+   resolve, e o `flex:none` impede o ícone de ser espremido
+   quando o rótulo é longo. */
+.fm-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  line-height: 1;
+}
+.fm-btn svg {
+  flex: none;
+  max-width: none;
+  /* O glifo acompanha a altura da maiúscula, não a do bloco de
+     texto — é o que faz ícone e letra parecerem do mesmo tamanho. */
+  width: 15px;
+  height: 15px;
+}
+.fm-btn-forjar svg { margin-right: 0; }
+
+/* O rótulo do bloco também alinha pelo centro do glifo. */
+.fm-rotulo, .fm-previa-lbl { line-height: 1.15; }
+.fm-rotulo svg, .fm-previa-lbl svg { flex: none; }

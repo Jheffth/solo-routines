@@ -29,6 +29,7 @@ from routers.arquiteto import router as arquiteto_router
 from routers.hunters  import router as hunters_router
 from routers.social   import router as social_router
 from routers.extrato  import router as extrato_router
+from routers.economia import router as economia_router
 from routers.auras    import router as auras_router
 from routers.versao   import router as versao_router
 
@@ -91,6 +92,7 @@ app.include_router(arquiteto_router,     prefix="/api")
 app.include_router(hunters_router,       prefix="/api")
 app.include_router(social_router,        prefix="/api")
 app.include_router(extrato_router,       prefix="/api")
+app.include_router(economia_router,      prefix="/api")
 app.include_router(auras_router,         prefix="/api")
 app.include_router(versao_router)
 
@@ -194,6 +196,22 @@ async def startup():
         print("[STARTUP] ✅ Banco inicializado.")
     except Exception as e:
         print(f"[STARTUP WARNING] {e}")
+
+    # 3. Balança do Sistema — as tabelas que precificam e cronometram missões.
+    #    Num try próprio: se a semeadura falhar, o motor cai nos valores de
+    #    código e o app sobe igual. Equilíbrio é importante, mas não é motivo
+    #    para deixar ninguém sem entrar.
+    try:
+        from motors import economia as _eco
+        _db = SessionLocal()
+        try:
+            n = _eco.semear(_db)
+            if n:
+                print(f"[STARTUP] ⚖ Balança semeada: {n} parâmetro(s).")
+        finally:
+            _db.close()
+    except Exception as e:
+        print(f"[STARTUP WARNING] balança: {e}")
 
     try:
         scheduler.start()

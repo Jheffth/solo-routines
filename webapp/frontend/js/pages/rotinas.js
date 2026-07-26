@@ -292,7 +292,15 @@ const Rotinas = {
   },
 
   abrirFormulario(item = null) {
-    if (typeof Lancador !== 'undefined') Lancador.abrir('ROTINA', item || null);
+    // A Forja substituiu o lançador antigo. `edicao` recebe a rotina crua
+    // que esta página já tem — a Forja distingue criar de reforjar sozinha.
+    if (typeof ForjaMissao !== 'undefined') {
+      ForjaMissao.abrir({
+        tipo: 'ROTINA',
+        edicao: item || null,
+        aoSalvar: () => this.carregar?.(),
+      });
+    }
   },
 };
 

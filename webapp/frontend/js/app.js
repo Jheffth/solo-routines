@@ -83,8 +83,9 @@ const App = {
     });
 
     // 7. (o "+ Nova Missão" do cabeçalho saiu — o lugar dele agora é a
-    //     busca de hunters. O botão flutuante e os de cada página seguem
-    //     ligados pelo lancador.js, que trata #btn-fab e #btn-nova-rotina.)
+    //     busca de hunters. O botão flutuante e os de cada página são
+    //     tratados pela ForjaMissao, por delegação global em forja-missao.js.
+    //     O lançador antigo, pages/lancador.js, foi aposentado.)
 
     // 7b. Atalho da ficha de edição para a vitrine pública
     document.getElementById('btn-ver-vitrine')?.addEventListener('click', () => {
@@ -172,7 +173,18 @@ const App = {
     window.addEventListener('sr:recompensa', () => {
       clearTimeout(this._recompensaTimer);
       // pequeno atraso: deixa o selo/carimbo assentarem antes de repintar
-      this._recompensaTimer = setTimeout(() => this.atualizarPaginaAtual(), 700);
+      this._recompensaTimer = setTimeout(() => {
+        // No Dashboard, atualiza SÓ os números e reconcilia o extrato.
+        // Recarregar a página inteira aqui desfazia a repintura cirúrgica do
+        // cartão que acabou de ser concluído: a lista sumia e voltava logo
+        // depois da comemoração, que é exatamente o tremor que incomodava.
+        if (this.currentPage === 'dashboard' && window.Dashboard?.atualizarNumeros) {
+          Dashboard.atualizarNumeros();
+          Dashboard.carregarExtrato?.();
+          return;
+        }
+        this.atualizarPaginaAtual();
+      }, 700);
     });
   },
 
@@ -328,6 +340,24 @@ const App = {
     if (navSistema)      navSistema.classList.toggle('hidden', !isAdmin);
     // Configurações visuais continuam sendo exclusividade do Arquiteto
     if (navGerencial)    navGerencial.classList.toggle('hidden', !isArquiteto);
+
+    // A BALANÇA — as tabelas de XP, Mana, punição e prazo.
+    // Ela existia desde a última entrega, mas morava dentro do console antigo
+    // do Arquiteto, que perdeu o gatilho quando a Forja de Testes assumiu a
+    // bancada. Ou seja: a tela estava pronta e inalcançável. Agora tem porta
+    // própria no menu, que é onde uma ferramenta de produção deve estar —
+    // ela não é teste, o que se sela ali vale para todos os hunters.
+    const navBalanca = document.getElementById('nav-balanca');
+    if (navBalanca) {
+      navBalanca.classList.toggle('hidden', !isArquiteto);
+      if (!navBalanca.dataset.ligado) {
+        navBalanca.dataset.ligado = '1';
+        navBalanca.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          window.BalancaEconomia?.abrir();
+        });
+      }
+    }
 
     // Menu do Painel Admin conforme privilégios
     this._aplicarPrivilegios();

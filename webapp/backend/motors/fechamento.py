@@ -16,12 +16,14 @@ Este motor resolve os dois lados:
 Roda no scheduler (madrugada) e é seguro chamar quantas vezes quiser: tudo é
 "garantir que", nunca "somar de novo".
 
-REGRA DE OURO: só fechamos dias JÁ PASSADOS. O dia corrente é do hunter até
-a virada — quem decide que hoje fracassou é o prazo da missão, não este job.
+REGRA DE OURO: quem decide que uma missão fracassou é o PRAZO dela, não a
+virada do dia. Uma rotina com janela 20:00–22:00 fracassa às 22:00 do próprio
+dia; uma rotina de dia inteiro, às 23:59. Missão geral não fecha por prazo —
+ela vira dívida no vermelho e só fecha quando o dia previsto passa.
 """
 import json
 from datetime import date, datetime, timedelta
-from motors import tempo
+from motors import tempo, prazos, especiais
 
 from sqlalchemy.orm import Session
 
@@ -114,32 +116,77 @@ def materializar(db: Session, usuario_id: int, ate: date | None = None) -> int:
 
 def fechar_vencidas(db: Session, usuario: Usuario, ate: date | None = None) -> dict:
     """
-    Fecha o que já venceu: instâncias de dias ANTERIORES a hoje que ficaram
-    PENDENTE ou ATIVA viram FRACASSADA, com a penalidade declarada.
-    O dia corrente nunca é tocado aqui.
+    Fecha o que já venceu — pelo RELÓGIO, não pelo calendário.
+
+    Esta função olhava só a data: `data < hoje`. Com isso, o Banho
+    Revigorante, cuja janela termina às 22:00, só era declarado fracassado à
+    meia-noite — duas horas depois de a corrida ter sido perdida. Pior: entre
+    22:00 e 00:00 o cartão continuava oferecendo o botão Iniciar, numa missão
+    que já não podia mais ser vencida.
+
+    Agora quem manda é `motors/prazos.py`. Cada instância sabe o seu instante
+    de vencimento e é fechada quando ele passa — 22:00 para a janela, 23:59
+    para a rotina de dia inteiro.
+
+    A MISSÃO GERAL NÃO É FECHADA AQUI, e isso é uma decisão do Arquiteto:
+    rotina de janela é corrida contra o tempo (vence e acaba); missão geral é
+    dívida (vence e continua lá, no vermelho, até ser quitada). Ela só fecha
+    quando o próprio DIA PREVISTO já passou — aí não é mais dívida de hoje,
+    é história.
     """
     hoje = ate or tempo.hoje()
     agora = tempo.agora()
     rotinas_fechadas = 0
     gerais_fechadas = 0
     xp_perdido_total = 0
+    # As passivas cumpridas são separadas e pagas DEPOIS do laço: creditar XP
+    # no meio de uma varredura de instâncias misturaria a subtração das
+    # derrotas com a soma das vitórias, e o nível do hunter subiria e desceria
+    # dentro da mesma transação.
+    passivas_cumpridas = []
 
     # ── Instâncias de rotina ──────────────────────────────────────────
-    pendentes = db.query(ExecucaoDia).filter(
+    # Trazemos HOJE também (antes era só `< hoje`), porque uma janela pode
+    # vencer dentro do próprio dia. Quem decide é o prazo, um por um.
+    abertas = db.query(ExecucaoDia).filter(
         ExecucaoDia.usuario_id == usuario.id,
-        ExecucaoDia.data < hoje,
+        ExecucaoDia.data <= hoje,
         ExecucaoDia.status.in_(("PENDENTE", "ATIVA")),
     ).all()
 
-    if pendentes:
-        # Penalidade vive na rotina-mãe: busca todas de uma vez.
-        ids = {ed.rotina_id for ed in pendentes}
-        penal = {
-            r.id: (getattr(r, "penalidade_xp", 0) or 0)
-            for r in db.query(Rotina).filter(Rotina.id.in_(ids)).all()
-        }
-        for ed in pendentes:
-            pen = penal.get(ed.rotina_id, 0)
+    if abertas:
+        ids = {ed.rotina_id for ed in abertas}
+        mae = {r.id: r for r in db.query(Rotina).filter(Rotina.id.in_(ids)).all()}
+
+        for ed in abertas:
+            r = mae.get(ed.rotina_id)
+            if r is None:
+                continue
+            p = prazos.da_execucao(ed, r)
+            if not prazos.venceu(p, agora):
+                continue                      # ainda tem tempo — não se toca
+
+            # ── A INVERSÃO DA MISSÃO PASSIVA ──────────────────────
+            # Numa missão comum, chegar ao prazo sem concluir é derrota.
+            # Numa passiva é VITÓRIA: o protocolo foi mantido a noite
+            # inteira. "Sem cafeína após as 16h" vence às 05:00 sozinho,
+            # e quem quebrou tinha o botão Confessar à disposição.
+            #
+            # `concluida_em` recebe a HORA DO PRAZO (05:00), não o instante
+            # em que o servidor percebeu. O hunter abre o app às 07:30 e vê
+            # "concluída às 05:00" — que é a verdade. Foi o mesmo cuidado
+            # tomado com `iniciada_em` no auto-início; sem ele o cronômetro
+            # do cartão mentiria sobre quanto o protocolo durou.
+            if especiais.eh_premium(getattr(r, "natureza", None)):
+                passivas_cumpridas.append((ed, r, p["fim"]))
+                continue
+
+            pen = getattr(r, "penalidade_xp", 0) or 0
+            # Missão reerguida já foi punida quando fracassou da primeira vez.
+            # Punir de novo cobraria duas vezes pelo mesmo fracasso — e o
+            # hunter ainda pagou Mana pela segunda chance.
+            if getattr(ed, "reerguida", False):
+                pen = 0
             ed.status = "FRACASSADA"
             ed.fracassada_em = agora
             ed.xp_perdido = pen
@@ -147,6 +194,9 @@ def fechar_vencidas(db: Session, usuario: Usuario, ate: date | None = None) -> d
             rotinas_fechadas += 1
 
     # ── Missões gerais (avulsas) ──────────────────────────────────────
+    # Só as de dias já passados. A de hoje que estourou o prazo continua
+    # aberta de propósito: o contador fica negativo e o hunter ainda pode
+    # quitá-la — pagando a punição, sem receber a recompensa.
     tarefas = db.query(TarefaDia).filter(
         TarefaDia.usuario_id == usuario.id,
         TarefaDia.data_prevista < hoje,
@@ -162,9 +212,33 @@ def fechar_vencidas(db: Session, usuario: Usuario, ate: date | None = None) -> d
         usuario.xp_total = max(0, (usuario.xp_total or 0) - xp_perdido_total)
         usuario.xp_atual = max(0, (usuario.xp_atual or 0) - xp_perdido_total)
 
+    # ── Protocolos mantidos: agora sim, o pagamento ───────────────────
+    passivas = 0
+    for ed, r, fim in passivas_cumpridas:
+        ed.status = "CONCLUIDA"
+        ed.concluida_em = fim
+        try:
+            from motors.gamificacao import aplicar_xp
+            res = aplicar_xp(
+                db=db, usuario=usuario,
+                xp_base=getattr(r, "xp_recompensa", 0) or 0,
+                moedas=getattr(r, "moedas_recompensa", 0) or 0,
+                hoje=ed.data, rotina_id=r.id,
+                observacao=f"Protocolo mantido: {r.titulo}",
+            )
+            ed.xp_ganho = (res or {}).get("xp_ganho", 0)
+            ed.moedas_ganhas = (res or {}).get("moedas_ganhas", 0)
+        except Exception as e:
+            # Um protocolo que não conseguiu pagar não pode derrubar o
+            # fechamento dos outros hunters. Fica concluído e sem crédito,
+            # e o log mostra o quê.
+            print(f"[FECHAMENTO] ⚠ passiva {r.titulo}: {e}")
+        passivas += 1
+
     return {
         "rotinas": rotinas_fechadas,
         "gerais": gerais_fechadas,
+        "passivas": passivas,
         "xp_perdido": xp_perdido_total,
     }
 
@@ -186,12 +260,28 @@ def reparar_fechamento_indevido(db: Session, usuario: Usuario,
     reabrir ele zera `xp_perdido` — na segunda passada não há o que devolver.
     """
     hoje = ate or tempo.hoje()
+    agora = tempo.agora()
 
-    indevidas = db.query(ExecucaoDia).filter(
+    candidatas = db.query(ExecucaoDia).filter(
         ExecucaoDia.usuario_id == usuario.id,
         ExecucaoDia.data >= hoje,                    # hoje ou depois
         ExecucaoDia.status == "FRACASSADA",
     ).all()
+
+    # AGORA HÁ FRACASSO LEGÍTIMO DENTRO DO DIA CORRENTE.
+    # Quando este reparo foi escrito, nada podia fracassar hoje — só a
+    # meia-noite fechava missão, então toda derrota de hoje era erro de fuso.
+    # Com a janela de horário isso deixou de ser verdade: às 22:01 o Banho
+    # Revigorante fracassa por mérito próprio, ainda dentro de hoje. Reabri-lo
+    # devolveria o XP e apagaria a derrota — o reparo viraria um perdão
+    # automático, e a janela deixaria de significar qualquer coisa.
+    ids = {ed.rotina_id for ed in candidatas}
+    mae = {r.id: r for r in db.query(Rotina).filter(Rotina.id.in_(ids)).all()} if ids else {}
+    indevidas = [
+        ed for ed in candidatas
+        if ed.rotina_id in mae
+        and not prazos.venceu(prazos.da_execucao(ed, mae[ed.rotina_id]), agora)
+    ]
 
     xp_devolvido = 0
     for ed in indevidas:
@@ -228,14 +318,75 @@ def reparar_fechamento_indevido(db: Session, usuario: Usuario,
     return {"reabertas": len(indevidas) + len(tarefas), "xp_devolvido": xp_devolvido}
 
 
+def auto_iniciar(db: Session, usuario: Usuario, ate: date | None = None) -> int:
+    """
+    Acende sozinhas as missões cuja janela já abriu.
+
+    O Banho Revigorante das 20:00 não espera clique: às 20:00 ele está em
+    curso, o hunter tendo aberto o app ou não. Devolve quantas acenderam.
+
+    POR QUE ISTO É CALCULADO NA LEITURA, e não por um processo a cada minuto:
+    o resultado visível é idêntico — quando o hunter abre o app às 21:00, a
+    missão está ATIVA desde as 20:00 — e não exige um worker acordado 24h,
+    que no plano free do Render hiberna e simplesmente não dispararia. O que
+    a leitura não faz é notificação push; quando isso existir, o processo por
+    minuto vira necessário, e o gancho é esta mesma função.
+
+    A SUTILEZA QUE FAZ O CRONÔMETRO NÃO MENTIR: `iniciada_em` recebe a hora da
+    JANELA (20:00), não o instante em que o servidor percebeu. Abrir o app às
+    21:00 tem que mostrar "1h em curso", não "acabou de começar".
+    """
+    hoje = ate or tempo.hoje()
+    agora = tempo.agora()
+
+    pendentes = db.query(ExecucaoDia).filter(
+        ExecucaoDia.usuario_id == usuario.id,
+        ExecucaoDia.data == hoje,
+        ExecucaoDia.status == "PENDENTE",
+    ).all()
+    if not pendentes:
+        return 0
+
+    ids = {ed.rotina_id for ed in pendentes}
+    mae = {r.id: r for r in db.query(Rotina).filter(Rotina.id.in_(ids)).all()}
+
+    acesas = 0
+    for ed in pendentes:
+        r = mae.get(ed.rotina_id)
+        if r is None:
+            continue
+        # Missão reerguida NÃO se acende de novo: a segunda largada é do
+        # hunter, senão o Reerguer devolveria o automatismo que ele perdeu.
+        if getattr(ed, "reerguida", False):
+            continue
+        p = prazos.da_execucao(ed, r)
+        if prazos.deve_auto_iniciar(p, agora):
+            ed.status = "ATIVA"
+            ed.iniciada_em = p["inicio"]
+            acesas += 1
+
+    if acesas:
+        db.flush()
+    return acesas
+
+
 def processar_usuario(db: Session, usuario: Usuario, ate: date | None = None) -> dict:
     """Materializa e fecha, para um hunter. Não faz commit — quem chama decide."""
-    # O reparo vem PRIMEIRO: se o relógio errado fechou a missão de hoje,
-    # ela precisa voltar a existir antes que qualquer outra coisa a leia.
+    # A ORDEM IMPORTA, e cada passo depende do anterior:
+    #   1. reparo      — desfaz derrota ilegítima antes que alguém a leia
+    #   2. materializa — o dia de hoje precisa existir para poder acender
+    #   3. auto-início — acende o que a janela já abriu
+    #   4. fechamento  — fecha o que a janela já encerrou
+    # Acender antes de fechar não é redundante: uma janela 20:00–22:00 lida às
+    # 23:00 passa por acender (não, já venceu) e cai no fechamento, que a
+    # marca FRACASSADA. Se a ordem fosse invertida, a missão acenderia depois
+    # de fechada e voltaria a ATIVA.
     reparo = reparar_fechamento_indevido(db, usuario, ate=ate)
     criadas = materializar(db, usuario.id, ate=ate)
+    acesas = auto_iniciar(db, usuario, ate=ate)
     resumo = fechar_vencidas(db, usuario, ate=ate)
     resumo["materializadas"] = criadas
+    resumo["acesas"] = acesas
     resumo["reabertas"] = reparo["reabertas"]
     resumo["xp_devolvido"] = reparo["xp_devolvido"]
     return resumo
@@ -247,14 +398,15 @@ def rodar(ate: date | None = None, verbose: bool = True) -> dict:
     Uma sessão por execução; um hunter com problema não derruba os outros.
     """
     db = SessionLocal()
-    total = {"materializadas": 0, "rotinas": 0, "gerais": 0, "xp_perdido": 0, "erros": 0}
+    total = {"materializadas": 0, "rotinas": 0, "gerais": 0, "passivas": 0,
+             "xp_perdido": 0, "erros": 0}
     try:
         usuarios = db.query(Usuario).filter(Usuario.ativo == True).all()
         for u in usuarios:
             try:
                 r = processar_usuario(db, u, ate=ate)
                 db.commit()
-                for k in ("materializadas", "rotinas", "gerais", "xp_perdido"):
+                for k in ("materializadas", "rotinas", "gerais", "passivas", "xp_perdido"):
                     total[k] += r.get(k, 0)
             except Exception as e:
                 db.rollback()
@@ -266,5 +418,6 @@ def rodar(ate: date | None = None, verbose: bool = True) -> dict:
     if verbose:
         print(f"[FECHAMENTO] {total['materializadas']} instância(s) criada(s), "
               f"{total['rotinas']} rotina(s) e {total['gerais']} missão(ões) geral(is) "
-              f"fechada(s), -{total['xp_perdido']} XP.")
+              f"fechada(s), {total['passivas']} protocolo(s) mantido(s), "
+              f"-{total['xp_perdido']} XP.")
     return total

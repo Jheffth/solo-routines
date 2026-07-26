@@ -11,7 +11,6 @@
   <link rel="stylesheet" href="css/design-system.css">
   <link rel="stylesheet" href="css/animations.css">
   <link rel="stylesheet" href="css/windows.css">
-  <link rel="stylesheet" href="css/lancador.css">
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/pages.css">
   <link rel="stylesheet" href="css/dungeon.css">
@@ -19,6 +18,7 @@
   <link rel="stylesheet" href="css/relicario.css">
   <link rel="stylesheet" href="css/ascensao.css">
   <link rel="stylesheet" href="css/missao-card.css">
+  <link rel="stylesheet" href="css/balanca-economia.css">
   <link rel="stylesheet" href="css/forja-missao.css">
   <link rel="stylesheet" href="css/painel-admin.css">
   <link rel="stylesheet" href="css/materiais.css">
@@ -370,6 +370,21 @@
             <span>Painel do Sistema</span>
           </a>
 
+          <!-- A Balança — tabelas de XP, Mana, punição e prazo.
+               Só o Arquiteto vê (app.js revela junto de Configurações).
+               Não é página: abre a própria janela, então não tem data-page. -->
+          <a class="nav-item hidden" id="nav-balanca" href="#">
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3v18M7 21h10"/>
+                <path d="M3 7h18"/>
+                <path d="M6.5 7 3 14a3.5 3.5 0 0 0 7 0z"/>
+                <path d="M17.5 7 14 14a3.5 3.5 0 0 0 7 0z"/>
+              </svg>
+            </span>
+            <span>A Balan&#231;a</span>
+          </a>
+
           <!-- Configurações -->
           <a class="nav-item hidden" data-page="gerencial" id="nav-gerencial" href="#">
             <span class="nav-icon">
@@ -510,7 +525,11 @@
                   <span class="chip" id="rotinas-count" style="font-size:.65rem">0</span>
                 </div>
                 <div style="display:flex;gap:.5rem;align-items:center">
-                  <button id="btn-nova-rotina-dash" onclick="if(window.Rotinas){App.navigate('rotinas');setTimeout(()=>Rotinas.abrirFormulario(),200);}else{App.navigate('rotinas');}" style="
+                  <!-- A Forja abre DIRETO no Dashboard — o desvio antigo
+                       (navegar até Rotinas e abrir lá) era herança do
+                       lançador aposentado. A delegação global em
+                       forja-missao.js cuida do clique; o onclick saiu. -->
+                  <button id="btn-nova-rotina-dash" style="
                     font-family:var(--font-section);font-size:.65rem;padding:.25rem .75rem;border-radius:.4rem;
                     border:1px solid rgba(168,85,247,.5);background:linear-gradient(100deg,rgba(124,58,237,.25),rgba(168,85,247,.15));
                     color:#d8b4fe;cursor:pointer;transition:.2s;font-weight:700;letter-spacing:.05em"
@@ -1123,8 +1142,9 @@
   <!-- BACKDROP -->
   <div class="window-backdrop" id="window-backdrop"></div>
 
-  <!-- JANELA: LANCADOR (conteúdo gerado pelo lancador.js) -->
-  <div class="lancador-window" id="lancador-window" style="display:none"></div>
+  <!-- O lançador antigo (lancador.js + #lancador-window) foi aposentado.
+       Quem forja missões agora é a ForjaMissao (js/forja-missao.js), que
+       cria o próprio backdrop e responde aos botões por delegação global. -->
 
 
   <!-- MODAL: CONFIRMACAO -->
@@ -1176,6 +1196,8 @@
   <script src="js/dialog.js"></script>
   <script src="js/drag-windows.js"></script>
   <script src="js/sfx.js"></script>
+  <!-- O alfabeto visual do Sistema. Carrega ANTES de todos que desenham. -->
+  <script src="js/glifos.js"></script>
   <script src="js/missao-card.js"></script>
   <script src="js/forja-missao.js"></script>
   <script src="js/animations.js"></script>
@@ -1186,6 +1208,7 @@
   <script src="js/badges/nexus-social.js"></script>
   <script src="js/badges/isabella.js"></script>
   <script src="js/badges/fenix-pioneira.js"></script>
+  <script src="js/balanca-economia.js"></script>
   <script src="js/arquiteto-console.js"></script>
   <!-- A bancada nova. Carrega DEPOIS do console porque reaproveita
        as acoes de teste que ja funcionam nele. -->
@@ -1195,7 +1218,6 @@
   <script src="js/buddylist.js"></script>
   <script src="js/chat.js"></script>
   <script src="js/charts.js"></script>
-  <script src="js/pages/lancador.js"></script>
   <script src="js/pages/dashboard.js"></script>
   <script src="js/pages/rotinas.js"></script>
   <script src="js/pages/tarefas.js"></script>

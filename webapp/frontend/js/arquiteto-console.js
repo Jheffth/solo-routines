@@ -585,6 +585,18 @@ const ArquitetoConsole = {
     MissaoCard.montar(lista, { demo: true });
   },
 
+  /* A Balança: as tabelas que decidem quanto vale cada missão.
+     Diferente do resto deste console, isto NÃO é demonstração — o que for
+     selado aqui vale para todos os hunters na próxima missão criada. */
+  balanca() {
+    if (typeof BalancaEconomia === 'undefined') {
+      SoloDialog?.toast?.('BalancaEconomia não carregada', 'error');
+      return;
+    }
+    this.fechar();
+    BalancaEconomia.abrir();
+  },
+
   /* Vitrine do novo Lançador (componente real, modo demonstração) */
   forjaMissao() {
     if (typeof ForjaMissao === 'undefined') {
@@ -776,6 +788,8 @@ const ArquitetoConsole = {
       cinza:    ['#94a3b8',            '148,163,184'],
       vermelho: ['#f87171',            '239,68,68'],
       rosa:     ['#ff6ec4',            '255,46,154'],   // insígnias Evelynn
+      // Âmbar marca o que NÃO é demonstração: mexe na economia de verdade.
+      ambar:    ['#fbbf24',            '245,158,11'],
     };
     const bt = (rotulo, acao, tom = 'ouro', tracejado = false) => {
       const [cor, rgb] = CORES[tom] || CORES.ouro;
@@ -818,6 +832,10 @@ const ArquitetoConsole = {
       </div>
 
       <div id="arq-console-corpo" style="display:flex;flex-direction:column;gap:.3rem;overflow-y:auto;max-height:min(72vh,620px);padding-right:.25rem;margin-right:-.25rem">
+
+        ${sec('balanca', '⚖ A Balança (vale de verdade)', true, [
+          bt('Tabelas de Economia',     'balanca()',      'ambar'),
+        ])}
 
         ${sec('propostas', '🗂 Propostas de Interface', true, [
           bt('Cartão de Missão',        'cardMissao()',   'roxo'),

@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import date, datetime
 from motors import tempo
+from motors import economia, prazos
 
 from database import get_db, TarefaDia, Usuario
 from auth.router import get_usuario_atual
@@ -28,6 +29,13 @@ class TarefaCreate(BaseModel):
     xp_recompensa: Optional[int] = None
     moedas_recompensa: Optional[int] = None
     penalidade_xp: int = 0
+    # MODALIDADE PERSONALIZADA: o hunter escolhe QUANTO TEMPO a missão dura —
+    # e SÓ isso. O prazo é a única alavanca que ele tem; XP, Mana e punição
+    # continuam saindo da tabela do servidor, indiferentes ao prazo escolhido.
+    # Uma missão de 300 dias vale o mesmo que a de 30 minutos com a mesma
+    # prioridade e dificuldade. Se prazo maior pagasse mais, criar missões de
+    # um ano viraria a nova porta do exploit de 999.999 XP.
+    prazo_minutos: Optional[int] = None
 
 
 class TarefaUpdate(BaseModel):
@@ -42,6 +50,7 @@ class TarefaUpdate(BaseModel):
     xp_recompensa: Optional[int] = None
     moedas_recompensa: Optional[int] = None
     penalidade_xp: Optional[int] = None
+    prazo_minutos: Optional[int] = None
 
 
 def _tarefa_to_dict(t: TarefaDia) -> dict:
@@ -60,6 +69,8 @@ def _tarefa_to_dict(t: TarefaDia) -> dict:
         "penalidade_xp":     t.penalidade_xp,
         "usuario_id":        t.usuario_id,
         "criado_em":         t.criado_em.isoformat() if t.criado_em else None,
+        "prazo_minutos":     getattr(t, "prazo_minutos", None),
+        "prazo_personalizado": bool(getattr(t, "prazo_personalizado", False)),
         "iniciada_em":       t.iniciada_em.isoformat() if getattr(t, "iniciada_em", None) else None,
         "concluida_em":      t.concluida_em.isoformat() if t.concluida_em else None,
     }
@@ -122,11 +133,12 @@ def criar_tarefa(
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(get_usuario_atual),
 ):
-    xp, mc = calcular_xp_tarefa(payload.prioridade.upper())
-    if payload.xp_recompensa is not None:
-        xp = payload.xp_recompensa
-    if payload.moedas_recompensa is not None:
-        mc = payload.moedas_recompensa
+    # QUEM PRECIFICA É O SERVIDOR. O `xp_recompensa` que o cliente mandou é
+    # ignorado de propósito: aceitá-lo permitia pedir uma missão de 999.999 XP
+    # e ir ao nível 100 numa requisição. O cliente diz o que a missão É; o
+    # valor sai da tabela em motors/economia.py.
+    valores = economia.recompensa_tarefa(payload.prioridade, payload.dificuldade,
+                                          payload.categoria, db)
 
     campos = dict(
         titulo=payload.titulo,
@@ -136,18 +148,27 @@ def criar_tarefa(
         prioridade=payload.prioridade.upper(),
         categoria=payload.categoria,
         status="PENDENTE",
-        xp_recompensa=xp,
-        moedas_recompensa=mc,
-        penalidade_xp=payload.penalidade_xp,
+        xp_recompensa=valores["xp_recompensa"],
+        moedas_recompensa=valores["moedas_recompensa"],
+        penalidade_xp=valores["penalidade_xp"],
         usuario_id=usuario.id,
     )
 
     tarefa = TarefaDia(**campos)
 
-    # dificuldade: só atribui se a coluna existir no modelo
+    # dificuldade e prazo: só atribui se a coluna existir no modelo
     try:
         if hasattr(TarefaDia, 'dificuldade'):
             tarefa.dificuldade = payload.dificuldade.upper()
+        if hasattr(TarefaDia, 'prazo_minutos'):
+            if payload.prazo_minutos and payload.prazo_minutos > 0:
+                # Personalizada: o prazo é do hunter (clampado no teto duro),
+                # e a marca impede que uma edição futura recalcule por cima.
+                tarefa.prazo_minutos = min(economia.TETO_MINUTOS,
+                                           max(5, int(payload.prazo_minutos)))
+                tarefa.prazo_personalizado = True
+            else:
+                tarefa.prazo_minutos = valores["prazo_minutos"]
     except Exception:
         pass
 
@@ -239,6 +260,12 @@ def concluir_tarefa(
     if t.status == "CONCLUIDA":
         raise HTTPException(400, "Tarefa já foi concluída")
 
+    # O prazo da missão geral conta desde a INTENÇÃO (quando foi criada), não
+    # desde o play. Quem cria uma missão de 30 minutos às 14:00 tem até 14:30,
+    # tenha começado ou não. Concluir depois disso continua valendo a pena
+    # para o hábito — mas não paga, e cobra a punição.
+    liq = economia.liquidacao(t, vencida=prazos.venceu(prazos.da_tarefa(t)))
+
     t.status = "CONCLUIDA"
     t.concluida_em = tempo.agora()
     db.flush()
@@ -246,13 +273,22 @@ def concluir_tarefa(
     resultado = aplicar_xp(
         db=db,
         usuario=usuario,
-        xp_base=t.xp_recompensa,
-        moedas=t.moedas_recompensa,
+        xp_base=liq["xp"],
+        moedas=liq["moedas"],
         hoje=tempo.hoje(),
         tarefa_id=t.id,
         observacao=f"Tarefa concluída: {t.titulo}",
     )
-    return anexar({"tarefa": _tarefa_to_dict(t), "resultado": resultado}, resultado)
+
+    if liq["penalidade"]:
+        usuario.xp_total = max(0, (usuario.xp_total or 0) - liq["penalidade"])
+        usuario.xp_atual = max(0, (usuario.xp_atual or 0) - liq["penalidade"])
+        db.commit()
+
+    return anexar(
+        {"tarefa": _tarefa_to_dict(t), "resultado": resultado, "liquidacao": liq},
+        resultado,
+    )
 
 
 # ── Edição / Exclusão ─────────────────────────────────────────────────────────
@@ -273,13 +309,24 @@ def atualizar_tarefa(
     if payload.prioridade is not None:         t.prioridade = payload.prioridade.upper()
     if payload.categoria is not None:          t.categoria = payload.categoria
     if payload.status is not None:             t.status = payload.status.upper()
-    if payload.xp_recompensa is not None:      t.xp_recompensa = payload.xp_recompensa
-    if payload.moedas_recompensa is not None:  t.moedas_recompensa = payload.moedas_recompensa
-    if payload.penalidade_xp is not None:      t.penalidade_xp = payload.penalidade_xp
     try:
         if payload.dificuldade is not None:    t.dificuldade = payload.dificuldade.upper()
     except Exception:
         pass
+
+    # Prazo personalizado também pode ser ajustado na edição — só o prazo.
+    # `economia.aplicar` logo abaixo respeita a marca e não recalcula por cima.
+    if payload.prazo_minutos is not None and payload.prazo_minutos > 0 \
+            and hasattr(t, "prazo_minutos"):
+        t.prazo_minutos = min(economia.TETO_MINUTOS, max(5, int(payload.prazo_minutos)))
+        t.prazo_personalizado = True
+
+    # A EDIÇÃO era a segunda porta do mesmo buraco: bastava criar uma missão
+    # honesta e depois editá-la pedindo 999.999 XP. Aqui a recompensa é sempre
+    # RECALCULADA a partir do que a missão passou a ser — nunca copiada do que
+    # o cliente pediu.
+    economia.aplicar(t, economia.recompensa_tarefa(
+        t.prioridade, getattr(t, "dificuldade", "NORMAL"), t.categoria, db))
 
     db.commit()
     db.refresh(t)

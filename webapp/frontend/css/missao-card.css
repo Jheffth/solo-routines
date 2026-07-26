@@ -38,6 +38,143 @@
 .mc.st-ativa .mc-fio { opacity: 1; animation: mc-fio 2.4s linear infinite; }
 @keyframes mc-fio { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 
+/* ══════════════════════════════════════════════════════════
+   CORRENTE DE ENERGIA — a missão EM CURSO se anuncia
+
+   O fio de 2px no topo era o único sinal de "acontecendo agora", e a 2px de
+   altura ele some numa lista. Faltava algo que se veja de relance, sem ler.
+
+   POR QUE NÃO É VERDE: verde é reservado a missão cumprida (e vermelho, a
+   fracassada). Uma missão em curso pintada de verde seria lida como já
+   concluída — e lista se lê de relance, não com atenção. A corrente usa a
+   COR DA PRÓPRIA MISSÃO, então além de dizer "está rodando" ela ainda diz
+   de que prioridade é: crítica pulsa magenta, tranquila pulsa azul.
+
+   Uma trama de chevrons repetida, deslizando pelo background-position. Um
+   elemento, uma animação — duas animações no mesmo elemento se cancelam, e
+   isso já custou uma tarde neste projeto.
+   ══════════════════════════════════════════════════════════ */
+.mc-corrente {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: .5;
+  /* Chevrons ">>>>" formados por duas faixas diagonais espelhadas. */
+  background-image:
+    repeating-linear-gradient(115deg,
+      transparent 0 22px,
+      color-mix(in srgb, var(--mc-cor) 22%, transparent) 22px 24px,
+      transparent 24px 46px),
+    repeating-linear-gradient(65deg,
+      transparent 0 22px,
+      color-mix(in srgb, var(--mc-cor) 22%, transparent) 22px 24px,
+      transparent 24px 46px);
+  background-size: 92px 100%;
+  /* Esmaece nas bordas para não virar papel de parede: a energia atravessa
+     o cartão, não o cobre. O texto precisa continuar sendo o assunto. */
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent);
+          mask-image: linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent);
+  animation: mc-corrente 2.8s linear infinite;
+}
+@keyframes mc-corrente {
+  from { background-position: 0 0, 0 0; }
+  to   { background-position: 92px 0, -92px 0; }
+}
+/* O conteúdo sobe acima da corrente. Sem isto ela passaria por cima do
+   texto — e a regra `overflow:hidden` do cartão não ajuda nisso. */
+.mc-sigilo, .mc-corpo, .mc-acoes, .mc-recompensa, .mc-barra { position: relative; z-index: 1; }
+/* No cartão compacto a faixa é baixa: a corrente fica mais discreta ainda. */
+.mc-compacto .mc-corrente { opacity: .34; background-size: 74px 100%; }
+
+/* ══════════════════════════════════════════════════════════
+   PROTOCOLO — a missão passiva tem cara própria
+
+   Ela precisa ser reconhecível ANTES da leitura, porque as regras dela são
+   invertidas: quem confunde um protocolo com uma missão comum fica esperando
+   um botão Concluir que nunca vem.
+
+   A cor de prioridade continua mandando na borda esquerda e no sigilo — a
+   urgência não deixa de existir por ser protocolo. O índigo entra como
+   SEGUNDA camada: trama diagonal no fundo, borda superior tracejada e um
+   halo no sigilo. Duas linguagens sobrepostas, cada uma dizendo uma coisa.
+   ══════════════════════════════════════════════════════════ */
+.mc-passiva {
+  --mc-vigilia: #6366f1;
+  border-top-color: color-mix(in srgb, var(--mc-vigilia) 42%, transparent);
+  border-right-color: color-mix(in srgb, var(--mc-vigilia) 22%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--mc-vigilia) 22%, transparent);
+  background:
+    /* trama de protocolo: linhas finas, densas, estáticas — vigília não se
+       move, ela permanece. É o oposto visual da corrente de energia. */
+    repeating-linear-gradient(135deg,
+      transparent 0 9px,
+      rgba(99, 102, 241, .055) 9px 10px),
+    radial-gradient(130% 150% at 100% 0%, rgba(99, 102, 241, .13), transparent 58%),
+    radial-gradient(120% 140% at 0% 0%, var(--mc-cor-suave), transparent 55%),
+    linear-gradient(145deg, #0b0916, #06060d);
+}
+.mc-passiva:hover {
+  border-color: color-mix(in srgb, var(--mc-vigilia) 55%, transparent);
+  border-left-color: var(--mc-cor);
+  box-shadow: 0 8px 26px rgba(0,0,0,.5), 0 0 22px rgba(99, 102, 241, .2);
+}
+
+/* A faixa do topo vira tracejada: o protocolo não é um fluxo contínuo de
+   execução, é uma vigília — presente, intermitente, sem correr. */
+.mc-passiva .mc-fio {
+  opacity: 1;
+  height: 2px;
+  background: repeating-linear-gradient(90deg,
+    var(--mc-vigilia) 0 10px, transparent 10px 20px);
+  background-size: 40px 100%;
+  animation: mc-vigilia 3.4s linear infinite;
+}
+@keyframes mc-vigilia {
+  from { background-position: 0 0; }
+  to   { background-position: 40px 0; }
+}
+
+/* Halo de vigília no sigilo — o anel índigo em volta do ícone da categoria. */
+.mc-passiva .mc-sigilo::after {
+  content: '';
+  position: absolute; inset: -3px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--mc-vigilia) 50%, transparent);
+  box-shadow: 0 0 12px rgba(99, 102, 241, .3);
+  pointer-events: none;
+}
+
+/* Enquanto o protocolo está de pé, a corrente de energia não aparece: ele
+   não está "sendo executado", está sendo MANTIDO. São coisas diferentes e a
+   tela precisa dizer isso. */
+.mc-passiva .mc-corrente { display: none; }
+
+/* Etiqueta PROTOCOLO no canto — o rótulo explícito, para quem ainda não
+   aprendeu a ler a trama. */
+.mc-passiva::after {
+  content: 'PROTOCOLO';
+  position: absolute;
+  top: 8px; right: 10px;
+  z-index: 1;
+  font-family: var(--font-section);
+  font-size: .46rem; font-weight: 700;
+  letter-spacing: .2em;
+  color: color-mix(in srgb, var(--mc-vigilia) 85%, white);
+  opacity: .5;
+  pointer-events: none;
+}
+.mc-compacto.mc-passiva::after { top: 4px; right: 8px; font-size: .42rem; }
+
+/* Aguardando a hora: tudo esmaece. Ele existe, mas ainda não vale. */
+.mc-selo-espera {
+  color: var(--text-muted);
+  background: rgba(148,163,184,.06);
+  border: 1px solid rgba(148,163,184,.22);
+}
+.mc-passiva.st-pendente .mc-fio { opacity: .35; }
+.mc-passiva.st-pendente::after { opacity: .28; }
+
 /* ── Sigilo (ícone cinético) ─────────────────────────────── */
 .mc-sigilo {
   position: relative;
@@ -138,14 +275,50 @@
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }
-.mc-prazo .lbl { font-family: var(--font-section); color: var(--mc-cor); letter-spacing: .1em; }
+/* inline-flex pelo mesmo motivo dos chips: o glifo da ampulheta é um SVG e
+   design-system.css dá `display:block` a todo SVG — dentro de um span comum
+   ele quebraria a linha e sentaria ACIMA da palavra "Prazo". */
+.mc-prazo .lbl {
+  display: inline-flex; align-items: center; gap: .3rem;
+  font-family: var(--font-section); color: var(--mc-cor); letter-spacing: .1em;
+}
+.mc-prazo .lbl svg { max-width: none; flex: none; }
 .mc-prazo.urgente { color: var(--red-crit); animation: mc-pulsar 1.2s ease-in-out infinite; }
-.mc-prazo.vencido { color: var(--red-crit); opacity: .8; }
+
+/* VENCIDO — a dívida.
+   Antes isto era um "Prazo vencido" apagado (opacity .8), como se a missão
+   tivesse acabado. Ela não acabou: o contador segue correndo NEGATIVO até o
+   hunter concluir. Então o estado ganha peso em vez de perder — fundo, borda
+   e número em destaque. Um débito de 40 minutos precisa incomodar. */
+.mc-prazo.vencido {
+  color: var(--red-crit);
+  background: rgba(225, 29, 72, .1);
+  border: 1px solid rgba(225, 29, 72, .38);
+  border-radius: 7px;
+  padding: .1rem .5rem;
+  font-weight: 700;
+}
+.mc-prazo.vencido .lbl { color: var(--red-crit); }
+
+/* REERGUIDA — comprada de volta com Mana. Não é corrida nem dívida: é uma
+   segunda chance sem recompensa, e a cor âmbar diz "atenção", não "erro". */
+.mc-prazo.reerguida {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, .09);
+  border: 1px solid rgba(245, 158, 11, .32);
+  border-radius: 7px;
+  padding: .1rem .5rem;
+}
+.mc-prazo.reerguida .lbl { color: #f59e0b; }
 @keyframes mc-pulsar { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
 
 /* ── Chips ───────────────────────────────────────────────── */
 .mc-chips { display: flex; align-items: center; gap: .45rem; flex-wrap: wrap; margin-top: .5rem; }
 .mc-chip {
+  /* inline-flex porque o chip agora carrega um glifo antes do texto. Como
+     caixa de texto simples, o SVG assentaria na linha de base e ficaria
+     baixo demais em relação às maiúsculas. */
+  display: inline-flex; align-items: center; gap: .3rem;
   font-family: var(--font-section);
   font-size: .62rem; font-weight: 700;
   letter-spacing: .1em; text-transform: uppercase;
@@ -153,6 +326,18 @@
   border-radius: 100px;
   border: 1px solid currentColor;
   white-space: nowrap;
+}
+
+/* Glifos do alfabeto (js/glifos.js) dentro de chips, selos e botões.
+   max-width:none pela armadilha de sempre — a regra global
+   img,svg{max-width:100%} encolhe SVG dentro de caixa estreita.
+   flex:none impede que o flex-shrink do container amasse o desenho. */
+.mc-chip .glifo,
+.mc-selo .glifo,
+.mc-btn  .glifo {
+  max-width: none;
+  flex: none;
+  opacity: .92;
 }
 .mc-chip-prior { color: var(--mc-cor); background: var(--mc-cor-suave); }
 .mc-chip-rank  { color: #d8b4fe; border-color: rgba(168,85,247,.45); background: rgba(168,85,247,.1); }
@@ -249,6 +434,22 @@
   border-color: rgba(75,85,99,.7);
 }
 .mc-btn-neutro:hover { background: #374151; color: #fff; }
+
+/* REERGUER — âmbar, não verde nem vermelho.
+   Verde é de missão cumprida e vermelho de fracassada; esta é a terceira
+   coisa: uma segunda chance comprada. O âmbar sinaliza "custa algo" sem
+   prometer vitória, e a moldura pontilhada reforça que é um remendo, não o
+   caminho normal. */
+.mc-btn-reerguer {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, .1);
+  border: 1px dashed rgba(245, 158, 11, .5);
+}
+.mc-btn-reerguer:hover {
+  background: rgba(245, 158, 11, .2);
+  border-style: solid;
+  box-shadow: 0 0 14px rgba(245, 158, 11, .28);
+}
 .mc-btn-perigo {
   color: #fca5a5;
   background: linear-gradient(100deg, rgba(63,0,15,.85), rgba(33,0,8,.85));
@@ -334,6 +535,17 @@
 .mc.st-cancelada { opacity: .55; border-left-color: rgba(100,116,139,.6); }
 .mc.st-cancelada .mc-titulo { color: var(--text-muted); }
 
+/* ── Chegada ─────────────────────────────────────────────────
+   Só o cartão RECÉM-CHEGADO recebe esta classe. É o contrário do que a tela
+   fazia antes: a lista inteira reaparecia de uma vez, e o hunter não tinha
+   como saber qual missão era a nova. Agora quem entra se anuncia, e quem já
+   estava lá nem pisca — continua sendo o mesmo elemento no DOM. */
+@keyframes mc-chegar {
+  from { opacity: 0; transform: translateY(-6px) scale(.985); }
+  to   { opacity: 1; transform: none; }
+}
+.mc-entrando { animation: mc-chegar .3s cubic-bezier(.22,.9,.3,1) both; }
+
 /* Selo de desfecho (canto direito) */
 .mc-selo {
   display: inline-flex; align-items: center; gap: .35rem;
@@ -346,6 +558,45 @@
 .mc-selo-ok    { color: #34d399; background: rgba(16,185,129,.1);  border: 1px solid rgba(16,185,129,.35); }
 .mc-selo-falha { color: #f87171; background: rgba(239,68,68,.08);  border: 1px solid rgba(239,68,68,.3); }
 .mc-selo-neutro{ color: var(--text-muted); background: rgba(148,163,184,.06); border: 1px solid rgba(148,163,184,.2); }
+
+/* MISSÃO PASSIVA — os dois estados que só ela tem.
+
+   VIGÍLIA: o protocolo está de pé. Índigo, não roxo de ação: ele não pede
+   nada do hunter, só existe. É o único cartão do app que está "vencendo"
+   sem que ninguém faça nada.
+
+   CONFESSADA: âmbar. Não é verde (não cumpriu) nem vermelho (não fracassou
+   por descuido) — é a terceira coisa: alguém escolheu dizer a verdade quando
+   podia ficar calado. Punir isso com a cor da derrota seria ensinar a mentir. */
+.mc-selo-vigilia {
+  color: #818cf8;
+  background: rgba(99, 102, 241, .1);
+  border: 1px solid rgba(99, 102, 241, .34);
+}
+.mc-selo-confessado {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, .1);
+  border: 1px solid rgba(245, 158, 11, .34);
+}
+.mc.st-confessada { opacity: .92; }
+.mc.st-confessada .mc-fio {
+  background: linear-gradient(90deg, transparent, #f59e0b, transparent);
+}
+
+/* O botão de confessar não convida nem ameaça: fica discreto até o hover.
+   Um botão chamativo pressionaria o hunter a se declarar culpado; um botão
+   escondido faria a mentira ser o caminho mais fácil. Meio-termo de
+   propósito. */
+.mc-btn-confessar {
+  color: #fbbf24;
+  background: transparent;
+  border: 1px dashed rgba(245, 158, 11, .42);
+}
+.mc-btn-confessar:hover {
+  background: rgba(245, 158, 11, .16);
+  border-style: solid;
+  box-shadow: 0 0 12px rgba(245, 158, 11, .26);
+}
 
 /* ── Cartão selado (editavel:false) ──────────────────────────
    Ocorrência de outro dia: registro histórico, não painel de controle.
@@ -499,11 +750,71 @@
 .mc-compacto .mc-btn-extinguir { padding: .3rem .42rem; font-size: .72rem; }
 .mc-compacto .mc-fio { border-radius: 11px 11px 0 0; }
 
-/* Em telas estreitas o compacto vira coluna (o conteúdo respira). */
-@media (max-width: 560px) {
+/* ══════════════════════════════════════════════════════════
+   O CARTÃO MEDE A PRÓPRIA COLUNA, NÃO A JANELA
+
+   O DEFEITO: a regra que empilhava o cartão compacto era
+   `@media (max-width: 560px)` — largura da JANELA. Só que quem aperta o
+   cartão não é a janela, é a COLUNA em que ele mora: no Dashboard a lista
+   divide espaço com a barra de estatísticas à direita. Num monitor de
+   1366px a janela tem folga, a media query não dispara, mas o cartão recebe
+   uns 600px — e a faixa de três colunas (sigilo · conteúdo · ações) se
+   espreme: o título é cortado com reticências, os chips quebram em três
+   linhas e os botões sobem para o meio do cartão.
+
+   Era por isso que ele ficava bonito no monitor grande e no celular, e
+   quebrava exatamente no meio: a media query acertava as duas pontas e
+   errava o miolo, porque estava medindo a coisa errada.
+
+   `@container` mede o ancestral marcado com `container-type`. Agora o
+   cartão responde ao espaço que REALMENTE tem, e o mesmo layout funciona
+   dentro do Dashboard, de um modal estreito ou de uma coluna futura que
+   ainda não existe — sem nenhum número de janela envolvido.
+   ══════════════════════════════════════════════════════════ */
+.mc-lista { container-type: inline-size; container-name: mclista; }
+
+/* ── ~720px: as ações descem para a própria linha ─────────
+   O primeiro aperto é sempre nos botões: "Cancelar hoje" + "Concluir" +
+   ícones não cabem ao lado do conteúdo. Em vez de espremer o meio, eles
+   descem inteiros e ficam à direita. */
+@container mclista (max-width: 720px) {
   .mc.mc-compacto { grid-template-columns: auto 1fr; }
   .mc-compacto .mc-acoes {
-    grid-column: 1 / -1; margin-top: .3rem; flex-wrap: wrap; justify-content: flex-end;
+    grid-column: 2 / -1;
+    margin-top: .45rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  /* O título para de ser cortado: com a linha inteira para si, ele cabe.
+     Reticências num título de missão é perder a informação principal. */
+  .mc-compacto .mc-titulo { white-space: normal; overflow: visible; }
+  .mc-compacto .mc-topo { align-items: flex-start; }
+}
+
+/* ── ~520px: empilha de vez (a forma que já funciona no celular) ── */
+@container mclista (max-width: 520px) {
+  .mc.mc-compacto { grid-template-columns: 1fr; }
+  .mc-compacto .mc-sigilo { display: none; }   /* o espaço vale mais que o ícone */
+  .mc-compacto .mc-acoes { grid-column: 1 / -1; justify-content: flex-start; }
+  .mc-compacto .mc-acoes .mc-btn { flex: 1 1 auto; justify-content: center; }
+  .mc-compacto .mc-chips { gap: .28rem; }
+}
+
+/* REDE DE SEGURANÇA para navegador sem container query (Chrome < 105,
+   Safari < 16). Ali a media query antiga volta a valer: pior que o ideal
+   no monitor médio, mas nunca quebrado no celular. */
+@supports not (container-type: inline-size) {
+  @media (max-width: 720px) {
+    .mc.mc-compacto { grid-template-columns: auto 1fr; }
+    .mc-compacto .mc-acoes {
+      grid-column: 2 / -1; margin-top: .45rem; flex-wrap: wrap; justify-content: flex-end;
+    }
+    .mc-compacto .mc-titulo { white-space: normal; overflow: visible; }
+  }
+  @media (max-width: 520px) {
+    .mc.mc-compacto { grid-template-columns: 1fr; }
+    .mc-compacto .mc-sigilo { display: none; }
+    .mc-compacto .mc-acoes { grid-column: 1 / -1; justify-content: flex-start; }
   }
 }
 
@@ -522,7 +833,12 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mc-sigilo-anel, .mc-sigilo-arco, .mc-fio, .mc-barra-fill, .mc-prazo.urgente { animation: none !important; }
+  .mc-sigilo-anel, .mc-sigilo-arco, .mc-fio, .mc-barra-fill, .mc-prazo.urgente,
+  .mc-entrando, .mc-corrente { animation: none !important; }
+  /* Sem movimento, a corrente vira ruído estático atrás do texto — some.
+     A missão em curso continua identificada pelo fio, pelo cronômetro vivo
+     e pelo chip de status: a animação era reforço, nunca a única pista. */
+  .mc-corrente { display: none; }
 }
 
 /* ── CRONÔMETRO ───────────────────────────────────────────
@@ -547,7 +863,12 @@
 .mc-crono b { font-weight: 700; color: var(--text-primary, #e2e8f0); }
 .mc-crono-seta { opacity: .5; margin: 0 .05rem; }
 
-/* A duração é a informação que o hunter procura — destacada. */
+/* A duração é a informação que o hunter procura — destacada.
+
+   `tabular-nums` importa desde que os segundos entraram: sem largura fixa
+   por dígito, o "1h 10m 09s" viraria "1h 10m 10s" com largura diferente e o
+   chip inteiro dançaria a cada segundo. Números que giram precisam de
+   colunas fixas — é o mesmo motivo dos relógios digitais. */
 .mc-crono-dur {
   margin-left: .12rem;
   padding: .04rem .3rem;
@@ -555,7 +876,10 @@
   background: rgba(124,58,237,.2);
   color: #c4b5fd;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
+/* Toda a faixa em colunas fixas: a hora de início e a de fim também. */
+.mc-crono { font-variant-numeric: tabular-nums; }
 
 /* Terminada: tom sóbrio, é registro. */
 .mc-crono-fim { border-color: rgba(148,163,184,.24); }

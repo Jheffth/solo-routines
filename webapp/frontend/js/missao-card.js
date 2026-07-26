@@ -31,10 +31,16 @@ const MissaoCard = {
      mantendo a convenção que o app já usa nas listas.
      A DIFICULDADE vira o selo de rank (ela multiplica o XP).      */
   PRIORIDADES: {
-    CRITICA: { cor: '#ef4444', rotulo: 'Crítica' },
-    ALTA:    { cor: '#f97316', rotulo: 'Alta'    },
-    MEDIA:   { cor: '#f59e0b', rotulo: 'Média'   },
-    BAIXA:   { cor: '#10b981', rotulo: 'Baixa'   },
+    /* VERDE e VERMELHO são RESERVADOS ao desfecho: verde = cumprida,
+       vermelho = fracassada. Se a prioridade também os usasse, uma missão
+       de baixa prioridade PENDENTE nasceria com a cara de cumprida, e uma
+       crítica pendente com a cara de fracassada — a cor diria duas coisas
+       ao mesmo tempo. A escala abaixo lê como calor crescente sem tocar
+       em nenhum dos dois. */
+    CRITICA: { cor: '#e11d48', rotulo: 'Crítica' },   // magenta — urgente
+    ALTA:    { cor: '#f59e0b', rotulo: 'Alta'    },   // âmbar
+    MEDIA:   { cor: '#64748b', rotulo: 'Média'   },   // azul-aço — neutro
+    BAIXA:   { cor: '#3b82f6', rotulo: 'Baixa'   },   // azul — tranquilo
   },
   RANKS: {   // dificuldade -> selo de rank (multiplicador de XP)
     FACIL:    { letra: 'C', mult: '×0.5' },
@@ -43,12 +49,21 @@ const MissaoCard = {
     LENDARIO: { letra: 'S', mult: '×2.5' },
   },
   STATUS: {
-    PENDENTE:   { rotulo: '⏳ Pendente',   classe: 'st-pendente'   },
-    ATIVA:      { rotulo: '▶ Em curso',    classe: 'st-ativa'      },
-    PAUSADA:    { rotulo: '⏸ Pausada',     classe: 'st-pausada'    },
-    CONCLUIDA:  { rotulo: '✓ Concluída',   classe: 'st-concluida'  },
-    FRACASSADA: { rotulo: '☠ Fracassada',  classe: 'st-fracassada' },
-    CANCELADA:  { rotulo: '✕ Cancelada',   classe: 'st-cancelada'  },
+    /* `gl` é a chave no alfabeto (js/glifos.js). Antes o rótulo trazia o
+       emoji embutido; agora traz o NOME do desenho, e quem monta decide o
+       tamanho. Emoji muda de cara em cada sistema operacional — num app que
+       cuida do próprio traço, isso destoava. */
+    PENDENTE:   { rotulo: 'Pendente',   gl: 'pendente',   classe: 'st-pendente'   },
+    ATIVA:      { rotulo: 'Em curso',   gl: 'ativa',      classe: 'st-ativa'      },
+    PAUSADA:    { rotulo: 'Pausada',    gl: 'pausada',    classe: 'st-pausada'    },
+    CONCLUIDA:  { rotulo: 'Concluída',  gl: 'concluida',  classe: 'st-concluida'  },
+    FRACASSADA: { rotulo: 'Fracassada', gl: 'fracassada', classe: 'st-fracassada' },
+    CANCELADA:  { rotulo: 'Cancelada',  gl: 'cancelada',  classe: 'st-cancelada'  },
+    /* Exclusivo da missão passiva. Não é fracasso — é o hunter admitindo que
+       quebrou o protocolo, num sistema que ninguém consegue auditar. Por isso
+       tem rótulo e cor próprios: tratá-la como derrota puniria a honestidade
+       exatamente onde ela é a única coisa que sustenta o registro. */
+    CONFESSADA: { rotulo: 'Confessada', gl: 'confessada', classe: 'st-confessada' },
   },
   /* Índice = weekday() do Python (0=segunda), que é o que o backend grava em
      dias_semana. Date.getDay() usa outra origem (0=domingo) — converter sempre. */
@@ -72,7 +87,54 @@ const MissaoCard = {
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '');   // "Saúde" → "saude"
   },
 
+  /* O alfabeto do Sistema vive em js/glifos.js e é a fonte única.
+
+     Usa a versão RICA, a mesma do lançador. Eu havia posto a versão em traço
+     aqui, e o resultado foi um símbolo pobre ao lado de um símbolo rico para
+     o mesmo conceito — Saúde tinha duas caras no app. O sigilo do cartão tem
+     26px, espaço de sobra para as camadas respirarem.
+
+     A tabela GLIFOS local ficou como rede de segurança: se o módulo não
+     carregar, o cartão desenha o traço antigo em vez de ficar sem ícone. */
+  /* A missão é um PROTOCOLO? (natureza PASSIVA)
+
+     Vale a pena a função em vez do teste solto: são cinco lugares que
+     precisam saber, e um deles esquecido significaria oferecer "Concluir"
+     numa missão que se conclui sozinha — ou "Iniciar" numa que já começou
+     por conta própria. */
+  _ehPassiva(m) {
+    return (m?.natureza || 'ATIVA').toUpperCase() === 'PASSIVA';
+  },
+
+  /* O protocolo JÁ ENTROU EM VIGOR?
+
+     Mesma técnica do contador de prazo: o servidor manda quantos SEGUNDOS
+     faltam para a vigência começar, e o navegador só soma o tempo passado
+     desde a resposta. Ler `prazo_inicio` como data local daria o horário do
+     relógio do hunter, e um protocolo das 16:00 apareceria aberto às 13:00
+     para quem estivesse com o computador adiantado. */
+  _emVigor(m) {
+    if (m.prazo_ate_abrir === undefined || m.prazo_ate_abrir === null) {
+      return m.prazo_abriu !== false;      // sem informação, não trava nada
+    }
+    const decorrido = (Date.now() - (this._recebidoEm || Date.now())) / 1000;
+    return (m.prazo_ate_abrir - decorrido) <= 0;
+  },
+
+  /* Glifo do alfabeto, em traço, no tamanho de etiqueta. */
+  _g(nome, tam = 12) {
+    return (typeof Glifos !== 'undefined' && Glifos.existe(nome))
+      ? Glifos.linha(nome, tam) : '';
+  },
+
   _glifoCat(categoria) {
+    if (typeof Glifos !== 'undefined' && Glifos.existe(this._catKey(categoria))) {
+      return Glifos.rico(this._catKey(categoria), 26);
+    }
+    return this._glifoCatLocal(categoria);
+  },
+
+  _glifoCatLocal(categoria) {
     const paths = this.GLIFOS[this._catKey(categoria)] || this.GLIFOS.default;
     return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                  stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
@@ -98,6 +160,28 @@ const MissaoCard = {
   _glifoCal()     { return this._glifoMini('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/>'); },
   _glifoRelogio() { return this._glifoMini('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'); },
   _glifoCiclo()   { return this._glifoMini('<path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>'); },
+
+  /* ── CORRENTE DE ENERGIA (só na missão em curso) ─────────
+     Chevrons atravessando o fundo do cartão, da esquerda para a direita.
+
+     Você sugeriu verde neon, e eu recomendo NÃO usar verde aqui — por uma
+     regra que você mesmo estabeleceu: verde é reservado a missão CUMPRIDA e
+     vermelho a fracassada. Uma missão em curso pintada de verde seria lida
+     como já concluída num relance, que é exatamente o modo como se lê uma
+     lista. Pelo mesmo motivo a escala de prioridade foi tirada do verde.
+
+     Então a corrente usa a COR DA PRÓPRIA MISSÃO (`--mc-cor`): funciona como
+     o neon (movimento contínuo, brilho baixo, direção clara) e ainda diz de
+     que prioridade a missão é enquanto se move. Uma missão crítica em curso
+     pulsa magenta; uma tranquila, azul.
+
+     Um único elemento com uma única animação — o `background-position`
+     desliza a trama inteira. Duas animações no mesmo elemento se cancelam
+     nesta base de código, e já nos custou uma tarde. */
+  _corrente(status) {
+    if (status !== 'ATIVA') return '';
+    return '<div class="mc-corrente" aria-hidden="true"></div>';
+  },
 
   /* ── Sigilo (ícone cinético em SVG) ────────────────────── */
   _sigilo(cor, categoria) {
@@ -163,28 +247,65 @@ const MissaoCard = {
   /* ── Prazo: devolve {texto, classe, pct} ─────────────────
      Só faz sentido para a ocorrência de HOJE: o relógio compara com o agora.
      Numa missão de ontem o contador correria para trás sem significado algum. */
+  /* Instante em que este lote de missões chegou do servidor. O contador conta
+     a partir DAQUI, somando o tempo que passou desde a resposta.
+
+     Por que não usar `new Date(m.prazo_final)`: o servidor manda o horário de
+     Brasília sem fuso ("2026-07-25T22:00:00"), e o navegador o interpretaria
+     como horário LOCAL. Um hunter viajando, ou com o relógio do computador
+     adiantado, veria um prazo diferente do que o servidor vai cobrar. Usando
+     `prazo_restante` (segundos, calculado pelo servidor) mais o tempo local
+     decorrido desde a resposta, o único relógio que importa é o do servidor —
+     o do navegador só serve de cronômetro, e para isso ele basta. */
+  _recebidoEm: 0,
+
+  _segundosRestantes(m) {
+    if (m.prazo_restante === undefined || m.prazo_restante === null) return null;
+    const decorridoLocal = (Date.now() - (this._recebidoEm || Date.now())) / 1000;
+    return Math.round(m.prazo_restante - decorridoLocal);
+  },
+
+  /* ── PRAZO: quanto FALTA, e quanto já se DEVE ────────────
+     Três estados, e a diferença entre eles é o coração desta feature:
+
+       no prazo  → "1h 30m 12s"  neutro
+       apertado  → menos de 30 min, pulsando
+       vencido   → "-10m 32s" em vermelho, NEGATIVO e continuando a crescer
+
+     O negativo é de propósito. Uma missão vencida não vira "Prazo vencido" e
+     para: ela segue contando a dívida, porque o hunter ainda pode concluí-la
+     (levando a punição) e o tamanho do atraso é a informação que ele quer. */
   _prazo(m) {
-    if (!this._ehHoje(m)) return null;
-    const fim = m.hora_fim || m.hora_limite;
-    if (!fim) return null;
-    const [h, mi] = fim.split(':').map(Number);
-    const alvo = new Date(); alvo.setHours(h, mi, 0, 0);
-    const ini = (() => {
-      if (!m.hora_inicio) return null;
-      const [hi, mii] = m.hora_inicio.split(':').map(Number);
-      const d = new Date(); d.setHours(hi, mii, 0, 0); return d;
-    })();
+    const seg = this._segundosRestantes(m);
+    if (seg === null) return null;
 
-    let seg = Math.floor((alvo - Date.now()) / 1000);
-    if (seg <= 0) return { texto: 'Prazo vencido', classe: 'vencido', pct: 100 };
+    // Missão encerrada não tem corrida: o placar já é história.
+    if (['CONCLUIDA', 'FRACASSADA', 'CANCELADA'].includes(m.status)) return null;
 
-    const hh = Math.floor(seg / 3600), mm = Math.floor((seg % 3600) / 60), ss = seg % 60;
-    const texto = hh > 0 ? `${hh}h ${String(mm).padStart(2,'0')}m ${String(ss).padStart(2,'0')}s`
-                         : `${mm}m ${String(ss).padStart(2,'0')}s`;
-    // % da janela já decorrida (se houver hora de início)
-    let pct = 0;
-    if (ini && alvo > ini) pct = Math.min(100, Math.max(0, (Date.now() - ini) / (alvo - ini) * 100));
-    return { texto, classe: seg < 1800 ? 'urgente' : '', pct };
+    // Reerguida: a janela foi perdida e comprada de volta. Não é mais corrida,
+    // é o resto do dia — mostrar contagem regressiva aqui seria falso drama.
+    if (m.reerguida) {
+      return { texto: 'Reerguida — vale até 23:59', classe: 'reerguida', pct: 100, seg };
+    }
+
+    const venceu = seg < 0;
+    const abs = Math.abs(seg);
+    const hh = Math.floor(abs / 3600), mm = Math.floor((abs % 3600) / 60), ss = abs % 60;
+    const corpo = hh > 0
+      ? `${hh}h ${String(mm).padStart(2, '0')}m ${String(ss).padStart(2, '0')}s`
+      : `${mm}m ${String(ss).padStart(2, '0')}s`;
+
+    // Fração da vigência já consumida, para a barra.
+    const total = (m.prazo_minutos || 0) * 60;
+    const pct = total > 0
+      ? Math.min(100, Math.max(0, ((total - seg) / total) * 100))
+      : (venceu ? 100 : 0);
+
+    return {
+      texto:  venceu ? `−${corpo}` : corpo,
+      classe: venceu ? 'vencido' : (seg < 1800 ? 'urgente' : ''),
+      pct, seg,
+    };
   },
 
   /* ── CRONÔMETRO ──────────────────────────────────────────
@@ -222,11 +343,24 @@ const MissaoCard = {
 
   /* Duração legível. Segundos só aparecem abaixo de uma hora — "2h 14m 07s"
      é ruído; o que importa numa missão longa é a ordem de grandeza. */
+  /* Duração legível — SEMPRE com os segundos.
+
+     Esta função descartava os segundos assim que a missão passava de uma
+     hora: exibia "1h 10m" e ficava ali, imóvel, por sessenta segundos. Num
+     cronômetro que está correndo, um número parado não parece preciso —
+     parece quebrado. O hunter olha e conclui que travou.
+
+     O segundo é o que prova que a coisa está viva, e é justamente na missão
+     longa que essa prova falta mais. Custa três caracteres.
+
+     `tabular-nums` no CSS mantém a largura estável enquanto os dígitos
+     giram; sem isso o texto ficaria dançando de um lado para o outro. */
   _dur(seg) {
     if (seg === null || seg === undefined || seg < 0) return null;
     const h = Math.floor(seg / 3600), m = Math.floor((seg % 3600) / 60), s = seg % 60;
-    if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m`;
-    if (m > 0) return `${m}m ${String(s).padStart(2, '0')}s`;
+    const dd = n => String(n).padStart(2, '0');
+    if (h > 0) return `${h}h ${dd(m)}m ${dd(s)}s`;
+    if (m > 0) return `${m}m ${dd(s)}s`;
     return `${s}s`;
   },
 
@@ -310,12 +444,13 @@ const MissaoCard = {
   /* ── Desfecho em selo (usado quando não há ação possível) ── */
   _selo(status) {
     switch (status) {
-      case 'CONCLUIDA':  return `<span class="mc-selo mc-selo-ok">✓ Missão cumprida</span>`;
-      case 'FRACASSADA': return `<span class="mc-selo mc-selo-falha">☠ Prazo perdido</span>`;
-      case 'CANCELADA':  return `<span class="mc-selo mc-selo-neutro">✕ Cancelada</span>`;
-      case 'ATIVA':      return `<span class="mc-selo mc-selo-neutro">▶ Ficou em curso</span>`;
-      case 'PAUSADA':    return `<span class="mc-selo mc-selo-neutro">⏸ Ficou pausada</span>`;
-      default:           return `<span class="mc-selo mc-selo-neutro">⏳ Não cumprida</span>`;
+      case 'CONCLUIDA':  return `<span class="mc-selo mc-selo-ok">${this._g('concluida', 13)} Missão cumprida</span>`;
+      case 'FRACASSADA': return `<span class="mc-selo mc-selo-falha">${this._g('fracassada', 13)} Prazo perdido</span>`;
+      case 'CANCELADA':  return `<span class="mc-selo mc-selo-neutro">${this._g('cancelada', 13)} Cancelada</span>`;
+      case 'CONFESSADA': return `<span class="mc-selo mc-selo-confessado">${this._g('confessada', 13)} Confessada</span>`;
+      case 'ATIVA':      return `<span class="mc-selo mc-selo-neutro">${this._g('ativa', 13)} Ficou em curso</span>`;
+      case 'PAUSADA':    return `<span class="mc-selo mc-selo-neutro">${this._g('pausada', 13)} Ficou pausada</span>`;
+      default:           return `<span class="mc-selo mc-selo-neutro">${this._g('pendente', 13)} Não cumprida</span>`;
     }
   },
 
@@ -349,40 +484,90 @@ const MissaoCard = {
     // presentes em QUALQUER estado. Não competem com Iniciar/Concluir.
     // 'excluir' é a exclusão NORMAL — diferente do 'extinguir' do Arquiteto.
     const gerir = podeGerir
-      ? b('editar',  'mc-btn-editar',  '✏️', 'title="Editar missão"') +
-        b('excluir', 'mc-btn-excluir', '🗑', 'title="Excluir missão"')
+      ? b('editar',  'mc-btn-editar',  this._g('editar', 13), 'title="Editar missão"') +
+        b('excluir', 'mc-btn-excluir', this._g('excluir', 13), 'title="Excluir missão"')
       : '';
 
     // Missão futura: existe, é ajustável, mas ainda não chegou a vez dela.
     if (!podeExecutar) {
-      return `<span class="mc-selo mc-selo-neutro">🗓 Agendada</span>` + gerir + extinguir;
+      return `<span class="mc-selo mc-selo-neutro">${this._g('agendada', 13)} Agendada</span>` + gerir + extinguir;
+    }
+
+    // ── MISSÃO PASSIVA: tudo se inverte ─────────────────────
+    // Ela não tem "Iniciar" (acende sozinha às 16:00), não tem "Concluir"
+    // (cumpre-se sozinha às 05:00) e não tem "Pausar" — pausar um protocolo
+    // de "sem cafeína" não quer dizer nada. O único ato disponível é o
+    // oposto de todos os outros: CONFESSAR que quebrou.
+    if (this._ehPassiva(m)) {
+      if (status === 'CONCLUIDA') {
+        // Ainda dá para confessar depois: o protocolo é de sono, e o hunter
+        // pode acordar arrependido. O servidor aceita até o dia seguinte.
+        return `<span class="mc-selo mc-selo-ok">${this._g('concluida', 13)} Protocolo mantido</span>`
+             + b('confessar', 'mc-btn-confessar', this._g('confessada', 13),
+                 'title="Quebrei o protocolo — confessar mesmo depois de encerrado"')
+             + gerir + extinguir;
+      }
+      if (status === 'CONFESSADA') {
+        return `<span class="mc-selo mc-selo-confessado">${this._g('confessada', 13)} Confessada</span>`
+             + gerir + extinguir;
+      }
+      if (status === 'PENDENTE' || status === 'ATIVA') {
+        // ANTES DA HORA NÃO HÁ O QUE CONFESSAR.
+        // "Sem cafeína após as 16h" às 11:59 não foi quebrado — não começou.
+        // Oferecer o botão ali convidava o hunter a registrar uma derrota
+        // sobre um período que ainda não existe, e ainda cobrava a punição.
+        if (!this._emVigor(m)) {
+          const h = (m.hora_inicio || '').slice(0, 5);
+          return `<span class="mc-selo mc-selo-espera">${this._g('pendente', 13)} `
+               + `Entra em vigor${h ? ' às ' + h : ''}</span>` + gerir + extinguir;
+        }
+        return `<span class="mc-selo mc-selo-vigilia">${this._g('passiva', 13)} Protocolo em vigor</span>`
+             + b('confessar', 'mc-btn-confessar',
+                 this._g('confessada', 13) + ' Confessar',
+                 'title="Admitir que quebrou o protocolo. Custa metade da punição e mantém a sequência."')
+             + gerir + extinguir;
+      }
     }
 
     let acoes;
     switch (status) {
       case 'PENDENTE':
-        acoes = b('iniciar', 'mc-btn-iniciar', '▶ Iniciar Missão') +
-                b('cancelar', 'mc-btn-neutro', '✕', 'title="Cancelar hoje"');
+        acoes = b('iniciar', 'mc-btn-iniciar', this._g('ativa', 13) + ' Iniciar Missão') +
+                b('cancelar', 'mc-btn-neutro', this._g('cancelada', 13), 'title="Cancelar hoje"');
         break;
       case 'ATIVA':
-        acoes = b('pausar', 'mc-btn-neutro', '⏸ Pausar') +
-                b('cancelar', 'mc-btn-perigo', '✕ Cancelar hoje') +
-                b('concluir', 'mc-btn-concluir', '✓ Concluir');
+        acoes = b('pausar', 'mc-btn-neutro', this._g('pausada', 13) + ' Pausar') +
+                b('cancelar', 'mc-btn-perigo', this._g('cancelada', 13) + ' Cancelar hoje') +
+                b('concluir', 'mc-btn-concluir', this._g('concluida', 13) + ' Concluir');
+        break;
+      case 'CONFESSADA':
+        acoes = `<span class="mc-selo mc-selo-confessado">${this._g('confessada', 13)} Confessada</span>`;
         break;
       case 'PAUSADA':
-        acoes = b('retomar', 'mc-btn-iniciar', '▶ Retomar') +
-                b('cancelar', 'mc-btn-perigo', '✕ Cancelar hoje') +
-                b('concluir', 'mc-btn-concluir', '✓ Concluir');
+        acoes = b('retomar', 'mc-btn-iniciar', this._g('ativa', 12) + ' Retomar') +
+                b('cancelar', 'mc-btn-perigo', this._g('cancelada', 13) + ' Cancelar hoje') +
+                b('concluir', 'mc-btn-concluir', this._g('concluida', 13) + ' Concluir');
         break;
       case 'CONCLUIDA':
-        acoes = `<span class="mc-selo mc-selo-ok">✓ Missão cumprida</span>`;
+        acoes = `<span class="mc-selo mc-selo-ok">${this._g('concluida', 13)} Missão cumprida</span>`;
         break;
-      case 'FRACASSADA':
-        acoes = `<span class="mc-selo mc-selo-falha">☠ Prazo perdido</span>`;
+      case 'FRACASSADA': {
+        acoes = `<span class="mc-selo mc-selo-falha">${this._g('fracassada', 13)} Prazo perdido</span>`;
+        // REERGUER — só faz sentido para a rotina de JANELA de HOJE que ainda
+        // não foi reerguida. O hunter perdeu a corrida, mas não deveria ficar
+        // sem tomar banho por causa disso: paga Mana e a missão volta a ser
+        // jogável até as 23:59 — sem recompensa, porque a corrida já era.
+        // A checagem final é do servidor; aqui só decidimos o que oferecer.
+        if (m.origem === 'rotina' && m.prazo_janela && !m.reerguida && this._ehHoje(m)) {
+          acoes += b('reerguer', 'mc-btn-reerguer',
+                     this._g('ativa', 13) + ' Reerguer',
+                     'title="Pagar Mana para reabrir esta missão até as 23:59. Não paga recompensa."');
+        }
         break;
+      }
       case 'CANCELADA':
-        acoes = `<span class="mc-selo mc-selo-neutro">✕ Cancelada hoje</span>` +
-                b('retomar', 'mc-btn-neutro', '↺ Retomar');
+        acoes = `<span class="mc-selo mc-selo-neutro">${this._g('cancelada', 13)} Cancelada hoje</span>` +
+                b('retomar', 'mc-btn-neutro', this._g('ativa', 13) + ' Retomar');
         break;
       default:
         acoes = '';
@@ -407,12 +592,12 @@ const MissaoCard = {
       : '';
 
     const alternar = ativo
-      ? b('suspender', 'mc-btn-neutro',  '⏸ Suspender', 'title="A regra para de gerar missões"')
-      : b('reativar',  'mc-btn-iniciar', '▶ Reativar',  'title="A regra volta a gerar missões"');
+      ? b('suspender', 'mc-btn-neutro',  this._g('pausada', 13) + ' Suspender', 'title="A regra para de gerar missões"')
+      : b('reativar',  'mc-btn-iniciar', this._g('ativa', 12) + ' Reativar',  'title="A regra volta a gerar missões"');
 
     return alternar +
-      b('editar',  'mc-btn-editar',  '✏️', 'title="Editar regra"') +
-      b('excluir', 'mc-btn-excluir', '🗑', 'title="Excluir regra"') +
+      b('editar',  'mc-btn-editar',  this._g('editar', 13), 'title="Editar regra"') +
+      b('excluir', 'mc-btn-excluir', this._g('excluir', 13), 'title="Excluir regra"') +
       extinguir;
   },
 
@@ -489,9 +674,46 @@ const MissaoCard = {
 
   /* ── HTML: porta de entrada dos dois modos ─────────────── */
   html(m, opts = {}) {
+    // Lembra como este cartão foi pedido, para que `repintar` o refaça igual.
+    const chave = this._chave(m, opts.modo === 'agenda' ? 'agenda' : 'missao');
+    this._render_opts[chave] = opts;
     return (opts.modo === 'agenda')
       ? this._htmlAgenda(m, opts)
       : this._htmlMissao(m, opts);
+  },
+
+  /* ── ASSINATURA: o que, neste cartão, JUSTIFICA repintá-lo ──
+     Comparar o HTML inteiro para decidir se algo mudou parece a solução
+     óbvia, e não funciona: o cartão contém um cronômetro. O texto "1h 29m
+     58s" difere de "1h 29m 59s" a cada segundo, então dois cartões idênticos
+     em tudo que importa nunca teriam HTML igual — e a lista se redesenharia
+     de ponta a ponta a cada leitura, que é exatamente o defeito a corrigir.
+     (Descobri isso executando: a primeira versão da reconciliação trocava os
+     três cartões mesmo recebendo dados idênticos.)
+
+     A assinatura lista só os campos cuja mudança altera a CARA do cartão. O
+     tempo que corre não entra aqui — quem cuida dele é o timer global, que
+     escreve direto no nó existente sem recriá-lo. */
+  assinatura(m, opts = {}) {
+    return [
+      opts.compacto ? 'c' : 'n',
+      opts.modo === 'agenda' ? 'a' : 'm',
+      m.status_hoje || m.status || 'PENDENTE',
+      m.titulo || '', m.categoria || '', m.prioridade || '', m.dificuldade || '',
+      m.xp_recompensa ?? '', m.moedas_recompensa ?? '', m.penalidade_xp ?? '',
+      m.xp_ganho ?? '', m.moedas_ganhas ?? '', m.xp_perdido ?? '',
+      m.iniciada_em || '', m.concluida_em || '', m.fracassada_em || '', m.cancelada_em || '',
+      m.reerguida ? 'R' : '', m.prazo_janela ? 'J' : '',
+      m.natureza || 'ATIVA', m.confessada_em || '',
+      // O protocolo muda de cara quando entra em vigor (o botão Confessar
+      // aparece). Sem isto na assinatura, a reconciliação não perceberia a
+      // virada das 16:00 e o cartão ficaria dizendo "entra em vigor" a noite
+      // toda. É estado, não relógio — por isso entra aqui.
+      this._ehPassiva(m) ? (this._emVigor(m) ? 'V' : 'v') : '',
+      m.editavel ? 'E' : '', m.gerenciavel ? 'G' : '',
+      m.ativo === false ? 'off' : '',
+      (m.dias_semana || []).join(','), m.hora_inicio || '', m.hora_fim || '',
+    ].join('|').replace(/"/g, '');
   },
 
   /* ── HTML da OCORRÊNCIA ──────────────────────────────────
@@ -523,10 +745,16 @@ const MissaoCard = {
     // onde se alinha naturalmente em vez de flutuar num x variável.
     const recompensa = this._recompensa(m, status);
 
+    // Marca de PROTOCOLO. Vai na raiz do cartão porque muda a leitura dele
+    // inteira: não é um estado passageiro como "em curso", é o que a missão É.
+    const passiva = this._ehPassiva(m) ? ' mc-passiva' : '';
+
     return `
-    <div class="mc ${st.classe}${compacto}${selado}" data-mc-card="${chave}"
+    <div class="mc ${st.classe}${compacto}${selado}${passiva}" data-mc-card="${chave}"
+         data-mc-sig="${this.assinatura(m, opts)}"
          style="--mc-cor:${cor};--mc-cor-suave:${this._alpha(cor, .14)}">
       <div class="mc-fio"></div>
+      ${this._corrente(status)}
       ${this._sigilo(cor, m.categoria)}
       <div class="mc-corpo">
         <div class="mc-topo">
@@ -535,15 +763,15 @@ const MissaoCard = {
         </div>
 
         <div class="mc-chips">
-          <span class="mc-chip mc-chip-prior">◆ ${prior.rotulo}</span>
-          <span class="mc-chip mc-chip-rank" title="Dificuldade ${(m.dificuldade || 'NORMAL').toLowerCase()} — XP ${rank.mult}">✦ ${rank.letra}-Rank</span>
-          <span class="mc-chip mc-chip-status">${st.rotulo}</span>
+          <span class="mc-chip mc-chip-prior">${this._g('prior_media', 11)} ${prior.rotulo}</span>
+          <span class="mc-chip mc-chip-rank" title="Dificuldade ${(m.dificuldade || 'NORMAL').toLowerCase()} — XP ${rank.mult}">${this._g('prior_alta', 11)} ${rank.letra}-Rank</span>
+          <span class="mc-chip mc-chip-status">${this._g(st.gl)} ${st.rotulo}</span>
           ${m.categoria ? `<span class="mc-chip mc-chip-cat">${this._esc(m.categoria)}</span>` : ''}
           ${chipData}
           ${this._cronometro(m, chave)}
           ${prazo ? `<span class="mc-div"></span>
           <span class="mc-prazo ${prazo.classe}" data-mc-prazo="${chave}">
-            <span class="lbl">⏳ Prazo</span> <span data-mc-timer>${prazo.texto}</span>
+            <span class="lbl">${this._g('ampulheta', 11)} Prazo</span> <span data-mc-timer>${prazo.texto}</span>
           </span>` : ''}
           ${compacto ? recompensa : ''}
         </div>
@@ -575,6 +803,7 @@ const MissaoCard = {
 
     return `
     <div class="mc mc-agenda ${ativo ? 'ag-ativa' : 'ag-pausada'}" data-mc-card="${chave}"
+         data-mc-sig="${this.assinatura(r, opts)}"
          style="--mc-cor:${cor};--mc-cor-suave:${this._alpha(cor, .14)}">
       <div class="mc-fio"></div>
       ${this._sigilo(cor, r.categoria)}
@@ -585,9 +814,9 @@ const MissaoCard = {
         </div>
 
         <div class="mc-chips">
-          <span class="mc-chip mc-chip-prior">◆ ${prior.rotulo}</span>
-          <span class="mc-chip mc-chip-rank" title="Dificuldade ${(r.dificuldade || 'NORMAL').toLowerCase()} — XP ${rank.mult}">✦ ${rank.letra}-Rank</span>
-          <span class="mc-chip mc-chip-estado ${ativo ? 'on' : 'off'}">${ativo ? '◎ Ativa' : '⏸ Pausada'}</span>
+          <span class="mc-chip mc-chip-prior">${this._g('prior_media', 11)} ${prior.rotulo}</span>
+          <span class="mc-chip mc-chip-rank" title="Dificuldade ${(r.dificuldade || 'NORMAL').toLowerCase()} — XP ${rank.mult}">${this._g('prior_alta', 11)} ${rank.letra}-Rank</span>
+          <span class="mc-chip mc-chip-estado ${ativo ? 'on' : 'off'}">${ativo ? this._g('ativa', 12) + ' Ativa' : this._g('pausada', 12) + ' Pausada'}</span>
           ${r.categoria ? `<span class="mc-chip mc-chip-cat">${this._esc(r.categoria)}</span>` : ''}
           <span class="mc-chip mc-chip-tipo">${tipo}</span>
         </div>
@@ -635,6 +864,33 @@ const MissaoCard = {
     this._iniciarTimer();
   },
 
+  /* ── REPINTURA CIRÚRGICA ─────────────────────────────────
+     Troca UM cartão no lugar, sem tocar em mais nada da tela.
+
+     Antes, clicar em Iniciar disparava a recarga do extrato inteiro: o
+     `innerHTML` do container era reescrito, todos os cartões morriam e
+     renasciam, e o hunter via a lista sumir e voltar. Para uma mudança que
+     afeta um cartão só, isso é derrubar a casa para trocar uma lâmpada — e
+     ainda perde a posição da rolagem e qualquer animação em curso.
+
+     `outerHTML` preserva a posição no documento: o cartão novo nasce
+     exatamente onde o velho estava. O container mantém o listener, porque a
+     delegação vive nele, não nos cartões. */
+  repintar(chave, opts = {}) {
+    const m = this._cache?.[chave];
+    if (!m) return false;
+    const alvo = document.querySelector(`[data-mc-card="${chave}"]`);
+    if (!alvo) return false;
+    alvo.outerHTML = this.html(m, opts.render || this._render_opts?.[chave] || {});
+    this._iniciarTimer();          // o cartão novo pode ter prazo a correr
+    return true;
+  },
+
+  /* Guarda COMO cada cartão foi desenhado (compacto, modo agenda…), para que
+     a repintura o refaça igual. Sem isto, um cartão compacto do extrato
+     voltaria em tamanho normal depois do primeiro clique — e a lista pularia. */
+  _render_opts: {},
+
   /* Um único intervalo move TODOS os relógios da tela: os prazos que correm
      para trás e os cronômetros que correm para frente. Um timer por cartão
      seria dezenas de intervalos disputando o mesmo segundo. */
@@ -656,6 +912,16 @@ const MissaoCard = {
         el.querySelector('[data-mc-timer]').textContent = p.texto;
         el.classList.toggle('urgente', p.classe === 'urgente');
         el.classList.toggle('vencido', p.classe === 'vencido');
+        el.classList.toggle('reerguida', p.classe === 'reerguida');
+        // O rótulo troca junto: enquanto há tempo é "Prazo"; depois de vencer
+        // não é mais prazo nenhum, é atraso — e o cartão deve dizer isso.
+        const lbl = el.querySelector('.lbl');
+        if (lbl && p.classe !== 'reerguida') {
+          const texto = p.classe === 'vencido' ? 'Atraso' : 'Prazo';
+          if (!lbl.textContent.includes(texto)) {
+            lbl.innerHTML = this._g('ampulheta', 11) + ' ' + texto;
+          }
+        }
         const barra = document.querySelector(`[data-mc-barra="${el.dataset.mcPrazo}"]`);
         if (barra) barra.style.width = p.pct + '%';
       });
@@ -666,6 +932,18 @@ const MissaoCard = {
         const ini = this._instante(m.iniciada_em);
         if (!ini) return;
         el.textContent = this._dur(Math.max(0, Math.floor((Date.now() - ini) / 1000)));
+      });
+
+      // A VIRADA DAS 16:00. Um protocolo esperando a hora precisa trocar de
+      // cara sozinho quando ela chega — senão o hunter olha às 16:05 e o
+      // cartão ainda diz "entra em vigor às 16:00", com o botão ausente.
+      // Repinta apenas os que efetivamente viraram: comparar a assinatura
+      // com a que está no DOM custa quase nada e evita repintar por nada.
+      document.querySelectorAll('.mc-passiva[data-mc-card]').forEach(el => {
+        const m = this._cache?.[el.dataset.mcCard];
+        if (!m) return;
+        const opts = this._render_opts?.[el.dataset.mcCard] || {};
+        if (el.dataset.mcSig !== this.assinatura(m, opts)) this.repintar(el.dataset.mcCard);
       });
     }, 1000);
   },
@@ -684,6 +962,11 @@ const MissaoCard = {
   cachear(itens, opts = {}) {
     const modo = opts.modo === 'agenda' ? 'agenda' : 'missao';
     if (!opts.merge || !this._cache) this._cache = {};
+    // Marca do instante da resposta: é a âncora de TODOS os contadores.
+    // `prazo_restante` veio calculado pelo servidor neste momento; daqui em
+    // diante o navegador só soma o tempo que passou. Assim o relógio local
+    // pode estar errado que o prazo continua o do servidor.
+    this._recebidoEm = Date.now();
     (itens || []).forEach(m => { this._cache[this._chave(m, modo)] = m; });
   },
 
@@ -715,6 +998,11 @@ const MissaoCard = {
     }
     // Extinguir é irreversível: confirma ANTES de qualquer coisa
     if (acao === 'extinguir') return this._extinguir(chave);
+    // Reerguer COBRA MANA, então também confirma antes — e a confirmação
+    // precisa dizer as duas coisas que o hunter vai querer saber depois:
+    // que custa, e que não paga.
+    if (acao === 'reerguer') return this._reerguer(chave, btn);
+    if (acao === 'confessar') return this._confessar(chave, btn);
     if (this._demo) return this._demoTransicao(acao, chave);
 
     // Trava de segurança: origem "rotina" sem rotina_id significa que a lista
@@ -748,7 +1036,151 @@ const MissaoCard = {
           }
           break;
       }
+
+      // O SERVIDOR JÁ DISSE COMO A MISSÃO FICOU — usa isso e repinta este
+      // cartão, em vez de mandar a página inteira recarregar para descobrir.
+      // É a diferença entre a lista piscar e o botão simplesmente virar.
+      this._absorver(chave, acao, resp);
+      this.repintar(chave);
+
       if (this._onMudou) await this._onMudou(resp, acao, id, chave);
+    } catch (err) {
+      SoloDialog?.toast?.(err.message || String(err), 'error');
+      btn.disabled = false;
+    }
+  },
+
+  /* Costura a resposta da API de volta no cache.
+
+     As rotas respondem em formatos diferentes — /tarefas/ devolve a tarefa
+     crua, /execucoes/rotina devolve {rotina_id, resultado, liquidacao} — e
+     nenhuma delas fala a língua do extrato (`uid`, `origem`, `prazo_*`).
+     Por isso não dá para trocar o objeto: costuramos campo a campo.
+
+     Quando a resposta não traz o campo, o estado é DEDUZIDO da ação. É o
+     mesmo que o servidor acabou de fazer, e vale mais que ficar com o cartão
+     desatualizado esperando a próxima leitura. A leitura seguinte reconcilia
+     de qualquer forma. */
+  _absorver(chave, acao, resp) {
+    const m = this._cache?.[chave];
+    if (!m) return;
+    const agora = new Date().toISOString().slice(0, 19);
+    const corpo = (resp && (resp.tarefa || resp)) || {};
+
+    switch (acao) {
+      case 'iniciar':
+        m.status = 'ATIVA';
+        m.iniciada_em = corpo.iniciada_em || m.iniciada_em || agora;
+        break;
+      case 'pausar':   m.status = 'PAUSADA'; break;
+      case 'retomar':  m.status = 'ATIVA';   break;
+      case 'cancelar':
+        m.status = 'CANCELADA';
+        m.cancelada_em = corpo.cancelada_em || agora;
+        break;
+      case 'concluir': {
+        m.status = 'CONCLUIDA';
+        m.concluida_em = corpo.concluida_em || agora;
+        const g = resp?.resultado || {};
+        m.xp_ganho      = g.xp_ganho      ?? m.xp_ganho ?? 0;
+        m.moedas_ganhas = g.moedas_ganhas ?? m.moedas_ganhas ?? 0;
+        // A liquidação diz se foi no prazo, atrasada ou reerguida — o cartão
+        // precisa saber para não exibir recompensa que não foi paga.
+        if (resp?.liquidacao) m.xp_perdido = resp.liquidacao.penalidade || 0;
+        break;
+      }
+      case 'reerguer':
+        m.status = 'PENDENTE';
+        m.reerguida = true;
+        m.iniciada_em = null;
+        m.fracassada_em = null;
+        break;
+      case 'confessar':
+        m.status = 'CONFESSADA';
+        m.confessada_em = agora;
+        m.concluida_em = null;
+        // A recompensa some: ou nunca foi paga, ou o servidor acabou de
+        // estornar. Deixar o número antigo no cartão seria mentir sobre o
+        // saldo logo depois de o hunter ter sido honesto.
+        m.xp_ganho = 0;
+        m.moedas_ganhas = 0;
+        m.xp_perdido = resp?.liquidacao?.penalidade || 0;
+        break;
+    }
+    // `status_hoje` é o nome do campo em registros vindos da página Rotinas.
+    // Deixar os dois em desacordo faria o cartão ler o antigo e "voltar".
+    if ('status_hoje' in m) m.status_hoje = m.status;
+  },
+
+  /* ── REERGUER ────────────────────────────────────────────
+     A segunda chance que custa Mana.
+
+     Confirmação obrigatória, e o texto diz as duas coisas que o hunter só
+     descobriria depois: quanto custa, e que a missão reerguida NÃO paga
+     recompensa. Um botão que gasta moeda sem avisar é uma armadilha.
+
+     `SoloDialog` é um `const` de topo, não uma propriedade de window — testar
+     `window.SoloDialog` daria falso. E o fallback é `false`: sem diálogo
+     disponível, NÃO se gasta a Mana do hunter por conta própria. */
+  async _reerguer(chave, btn) {
+    const m = this._cache?.[chave] || {};
+    const confirmado = (typeof SoloDialog !== 'undefined' && SoloDialog.confirmar)
+      ? await SoloDialog.confirmar({
+          titulo: 'Reerguer a missão?',
+          texto: `"${m.titulo}" perdeu a janela de hoje. Reerguer custa Mana e `
+               + 'devolve a missão até as 23:59 — mas ela não paga XP nem Mana '
+               + 'ao ser concluída. O ganho é ter feito.',
+          confirmar: 'Pagar e reerguer',
+          cancelar: 'Deixar como está',
+        })
+      : false;
+    if (!confirmado) return;
+
+    btn.disabled = true;
+    try {
+      const resp = await API.post('/execucoes/reerguer', { execucao_id: m.id });
+      SoloDialog?.toast?.(resp?.mensagem || 'Missão reerguida.', 'success');
+      this._absorver(chave, 'reerguer', resp);
+      this.repintar(chave);
+      if (this._onMudou) await this._onMudou(resp, 'reerguer', m.id, chave);
+    } catch (err) {
+      SoloDialog?.toast?.(err.message || String(err), 'error');
+      btn.disabled = false;
+    }
+  },
+
+  /* ── CONFESSAR ───────────────────────────────────────────
+     O único jeito de uma missão passiva falhar, e o hunter é quem aperta.
+
+     A confirmação existe por um motivo diferente da do Reerguer: lá era
+     porque gasta moeda; aqui é porque o ato é irreversível e ninguém o
+     obrigou a isso. Vale dizer, no texto, que confessar é barato — senão o
+     hunter hesita achando que vai perder a sequência, e a hesitação é
+     exatamente o que produz o registro falso. */
+  async _confessar(chave, btn) {
+    const m = this._cache?.[chave] || {};
+    const jaEncerrada = (m.status || '') === 'CONCLUIDA';
+    const confirmado = (typeof SoloDialog !== 'undefined' && SoloDialog.confirmar)
+      ? await SoloDialog.confirmar({
+          titulo: 'Confessar?',
+          texto: `"${m.titulo}" — você quebrou o protocolo. Confessar custa `
+               + 'metade da punição e NÃO quebra sua sequência. '
+               + (jaEncerrada
+                   ? 'Como ela já havia sido encerrada, a recompensa recebida será devolvida.'
+                   : 'Ninguém além de você saberia — e é por isso que isto vale.'),
+          confirmar: 'Confessar',
+          cancelar: 'Deixar como está',
+        })
+      : false;
+    if (!confirmado) return;
+
+    btn.disabled = true;
+    try {
+      const resp = await API.post('/execucoes/confessar', { execucao_id: m.id });
+      SoloDialog?.toast?.(resp?.mensagem || 'Confissão registrada.', 'info');
+      this._absorver(chave, 'confessar', resp);
+      this.repintar(chave);
+      if (this._onMudou) await this._onMudou(resp, 'confessar', m.id, chave);
     } catch (err) {
       SoloDialog?.toast?.(err.message || String(err), 'error');
       btn.disabled = false;

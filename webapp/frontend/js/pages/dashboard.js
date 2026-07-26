@@ -431,7 +431,7 @@ const Dashboard = {
 
       if (countEl) {
         const total  = resp?.total ?? lista.length;
-        const abertas = lista.filter(m => !['CONCLUIDA', 'FRACASSADA', 'CANCELADA'].includes(m.status)).length;
+        const abertas = lista.filter(m => !['CONCLUIDA', 'FRACASSADA', 'CANCELADA', 'CONFESSADA'].includes(m.status)).length;
         countEl.textContent = `${total} miss\u00E3o${total !== 1 ? '\u00F5es' : ''} \u00B7 ${abertas} em aberto`;
       }
 
@@ -550,26 +550,156 @@ const Dashboard = {
     // A lista canônica do /extrato/ já traz uid — é ela que vai para o cache.
     MissaoCard.cachear(lista, { modo: 'missao' });
 
-    // Cabeçalho grudento: a lista rola dentro de uma caixa baixa, e sem o
-    // sticky o hunter perde de vista de que dia é a faixa que está lendo.
-    cont.innerHTML = [...porDia.entries()].map(([dia, itens]) => `
-      <section style="margin-bottom:.9rem">
+    // ── RECONCILIAÇÃO, NÃO DEMOLIÇÃO ────────────────────────────────
+    // Este bloco era um `cont.innerHTML = ...` que jogava a lista fora e a
+    // redesenhava do zero. Funcionava, e piscava: a cada missão iniciada, ou
+    // criada, TODOS os cartões morriam e renasciam. Além do tremor, isso
+    // perdia a posição da rolagem e cortava qualquer animação em curso.
+    //
+    // Agora comparamos com o que já está na tela: cartão que não mudou é
+    // deixado em paz (continua sendo o MESMO elemento do DOM), cartão que
+    // mudou é repintado, cartão novo entra na posição certa, cartão que saiu
+    // é removido. Quem chega ganha uma entrada suave — e só quem chega.
+    // `mc-lista` marca este container como referência de largura para os
+    // cartões (container-type: inline-size em missao-card.css). Sem isso o
+    // cartão volta a medir a JANELA, e quebra em monitor médio — onde a
+    // janela tem folga mas a coluna não.
+    cont.classList.add('mc-lista');
+
+    const html = [...porDia.entries()].map(([dia, itens]) => `
+      <section data-dia="${dia}" style="margin-bottom:.9rem">
         <header style="position:sticky;top:0;z-index:3;display:flex;align-items:baseline;
           gap:.5rem;flex-wrap:wrap;padding:.35rem .15rem;margin-bottom:.45rem;
           background:var(--bg-card);border-bottom:1px solid rgba(124,58,237,.2)">
           <span style="font-family:var(--font-section);font-size:.74rem;font-weight:700;
             letter-spacing:.05em;color:var(--purple-glow);text-transform:capitalize">${this._rotuloDia(dia)}</span>
-          <span style="font-family:var(--font-section);font-size:.62rem;color:var(--text-muted)">${this._resumoDoDia(itens)}</span>
+          <span data-resumo-dia style="font-family:var(--font-section);font-size:.62rem;color:var(--text-muted)">${this._resumoDoDia(itens)}</span>
         </header>
-        <div style="display:flex;flex-direction:column;gap:.5rem">
+        <div data-cartoes style="display:flex;flex-direction:column;gap:.5rem">
           ${itens.map(m => MissaoCard.html(m, { compacto: true })).join('')}
         </div>
       </section>`).join('');
 
+    this._reconciliar(cont, html);
+
     MissaoCard.montar(cont, {
-      onMudou: () => this.atualizarStatsMini(),
+      // Só os NÚMEROS do topo. Recarregar o extrato daqui seria circular:
+      // a ação repinta o cartão, e o extrato voltaria para apagá-lo e
+      // redesenhá-lo — o piscar que estamos removendo.
+      onMudou: () => this.atualizarNumeros(),
       onAcao:  (acao, idAlvo, m) => this._gerirMissaoExtrato(acao, idAlvo, m),
     });
+  },
+
+  /* Aplica o HTML novo preservando os nós que não mudaram.
+
+     A comparação é por `outerHTML`: se o cartão gerado é idêntico ao que já
+     está lá, o elemento antigo permanece — mesma referência, mesma rolagem,
+     mesma animação. É uma reconciliação humilde (sem chaves nem árvore), mas
+     resolve o caso real: listas de cartões que mudam de um em um. */
+  _reconciliar(cont, htmlNovo) {
+    const molde = document.createElement('div');
+    molde.innerHTML = htmlNovo;
+
+    const secoesAtuais = new Map(
+      [...cont.querySelectorAll(':scope > section[data-dia]')].map(s => [s.dataset.dia, s]));
+
+    const novas = [...molde.querySelectorAll(':scope > section[data-dia]')];
+    const vistos = new Set();
+
+    novas.forEach((secNova, i) => {
+      const dia = secNova.dataset.dia;
+      vistos.add(dia);
+      const secVelha = secoesAtuais.get(dia);
+
+      if (!secVelha) {
+        // Dia inteiro novo: entra na posição correta da ordem.
+        const ref = cont.children[i] || null;
+        cont.insertBefore(secNova, ref);
+        secNova.querySelectorAll('[data-mc-card]').forEach(c => this._anunciar(c));
+        return;
+      }
+
+      // Resumo do dia ("2 cumpridas · 1 em aberto") muda com frequência e é
+      // barato: troca direto, é uma linha de texto.
+      const rNovo = secNova.querySelector('[data-resumo-dia]');
+      const rVelho = secVelha.querySelector('[data-resumo-dia]');
+      if (rNovo && rVelho && rVelho.innerHTML !== rNovo.innerHTML) rVelho.innerHTML = rNovo.innerHTML;
+
+      const caixaVelha = secVelha.querySelector('[data-cartoes]');
+      const caixaNova  = secNova.querySelector('[data-cartoes]');
+      if (!caixaVelha || !caixaNova) return;
+
+      const atuais = new Map(
+        [...caixaVelha.querySelectorAll('[data-mc-card]')].map(c => [c.dataset.mcCard, c]));
+      const chavesNovas = new Set();
+
+      [...caixaNova.children].forEach((cartaoNovo, pos) => {
+        const chave = cartaoNovo.dataset.mcCard;
+        chavesNovas.add(chave);
+        const cartaoVelho = atuais.get(chave);
+
+        if (!cartaoVelho) {
+          const ref = caixaVelha.children[pos] || null;
+          caixaVelha.insertBefore(cartaoNovo, ref);
+          this._anunciar(cartaoNovo);                // só o recém-chegado brilha
+          return;
+        }
+        // MUDOU? Só então mexe. Este `if` é o coração da correção.
+        //
+        // A comparação é pela ASSINATURA (data-mc-sig), não pelo HTML. O
+        // cartão tem um cronômetro correndo dentro: comparar HTML acusaria
+        // diferença a cada segundo e a lista se redesenharia inteira — o
+        // defeito que estamos removendo. A assinatura só carrega o que muda
+        // a cara do cartão; o tempo é atualizado no nó vivo pelo timer.
+        if (cartaoVelho.dataset.mcSig !== cartaoNovo.dataset.mcSig) {
+          cartaoVelho.replaceWith(cartaoNovo);
+        } else if (caixaVelha.children[pos] !== cartaoVelho) {
+          caixaVelha.insertBefore(cartaoVelho, caixaVelha.children[pos] || null);
+        }
+      });
+
+      atuais.forEach((el, chave) => { if (!chavesNovas.has(chave)) el.remove(); });
+    });
+
+    secoesAtuais.forEach((sec, dia) => { if (!vistos.has(dia)) sec.remove(); });
+
+    // Se o container tinha estado vazio (empty-state) ou qualquer outra coisa
+    // que não seja seção de dia, limpa esses restos.
+    [...cont.children].forEach(el => {
+      if (!el.matches('section[data-dia]')) el.remove();
+    });
+  },
+
+  /* Marca de chegada de USO ÚNICO.
+
+     A classe é removida assim que a animação termina. Se ela ficasse grudada
+     no elemento, um simples reordenamento — que reinsere o nó no DOM —
+     faria a animação tocar de novo, e o cartão piscaria sem ter mudado nada.
+     O `setTimeout` é a rede de segurança para quando `animationend` não vem
+     (aba em segundo plano, ou o hunter com "reduzir movimento" ligado, onde
+     a animação é desativada e o evento nunca dispara). */
+  _anunciar(el) {
+    if (!el) return;
+    el.classList.add('mc-entrando');
+    const limpar = () => el.classList.remove('mc-entrando');
+    el.addEventListener('animationend', limpar, { once: true });
+    setTimeout(limpar, 600);
+  },
+
+  /* Só os números do topo — sem tocar na lista de missões.
+     Separado de `atualizarStatsMini` de propósito: aquele recarrega o extrato
+     também, e chamá-lo depois de uma ação de cartão desfaria a repintura
+     cirúrgica que o cartão acabou de fazer. */
+  async atualizarNumeros() {
+    try {
+      const [perfil, stats] = await Promise.allSettled([
+        API.auth.me(),
+        API.get('/dashboard/stats'),
+      ]);
+      if (perfil.status === 'fulfilled' && perfil.value) this.renderPersonagem(perfil.value);
+      if (stats.status === 'fulfilled' && stats.value)   this.renderStats(stats.value);
+    } catch (_) {}
   },
 
   // Editar/excluir não são executadas pelo card — ele delega para a página dona

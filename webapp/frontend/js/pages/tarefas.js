@@ -217,7 +217,14 @@ const Tarefas = {
 
   // ── Formulário ────────────────────────────────────────────
   abrirFormulario(tarefa) {
-    if (typeof Lancador !== 'undefined') Lancador.abrir('TAREFA', tarefa || null);
+    // A Forja substituiu o lançador antigo (mesma troca da página Rotinas).
+    if (typeof ForjaMissao !== 'undefined') {
+      ForjaMissao.abrir({
+        tipo: 'TAREFA',
+        edicao: tarefa || null,
+        aoSalvar: () => this.carregar?.(),
+      });
+    }
   },
 
   // ── Exclusão (o card delega; a página confirma) ────────────

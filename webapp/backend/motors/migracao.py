@@ -58,6 +58,25 @@ COLUNAS = [
     ("recompensas",               "payload",             "VARCHAR(80)",                 "VARCHAR(80)"),
     # Cronômetro: a missão geral passou a registrar quando começou.
     ("tarefas_dia",               "iniciada_em",         "DATETIME",                    "TIMESTAMP"),
+    # Prazo da missao (motors/economia.py calcula por prioridade x dificuldade)
+    ("rotinas",     "prazo_minutos",       "INTEGER",                     "INTEGER"),
+    ("rotinas",     "prazo_personalizado", "BOOLEAN NOT NULL DEFAULT 0",  "BOOLEAN NOT NULL DEFAULT FALSE"),
+    ("tarefas_dia", "prazo_minutos",       "INTEGER",                     "INTEGER"),
+    ("tarefas_dia", "prazo_personalizado", "BOOLEAN NOT NULL DEFAULT 0",  "BOOLEAN NOT NULL DEFAULT FALSE"),
+    # Reerguer: a segunda chance da rotina de janela, paga em Mana.
+    # DEFAULT 0/FALSE importa: as instâncias que já existem nunca foram
+    # reerguidas, e sem o default elas nasceriam NULL — que em Python é
+    # falsy, mas em SQL não é comparável com `= false`.
+    ("execucao_dia", "reerguida",          "BOOLEAN NOT NULL DEFAULT 0",  "BOOLEAN NOT NULL DEFAULT FALSE"),
+    ("execucao_dia", "reerguida_em",       "DATETIME",                    "TIMESTAMP"),
+    ("execucao_dia", "mana_gasta",         "INTEGER NOT NULL DEFAULT 0",  "INTEGER NOT NULL DEFAULT 0"),
+    # Missao passiva: o desfecho do prazo se inverte, e a confissao e o
+    # unico jeito de o hunter registrar que quebrou o protocolo.
+    # DEFAULT 'ATIVA' importa: toda rotina que ja existe e ativa, e sem o
+    # default elas nasceriam NULL — que nao casa com `= 'ATIVA'` em SQL.
+    ("rotinas",      "natureza",           "VARCHAR(20) NOT NULL DEFAULT 'ATIVA'",
+                                            "VARCHAR(20) NOT NULL DEFAULT 'ATIVA'"),
+    ("execucao_dia", "confessada_em",      "DATETIME",                    "TIMESTAMP"),
 ]
 
 
