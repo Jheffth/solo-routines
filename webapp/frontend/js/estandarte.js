@@ -506,7 +506,7 @@ const Estandarte = {
           ${this._gema('rubi', u.streak_atual ?? 0, 'Streak')}
         </div>
       </div>`;
-  }
+  },
 
   /* O ANEL QUE GIRA EM TORNO DO HEXÁGONO.
 
