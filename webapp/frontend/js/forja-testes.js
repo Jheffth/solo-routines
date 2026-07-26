@@ -273,6 +273,11 @@ const ForjaTestes = {
       { id: 'forjaMissao',    rotulo: 'Forja de Missões',           desc: 'proposta de interface' },
       { id: 'banner',         rotulo: 'Banner "O Monarca"',         desc: 'proposta de interface' },
       { id: 'bannerPremium',  rotulo: 'Banner Premium (melhorias)', desc: 'preview — toggle on/off' },
+      // Proposta PARALELA e independente (js/estandarte.js). Convive com a
+      // de cima de propósito: duas linguagens visuais diferentes para o
+      // mesmo problema, comparáveis lado a lado. Não compartilham código,
+      // nem seletor, nem arquivo.
+      { id: 'estandarte',     rotulo: 'Vitrine de Banners (V1 e V2)', desc: 'V2 fiel à referência · aura e relíquias reais' },
     ],
     hunters: [
       { id: 'convites',      rotulo: 'Convocar hunters',    desc: 'gera convites reais' },
@@ -370,6 +375,8 @@ const ForjaTestes = {
       forjaMissao:   () => A?.forjaMissao(),
       banner:        () => A?.banner(),
       bannerPremium: () => A?.bannerMelhorado(),
+      // Chamada direta: nao encosta no ArquitetoConsole.
+      estandarte:    () => window.Estandarte?.abrir(),
       convites:    () => A?.convites(),
       comemorativas: () => A?.comemorativas(),
       enviarAura:  () => A?.enviarAura(),
@@ -380,7 +387,8 @@ const ForjaTestes = {
     // Painéis (convites, comemorativas, enviar aura) precisam da bancada
     // visível para serem usados — eclipsar só o que é animação.
     const painel = ['convites', 'comemorativas', 'enviarAura',
-                    'cardMissao', 'forjaMissao', 'banner', 'bannerPremium'].includes(arg);
+                    'cardMissao', 'forjaMissao', 'banner', 'bannerPremium',
+                    'estandarte'].includes(arg);
     const som = arg.startsWith('som_');
     if (painel || som) {
       try { fn(); }
