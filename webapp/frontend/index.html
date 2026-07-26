@@ -715,16 +715,28 @@
 
         <!-- PAGE: ROTINAS -->
         <div class="page hidden" id="page-rotinas">
-          <div class="page-header" style="align-items:center">
-            <div>
-              <!-- Esta guia é a AGENDA (as regras). Cumprir a missão do dia
-                   acontece no Dashboard — daí o subtítulo dizer onde procurar. -->
-              <h1 class="page-title">&#128260; Agenda de Rotinas</h1>
-              <p class="page-subtitle">Suas regras recorrentes — as missões do dia aparecem no Dashboard</p>
+          <div class="sys-plate">
+            <div class="sys-plate-glyph">
+              <svg viewBox="0 0 48 48" width="34" height="34" aria-hidden="true">
+                <path d="M24 2 L44 13 V35 L24 46 L4 35 V13 Z" fill="none"
+                  stroke="url(#sysGlyphGrad)" stroke-width="2.5" stroke-linejoin="round"/>
+                <path d="M24 12 L34 18 V30 L24 36 L14 30 V18 Z" fill="rgba(168,85,247,.18)"
+                  stroke="url(#sysGlyphGrad)" stroke-width="1.5"/>
+                <circle cx="24" cy="24" r="4" fill="url(#sysGlyphGrad)" class="sys-glyph-core"/>
+              </svg>
             </div>
-            <button class="btn btn-primary" id="btn-nova-rotina" style="flex-shrink:0;white-space:nowrap;font-size:.85rem;padding:.6rem 1.25rem">
-              + Nova Rotina
-            </button>
+            <div class="sys-plate-texts">
+              <h1 class="sys-plate-title">AGENDA</h1>
+              <div class="sys-plate-sub">
+                <span>Regras recorrentes</span>
+                <span class="sys-plate-sep">·</span>
+                <span class="sys-plate-whisper">As missões do dia aparecem no Dashboard</span>
+              </div>
+              <div class="sys-plate-line"></div>
+            </div>
+            <div class="sys-plate-actions">
+              <button class="btn btn-primary" id="btn-nova-rotina">+ Nova Rotina</button>
+            </div>
           </div>
 
           <!-- Abas de tipo -->
@@ -774,14 +786,28 @@
 
         <!-- PAGE: TAREFAS (Missões Gerais) -->
         <div class="page hidden" id="page-tarefas">
-          <div class="page-header">
-            <div>
-              <h1 class="page-title">&#9876;&#65039; Miss&#245;es Gerais</h1>
-              <p class="page-subtitle">Miss&#245;es avulsas — em andamento, pendentes e conclu&#237;das</p>
+          <div class="sys-plate">
+            <div class="sys-plate-glyph">
+              <svg viewBox="0 0 48 48" width="34" height="34" aria-hidden="true">
+                <path d="M24 2 L44 13 V35 L24 46 L4 35 V13 Z" fill="none"
+                  stroke="url(#sysGlyphGrad)" stroke-width="2.5" stroke-linejoin="round"/>
+                <path d="M24 12 L34 18 V30 L24 36 L14 30 V18 Z" fill="rgba(168,85,247,.18)"
+                  stroke="url(#sysGlyphGrad)" stroke-width="1.5"/>
+                <circle cx="24" cy="24" r="4" fill="url(#sysGlyphGrad)" class="sys-glyph-core"/>
+              </svg>
             </div>
-            <div style="display:flex;gap:.75rem;align-items:center">
+            <div class="sys-plate-texts">
+              <h1 class="sys-plate-title">MISSÕES</h1>
+              <div class="sys-plate-sub">
+                <span>Missões avulsas</span>
+                <span class="sys-plate-sep">·</span>
+                <span class="sys-plate-whisper">Em andamento, pendentes e concluídas</span>
+              </div>
+              <div class="sys-plate-line"></div>
+            </div>
+            <div class="sys-plate-actions">
               <input type="date" class="input" id="filter-data-tarefa" style="max-width:160px">
-              <button class="btn btn-primary" id="btn-nova-tarefa">+ Nova Miss&#227;o</button>
+              <button class="btn btn-primary" id="btn-nova-tarefa">+ Nova Missão</button>
             </div>
           </div>
           <!-- Barra de ordenação + toggle -->
@@ -821,12 +847,28 @@
 
         <!-- PAGE: DUNGEONS -->
         <div class="page hidden" id="page-dungeons">
-          <div class="page-header">
-            <div>
-              <h1 class="page-title">&#127761; Dungeons</h1>
-              <p class="page-subtitle">Portões para ambientes isolados — entre, cumpra as missões internas e saia com o clear</p>
+          <div class="sys-plate">
+            <div class="sys-plate-glyph">
+              <svg viewBox="0 0 48 48" width="34" height="34" aria-hidden="true">
+                <path d="M24 2 L44 13 V35 L24 46 L4 35 V13 Z" fill="none"
+                  stroke="url(#sysGlyphGrad)" stroke-width="2.5" stroke-linejoin="round"/>
+                <path d="M24 12 L34 18 V30 L24 36 L14 30 V18 Z" fill="rgba(168,85,247,.18)"
+                  stroke="url(#sysGlyphGrad)" stroke-width="1.5"/>
+                <circle cx="24" cy="24" r="4" fill="url(#sysGlyphGrad)" class="sys-glyph-core"/>
+              </svg>
             </div>
-            <button class="btn btn-primary" id="btn-nova-dungeon">+ Forjar Portão</button>
+            <div class="sys-plate-texts">
+              <h1 class="sys-plate-title">DUNGEONS</h1>
+              <div class="sys-plate-sub">
+                <span>Portões de desafio</span>
+                <span class="sys-plate-sep">·</span>
+                <span class="sys-plate-whisper">Entre, cumpra as missões internas e saia com o clear</span>
+              </div>
+              <div class="sys-plate-line"></div>
+            </div>
+            <div class="sys-plate-actions">
+              <button class="btn btn-primary" id="btn-nova-dungeon">+ Forjar Portão</button>
+            </div>
           </div>
           <div class="dg-grid" id="lista-dungeons">
             <div class="loading-spinner-wrap" style="grid-column:1/-1"><div class="loading-spinner"></div></div>
@@ -835,14 +877,27 @@
 
         <!-- PAGE: LOJA -->
         <div class="page hidden" id="page-loja">
-          <div class="page-header">
-            <div>
-              <h1 class="page-title">&#128717;&#65039; Loja do Hunter</h1>
-              <p class="page-subtitle">Auras, emblemas e recompensas — troque suas Mana Coins</p>
+          <div class="sys-plate">
+            <div class="sys-plate-glyph">
+              <svg viewBox="0 0 48 48" width="34" height="34" aria-hidden="true">
+                <path d="M24 2 L44 13 V35 L24 46 L4 35 V13 Z" fill="none"
+                  stroke="url(#sysGlyphGrad)" stroke-width="2.5" stroke-linejoin="round"/>
+                <path d="M24 12 L34 18 V30 L24 36 L14 30 V18 Z" fill="rgba(168,85,247,.18)"
+                  stroke="url(#sysGlyphGrad)" stroke-width="1.5"/>
+                <circle cx="24" cy="24" r="4" fill="url(#sysGlyphGrad)" class="sys-glyph-core"/>
+              </svg>
             </div>
-            <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
-              <!-- A Forja só é desenhada se o SERVIDOR disser que este hunter
-                   pode forjar. A tela não conhece a lista de cargos. -->
+            <div class="sys-plate-texts">
+              <h1 class="sys-plate-title">LOJA</h1>
+              <div class="sys-plate-sub">
+                <span>Loja do Hunter</span>
+                <span class="sys-plate-sep">·</span>
+                <span class="sys-plate-whisper">Auras, emblemas e recompensas — troque suas Mana Coins</span>
+              </div>
+              <div class="sys-plate-line"></div>
+            </div>
+            <div class="sys-plate-actions">
+              <!-- A Forja só é desenhada se o SERVIDOR disser que este hunter pode forjar. -->
               <span id="loja-forja-acao"></span>
               <div class="lj-carteira">
                 <svg class="lj-carteira-moeda" viewBox="0 0 24 24" fill="none"
@@ -961,36 +1016,84 @@
 
         <!-- PAGE: MATERIAIS (Casa de Trocas) -->
         <div class="page hidden" id="page-materiais">
-          <div class="page-header">
-            <div>
-              <h1 class="page-title">&#128142; Materiais</h1>
-              <p class="page-subtitle">A Casa de Trocas &mdash; envie emblemas a outros hunters</p>
+          <div class="sys-plate">
+            <div class="sys-plate-glyph">
+              <svg viewBox="0 0 48 48" width="34" height="34" aria-hidden="true">
+                <path d="M24 2 L44 13 V35 L24 46 L4 35 V13 Z" fill="none"
+                  stroke="url(#sysGlyphGrad)" stroke-width="2.5" stroke-linejoin="round"/>
+                <path d="M24 12 L34 18 V30 L24 36 L14 30 V18 Z" fill="rgba(168,85,247,.18)"
+                  stroke="url(#sysGlyphGrad)" stroke-width="1.5"/>
+                <circle cx="24" cy="24" r="4" fill="url(#sysGlyphGrad)" class="sys-glyph-core"/>
+              </svg>
             </div>
-            <button class="btn btn-primary" id="btn-materiais-refresh">&#128260; Atualizar</button>
+            <div class="sys-plate-texts">
+              <h1 class="sys-plate-title">MATERIAIS</h1>
+              <div class="sys-plate-sub">
+                <span>Casa de Trocas</span>
+                <span class="sys-plate-sep">·</span>
+                <span class="sys-plate-whisper">Envie emblemas e relíquias a outros hunters</span>
+              </div>
+              <div class="sys-plate-line"></div>
+            </div>
+            <div class="sys-plate-actions">
+              <button class="btn btn-primary" id="btn-materiais-refresh">↻ Atualizar</button>
+            </div>
           </div>
           <div id="materiais-conteudo"></div>
         </div>
 
         <!-- PAGE: PAINEL DO SISTEMA -->
         <div class="page hidden" id="page-sistema">
-          <div class="page-header">
-            <div>
-              <h1 class="page-title">&#128737;&#65039; Painel do Sistema</h1>
-              <p class="page-subtitle">Hunters, emblemas e privilegios do Portao</p>
+          <div class="sys-plate">
+            <div class="sys-plate-glyph">
+              <svg viewBox="0 0 48 48" width="34" height="34" aria-hidden="true">
+                <path d="M24 2 L44 13 V35 L24 46 L4 35 V13 Z" fill="none"
+                  stroke="url(#sysGlyphGrad)" stroke-width="2.5" stroke-linejoin="round"/>
+                <path d="M24 12 L34 18 V30 L24 36 L14 30 V18 Z" fill="rgba(168,85,247,.18)"
+                  stroke="url(#sysGlyphGrad)" stroke-width="1.5"/>
+                <circle cx="24" cy="24" r="4" fill="url(#sysGlyphGrad)" class="sys-glyph-core"/>
+              </svg>
             </div>
-            <button class="btn btn-primary" id="btn-sistema-refresh">&#128260; Atualizar</button>
+            <div class="sys-plate-texts">
+              <h1 class="sys-plate-title">SISTEMA</h1>
+              <div class="sys-plate-sub">
+                <span>Painel do Sistema</span>
+                <span class="sys-plate-sep">·</span>
+                <span class="sys-plate-whisper">Hunters, emblemas e privilégios do Portão</span>
+              </div>
+              <div class="sys-plate-line"></div>
+            </div>
+            <div class="sys-plate-actions">
+              <button class="btn btn-primary" id="btn-sistema-refresh">↻ Atualizar</button>
+            </div>
           </div>
           <div id="painel-admin-conteudo"></div>
         </div>
 
         <!-- PAGE: GERENCIAL -->
         <div class="page hidden" id="page-gerencial">
-          <div class="page-header">
-            <div>
-              <h1 class="page-title">&#9881;&#65039; Painel Administrativo</h1>
-              <p class="page-subtitle">Controle total do sistema Solo Routines</p>
+          <div class="sys-plate">
+            <div class="sys-plate-glyph">
+              <svg viewBox="0 0 48 48" width="34" height="34" aria-hidden="true">
+                <path d="M24 2 L44 13 V35 L24 46 L4 35 V13 Z" fill="none"
+                  stroke="url(#sysGlyphGrad)" stroke-width="2.5" stroke-linejoin="round"/>
+                <path d="M24 12 L34 18 V30 L24 36 L14 30 V18 Z" fill="rgba(168,85,247,.18)"
+                  stroke="url(#sysGlyphGrad)" stroke-width="1.5"/>
+                <circle cx="24" cy="24" r="4" fill="url(#sysGlyphGrad)" class="sys-glyph-core"/>
+              </svg>
             </div>
-            <button class="btn btn-primary" id="btn-gerencial-refresh">&#128260; Atualizar</button>
+            <div class="sys-plate-texts">
+              <h1 class="sys-plate-title">CONTROLE</h1>
+              <div class="sys-plate-sub">
+                <span>Painel Administrativo</span>
+                <span class="sys-plate-sep">·</span>
+                <span class="sys-plate-whisper">Controle total do sistema Solo Routines</span>
+              </div>
+              <div class="sys-plate-line"></div>
+            </div>
+            <div class="sys-plate-actions">
+              <button class="btn btn-primary" id="btn-gerencial-refresh">↻ Atualizar</button>
+            </div>
           </div>
           <div class="grid-4 mb-2" id="gerencial-stats"></div>
           <div class="card mb-2">
