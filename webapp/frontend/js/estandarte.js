@@ -450,9 +450,7 @@ const Estandarte = {
           <!-- Coluna 2: Núcleo (Plasma e Relíquias) -->
           <div class="pt-nucleo">
             <div class="pt-linha-xp">
-              <div class="pt-sigilo" title="${(typeof Gemas!=='undefined'&&Gemas.nomeRank)?Gemas.nomeRank(letra):('Rank '+letra)}">
-                ${typeof EscudosImg !== 'undefined' ? EscudosImg.rank(letra, 90) : this._medalhaRank(letra, 95)}
-              </div>
+              <!-- Escudo removido conforme solicitado para abrir espaço para a barra -->
               <div class="pt-feixe-caixa">
                 <div class="pt-xp-num">${xp.toLocaleString('pt-BR')} / ${alvo.toLocaleString('pt-BR')} XP</div>
                 ${this._barraXP(pct, c)}
@@ -582,7 +580,7 @@ const Estandarte = {
        saem do escudo e se juntam. O CSS puxa o SVG para a esquerda com
        margem negativa, de modo que essa faixa caia sobre o escudo. */
     const W = 980, H = 78;
-    const zona = 92;                    // faixa de convergência
+    const zona = 10;                    // faixa de convergência mínima (só para não cortar o blur)
     const bx = zona, bw = W - zona - 14;
     const cy = H / 2, bh = 11;
     const by = cy - bh / 2;
@@ -640,19 +638,10 @@ const Estandarte = {
       (k % 2 === 0 ? tras : frente).push(seg);
     }
 
-    /* OS TRÊS FEIXES que saem do escudo e convergem.
-       Nascem em alturas diferentes na borda esquerda e se encontram
-       exatamente na boca da barra, onde a hélice começa. As curvas são
-       cúbicas para chegarem TANGENTES — encontro em ângulo pareceria
-       colisão, não fusão. */
-    const feixes = [-1, 0, 1].map((n, i) => {
-      const yIni = cy + n * 15;
-      const yFim = pontoY(bx);
-      const d = `M 2 ${yIni} C ${zona * .42} ${yIni} ${zona * .68} ${yFim} ${bx} ${yFim}`;
-      return `<path class="pt-feixe-nasce pt-feixe-n${i}" d="${d}" fill="none"
-                    stroke="url(#feixeNasce)" stroke-width="${2.6 - Math.abs(n) * .6}"
-                    stroke-linecap="round" filter="url(#linhaBrilho)"/>`;
-    }).join('');
+    /* OS TRÊS FEIXES foram removidos junto com o escudo.
+       A barra agora nasce naturalmente do seu próprio ponto de origem,
+       sem precisar de linhas de convergência. */
+    const feixes = '';
 
     return `
       <svg class="pt-barra" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"
