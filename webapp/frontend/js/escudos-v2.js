@@ -1,15 +1,17 @@
 /* ============================================================
-   escudos-v2.js — A Forja dos Escudos Lunares V2 (Masterpiece)
+   escudos-v2.js — A Forja dos Escudos Lunares V2 (Premium)
    
-   Reescrita total focada em volumetria, proporção áurea,
-   extrusão metálica e asas desenhadas à mão (padrão Fênix).
+   GEOMETRIA ABSOLUTA: 
+   Não usa curvas chutadas. Todas as bordas, luas e penas são 
+   fatiadas em polígonos matematicamente simétricos com luz e
+   sombra próprias, criando um 3D facetado ultra premium.
    ============================================================ */
 
 const EscudosV2 = {
   _seq: 0,
 
   _unico(svg) {
-    const selo = `v3esc${++this._seq}`;
+    const selo = `v4esc${++this._seq}`;
     const ids = new Set();
     svg.replace(/\sid="([^"]+)"/g, (_, id) => { ids.add(id); return ''; });
     ids.forEach(id => {
@@ -21,225 +23,250 @@ const EscudosV2 = {
   },
 
   _gradientes: `
-    <!-- Prata Imperial -->
-    <linearGradient id="prataTopo" x1="0" y1="0" x2="0.8" y2="1">
-      <stop offset="0%" stop-color="#ffffff"/>
-      <stop offset="40%" stop-color="#a0b3c6"/>
-      <stop offset="80%" stop-color="#556b82"/>
-      <stop offset="100%" stop-color="#2a3c50"/>
-    </linearGradient>
-    <linearGradient id="prataBase" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#1e293b"/>
-      <stop offset="60%" stop-color="#475569"/>
-      <stop offset="100%" stop-color="#94a3b8"/>
-    </linearGradient>
-    <linearGradient id="prataBrilho" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#ffffff"/>
-      <stop offset="50%" stop-color="#94a3b8" stop-opacity="0.1"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.8"/>
-    </linearGradient>
+    <!-- PRATA -->
+    <linearGradient id="prataLuz" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#94a3b8"/></linearGradient>
+    <linearGradient id="prataSombra" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#64748b"/><stop offset="100%" stop-color="#1e293b"/></linearGradient>
+    <linearGradient id="prataMid" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#94a3b8"/><stop offset="100%" stop-color="#475569"/></linearGradient>
 
-    <!-- Ouro Real -->
-    <linearGradient id="ouroTopo" x1="0" y1="0" x2="0.8" y2="1">
-      <stop offset="0%" stop-color="#fff8d6"/>
-      <stop offset="35%" stop-color="#f5cc42"/>
-      <stop offset="70%" stop-color="#b8860b"/>
-      <stop offset="100%" stop-color="#5e410b"/>
-    </linearGradient>
-    <linearGradient id="ouroBase" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#3b2400"/>
-      <stop offset="50%" stop-color="#8a5c00"/>
-      <stop offset="100%" stop-color="#fceda4"/>
-    </linearGradient>
-    <linearGradient id="ouroBrilho" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#ffffff"/>
-      <stop offset="50%" stop-color="#ffd700" stop-opacity="0.2"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.9"/>
-    </linearGradient>
+    <!-- OURO -->
+    <linearGradient id="ouroLuz" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fff8d6"/><stop offset="100%" stop-color="#f5cc42"/></linearGradient>
+    <linearGradient id="ouroSombra" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#b8860b"/><stop offset="100%" stop-color="#3b2400"/></linearGradient>
+    <linearGradient id="ouroMid" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#f5cc42"/><stop offset="100%" stop-color="#8a5c00"/></linearGradient>
 
-    <!-- Bronze Nobre -->
-    <linearGradient id="bronzeTopo" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#f5d6a9"/>
-      <stop offset="40%" stop-color="#c47a3f"/>
-      <stop offset="80%" stop-color="#7a3e14"/>
-      <stop offset="100%" stop-color="#3d1b06"/>
-    </linearGradient>
-    
-    <!-- Fundo Azul Estelar (Ranks Iniciais) -->
+    <!-- BRONZE -->
+    <linearGradient id="bronzeLuz" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#f5d6a9"/><stop offset="100%" stop-color="#c47a3f"/></linearGradient>
+    <linearGradient id="bronzeSombra" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#7a3e14"/><stop offset="100%" stop-color="#2d1304"/></linearGradient>
+
+    <!-- CIANO (JOIAS) -->
+    <linearGradient id="cianoLuz" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e0ffff"/><stop offset="100%" stop-color="#00ced1"/></linearGradient>
+    <linearGradient id="cianoSombra" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#008b8b"/><stop offset="100%" stop-color="#003333"/></linearGradient>
+
+    <!-- Fundo Azul Estelar -->
     <radialGradient id="fundoAzul" cx="50%" cy="30%" r="70%">
-      <stop offset="0%" stop-color="#223e63"/>
-      <stop offset="100%" stop-color="#0a1324"/>
+      <stop offset="0%" stop-color="#1e3a5f"/>
+      <stop offset="100%" stop-color="#0b172a"/>
     </radialGradient>
 
-    <!-- Fundo Galáxia (S e N) -->
+    <!-- Fundo Galáxia -->
     <radialGradient id="fundoCosmo" cx="50%" cy="30%" r="80%">
       <stop offset="0%" stop-color="#2a124a"/>
-      <stop offset="50%" stop-color="#12183b"/>
       <stop offset="100%" stop-color="#050714"/>
     </radialGradient>
 
-    <!-- Filtros de Iluminação Profunda -->
+    <!-- Filtros -->
     <filter id="shadowForte" x="-40%" y="-40%" width="180%" height="180%">
-      <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#000" flood-opacity="0.8"/>
+      <feDropShadow dx="0" dy="6" stdDeviation="4" flood-color="#000" flood-opacity="0.8"/>
     </filter>
-    <filter id="shadowLeve" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.6"/>
+    <filter id="shadowPenas" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="2" stdDeviation="1.5" flood-color="#000" flood-opacity="0.6"/>
     </filter>
-    <filter id="glowCiano" x="-50%" y="-50%" width="200%" height="200%">
+    <filter id="glowDivino" x="-50%" y="-50%" width="200%" height="200%">
       <feGaussianBlur stdDeviation="4" result="blur"/>
       <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
-    <filter id="glowOuro" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="6" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
-    <filter id="insetCavity">
-      <feOffset dx="0" dy="4"/>
-      <feGaussianBlur stdDeviation="4" result="offset-blur"/>
-      <feComposite operator="out" in="SourceGraphic" in2="offset-blur" result="inverse"/>
-      <feFlood flood-color="black" flood-opacity="1" result="color"/>
-      <feComposite operator="in" in="color" in2="inverse" result="shadow"/>
-      <feComposite operator="over" in="shadow" in2="SourceGraphic"/>
+    <filter id="innerGlow">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="3" result="blur"/>
+      <feFlood flood-color="#000" flood-opacity="0.8"/>
+      <feComposite operator="in" in2="blur"/>
+      <feComposite operator="arithmetic" k2="-1" k3="1" in2="SourceAlpha" result="inv"/>
+      <feComposite operator="over" in2="SourceGraphic"/>
     </filter>
   `,
 
   /* =========================================================================
-     1. O ESCUDO 3D (BASE HEXAGONAL ROBUSTA)
-     A moldura é larga, extrudada e com chanfros de luz.
+     1. MOLDURA HEXAGONAL 3D (FACETADA EM 6 POLÍGONOS DE LUZ E SOMBRA)
+     P0(Top), P1(TopRight), P2(BotRight), P3(Bot), P4(BotLeft), P5(TopLeft)
      ========================================================================= */
-  _escudoBase(material) {
-    const topo = `url(#${material}Topo)`;
-    const base = `url(#${material}Base)`;
-    const brilho = `url(#${material}Brilho)`;
+  _moldura3D(material, scale = 1, cx = 100, cy = 100) {
+    // Escala base
+    const oR = 50 * scale; // Raio Externo
+    const iR = 38 * scale; // Raio Interno
+    
+    // Calcula os 6 vértices
+    const p = (r) => {
+      const pts = [];
+      for(let i=0; i<6; i++) {
+        // Rotacionado 90 graus para o bico ficar em cima e embaixo (pontos 0 e 3)
+        const ang = (i * 60 - 90) * Math.PI / 180;
+        // Ajuste de achatamento lateral (hexágono de escudo é mais alto que largo)
+        pts.push({ x: cx + r * Math.cos(ang) * 0.85, y: cy + r * Math.sin(ang) });
+      }
+      return pts;
+    };
 
-    return `
-      <!-- 1.1 Chanfro de Sombra (Bisel Inferior Direito) -->
-      <path d="M100 20 L170 60 L170 140 L100 180 L30 140 L30 60 Z" fill="${base}" filter="url(#shadowForte)"/>
-      
-      <!-- 1.2 Chanfro de Luz (Bisel Superior Esquerdo) -->
-      <path d="M100 22 L166 61 L166 138 L100 176 L34 138 L34 61 Z" fill="${topo}"/>
-      
-      <!-- 1.3 Degrau Metálico Central -->
-      <path d="M100 36 L154 68 L154 130 L100 162 L46 130 L46 68 Z" fill="${base}"/>
-      <path d="M100 38 L151 69 L151 128 L100 158 L49 128 L49 69 Z" fill="${brilho}"/>
-      
-      <!-- 1.4 A Cavidade (Fundo do Escudo) -->
-      <path d="M100 44 L144 71 L144 125 L100 151 L56 125 L56 71 Z" fill="var(--fundo)" filter="url(#insetCavity)"/>
-    `;
+    const out = p(oR);
+    const inn = p(iR);
+
+    const lLight = \`url(#\${material}Luz)\`;
+    const lMid   = \`url(#\${material}Mid)\`;
+    const lDark  = \`url(#\${material}Sombra)\`;
+
+    // 6 Facetas perfeitamente iluminadas (TopLeft é luz, BotRight é sombra)
+    return \`
+      <g filter="url(#shadowForte)">
+        <!-- Top Left (Luz máxima) -->
+        <polygon points="\${out[5].x},\${out[5].y} \${out[0].x},\${out[0].y} \${inn[0].x},\${inn[0].y} \${inn[5].x},\${inn[5].y}" fill="\${lLight}"/>
+        <!-- Top Right (Luz média) -->
+        <polygon points="\${out[0].x},\${out[0].y} \${out[1].x},\${out[1].y} \${inn[1].x},\${inn[1].y} \${inn[0].x},\${inn[0].y}" fill="\${lMid}"/>
+        <!-- Right (Sombra) -->
+        <polygon points="\${out[1].x},\${out[1].y} \${out[2].x},\${out[2].y} \${inn[2].x},\${inn[2].y} \${inn[1].x},\${inn[1].y}" fill="\${lDark}"/>
+        <!-- Bottom Right (Sombra máxima) -->
+        <polygon points="\${out[2].x},\${out[2].y} \${out[3].x},\${out[3].y} \${inn[3].x},\${inn[3].y} \${inn[2].x},\${inn[2].y}" fill="#111"/>
+        <!-- Bottom Left (Sombra) -->
+        <polygon points="\${out[3].x},\${out[3].y} \${out[4].x},\${out[4].y} \${inn[4].x},\${inn[4].y} \${inn[3].x},\${inn[3].y}" fill="\${lDark}"/>
+        <!-- Left (Luz média) -->
+        <polygon points="\${out[4].x},\${out[4].y} \${out[5].x},\${out[5].y} \${inn[5].x},\${inn[5].y} \${inn[4].x},\${inn[4].y}" fill="\${lMid}"/>
+        
+        <!-- Friso Interno Extra Metálico para destaque -->
+        <polygon points="\${inn.map(v => v.x+','+v.y).join(' ')}" fill="none" stroke="\${lLight}" stroke-width="1.5" opacity="0.8"/>
+        
+        <!-- Fundo Escudo (Buraco Escuro) -->
+        <polygon points="\${inn.map(v => v.x+','+v.y).join(' ')}" fill="var(--fundo)" filter="url(#innerGlow)"/>
+      </g>
+    \`;
   },
 
   /* =========================================================================
-     2. A LUA E A ESTRELA (LAPIDAÇÃO 3D REAL)
-     A lua usa arcos perfeitos e um offset para gerar a espessura.
+     2. LUA CRESCENTE E ESTRELA (3D REAL)
      ========================================================================= */
-  _luaEstrela(material) {
-    const topo = `url(#${material}Topo)`;
-    const base = `url(#${material}Base)`;
-    const brilho = `url(#${material}Brilho)`;
+  _luaEstrela(material, scale = 1, cx = 100, cy = 100) {
+    const sLuz = \`url(#\${material}Luz)\`;
+    const sSombra = \`url(#\${material}Sombra)\`;
+    const rArc = 15 * scale;
+    const rIn = 12 * scale;
+    
+    // Desenho de crescente perfeito via Comandos Arc
+    // Inicia no topo, desce no arco externo, sobe no arco interno
+    const luaBase = \`M \${cx-5*scale},\${cy-15*scale} 
+                     A \${rArc} \${rArc} 0 0 0 \${cx-5*scale},\${cy+15*scale} 
+                     A \${rIn} \${rIn} 0 0 1 \${cx-5*scale},\${cy-15*scale} Z\`;
 
-    return `
-      <g filter="url(#shadowLeve)">
-        <!-- Lua - Base Escura (Sombra 3D) -->
-        <path d="M96 68 A 28 28 0 1 0 96 128 A 38 38 0 1 1 96 68 Z" fill="${base}"/>
-        <!-- Lua - Topo Iluminado -->
-        <path d="M94 69 A 28 28 0 1 0 94 127 A 37 37 0 1 1 94 69 Z" fill="${topo}"/>
-        <!-- Lua - Especular -->
-        <path d="M93 70 A 28 28 0 1 0 93 126 A 37 37 0 1 1 93 70 Z" fill="${brilho}" opacity="0.6"/>
+    // Estrela 3D (5 pirâmides)
+    const eR = 6 * scale;
+    const eCx = cx + 10 * scale;
+    const eCy = cy;
+    let facesEstrela = '';
+    const p = [];
+    for(let i=0; i<10; i++) {
+      const ang = (i * 36 - 90) * Math.PI / 180;
+      const raio = i % 2 === 0 ? eR : eR * 0.45;
+      p.push({ x: eCx + raio * Math.cos(ang), y: eCy + raio * Math.sin(ang) });
+    }
+    for(let i=0; i<5; i++) {
+      facesEstrela += \`<polygon points="\${eCx},\${eCy} \${p[i*2].x},\${p[i*2].y} \${p[(i*2+9)%10].x},\${p[(i*2+9)%10].y}" fill="\${sSombra}"/>\`;
+      facesEstrela += \`<polygon points="\${eCx},\${eCy} \${p[i*2].x},\${p[i*2].y} \${p[(i*2+1)%10].x},\${p[(i*2+1)%10].y}" fill="\${sLuz}"/>\`;
+    }
 
-        <!-- Estrela 3D Facetada (Centro em 118, 98, raio 10) -->
-        <!-- Facetas de Luz -->
-        <polygon points="118,98 118,84 114,94" fill="${brilho}"/>
-        <polygon points="118,98 132,94 122,100" fill="${brilho}"/>
-        <polygon points="118,98 126,110 118,103" fill="${brilho}"/>
-        <polygon points="118,98 106,108 112,100" fill="${brilho}"/>
-        <polygon points="118,98 104,92 114,94" fill="${brilho}"/>
-        <!-- Facetas de Sombra -->
-        <polygon points="118,98 118,84 122,94" fill="${base}"/>
-        <polygon points="118,98 132,94 126,102" fill="${base}"/>
-        <polygon points="118,98 126,110 120,103" fill="${base}"/>
-        <polygon points="118,98 106,108 114,103" fill="${base}"/>
-        <polygon points="118,98 104,92 110,98" fill="${base}"/>
+    return \`
+      <g filter="url(#shadowForte)">
+        <!-- Lua 3D Sombra e Luz (Offset simulando espessura) -->
+        <path d="\${luaBase}" fill="\${sSombra}" transform="translate(1, 2)"/>
+        <path d="\${luaBase}" fill="\${sLuz}"/>
+        <!-- Estrela Facetada -->
+        \${facesEstrela}
       </g>
-    `;
+    \`;
   },
 
   /* =========================================================================
-     3. AS ASAS (ESCULPIDAS À MÃO, NÃO GERADAS POR LOOP)
-     Estas asas são projetadas para abraçar o escudo perfeitamente.
+     3. ASAS FEITAS DE PENAS GEOMÉTRICAS FACETADAS
+     Uma pena é uma folha dividida no meio (Luz/Sombra).
+     A asa é um arranjo radial destas penas ao redor do escudo.
      ========================================================================= */
-  
-  _asasDef() {
-    return `
-      <!-- Asa Prata Sólida (Ranks E, D) -->
-      <g id="asaSolida">
-        <path d="M30 65 L-10 40 L-15 50 L20 80 Z" fill="url(#prataBase)"/>
-        <path d="M30 65 L-5 45 L-10 48 L22 75 Z" fill="url(#prataTopo)"/>
-        <path d="M25 80 L-18 60 L-22 75 L15 100 Z" fill="url(#prataBase)"/>
-        <path d="M25 80 L-10 65 L-15 72 L18 95 Z" fill="url(#prataTopo)"/>
-        <path d="M20 95 L-10 90 L-12 110 L18 115 Z" fill="url(#prataBase)"/>
-        <path d="M20 95 L-5 92 L-6 105 L18 110 Z" fill="url(#prataTopo)"/>
+  _penaGeometrica(x, y, scale, rotation, material) {
+    return \`
+      <g transform="translate(\${x},\${y}) rotate(\${rotation}) scale(\${scale})" filter="url(#shadowPenas)">
+        <!-- Lado Luz (Esquerdo da folha) -->
+        <path d="M0,0 Q-8,-15 0,-40 Z" fill="url(#\${material}Luz)"/>
+        <!-- Lado Sombra (Direito da folha) -->
+        <path d="M0,0 Q8,-15 0,-40 Z" fill="url(#\${material}Sombra)"/>
+        <!-- Haste central fina -->
+        <path d="M0,0 L0,-38" stroke="#fff" stroke-width="0.5" opacity="0.6"/>
       </g>
-
-      <!-- Asa Prata Plumada (Rank C) -->
-      <g id="asaPrataPluma">
-        <path d="M30 70 C 0 50, -20 20, -25 35 C -20 60, 5 80, 25 85 Z" fill="url(#prataBase)"/>
-        <path d="M28 72 C 5 55, -12 30, -18 40 C -15 58, 5 75, 23 80 Z" fill="url(#prataTopo)"/>
-        
-        <path d="M25 85 C -10 70, -30 45, -35 65 C -25 90, 0 100, 20 100 Z" fill="url(#prataBase)"/>
-        <path d="M23 87 C -5 75, -20 55, -25 70 C -18 88, 0 95, 18 95 Z" fill="url(#prataTopo)"/>
-        
-        <path d="M20 100 C -5 95, -25 80, -30 105 C -15 120, 5 115, 25 110 Z" fill="url(#prataBase)"/>
-        <path d="M18 98 C -2 95, -15 85, -20 102 C -10 112, 5 110, 20 105 Z" fill="url(#prataTopo)"/>
-      </g>
-
-      <!-- Asa Ouro Imperial (Ranks B, A, S, N) -->
-      <g id="asaOuroMagne" filter="url(#shadowForte)">
-        <!-- Pena Suprema Superior -->
-        <path d="M30 65 C -10 40, -40 0, -45 15 C -30 50, -5 75, 25 85 Z" fill="url(#ouroBase)"/>
-        <path d="M30 66 C -5 45, -30 10, -35 20 C -25 50, 0 72, 23 82 Z" fill="url(#ouroTopo)"/>
-        <path d="M30 66 C -5 45, -30 10, -35 20 C -25 50, 0 72, 23 82 Z" fill="url(#ouroBrilho)" opacity="0.4"/>
-        
-        <!-- Pena Majestosa Média -->
-        <path d="M25 85 C -20 65, -55 35, -60 55 C -45 90, -10 105, 20 105 Z" fill="url(#ouroBase)"/>
-        <path d="M25 86 C -10 70, -40 45, -45 60 C -35 88, -5 100, 18 100 Z" fill="url(#ouroTopo)"/>
-        <path d="M25 86 C -10 70, -40 45, -45 60 C -35 88, -5 100, 18 100 Z" fill="url(#ouroBrilho)" opacity="0.3"/>
-        
-        <!-- Pena Larga Inferior -->
-        <path d="M20 105 C -15 95, -50 75, -55 100 C -35 125, -5 125, 25 120 Z" fill="url(#ouroBase)"/>
-        <path d="M20 106 C -10 98, -40 85, -42 102 C -28 120, 0 118, 22 115 Z" fill="url(#ouroTopo)"/>
-        
-        <!-- Escudo de Ouro (Cobre a base das penas) -->
-        <path d="M35 70 C 5 80, -5 110, 15 130 C 25 115, 30 90, 35 70 Z" fill="url(#ouroBase)"/>
-        <path d="M32 72 C 10 82, 0 108, 17 125 C 24 112, 28 92, 32 72 Z" fill="url(#ouroTopo)"/>
-      </g>
-      
-      <!-- Asa Bronze Nobre (Rank A) -->
-      <g id="asaBronzeMagne" filter="url(#shadowForte)">
-        <!-- Mesma curvatura da ouro, mas com cores bronze -->
-        <path d="M30 65 C -10 40, -40 0, -45 15 C -30 50, -5 75, 25 85 Z" fill="url(#bronzeTopo)"/>
-        <path d="M25 85 C -20 65, -55 35, -60 55 C -45 90, -10 105, 20 105 Z" fill="url(#bronzeTopo)"/>
-        <path d="M20 105 C -15 95, -50 75, -55 100 C -35 125, -5 125, 25 120 Z" fill="url(#bronzeTopo)"/>
-        <path d="M35 70 C 5 80, -5 110, 15 130 C 25 115, 30 90, 35 70 Z" fill="url(#ouroTopo)"/>
-      </g>
-    `;
+    \`;
   },
 
-  // Joia cravada S-Rank
+  _asaAnjo(cx, cy, side, material, rank) {
+    // side = 1 (Direita), -1 (Esquerda)
+    let penas = '';
+    
+    let configs = [];
+    if (rank === 'E' || rank === 'D') {
+      // Mecânicas/Sólidas
+      configs = [
+        { r: -70, x: 25, y: -20, s: 0.8 },
+        { r: -90, x: 30, y: 0, s: 0.8 },
+        { r: -110, x: 25, y: 20, s: 0.8 }
+      ];
+    } else if (rank === 'C') {
+      configs = [
+        { r: -50, x: 20, y: -25, s: 1 },
+        { r: -70, x: 28, y: -10, s: 1 },
+        { r: -90, x: 32, y: 10, s: 1 },
+        { r: -110, x: 25, y: 30, s: 0.8 },
+      ];
+    } else {
+      // Ranks B, A, S, N (Asas densas e longas para cima e pros lados)
+      configs = [
+        // Camada Fundo (Grandes)
+        { r: -20, x: 10, y: -35, s: 1.5 },
+        { r: -40, x: 20, y: -25, s: 1.4 },
+        { r: -60, x: 30, y: -10, s: 1.3 },
+        { r: -80, x: 35, y: 10,  s: 1.2 },
+        { r: -100, x: 32, y: 30, s: 1.1 },
+        { r: -120, x: 22, y: 50, s: 0.9 },
+        // Camada Frente (Menores)
+        { r: -30, x: 15, y: -20, s: 1.0 },
+        { r: -50, x: 25, y: -5,  s: 0.9 },
+        { r: -70, x: 30, y: 15,  s: 0.8 },
+        { r: -90, x: 25, y: 35,  s: 0.7 },
+      ];
+    }
+
+    if (rank === 'N') {
+      // Nacional tem expansão colossal
+      configs = configs.map(c => ({ r: c.r, x: c.x * 1.3, y: c.y * 1.3, s: c.s * 1.5 }));
+      // Mais penas
+      configs.push({ r: -10, x: 0, y: -50, s: 1.8 });
+      configs.push({ r: -130, x: 15, y: 70, s: 1.2 });
+    }
+
+    for(let c of configs) {
+      // Inverte x e rotação se for asa esquerda (-1)
+      const px = cx + c.x * side;
+      const py = cy + c.y;
+      const rot = c.r * side;
+      penas += this._penaGeometrica(px, py, c.s, rot, material);
+    }
+    
+    // Como a asa é gerada com o ponto base (0,0) perto do escudo, agrupamos tudo.
+    return \`<g>\${penas}</g>\`;
+  },
+
+  /* =========================================================================
+     4. JOIAS CIANO (LAPIDAÇÃO 6 FACETAS)
+     ========================================================================= */
   _joia(cx, cy, r) {
     const l = r * 0.8;
-    return `
-      <g filter="url(#shadowLeve)">
-        <polygon points="${cx},${cy-r} ${cx+r},${cy} ${cx},${cy+r} ${cx-r},${cy}" fill="#004d4d"/>
-        <polygon points="${cx},${cy-r} ${cx+r},${cy} ${cx+l},${cy-l} ${cx-l},${cy-l}" fill="#00ced1"/>
-        <polygon points="${cx-r},${cy} ${cx},${cy-r} ${cx-l},${cy-l} ${cx-l},${cy+l}" fill="#e0ffff" opacity="0.8"/>
-        <polygon points="${cx-l},${cy-l} ${cx+l},${cy-l} ${cx+l},${cy+l} ${cx-l},${cy+l}" fill="#00ffff"/>
-        <circle cx="${cx-l*0.5}" cy="${cy-l*0.5}" r="${r*0.2}" fill="#fff" filter="url(#glowCiano)"/>
+    return \`
+      <g filter="url(#shadowPenas)">
+        <!-- Top -->
+        <polygon points="\${cx},\${cy-r} \${cx+l},\${cy-l} \${cx-l},\${cy-l}" fill="url(#cianoLuz)"/>
+        <!-- Right -->
+        <polygon points="\${cx+r},\${cy} \${cx+l},\${cy+l} \${cx+l},\${cy-l}" fill="url(#cianoLuz)"/>
+        <!-- Bottom -->
+        <polygon points="\${cx},\${cy+r} \${cx-l},\${cy+l} \${cx+l},\${cy+l}" fill="url(#cianoSombra)"/>
+        <!-- Left -->
+        <polygon points="\${cx-r},\${cy} \${cx-l},\${cy-l} \${cx-l},\${cy+l}" fill="url(#cianoSombra)"/>
+        <!-- Mesa Central -->
+        <polygon points="\${cx-l},\${cy-l} \${cx+l},\${cy-l} \${cx+l},\${cy+l} \${cx-l},\${cy+l}" fill="#00ffff"/>
+        <circle cx="\${cx-l*0.5}" cy="\${cy-l*0.5}" r="\${r*0.2}" fill="#fff"/>
       </g>
-    `;
+    \`;
   },
 
   /* =========================================================================
-     4. CONSTRUTOR DE RANKS
+     5. O MOTOR PRINCIPAL (MONTAGEM DO ESCUDO)
      ========================================================================= */
 
   rank(letra, tam = 100) {
@@ -249,134 +276,119 @@ const EscudosV2 = {
     let varFundo = 'url(#fundoAzul)';
     let asa = '', magia = '', joias = '';
 
-    // Estrelas de fundo
-    const estrelas = `
-      <circle cx="70" cy="80" r="1.5" fill="#fff" opacity="0.6"/>
-      <circle cx="130" cy="100" r="2" fill="#fff" opacity="0.8"/>
-      <circle cx="90" cy="130" r="1" fill="#fff" opacity="0.5"/>
-      <circle cx="120" cy="75" r="1.5" fill="#fff" opacity="0.7"/>
-    `;
+    const CX = 100;
+    const CY = 100;
 
     switch (L) {
       case 'E':
-        asa = `<use href="#asaSolida"/><use href="#asaSolida" transform="translate(200, 0) scale(-1, 1)"/>`;
+        asa = this._asaAnjo(CX, CY, -1, 'prata', 'E') + this._asaAnjo(CX, CY, 1, 'prata', 'E');
         break;
 
       case 'D':
-        magia = `<circle cx="100" cy="100" r="85" fill="none" stroke="#00ced1" stroke-width="0.5" opacity="0.3" filter="url(#glowCiano)"/>`;
-        // Usa asa sólida escalada
-        asa = `<use href="#asaSolida" transform="scale(1.2) translate(-15, -15)"/><use href="#asaSolida" transform="translate(200, 0) scale(-1.2, 1.2) translate(-15, -15)"/>`;
+        asa = this._asaAnjo(CX, CY, -1, 'prata', 'D') + this._asaAnjo(CX, CY, 1, 'prata', 'D');
+        magia = \`<circle cx="\${CX}" cy="\${CY}" r="65" fill="none" stroke="#00ced1" stroke-width="0.5" opacity="0.3" filter="url(#glowDivino)" />\`;
         break;
 
       case 'C':
         materialBase = 'prata';
         varFundo = 'url(#fundoCosmo)';
-        magia = `<circle cx="100" cy="100" r="90" fill="none" stroke="#00ced1" stroke-width="1.5" opacity="0.6" filter="url(#glowCiano)"/>`;
-        asa = `<use href="#asaPrataPluma"/><use href="#asaPrataPluma" transform="translate(200, 0) scale(-1, 1)"/>`;
+        magia = \`<circle cx="\${CX}" cy="\${CY}" r="75" fill="none" stroke="#00ced1" stroke-width="1.5" opacity="0.6" filter="url(#glowDivino)" />\`;
+        asa = this._asaAnjo(CX, CY, -1, 'prata', 'C') + this._asaAnjo(CX, CY, 1, 'prata', 'C');
         break;
 
       case 'B':
         materialBase = 'ouro';
         varFundo = 'url(#fundoCosmo)';
-        magia = `<circle cx="100" cy="100" r="95" fill="none" stroke="#ffd700" stroke-width="1.5" opacity="0.5" filter="url(#glowOuro)"/>`;
-        asa = `<use href="#asaOuroMagne"/><use href="#asaOuroMagne" transform="translate(200, 0) scale(-1, 1)"/>`;
+        magia = \`<circle cx="\${CX}" cy="\${CY}" r="85" fill="none" stroke="#ffd700" stroke-width="1.5" opacity="0.5" filter="url(#glowDivino)" />\`;
+        asa = this._asaAnjo(CX, CY, -1, 'ouro', 'B') + this._asaAnjo(CX, CY, 1, 'ouro', 'B');
         break;
 
       case 'A':
         materialBase = 'ouro';
         varFundo = 'url(#fundoAzul)';
-        // Halo de Anjo no topo
-        magia = `
-          <g filter="url(#glowOuro)">
-            <ellipse cx="100" cy="-10" rx="45" ry="12" fill="none" stroke="#ffd700" stroke-width="4"/>
-            <ellipse cx="100" cy="-10" rx="45" ry="12" fill="none" stroke="#ffffff" stroke-width="1"/>
+        // Halo de Anjo
+        magia = \`
+          <g filter="url(#glowDivino)">
+            <ellipse cx="\${CX}" cy="20" rx="40" ry="10" fill="none" stroke="#ffd700" stroke-width="3"/>
+            <ellipse cx="\${CX}" cy="20" rx="40" ry="10" fill="none" stroke="#ffffff" stroke-width="1"/>
           </g>
-        `;
-        asa = `<use href="#asaBronzeMagne"/><use href="#asaBronzeMagne" transform="translate(200, 0) scale(-1, 1)"/>`;
+        \`;
+        asa = this._asaAnjo(CX, CY, -1, 'bronze', 'A') + this._asaAnjo(CX, CY, 1, 'bronze', 'A');
         break;
 
       case 'S':
         materialBase = 'ouro';
         varFundo = 'url(#fundoCosmo)';
-        magia = `
-          <g filter="url(#glowOuro)" opacity="0.9">
-            <circle cx="100" cy="100" r="105" fill="none" stroke="#ffd700" stroke-width="2" stroke-dasharray="15 8"/>
-            <circle cx="100" cy="100" r="95" fill="none" stroke="#fff" stroke-width="0.5"/>
-            <!-- Geometria rúnica cravada -->
-            <polygon points="100,-5 190,150 10,150" fill="none" stroke="#ffd700" stroke-width="1.5" opacity="0.7"/>
-            <polygon points="100,205 190,50 10,50" fill="none" stroke="#ffd700" stroke-width="1.5" opacity="0.7"/>
+        // Roda Rúnica
+        magia = \`
+          <g filter="url(#glowDivino)" opacity="0.9">
+            <circle cx="\${CX}" cy="\${CY}" r="95" fill="none" stroke="#ffd700" stroke-width="2" stroke-dasharray="15 8"/>
+            <circle cx="\${CX}" cy="\${CY}" r="85" fill="none" stroke="#fff" stroke-width="0.5"/>
+            <!-- Hexagrama Mágico perfeito -->
+            <polygon points="100,5 182,147 18,147" fill="none" stroke="#ffd700" stroke-width="1.5" opacity="0.6"/>
+            <polygon points="100,195 182,53 18,53" fill="none" stroke="#ffd700" stroke-width="1.5" opacity="0.6"/>
           </g>
-        `;
-        asa = `<use href="#asaOuroMagne"/><use href="#asaOuroMagne" transform="translate(200, 0) scale(-1, 1)"/>`;
-        joias = this._joia(45, 80, 7) + this._joia(155, 80, 7)
-              + this._joia(35, 110, 6) + this._joia(165, 110, 6);
+        \`;
+        asa = this._asaAnjo(CX, CY, -1, 'ouro', 'S') + this._asaAnjo(CX, CY, 1, 'ouro', 'S');
+        // Cravando joias nas asas S
+        joias = this._joia(45, 60, 5) + this._joia(155, 60, 5)
+              + this._joia(35, 90, 4) + this._joia(165, 90, 4);
         break;
 
       case 'N':
         materialBase = 'ouro';
         varFundo = 'url(#fundoCosmo)';
-        // Fundo Galáxia Extra Denso
-        magia = `
-          <circle cx="100" cy="100" r="115" fill="none" stroke="#00ced1" stroke-width="3" filter="url(#glowCiano)"/>
-          <circle cx="100" cy="100" r="108" fill="none" stroke="#ffd700" stroke-width="1.5" stroke-dasharray="4 8" filter="url(#glowOuro)"/>
+        // Fundo Galáxia e Roda Cósmica
+        magia = \`
+          <circle cx="\${CX}" cy="\${CY}" r="115" fill="none" stroke="#00ced1" stroke-width="3" filter="url(#glowDivino)"/>
+          <circle cx="\${CX}" cy="\${CY}" r="108" fill="none" stroke="#ffd700" stroke-width="1.5" stroke-dasharray="4 8" filter="url(#glowDivino)"/>
           
           <!-- Luas Orbitais Nacionais -->
-          <circle cx="100" cy="-15" r="5" fill="#00ffff" filter="url(#glowCiano)"/>
-          <circle cx="100" cy="215" r="5" fill="#00ffff" filter="url(#glowCiano)"/>
-          <circle cx="-15" cy="100" r="5" fill="#00ffff" filter="url(#glowCiano)"/>
-          <circle cx="215" cy="100" r="5" fill="#00ffff" filter="url(#glowCiano)"/>
+          <circle cx="100" cy="-15" r="5" fill="#00ffff" filter="url(#glowDivino)"/>
+          <circle cx="100" cy="215" r="5" fill="#00ffff" filter="url(#glowDivino)"/>
+          <circle cx="-15" cy="100" r="5" fill="#00ffff" filter="url(#glowDivino)"/>
+          <circle cx="215" cy="100" r="5" fill="#00ffff" filter="url(#glowDivino)"/>
           
-          <!-- Nebulosa -->
-          <circle cx="80" cy="80" r="30" fill="#6a1b9a" opacity="0.5" filter="url(#glowCiano)"/>
-          <circle cx="120" cy="120" r="25" fill="#00e5ff" opacity="0.4" filter="url(#glowCiano)"/>
-        `;
-        // Asas Nacionais Magnificadas
-        asa = `<use href="#asaOuroMagne" transform="scale(1.2) translate(-15, -15)"/>
-               <use href="#asaOuroMagne" transform="translate(200, 0) scale(-1.2, 1.2) translate(-15, -15)"/>`;
+          <!-- Poeira Nebular Atrás -->
+          <circle cx="80" cy="80" r="40" fill="#6a1b9a" opacity="0.4" filter="url(#glowDivino)"/>
+          <circle cx="120" cy="120" r="35" fill="#00e5ff" opacity="0.3" filter="url(#glowDivino)"/>
+        \`;
         
-        // Joias densas ao longo da moldura e asas
-        joias = this._joia(100, 25, 5) + this._joia(100, 170, 5)
-              + this._joia(38, 65, 4) + this._joia(162, 65, 4)
-              + this._joia(38, 133, 4) + this._joia(162, 133, 4)
-              // Joias nas asas
-              + this._joia(25, 60, 8) + this._joia(175, 60, 8)
-              + this._joia(15, 100, 7) + this._joia(185, 100, 7)
-              + this._joia(20, 135, 6) + this._joia(180, 135, 6);
+        asa = this._asaAnjo(CX, CY, -1, 'ouro', 'N') + this._asaAnjo(CX, CY, 1, 'ouro', 'N');
+        
+        // Joias densas espalhadas pelas asas e borda
+        joias = this._joia(100, 40, 5) + this._joia(100, 160, 5)
+              + this._joia(30, 40, 6) + this._joia(170, 40, 6)
+              + this._joia(15, 80, 5) + this._joia(185, 80, 5)
+              + this._joia(25, 120, 4) + this._joia(175, 120, 4);
         break;
     }
 
-    // Viewport gigante (200x200 de base) com margem farta para efeitos orbitais
     const vb = "-50 -50 300 300";
 
-    return this._unico(`
-<svg viewBox="${vb}" width="${tam}" height="${tam}" class="escudo-v2 escudo-${L}" style="max-width:none; overflow:visible; --fundo:${varFundo};">
+    return this._unico(\`
+<svg viewBox="\${vb}" width="\${tam}" height="\${tam}" class="escudo-v2 escudo-\${L}" style="max-width:none; overflow:visible; --fundo:\${varFundo};">
   <defs>
-    ${this._gradientes}
-    ${this._asasDef()}
+    \${this._gradientes}
   </defs>
 
-  <!-- Magia de Fundo, Halos, Anéis Cósmicos -->
-  ${magia}
+  <!-- 1. Magia Cósmica (Atrás de tudo) -->
+  \${magia}
 
-  <!-- Asas Atrás do Escudo -->
-  ${asa}
+  <!-- 2. Asas Geométricas (Atrás do Escudo) -->
+  \${asa}
 
-  <!-- Escudo Base com Extrusão Metálica Real -->
-  ${this._escudoBase(materialBase)}
+  <!-- 3. Moldura 3D Facetada e Fundo Encavado -->
+  \${this._moldura3D(materialBase, 1.2, CX, CY)}
+
+  <!-- 4. Lua, Estrela e Joias em Alto Relevo -->
+  \${this._luaEstrela(materialBase, 1.2, CX, CY)}
   
-  <!-- Estrelas no poço -->
-  ${estrelas}
-
-  <!-- Lua Crescente Biselada e Estrela Facetada -->
-  ${this._luaEstrela(materialBase)}
-  
-  <!-- Joias de Rank S/N (Sobrepostas a tudo) -->
-  ${joias}
-</svg>`);
+  \${joias}
+</svg>\`);
   }
 };
 
-// Export
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = EscudosV2;
 }
