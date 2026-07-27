@@ -739,15 +739,14 @@ def criar_tabelas():
     # Migracoes automaticas seguras para persistencia (Render com SQLite ou Postgres)
     try:
         with engine.begin() as conn:
-            try:
-                conn.execute(text("ALTER TABLE conquistas ADD COLUMN exclusiva_arquiteto BOOLEAN DEFAULT false"))
-            except Exception as e:
-                if "already exists" not in str(e).lower() and "duplicate column" not in str(e).lower():
-                    print(f"[DB MIGRATE WARNING] exclusiva_arquiteto: {e}")
-            try:
-                conn.execute(text("ALTER TABLE conquistas ADD COLUMN visivel BOOLEAN DEFAULT true"))
-            except Exception as e:
-                if "already exists" not in str(e).lower() and "duplicate column" not in str(e).lower():
-                    print(f"[DB MIGRATE WARNING] visivel: {e}")
+            conn.execute(text("ALTER TABLE conquistas ADD COLUMN exclusiva_arquiteto BOOLEAN DEFAULT false"))
     except Exception as e:
-        print(f"[DB] Erro no bloco de migracoes: {e}")
+        if "already exists" not in str(e).lower() and "duplicate column" not in str(e).lower():
+            print(f"[DB MIGRATE WARNING] exclusiva_arquiteto: {e}")
+            
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE conquistas ADD COLUMN visivel BOOLEAN DEFAULT true"))
+    except Exception as e:
+        if "already exists" not in str(e).lower() and "duplicate column" not in str(e).lower():
+            print(f"[DB MIGRATE WARNING] visivel: {e}")
