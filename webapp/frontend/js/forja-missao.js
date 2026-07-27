@@ -743,7 +743,6 @@ const ForjaMissao = {
         salvo = this._editId ? await API.rotinas.atualizar(this._editId, payload)
                              : await API.rotinas.criar(payload);
       } else {
-        const calc = await API.recompensas.simularTarefa(e.prioridade, e.dificuldade, e.categoria);
         const payload = {
           titulo: e.titulo.trim(),
           descricao: e.descricao || null,
