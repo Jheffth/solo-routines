@@ -29,7 +29,9 @@ const Tarefas = {
     this._isArquiteto = u?.nivel_acesso === 'Arquiteto';
     this._ordem = localStorage.getItem('sr_tarefas_ordem') || 'PRIORIDADE';
 
-    this._dataAtual = this._hojeISO();
+    if (!this._dataAtual) {
+      this._dataAtual = this._hojeISO();
+    }
 
     const inputData = document.getElementById('filter-data-tarefa');
     if (inputData && !inputData._tarefaChangeAdded) {
@@ -224,7 +226,14 @@ const Tarefas = {
       ForjaMissao.abrir({
         tipo: 'TAREFA',
         edicao: tarefa || null,
-        aoSalvar: () => this.carregar?.(),
+        aoSalvar: (salvo) => {
+          if (salvo && salvo.data_prevista) {
+            this._dataAtual = String(salvo.data_prevista).slice(0, 10);
+            const inputData = document.getElementById('filter-data-tarefa');
+            if (inputData) inputData.value = this._dataAtual;
+          }
+          this.carregar?.();
+        },
       });
     }
   },

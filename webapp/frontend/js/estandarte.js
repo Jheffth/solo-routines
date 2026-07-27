@@ -193,6 +193,12 @@ const Estandarte = {
           <span>${this._acervo.length
             ? `Mostrando as ${this._acervo.length} relíquia(s) reais do seu altar.`
             : 'Sem relíquias no altar — as molduras aparecem vazias.'}</span>
+          ${this._emTesteDash ? `
+            <button class="est-btn est-btn-destaque" data-est-testar-dash title="Atualiza o teste no banner do Dashboard com as opções escolhidas">⚡ Atualizar no Dashboard</button>
+            <button class="est-btn est-btn-perigo" data-est-restaurar-dash title="Restaura o banner real original do Dashboard">🔄 Restaurar Banner Real</button>
+          ` : `
+            <button class="est-btn est-btn-destaque" data-est-testar-dash title="Substitui o banner real do Dashboard por esta versão para testar">🎯 Testar no Lugar do Banner Real</button>
+          `}
           <button class="est-btn" data-est-fechar>Fechar</button>
         </footer>
       </div>`;
@@ -251,6 +257,8 @@ const Estandarte = {
       b.addEventListener('click', () => this.fechar()));
 
     el.addEventListener('click', (e) => {
+      if (e.target.closest('[data-est-testar-dash]')) { return this.testarNoDashboard(); }
+      if (e.target.closest('[data-est-restaurar-dash]')) { return this.restaurarDashboard(); }
       const v = e.target.closest('[data-est-versao]');
       if (v) { this._opcoes.versao = v.dataset.estVersao; return this._render(); }
       const t = e.target.closest('[data-est-tecido]');
@@ -271,13 +279,128 @@ const Estandarte = {
     }, { once: true });
   },
 
-  _pintar() {
-    const palco = this._el?.querySelector('.est-palco');
-    if (!palco) return;
+  _emTesteDash: false,
+
+  testarNoDashboard() {
+    const card = document.getElementById('hunter-card');
+    if (!card) {
+      SoloDialog?.toast?.('Abra a página do Dashboard primeiro para visualizar o teste no lugar do banner real!', 'warn');
+      return;
+    }
+
+    const containerTeste = document.getElementById('est-teste-banner-container');
+    
+    this._emTesteDash = true;
+    card.classList.add('est-teste-ativo');
+
     const u = { ...this._hunter(), ...(this._perfil || {}) };
-    palco.innerHTML = this._opcoes.versao === 'v1' ? this.html(u) : 
-                      this._opcoes.versao === 'v2' ? this.htmlV2(u) : 
-                      this.htmlV3(u);
+    const v = this._opcoes.versao;
+    const htmlBanner = v === 'v1' ? this.html(u) : v === 'v2' ? this.htmlV2(u) : this.htmlV3(u);
+    const vNome = v === 'v1' ? 'V1 (Estandarte)' : v === 'v2' ? 'V2 (Portal)' : 'V3 (S-Rank)';
+
+    if (containerTeste) {
+      const wrap = document.getElementById('est-teste-banner-wrap');
+      if (wrap) wrap.innerHTML = htmlBanner;
+      const aviso = document.querySelector('#est-teste-aviso-bar span');
+      if (aviso) aviso.innerHTML = `⚡ <strong>MODO TESTE ARQUITETO:</strong> Visualizando Banner ${vNome} no lugar do banner real`;
+    } else {
+      const c = document.createElement('div');
+      c.id = 'est-teste-banner-container';
+      c.style.position = 'relative';
+      c.style.zIndex = '5';
+      c.style.width = '100%';
+      c.innerHTML = `
+        <div id="est-teste-aviso-bar" style="position:relative; z-index:10; width:100%; margin-bottom:0.6rem; display:flex; align-items:center; justify-content:space-between; background:rgba(16,185,129,0.18); border:1px solid rgba(16,185,129,0.5); border-radius:8px; padding:0.45rem 0.9rem; font-family:var(--font-section); font-size:0.68rem; color:#a7f3d0; box-shadow:0 0 12px rgba(16,185,129,0.2);">
+          <span>⚡ <strong>MODO TESTE ARQUITETO:</strong> Visualizando Banner ${vNome} no lugar do banner real</span>
+          <button id="btn-restaurar-banner-direct" style="background:rgba(239,68,68,0.25); border:1px solid rgba(239,68,68,0.6); color:#fca5a5; padding:0.25rem 0.65rem; border-radius:6px; font-size:0.62rem; font-weight:700; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.4)'" onmouseout="this.style.background='rgba(239,68,68,0.25)'">✕ Restaurar Original</button>
+        </div>
+        <div id="est-teste-banner-wrap">${htmlBanner}</div>
+      `;
+      card.appendChild(c);
+
+      c.querySelector('#btn-restaurar-banner-direct')?.addEventListener('click', () => {
+        this.restaurarDashboard();
+      });
+    }
+
+    SoloDialog?.toast?.(`Banner ${vNome} aplicado no lugar do banner real do Dashboard!`, 'success');
+    if (this._el) this._render();
+  },
+
+  restaurarDashboard() {
+    const card = document.getElementById('hunter-card');
+    if (this._emTesteDash) {
+      this._emTesteDash = false;
+      const c = document.getElementById('est-teste-banner-container');
+      if (c) c.remove();
+      
+      if (card) {
+        card.classList.remove('est-teste-ativo');
+      }
+      
+      SoloDialog?.toast?.('Banner real do Dashboard restaurado!', 'info');
+      if (this._el) this._render();
+    }
+  },
+
+  _pintar() {
+    const u = { ...this._hunter(), ...(this._perfil || {}) };
+    const htmlBanner = this._opcoes.versao === 'v1' ? this.html(u) : 
+                       this._opcoes.versao === 'v2' ? this.htmlV2(u) : 
+                       this.htmlV3(u);
+
+    const palco = this._el?.querySelector('.est-palco');
+    if (palco) {
+      palco.innerHTML = htmlBanner;
+      window.BadgeCard?.ligarTodos('.est-palco [data-bc]', this._acervo);
+    }
+
+    if (this._emTesteDash) {
+      const wrap = document.getElementById('est-teste-banner-wrap');
+      if (wrap) {
+        wrap.innerHTML = htmlBanner;
+        const vNome = this._opcoes.versao === 'v1' ? 'V1 (Estandarte)' : this._opcoes.versao === 'v2' ? 'V2 (Portal)' : 'V3 (S-Rank)';
+        const avisoTxt = document.querySelector('#est-teste-aviso-bar span');
+        if (avisoTxt) avisoTxt.innerHTML = `⚡ <strong>MODO TESTE ARQUITETO:</strong> Visualizando Banner ${vNome} no lugar do banner real`;
+        window.BadgeCard?.ligarTodos('#est-teste-banner-wrap [data-bc]', this._acervo);
+      }
+    }
+
+    this._bindBotoesDashboard();
+  },
+
+  _bindBotoesDashboard() {
+    if (!this._emTesteDash) return;
+    
+    const wrap = document.getElementById('est-teste-banner-wrap');
+    if (!wrap) return;
+
+    // Aura button
+    const btnAura = wrap.querySelector('#dash-btn-trocar-aura');
+    if (btnAura) {
+      btnAura.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.restaurarDashboard();
+        if (window.App && window.App.navigate) {
+          window.App.navigate('inventario', { aba: 'cosmeticos' });
+        }
+      };
+    }
+
+    // Altar button
+    const btnAltar = wrap.querySelector('#dash-altar');
+    if (btnAltar) {
+      btnAltar.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (window.AltarReliquias && window.AltarReliquias.abrir) {
+          window.AltarReliquias.abrir(async () => {
+            await this.abrir(); // Re-carrega o acervo e renderiza novamente
+          });
+        }
+      };
+    }
   },
 
   /* ── Peças compartilhadas ────────────────────────────────── */
@@ -299,14 +422,20 @@ const Estandarte = {
     return '';
   },
 
-  /* As RELÍQUIAS de verdade, com a arte própria de cada uma. */
   _reliquias(tam = 34) {
     if (!this._acervo.length) return '';
     const medalha = c => (typeof ConquistaFX !== 'undefined' && ConquistaFX.miniMedalha)
       ? ConquistaFX.miniMedalha(c, tam)
       : `<span style="font-size:${tam * .7}px">${c.icone || '🏆'}</span>`;
-    return this._acervo.map(c =>
-      `<span class="est-reliquia" title="${this._esc(c.titulo)}">${medalha(c)}</span>`).join('');
+    
+    const itens = this._acervo.map(c =>
+      `<span class="est-reliquia" data-bc="${c.codigo}" style="cursor:pointer">${medalha(c)}</span>`).join('');
+      
+    const btnEditar = this._emTesteDash 
+      ? `<button class="hunter-relicario-editar" id="dash-altar" title="Escolher quais relíquias exibir" style="margin-left: 6px; z-index: 20; position: relative;">✎</button>` 
+      : '';
+      
+    return itens + btnEditar;
   },
 
   _rank(u) {
@@ -352,6 +481,7 @@ const Estandarte = {
               </div>
             </div>
             ${this._seloHex(letra, corRank)}
+            <button class="est-btn-aura" id="dash-btn-trocar-aura" title="Trocar Aura">◈</button>
           </div>
 
           <!-- Identidade -->
@@ -417,10 +547,10 @@ const Estandarte = {
       <div class="pt-banner" style="${estilo}">
         ${this._circuito()}
 
-        <div style="position:relative; z-index:2; display:grid; grid-template-columns: max-content minmax(340px, 1fr) max-content; align-items:center; gap:2rem;">
+        <div class="pt-v3-grid">
           
           <!-- Coluna 1: Avatar + Identidade -->
-          <div style="display:flex; align-items:center; gap:1.15rem;">
+          <div class="pt-v3-avatar-grupo">
             <!-- Retrato hexagonal -->
             <div class="pt-retrato">
               ${this._aura(u, 210)}
@@ -434,6 +564,7 @@ const Estandarte = {
                 </div>
               </div>
               ${this._seloHex(letra, corRank)}
+              <button class="est-btn-aura" id="dash-btn-trocar-aura" title="Trocar Aura">◈</button>
             </div>
 
             <!-- Identidade -->
@@ -906,6 +1037,7 @@ const Estandarte = {
           </svg>
           <span class="est-letra">${letra}</span>
         </div>
+        <button class="est-btn-aura" id="dash-btn-trocar-aura" title="Trocar Aura">◈</button>
       </div>`;
   },
 

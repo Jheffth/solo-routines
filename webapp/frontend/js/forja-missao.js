@@ -721,6 +721,7 @@ const ForjaMissao = {
     const btn = document.querySelector('[data-fm-salvar]');
     if (btn) btn.disabled = true;
     try {
+      let salvo = null;
       if (e.tipo === 'ROTINA') {
         const payload = {
           titulo: e.titulo.trim(),
@@ -739,9 +740,10 @@ const ForjaMissao = {
           hora_fim:    e.janela ? (e.hora_fim || null) : null,
           natureza:    e.natureza || 'ATIVA',
         };
-        if (this._editId) await API.rotinas.atualizar(this._editId, payload);
-        else              await API.rotinas.criar(payload);
+        salvo = this._editId ? await API.rotinas.atualizar(this._editId, payload)
+                             : await API.rotinas.criar(payload);
       } else {
+        const calc = await API.recompensas.simularTarefa(e.prioridade, e.dificuldade, e.categoria);
         const payload = {
           titulo: e.titulo.trim(),
           descricao: e.descricao || null,
@@ -762,13 +764,13 @@ const ForjaMissao = {
           prazo_minutos: e.prazo_custom
             ? Math.max(5, e.prazo_valor * e.prazo_unidade) : null,
         };
-        if (this._editId) await API.tarefas.atualizar(this._editId, payload);
-        else              await API.tarefas.criar(payload);
+        salvo = this._editId ? await API.tarefas.atualizar(this._editId, payload)
+                             : await API.tarefas.criar(payload);
       }
       SoloDialog?.toast?.(this._editId ? 'Missão reforjada!' : 'Missão forjada!', 'success');
       if (typeof SFX !== 'undefined') SFX.play('carimbo');
       this.fechar();
-      if (this._aoSalvar) await this._aoSalvar();
+      if (this._aoSalvar) await this._aoSalvar(salvo);
 
       // NÃO recarrega a página. `App.atualizarPaginaAtual()` refazia o
       // Dashboard inteiro — personagem, stats, gráficos, extrato — para

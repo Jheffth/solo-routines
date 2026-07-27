@@ -186,8 +186,6 @@ const Gemas = {
                   stroke="${p.brilho}" stroke-opacity=".18" stroke-width=".5"/>`);
     }
 
-    // Facetas do PAVILHÃO — insinuadas por linhas convergindo ao ponto
-    // baixo. É o que dá a sensação de que a pedra tem fundo, não é um disco.
     const pav = [];
     for (let i = 0; i < lados; i++) {
       const [x, y] = this._p(cx, cy, rExt, giro + passo * i);
@@ -196,28 +194,64 @@ const Gemas = {
 
     const hasAura = opts.auraV3 === true;
 
-    const particulasFable = !hasAura ? '' : Array.from({length: 16}).map((_, i) => {
-      // Distribuição orgânica ao redor da pedra (padrão Fable5)
-      const ang = (i * 22.5 + (i % 3) * 7) % 360;
-      const raio = 38 + (i % 4) * 8 + (i % 2) * 5;
-      const sz = 1.0 + (i % 3) * 0.5;
-      
-      const rad = ang * Math.PI / 180;
-      const cxP = 50 + Math.cos(rad) * raio;
-      const cyP = 50 + Math.sin(rad) * raio;
+    /* ══════════════════════════════════════════════════════════
+       AURA V3 S-RANK — FAÍSCAS POR CIMA DA GEMA
 
-      const op = i % 3 === 0 ? '.95' : (i % 2 === 0 ? '.75' : '.55');
-      const delay = (i * 0.15).toFixed(2);
-      const dur   = (2.0 + (i % 4) * 0.5).toFixed(2);
+       LIÇÃO DAS ITERAÇÕES ANTERIORES:
+
+       1. Tudo desenhado ANTES do corpo da pedra fica ATRÁS dela.
+          Em SVG a ordem de pintura é a ordem do DOM. As partículas
+          precisam vir DEPOIS do polígono do corpo para aparecerem
+          na frente.
+
+       2. O halo com r=48 num viewBox 100×100 mal sai da silhueta
+          da pedra (rExt=46). Precisa ser r=70+ para ser visível
+          como aura de verdade.
+
+       3. Anel orbital e cometa são ruído visual numa peça de 56px.
+          Removidos. A aura precisa ser: HALO grande atrás + FAÍSCAS
+          por cima.
+
+       4. Partículas com raio de nascimento 28px ficam sob o corpo
+          (rExt=46). Precisam nascer em 32–44 e viajar 18–30px para
+          fora, para serem vistas claramente além da silhueta.
+       ══════════════════════════════════════════════════════════ */
+
+    const particulasV3 = !hasAura ? '' : Array.from({length: 24}).map((_, i) => {
+      const ang = (i * 15 + (i % 3) * 7) % 360;
+      const raio = 32 + (i % 4) * 4;          // nascem perto da borda
+      const sz = 1.6 + (i % 4) * 0.4;         // maiores que antes
+
+      const rad = ang * Math.PI / 180;
+      const cxP = cx + Math.cos(rad) * raio;
+      const cyP = cy + Math.sin(rad) * raio;
+
+      /* Cada faísca se AFASTA do centro da pedra em linha reta
+         (para fora em todas as direções) e sobe ligeiramente.
+         O deslocamento radial é o que faz elas SAÍREM visivelmente
+         da silhueta em vez de ficarem coladas na borda. */
+      const afastarR = 18 + (i % 5) * 3;      // 18–30px para fora
+      const fimX = cxP + Math.cos(rad) * afastarR;
+      const fimY = cyP + Math.sin(rad) * afastarR - (6 + (i % 3) * 3);
+
+      const delay = (i * 0.1).toFixed(2);
+      const dur = (1.2 + (i % 5) * 0.25).toFixed(2);
 
       return `
-      <g class="gem-brasa-item" style="transform-origin: ${cxP.toFixed(2)}px ${cyP.toFixed(2)}px; animation-delay: ${delay}s; animation-duration: ${dur}s">
-        <!-- Núcleo quente (fogo da própria gema) -->
-        <circle cx="${cxP.toFixed(2)}" cy="${cyP.toFixed(2)}" r="${sz.toFixed(2)}"
-                fill="${p.fogo}" fill-opacity="${op}" filter="url(#brilhoExt)"/>
-        <!-- Halo da brasa (brilho da gema) -->
-        <circle cx="${cxP.toFixed(2)}" cy="${cyP.toFixed(2)}" r="${(sz * 2.2).toFixed(2)}"
-                fill="${p.brilho}" fill-opacity="${(op * 0.6).toFixed(2)}" filter="url(#brilhoExt)"/>
+      <g>
+        <circle cx="${cxP.toFixed(1)}" cy="${cyP.toFixed(1)}" r="${sz.toFixed(1)}"
+                fill="${p.corpo}" filter="url(#gemGlow)">
+          <animate attributeName="cx" values="${cxP.toFixed(1)};${fimX.toFixed(1)}" dur="${dur}s" begin="${delay}s" repeatCount="indefinite"/>
+          <animate attributeName="cy" values="${cyP.toFixed(1)};${fimY.toFixed(1)}" dur="${dur}s" begin="${delay}s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" values=".95;0" dur="${dur}s" begin="${delay}s" repeatCount="indefinite"/>
+          <animate attributeName="r" values="${sz.toFixed(1)};${(sz * 0.2).toFixed(1)}" dur="${dur}s" begin="${delay}s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="${cxP.toFixed(1)}" cy="${cyP.toFixed(1)}" r="${(sz * 2.5).toFixed(1)}"
+                fill="${p.mesa}" filter="url(#gemGlow)">
+          <animate attributeName="cx" values="${cxP.toFixed(1)};${fimX.toFixed(1)}" dur="${dur}s" begin="${delay}s" repeatCount="indefinite"/>
+          <animate attributeName="cy" values="${cyP.toFixed(1)};${fimY.toFixed(1)}" dur="${dur}s" begin="${delay}s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" values=".4;0" dur="${dur}s" begin="${delay}s" repeatCount="indefinite"/>
+        </circle>
       </g>`;
     }).join('');
 
@@ -226,16 +260,14 @@ const Gemas = {
      class="gema-svg" aria-hidden="true" style="max-width:none;overflow:visible;">
   ${hasAura ? `
   <style>
-    .gem-brasa-item {
-      animation: gem-crepitar 2.8s ease-in-out infinite alternate;
-    }
-    @keyframes gem-crepitar {
-      0%   { transform: scale(0.7) translate(0, 0); opacity: 0.5; }
-      50%  { transform: scale(1.3) translate(0, -6px); opacity: 1; }
-      100% { transform: scale(0.85) translate(0, -2px); opacity: 0.7; }
+    .gem-respirar { transform-origin: 50px 50px;
+                    animation: gem-pulsar 3s ease-in-out infinite alternate; }
+    @keyframes gem-pulsar {
+      0%   { transform: scale(0.88); opacity: .5; }
+      100% { transform: scale(1.18); opacity: .9; }
     }
     @media (prefers-reduced-motion: reduce) {
-      .gem-brasa-item { animation: none !important; }
+      .gem-respirar { animation: none !important; }
     }
   </style>` : ''}
   <defs>
@@ -259,21 +291,35 @@ const Gemas = {
       <feGaussianBlur stdDeviation="3.2" result="b"/>
       <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
+    ${hasAura ? `
+    <filter id="gemGlow" x="-200%" y="-200%" width="500%" height="500%">
+      <feGaussianBlur stdDeviation="2.4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="gemHaloBig" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="8" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <radialGradient id="gemHalo" cx="50%" cy="50%">
+      <stop offset="0%"   stop-color="${p.corpo}" stop-opacity=".7"/>
+      <stop offset="40%"  stop-color="${p.corpo}" stop-opacity=".4"/>
+      <stop offset="70%"  stop-color="${p.fundo}" stop-opacity=".2"/>
+      <stop offset="100%" stop-color="${p.sombra}" stop-opacity="0"/>
+    </radialGradient>
+    ` : ''}
   </defs>
 
   ${hasAura ? `
-  <!-- Aura intensa S-Rank -->
-  <polygon points="${this._poligono(cx, cy, rExt + 8, lados)}"
-           fill="${p.fogo}" opacity=".4" filter="url(#brilhoExt)"/>
-  <polygon points="${this._poligono(cx, cy, rExt + 3, lados)}"
-           fill="${p.brilho}" opacity=".6" filter="url(#brilhoExt)"/>
+  <!-- ══ HALO EXPANDIDO (por trás da pedra, bem maior que ela) ══ -->
+  <g class="gem-respirar">
+    <circle cx="50" cy="50" r="70" fill="url(#gemHalo)" filter="url(#gemHaloBig)"/>
+    <circle cx="50" cy="50" r="52" fill="${p.corpo}" opacity=".18" filter="url(#brilhoExt)"/>
+  </g>
   ` : `
   <!-- halo externo original Opus (V2) -->
   <polygon points="${this._poligono(cx, cy, rExt + 4, lados)}"
            fill="${p.corpo}" opacity=".22" filter="url(#brilhoExt)"/>
   `}
-
-  ${hasAura ? `<g class="pt-particulas">${particulasFable}</g>` : ''}
 
   <!-- corpo -->
   <polygon points="${this._poligono(cx, cy, rExt, lados)}" fill="url(#corpo)"/>
@@ -302,6 +348,11 @@ const Gemas = {
   <!-- aresta da cintura -->
   <polygon points="${this._poligono(cx, cy, rExt, lados)}" fill="none"
            stroke="${p.brilho}" stroke-opacity=".5" stroke-width="1.1"/>
+
+  ${hasAura ? `
+  <!-- ══ FAÍSCAS CINÉTICAS (POR CIMA da pedra — é a última camada) ══ -->
+  <g>${particulasV3}</g>
+  ` : ''}
 </svg>`);
   },
 

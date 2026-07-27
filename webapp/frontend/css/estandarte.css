@@ -37,7 +37,7 @@
   overflow: hidden;
   background:
     radial-gradient(120% 180% at 78% 30%, color-mix(in srgb, var(--pt-feixe) 9%, transparent), transparent 60%),
-    linear-gradient(112deg, var(--pt-fundo) 0%, var(--pt-fundo2) 62%, var(--pt-fundo) 100%);
+    linear-gradient(112deg, color-mix(in srgb, var(--pt-fundo) 85%, transparent) 0%, color-mix(in srgb, var(--pt-fundo2) 85%, transparent) 62%, color-mix(in srgb, var(--pt-fundo) 85%, transparent) 100%);
   border: 1px solid color-mix(in srgb, var(--pt-circuito) 65%, transparent);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 20px 44px rgba(0,0,0,.6);
 }
@@ -484,6 +484,65 @@
   .pt-reliquias{ padding-left: 0; }
 }
 
+/* ══════════════════════════════════════════════════════════
+   V3 · RESPONSIVIDADE
+
+   O V3 usava inline styles com grid-template-columns hardcoded
+   (minmax(340px,1fr)) que estouravam o container em telas < 600px.
+   Agora vive em classes CSS com breakpoints adaptativos.
+
+   WIDE (>720px): 3 colunas — avatar+id | barra XP | gemas
+   MEDIUM (480–720px): avatar+id empilha, barra abaixo, gemas em linha
+   NARROW (<480px): tudo empilhado e centralizado
+   ══════════════════════════════════════════════════════════ */
+.pt-v3-grid {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: max-content 1fr max-content;
+  align-items: center;
+  gap: 1.2rem;
+}
+.pt-v3-avatar-grupo {
+  display: flex;
+  align-items: center;
+  gap: 1.15rem;
+}
+
+@media (max-width: 720px) {
+  .pt-v3-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    justify-items: center;
+    text-align: center;
+  }
+  .pt-v3-avatar-grupo {
+    flex-direction: column;
+    align-items: center;
+    gap: .6rem;
+  }
+  .pt-v3-avatar-grupo .pt-identidade { text-align: center; }
+  .pt-v3-avatar-grupo .pt-chips      { justify-content: center; }
+  .pt-v3-grid .pt-nucleo {
+    width: 100%;
+    max-width: 500px;
+  }
+  .pt-v3-grid .pt-gemas {
+    justify-content: center;
+    width: 100%;
+  }
+  .pt-v3-grid .pt-nome { font-size: 1.5rem; }
+}
+
+@media (max-width: 480px) {
+  .pt-banner { padding: 1rem .8rem; }
+  .pt-v3-grid { gap: .7rem; }
+  .pt-hex { width: 78px; height: 88px; }
+  .pt-anel { width: 88px; height: 100px; }
+  .pt-v3-grid .pt-nome { font-size: 1.25rem; }
+  .pt-v3-grid .pt-gemas { gap: .3rem; }
+}
+
 /* ── Vitrine ─────────────────────────────────────────────── */
 .est-overlay {
   position: fixed; inset: 0; z-index: 9600;
@@ -589,7 +648,7 @@
   position: relative;
   padding: 1.4rem 1.6rem 1.5rem;
   background:
-    linear-gradient(160deg, var(--est-pano-alto), var(--est-pano) 45%, var(--est-pano2));
+    linear-gradient(160deg, color-mix(in srgb, var(--est-pano-alto) 85%, transparent), color-mix(in srgb, var(--est-pano) 85%, transparent) 45%, color-mix(in srgb, var(--est-pano2) 85%, transparent));
   border-left: 1px solid rgba(255,255,255,.05);
   border-right: 1px solid rgba(255,255,255,.05);
   box-shadow:
@@ -942,6 +1001,23 @@
   border-radius: 8px; cursor: pointer; transition: all .17s;
 }
 .est-btn:hover { background: rgba(212,169,74,.22); }
+.est-btn-destaque {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, .12);
+  border: 1px solid rgba(56, 189, 248, .45);
+}
+.est-btn-destaque:hover {
+  background: rgba(56, 189, 248, .25);
+  box-shadow: 0 0 12px rgba(56, 189, 248, .3);
+}
+.est-btn-perigo {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, .12);
+  border: 1px solid rgba(239, 68, 68, .45);
+}
+.est-btn-perigo:hover {
+  background: rgba(239, 68, 68, .25);
+}
 
 /* ── Estreito ────────────────────────────────────────────── */
 @media (max-width: 760px) {
@@ -954,4 +1030,61 @@
 
 @media (prefers-reduced-motion: reduce) {
   .est-balanco, .est-barra::after { animation: none !important; }
+}
+
+/* ── Vitrine em telas estreitas ──────────────────────────── */
+@media (max-width: 600px) {
+  .est-overlay   { padding: .5rem; }
+  .est-palco     { padding: 1.2rem .8rem 1rem; }
+  .est-controles { padding: .7rem .8rem; gap: .8rem; }
+  .est-topo      { padding: .6rem .8rem; }
+  .est-versoes   { gap: .2rem; }
+  .est-v         { padding: .3rem .5rem; font-size: .5rem; }
+  .pt-retrato    { width: 130px; height: 130px; }
+}
+
+/* ── Integração Modo Teste no Dashboard ────────────────────── */
+#hunter-card.est-teste-ativo {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+#hunter-card.est-teste-ativo::before,
+#hunter-card.est-teste-ativo::after,
+#hunter-card.est-teste-ativo .hunter-window-body {
+  display: none !important;
+}
+#est-teste-banner-wrap .est-conjunto,
+#est-teste-banner-wrap .pt-banner {
+  max-width: 100% !important;
+  width: 100% !important;
+  margin: 0 !important;
+}
+
+/* ── Botão Trocar Aura no Estandarte ───────────────────────── */
+.est-btn-aura {
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg,#2a0a3e,#130a28);
+  border: 1.5px solid rgba(244,143,177,.65);
+  color: #f48fb1;
+  font-size: .72rem;
+  cursor: pointer;
+  z-index: 20;
+  box-shadow: 0 0 10px rgba(244,143,177,.3),inset 0 0 6px rgba(244,143,177,.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.2s;
+}
+.est-btn-aura:hover {
+  background: rgba(244,143,177,.15);
+  box-shadow: 0 0 14px rgba(244,143,177,.4),inset 0 0 8px rgba(244,143,177,.2);
 }
