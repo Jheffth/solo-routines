@@ -412,7 +412,11 @@ const Dashboard = {
     const countEl = document.getElementById('rotinas-count');
     if (!cont) return [];
 
-    cont.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-muted);font-family:var(--font-section);font-size:.75rem">\u23F3 Carregando...</div>';
+    const htmlAtual = cont.innerHTML.trim();
+    const silencioso = htmlAtual.length > 0 && !htmlAtual.includes('Carregando') && !htmlAtual.includes('Nenhuma missão');
+    if (!silencioso) {
+      cont.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-muted);font-family:var(--font-section);font-size:.75rem">\u23F3 Carregando...</div>';
+    }
 
     const janela = this._intervaloExtrato(periodo);
 

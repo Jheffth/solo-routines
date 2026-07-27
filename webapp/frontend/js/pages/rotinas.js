@@ -60,7 +60,12 @@ const Rotinas = {
     this.destruir();
     const cont = document.getElementById('lista-rotinas');
     if (!cont) return;
-    cont.innerHTML = '<div class="loading-spinner-wrap"><div class="loading-spinner"></div></div>';
+    
+    const htmlAtual = cont.innerHTML.trim();
+    const silencioso = htmlAtual.length > 0 && !htmlAtual.includes('loading-spinner') && !htmlAtual.includes('empty-state');
+    if (!silencioso) {
+      cont.innerHTML = '<div class="loading-spinner-wrap"><div class="loading-spinner"></div></div>';
+    }
 
     try {
       const lista = await API.get(`/rotinas/?tipo=${tipo}`);
