@@ -33,8 +33,9 @@ from motors import fechamento
 router = APIRouter(prefix="/extrato", tags=["extrato"])
 
 # Teto de segurança: o extrato é uma tela, não um dump do banco.
-JANELA_MAXIMA_DIAS = 370
-LIMITE_PADRAO = 500
+# Agora o limite cobre 1 ano pra trás e 1 ano pra frente (para missões gerais).
+JANELA_MAXIMA_DIAS = 800
+LIMITE_PADRAO = 1000
 
 # CONFESSADA entra aqui: é desfecho, não pendência. Sem ela, a missão
 # confessada continuaria oferecendo botões de execução no cartão e contaria

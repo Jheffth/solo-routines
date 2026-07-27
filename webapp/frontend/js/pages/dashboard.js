@@ -388,9 +388,9 @@ const Dashboard = {
       const primeiro = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
       return { inicio: this._isoLocal(primeiro), fim, dias: hoje.getDate() };
     }
-    // "tudo" respeita o teto do backend (JANELA_MAXIMA_DIAS = 370): pedir mais
-    // s\u00F3 faria a API recortar de volta em sil\u00EAncio.
-    if (periodo === 'tudo')  return { inicio: recuar(365), fim, dias: 365 };
+    // "tudo" respeita o teto do backend (agora JANELA_MAXIMA_DIAS = 800)
+    // Cobre 365 dias para trás e 365 dias para frente (futuro).
+    if (periodo === 'tudo')  return { inicio: recuar(365), fim: recuar(-365), dias: 730 };
     if (periodo === '7dias') return { inicio: recuar(6),   fim, dias: 7  };
     if (periodo === '30dias')return { inicio: recuar(29),  fim, dias: 30 };
     return { inicio: fim, fim, dias: 1 };   // hoje
