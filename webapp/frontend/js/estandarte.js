@@ -181,6 +181,8 @@ const Estandarte = {
               V2 · Portal</button>
             <button class="est-v ${o.versao === 'v3' ? 'on' : ''}" data-est-versao="v3">
               V3 · S-Rank</button>
+            <button class="est-v ${o.versao === 'v4' ? 'on' : ''}" data-est-versao="v4" style="color: #22d3ee; border-color: rgba(34, 211, 238, 0.4);">
+              V4 · Otimizada</button>
           </div>
           <button class="est-x" data-est-fechar aria-label="Fechar">✕</button>
         </header>
@@ -347,7 +349,8 @@ const Estandarte = {
     const u = { ...this._hunter(), ...(this._perfil || {}) };
     const htmlBanner = this._opcoes.versao === 'v1' ? this.html(u) : 
                        this._opcoes.versao === 'v2' ? this.htmlV2(u) : 
-                       this.htmlV3(u);
+                       this._opcoes.versao === 'v3' ? this.htmlV3(u) : 
+                       this.htmlV4(u);
 
     const palco = this._el?.querySelector('.est-palco');
     if (palco) {
@@ -359,7 +362,7 @@ const Estandarte = {
       const wrap = document.getElementById('est-teste-banner-wrap');
       if (wrap) {
         wrap.innerHTML = htmlBanner;
-        const vNome = this._opcoes.versao === 'v1' ? 'V1 (Estandarte)' : this._opcoes.versao === 'v2' ? 'V2 (Portal)' : 'V3 (S-Rank)';
+        const vNome = this._opcoes.versao === 'v1' ? 'V1 (Estandarte)' : this._opcoes.versao === 'v2' ? 'V2 (Portal)' : this._opcoes.versao === 'v3' ? 'V3 (S-Rank)' : 'V4 (Otimizada)';
         const avisoTxt = document.querySelector('#est-teste-aviso-bar span');
         if (avisoTxt) avisoTxt.innerHTML = `⚡ <strong>MODO TESTE ARQUITETO:</strong> Visualizando Banner ${vNome} no lugar do banner real`;
         window.BadgeCard?.ligarTodos('#est-teste-banner-wrap [data-bc]', this._acervo);
@@ -388,9 +391,9 @@ const Estandarte = {
       };
     }
 
-    // Altar button
-    const btnAltar = wrap.querySelector('#dash-altar');
-    if (btnAltar) {
+    // Altar button (pode haver versão desktop e mobile com o mesmo ID por conta de layout)
+    const btnsAltar = wrap.querySelectorAll('#dash-altar');
+    btnsAltar.forEach(btnAltar => {
       btnAltar.onclick = (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -398,6 +401,93 @@ const Estandarte = {
           window.AltarReliquias.abrir(async () => {
             await this.abrir(); // Re-carrega o acervo e renderiza novamente
           });
+        }
+      };
+    });
+    
+    // Swap / Carrossel 3D Button (Apenas Mobile)
+    const btnSwap = wrap.querySelector('#dash-altar-swap');
+    if (btnSwap) {
+      const grid = wrap.querySelector('.pt-v4-grid');
+      let isGemasFront = false;
+      
+      const girarCarrossel = () => {
+        if (!grid) return;
+        isGemasFront = !isGemasFront;
+        if (isGemasFront) {
+          grid.classList.add('cq-gemas-front');
+          grid.classList.remove('cq-badges-front');
+        } else {
+          grid.classList.add('cq-badges-front');
+          grid.classList.remove('cq-gemas-front');
+        }
+      };
+      
+      // Limpa qualquer interval anterior do mesmo widget para evitar leaks
+      if (this._carouselInterval) clearInterval(this._carouselInterval);
+      
+      // Inicia o carrossel automático a cada 5 segundos
+      this._carouselInterval = setInterval(girarCarrossel, 5000);
+      
+      btnSwap.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // Quando o usuário clica, ele assume o controle e para o giro automático
+        if (this._carouselInterval) {
+          clearInterval(this._carouselInterval);
+          this._carouselInterval = null;
+        }
+        girarCarrossel();
+      };
+    }
+
+    // Editar Epígrafe
+    const btnEpigrafe = wrap.querySelector('#dash-btn-editar-epigrafe');
+    if (btnEpigrafe) {
+      btnEpigrafe.onclick = async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const { value: novaFrase } = await Swal.fire({
+          title: 'Editar Citação',
+          input: 'text',
+          inputLabel: 'Qual a sua epígrafe? (Máximo 100 caracteres)',
+          inputValue: this._u.bio || '',
+          inputAttributes: {
+            maxlength: 100
+          },
+          showCancelButton: true,
+          confirmButtonText: 'Gravar',
+          cancelButtonText: 'Cancelar',
+          background: '#0d1117',
+          color: '#c9d1d9',
+          customClass: {
+            confirmButton: 'solo-btn-primary',
+            cancelButton: 'solo-btn-secondary'
+          }
+        });
+        
+        if (novaFrase !== undefined) {
+          try {
+            const resp = await fetch('/api/perfil', {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + (localStorage.getItem('solo_token') || '')
+              },
+              body: JSON.stringify({ bio: novaFrase })
+            });
+            if (resp.ok) {
+              const data = await resp.json();
+              this._u.bio = novaFrase;
+              // Atualiza localmente sem precisar recarregar o banner inteiro, ou recarrega:
+              this.abrir();
+            } else {
+              Swal.fire({ icon: 'error', title: 'Erro', text: 'Não foi possível salvar a epígrafe.' });
+            }
+          } catch (err) {
+            console.error(err);
+          }
         }
       };
     }
@@ -422,7 +512,7 @@ const Estandarte = {
     return '';
   },
 
-  _reliquias(tam = 34) {
+  _reliquias(tam = 34, hideEditBtn = false) {
     if (!this._acervo.length) return '';
     const medalha = c => (typeof ConquistaFX !== 'undefined' && ConquistaFX.miniMedalha)
       ? ConquistaFX.miniMedalha(c, tam)
@@ -431,8 +521,8 @@ const Estandarte = {
     const itens = this._acervo.map(c =>
       `<span class="est-reliquia" data-bc="${c.codigo}" style="cursor:pointer">${medalha(c)}</span>`).join('');
       
-    const btnEditar = this._emTesteDash 
-      ? `<button class="hunter-relicario-editar" id="dash-altar" title="Escolher quais relíquias exibir" style="margin-left: 6px; z-index: 20; position: relative;">✎</button>` 
+    const btnEditar = (this._emTesteDash && !hideEditBtn)
+      ? `<button class="est-btn-altar est-btn-altar-desktop" id="dash-altar" title="Modificar Relíquias"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>` 
       : '';
       
     return itens + btnEditar;
@@ -518,6 +608,121 @@ const Estandarte = {
             ${this._gema('ambar', (u.moedas ?? 0).toLocaleString('pt-BR'), 'Mana Coins')}
             ${this._gema('rubi', u.streak_atual ?? 0, 'Streak')}
           </div>
+        </div>
+      </div>`;
+  },
+
+  /* ══════════════════════════════════════════════════════════
+     V4 · S-RANK (Otimizada com Dock e Epígrafe)
+     ══════════════════════════════════════════════════════════ */
+  htmlV4(u, opts = {}) {
+    const o = { ...this._opcoes, ...opts };
+    const c = this.CAMPOS[o.campo] || this.CAMPOS.petroleo;
+    const letra = this._rank(u);
+    const corRank = this.RANK_CORES[letra] || '#a855f7';
+    
+    const xp = Math.max(0, u.xp_atual || 0);
+    const alvo = Math.max(1, u.xp_proximo_nivel || 100);
+    const pct = Math.min(100, (xp / alvo) * 100);
+    
+    const estilo = [
+      `--pt-fundo:${c.fundo}`, `--pt-fundo2:${c.fundo2}`,
+      `--pt-circuito:${c.circuito}`, `--pt-feixe:${c.feixe}`, `--pt-feixe2:${c.feixe2}`,
+      `--pt-rank:${corRank}`,
+    ].join(';');
+
+    const cargo = u.nivel_acesso && u.nivel_acesso !== 'User' ? u.nivel_acesso : null;
+    const epigrafe = u.bio || 'Desperte o seu sistema. Erga-se contra a maré do ordinário.';
+
+    return `
+      <div class="pt-banner pt-v4-banner" style="${estilo}">
+        <div class="pt-v4-hologrid"></div>
+        ${this._circuito()}
+
+        <div class="pt-v3-grid pt-v4-grid">
+          
+          <!-- Coluna 1: Avatar + Identidade -->
+          <div class="pt-v3-avatar-grupo pt-v4-avatar">
+            <div class="pt-retrato">
+              ${this._aura(u, 210)}
+              ${this._orbitaHex()}
+              <div class="pt-hex">
+                <div class="pt-hex-luz"></div>
+                <div class="pt-hex-foto">
+                  ${u.avatar_url
+                    ? `<img src="${this._esc(u.avatar_url)}" alt="">`
+                    : `<span class="pt-inicial">${this._esc((u.nome || 'H')[0]).toUpperCase()}</span>`}
+                </div>
+              </div>
+              ${this._seloHex(letra, corRank)}
+              <button class="est-btn-aura" id="dash-btn-trocar-aura" title="Trocar Aura">◈</button>
+            </div>
+
+            <div class="pt-identidade">
+              <div class="pt-nome">${this._esc(u.nome || 'Hunter')}</div>
+              <div class="pt-titulo pt-v4-shimmer">"${this._esc(u.titulo || 'Sem título')}"</div>
+              <div class="pt-chips">
+                <span class="pt-chip pt-chip-rank">${letra}-Rank</span>
+                ${cargo ? `<span class="pt-chip pt-chip-cargo">★ ${this._esc(cargo).toUpperCase()} ★</span>` : ''}
+              </div>
+            </div>
+          </div>
+
+          <!-- Coluna 2: Núcleo e Estruturas de Encaixe -->
+          <div class="pt-nucleo pt-v4-nucleo">
+            
+            <div class="pt-v4-trilho-mestre">
+              <div class="pt-v4-ancora pt-v4-ancora-esq"><svg viewBox="0 0 10 20"><path fill="currentColor" d="M10,0 L0,5 L0,15 L10,20 Z"/></svg></div>
+              <div class="pt-linha-xp">
+                <div class="pt-feixe-caixa">
+                  <div class="pt-xp-num">${xp.toLocaleString('pt-BR')} / ${alvo.toLocaleString('pt-BR')} XP</div>
+                  ${this._barraXP(pct, c)}
+                </div>
+              </div>
+              <div class="pt-v4-ancora pt-v4-ancora-dir"><svg viewBox="0 0 10 20"><path fill="currentColor" d="M0,0 L10,5 L10,15 L0,20 Z"/></svg></div>
+            </div>
+
+            <div class="pt-v4-reliquias-dock">
+              <div class="pt-reliquias">
+                <span class="pt-reliquias-fila">${this._reliquias(50)
+                  || '<span class="pt-vazio">nenhuma relíquia no altar</span>'}</span>
+              </div>
+            </div>
+
+            <div class="pt-v4-epigrafe">
+              <span class="pt-v4-quote-mark left">❝</span>
+              <span class="pt-v4-quote-text">${this._esc(epigrafe)}</span>
+              <span class="pt-v4-quote-mark right">❞</span>
+              <button class="est-btn-editar-epigrafe" id="dash-btn-editar-epigrafe" title="Editar Epígrafe">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+              </button>
+            </div>
+
+          </div>
+
+          <!-- Coluna 3: Gemas -->
+          <div class="pt-gemas pt-v4-gemas">
+            <div class="pt-v4-fio-conector"></div>
+            ${this._gema('ametista', u.nivel_atual ?? 1, 'Nível', { auraV3: true })}
+            ${this._gema('ambar', (u.moedas ?? 0).toLocaleString('pt-BR'), 'Mana Coins', { auraV3: true })}
+            ${this._gema('rubi', u.streak_atual ?? 0, 'Streak', { auraV3: true })}
+          </div>
+          
+          <!-- Botões de Ação Mobile Soltos no Grid -->
+          <div class="est-v4-acoes-mobile">
+            <button class="est-btn-altar" id="dash-altar-swap" title="Girar Carrossel">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="1 4 1 10 7 10"></polyline>
+                <polyline points="23 20 23 14 17 14"></polyline>
+                <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10"></path>
+                <path d="M3.51 15A9 9 0 0 0 18.36 18.36L23 14"></path>
+              </svg>
+            </button>
+            <button class="est-btn-altar" id="dash-altar" title="Modificar Relíquias">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            </button>
+          </div>
+          
         </div>
       </div>`;
   },

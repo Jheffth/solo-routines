@@ -16,8 +16,8 @@ if not SECRET_KEY:
     # Desenvolvimento: gera uma chave efêmera (derruba as sessões a cada boot — é o esperado)
     import secrets as _secrets
     SECRET_KEY = _secrets.token_urlsafe(48)
-    print("[CONFIG] ⚠ SECRET_KEY ausente — usando chave temporária de desenvolvimento.")
-    print("[CONFIG]   Defina SECRET_KEY no .env para manter as sessões entre reinícios.")
+    print("[CONFIG] AVISO: SECRET_KEY ausente - usando chave temporaria de desenvolvimento.")
+    print("[CONFIG] Defina SECRET_KEY no .env para manter as sessoes entre reinicios.")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24h
 

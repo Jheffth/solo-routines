@@ -33,6 +33,7 @@ class Usuario(Base):
     # Personagem RPG
     classe          = Column(String(50), default="E-Rank")   # E → D → C → B → A → S → National
     titulo          = Column(String(100), default="O Mais Fraco")
+    bio             = Column(String(100), nullable=True)     # Frase/Epígrafe
     xp_total        = Column(Integer, default=0)             # XP acumulado total
     xp_atual        = Column(Integer, default=0)             # XP no nível atual
     nivel_atual     = Column(Integer, default=1)

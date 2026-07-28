@@ -145,6 +145,7 @@ def servir_avatar(nome: str):
 class PerfilEdit(BaseModel):
     nome:       Optional[str] = None
     titulo:     Optional[str] = None
+    bio:        Optional[str] = None
     avatar_url: Optional[str] = None
     classe:     Optional[str] = None
 
@@ -153,6 +154,7 @@ class PerfilEdit(BaseModel):
 class ArquitetoEdit(BaseModel):
     nome:        Optional[str] = None
     titulo:      Optional[str] = None
+    bio:         Optional[str] = None
     avatar_url:  Optional[str] = None
     classe:      Optional[str] = None
     nivel_atual: Optional[int] = None
@@ -166,14 +168,15 @@ def editar_perfil(
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(get_usuario_atual),
 ):
-    """Qualquer usuário pode atualizar nome, título e avatar."""
+    """Qualquer usuário pode atualizar nome, título, bio e avatar."""
     if payload.nome       is not None: usuario.nome       = payload.nome
     if payload.titulo     is not None: usuario.titulo     = payload.titulo
+    if payload.bio        is not None: usuario.bio        = payload.bio
     if payload.avatar_url is not None: usuario.avatar_url = payload.avatar_url
     if payload.classe     is not None: usuario.classe     = payload.classe
     db.commit()
     db.refresh(usuario)
-    return {"ok": True, "nome": usuario.nome, "titulo": usuario.titulo, "avatar_url": usuario.avatar_url}
+    return {"ok": True, "nome": usuario.nome, "titulo": usuario.titulo, "bio": usuario.bio, "avatar_url": usuario.avatar_url}
 
 
 @router.put("/arquiteto")
