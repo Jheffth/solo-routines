@@ -71,6 +71,64 @@ const SoloDialog = {
     });
   },
 
+  /* ── Prompt (substitui prompt()) ──────────────────────────
+
+     Nasceu porque a epígrafe da V4 pedia uma caixa de texto, e o
+     estandarte.js resolvia com `Swal.fire` — uma biblioteca que o
+     resto do app não usa e que nem sempre está carregada. Duas
+     linguagens de diálogo no mesmo produto é o começo de duas de
+     tudo.
+
+     Devolve o texto, ou `null` se o hunter cancelou. String vazia é
+     resposta VÁLIDA: quem quer apagar a própria epígrafe tem
+     direito de apagá-la.
+
+     O valor é acompanhado por um ouvinte em vez de lido no fim: o
+     nó do campo é removido pela animação de saída, e ler depois
+     disso devolveria vazio. */
+  prompt(msg, opts = {}) {
+    return new Promise(resolve => {
+      let valor = String(opts.valor ?? '');
+      const esc = s => String(s).replace(/[&<>"]/g, c =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+      const corpo = `${msg}
+        <input id="solo-dialog-input" type="text"
+          value="${esc(valor)}" maxlength="${opts.maxlength || 200}"
+          placeholder="${esc(opts.placeholder || '')}"
+          style="
+            width:100%;margin-top:.75rem;padding:.55rem .7rem;
+            background:rgba(15,23,42,.7);
+            border:1px solid rgba(100,116,139,.35);border-radius:.5rem;
+            color:#e2e8f0;font-family:var(--font-body,Inter,sans-serif);
+            font-size:.88rem;outline:none;box-sizing:border-box;
+          ">`;
+
+      this._abrir({
+        icon:   opts.icon   || '✎',
+        titulo: opts.titulo || 'Editar',
+        msg:    corpo,
+        tipo:   opts.tipo   || 'info',
+        botoes: [
+          { label: opts.btnCancel || 'Cancelar', classe: 'btn-cancel', resolve: false },
+          { label: opts.btnOk     || 'Gravar',   classe: 'btn-ok',     resolve: true  },
+        ],
+        onClose: (ok) => resolve(ok ? valor : null),
+      });
+
+      const campo = document.getElementById('solo-dialog-input');
+      if (!campo) return;
+      campo.addEventListener('input', () => { valor = campo.value; });
+      campo.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          document.querySelector('#solo-dialog-btns [data-papel="btn-ok"]')?.click();
+        }
+      });
+      setTimeout(() => { campo.focus(); campo.select(); }, 60);
+    });
+  },
+
   // ── Toast (notificação passageira) ───────────────────────
   toast(msg, tipo = 'success', duracao = 3500) {
     if (!this._toastContainer) this.init();
@@ -223,6 +281,9 @@ const SoloDialog = {
       const btn = document.createElement('button');
       const isOk = b.classe === 'btn-ok';
       btn.textContent = b.label;
+      // Marca o papel no próprio nó: sem isto não há como um Enter no
+      // campo de texto do prompt() encontrar o botão de confirmar.
+      btn.dataset.papel = b.classe;
       btn.style.cssText = [
         'font-family:var(--font-section,Rajdhani,sans-serif)',
         'font-size:.82rem','font-weight:700','letter-spacing:.08em',

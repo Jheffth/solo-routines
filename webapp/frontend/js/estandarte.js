@@ -125,6 +125,14 @@ const Estandarte = {
   fechar() {
     this._el?.remove();
     this._el = null;
+    /* O carrossel da V4 girava para sempre depois que a Vitrine
+       fechava — contra um `.pt-v4-grid` que já tinha saído do DOM.
+       Na peça o timer é do registro; aqui, no preview da própria
+       Vitrine, ainda é nosso. */
+    if (this._carouselInterval) {
+      clearInterval(this._carouselInterval);
+      this._carouselInterval = null;
+    }
   },
 
   /* ── A vitrine ───────────────────────────────────────────── */
@@ -251,74 +259,99 @@ const Estandarte = {
 
   _emTesteDash: false,
 
+  /* ══════════════════════════════════════════════════════════
+     TESTAR NO LUGAR DO BANNER REAL
+
+     Tinha DOIS defeitos, os dois achados por leitura:
+
+     1. NÃO CONHECIA A V4. A cadeia de versões aqui tinha três
+        ramos — `v1 : v2 : senão V3` — enquanto a do `_pintar()`
+        tinha quatro. Escolher V4 e mandar testar no Dashboard
+        mostrava a V3. Dois caminhos que deveriam ser um só
+        divergiram, e o segundo ficou para trás.
+
+     2. INJETAVA HTML DENTRO DO #hunter-card. Aquilo era uma div
+        estática; hoje é o SLOT de uma peça. Enfiar conteúdo lá
+        dentro brigaria com a montagem — a peça apaga o contêiner
+        ao montar.
+
+     A correção dos dois é a mesma: o quadro de teste vira IRMÃO do
+     slot, e o slot é escondido enquanto durar o teste. Ninguém
+     escreve dentro da casa do outro.
+     ══════════════════════════════════════════════════════════ */
+  _htmlDaVersao(u, v) {
+    return v === 'v1' ? this.html(u)
+         : v === 'v2' ? this.htmlV2(u)
+         : v === 'v3' ? this.htmlV3(u)
+         : this.htmlV4(u);
+  },
+
+  _nomeDaVersao(v) {
+    return { v1: 'V1 (Estandarte)', v2: 'V2 (Portal)', v3: 'V3 (S-Rank)' }[v] || 'V4 (Otimizada)';
+  },
+
   testarNoDashboard() {
-    const card = document.getElementById('hunter-card');
-    if (!card) {
+    const slot = document.getElementById('hunter-card');
+    if (!slot) {
       SoloDialog?.toast?.('Abra a página do Dashboard primeiro para visualizar o teste no lugar do banner real!', 'warn');
       return;
     }
 
-    const containerTeste = document.getElementById('est-teste-banner-container');
-    
     this._emTesteDash = true;
-    card.classList.add('est-teste-ativo');
+    slot.classList.add('est-teste-ativo');
 
     const u = { ...this._hunter(), ...(this._perfil || {}) };
     const v = this._opcoes.versao;
-    const htmlBanner = v === 'v1' ? this.html(u) : v === 'v2' ? this.htmlV2(u) : this.htmlV3(u);
-    const vNome = v === 'v1' ? 'V1 (Estandarte)' : v === 'v2' ? 'V2 (Portal)' : 'V3 (S-Rank)';
+    const htmlBanner = this._htmlDaVersao(u, v);
+    const vNome = this._nomeDaVersao(v);
 
-    if (containerTeste) {
-      const wrap = document.getElementById('est-teste-banner-wrap');
-      if (wrap) wrap.innerHTML = htmlBanner;
-      const aviso = document.querySelector('#est-teste-aviso-bar span');
-      if (aviso) aviso.innerHTML = `⚡ <strong>MODO TESTE ARQUITETO:</strong> Visualizando Banner ${vNome} no lugar do banner real`;
-    } else {
-      const c = document.createElement('div');
+    let c = document.getElementById('est-teste-banner-container');
+    if (!c) {
+      c = document.createElement('div');
       c.id = 'est-teste-banner-container';
-      c.style.position = 'relative';
-      c.style.zIndex = '5';
-      c.style.width = '100%';
+      c.style.cssText = 'position:relative;z-index:5;width:100%';
       c.innerHTML = `
         <div id="est-teste-aviso-bar" style="position:relative; z-index:10; width:100%; margin-bottom:0.6rem; display:flex; align-items:center; justify-content:space-between; background:rgba(16,185,129,0.18); border:1px solid rgba(16,185,129,0.5); border-radius:8px; padding:0.45rem 0.9rem; font-family:var(--font-section); font-size:0.68rem; color:#a7f3d0; box-shadow:0 0 12px rgba(16,185,129,0.2);">
-          <span>⚡ <strong>MODO TESTE ARQUITETO:</strong> Visualizando Banner ${vNome} no lugar do banner real</span>
+          <span></span>
           <button id="btn-restaurar-banner-direct" style="background:rgba(239,68,68,0.25); border:1px solid rgba(239,68,68,0.6); color:#fca5a5; padding:0.25rem 0.65rem; border-radius:6px; font-size:0.62rem; font-weight:700; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.4)'" onmouseout="this.style.background='rgba(239,68,68,0.25)'">✕ Restaurar Original</button>
         </div>
-        <div id="est-teste-banner-wrap">${htmlBanner}</div>
+        <div id="est-teste-banner-wrap"></div>
       `;
-      card.appendChild(c);
-
-      c.querySelector('#btn-restaurar-banner-direct')?.addEventListener('click', () => {
-        this.restaurarDashboard();
-      });
+      // IRMÃO do slot, nunca filho.
+      slot.parentNode.insertBefore(c, slot);
+      c.querySelector('#btn-restaurar-banner-direct')?.addEventListener('click', () => this.restaurarDashboard());
     }
+
+    c.querySelector('#est-teste-banner-wrap').innerHTML = htmlBanner;
+    c.querySelector('#est-teste-aviso-bar span').innerHTML =
+      `⚡ <strong>MODO TESTE ARQUITETO:</strong> Visualizando Banner ${vNome} no lugar do banner real`;
+
+    // O banner real sai de cena inteiro — inclusive a peça montada nele.
+    slot.style.display = 'none';
 
     SoloDialog?.toast?.(`Banner ${vNome} aplicado no lugar do banner real do Dashboard!`, 'success');
     if (this._el) this._render();
   },
 
   restaurarDashboard() {
-    const card = document.getElementById('hunter-card');
-    if (this._emTesteDash) {
-      this._emTesteDash = false;
-      const c = document.getElementById('est-teste-banner-container');
-      if (c) c.remove();
-      
-      if (card) {
-        card.classList.remove('est-teste-ativo');
-      }
-      
-      SoloDialog?.toast?.('Banner real do Dashboard restaurado!', 'info');
-      if (this._el) this._render();
+    if (!this._emTesteDash) return;
+    this._emTesteDash = false;
+    document.getElementById('est-teste-banner-container')?.remove();
+    const slot = document.getElementById('hunter-card');
+    if (slot) {
+      slot.classList.remove('est-teste-ativo');
+      slot.style.display = '';      // o banner real volta como estava
     }
+    SoloDialog?.toast?.('Banner real do Dashboard restaurado!', 'info');
+    if (this._el) this._render();
   },
 
   _pintar() {
     const u = { ...this._hunter(), ...(this._perfil || {}) };
-    const htmlBanner = this._opcoes.versao === 'v1' ? this.html(u) : 
-                       this._opcoes.versao === 'v2' ? this.htmlV2(u) : 
-                       this._opcoes.versao === 'v3' ? this.htmlV3(u) : 
-                       this.htmlV4(u);
+    // UMA cadeia de versões no arquivo inteiro. Eram duas, e a
+    // segunda esqueceu a V4 — o tipo de divergência que só aparece
+    // quando alguém reclama que testou uma coisa e viu outra.
+    const htmlBanner = this._htmlDaVersao(u, this._opcoes.versao);
 
     const palco = this._el?.querySelector('.est-palco');
     if (palco) {
@@ -330,7 +363,7 @@ const Estandarte = {
       const wrap = document.getElementById('est-teste-banner-wrap');
       if (wrap) {
         wrap.innerHTML = htmlBanner;
-        const vNome = this._opcoes.versao === 'v1' ? 'V1 (Estandarte)' : this._opcoes.versao === 'v2' ? 'V2 (Portal)' : this._opcoes.versao === 'v3' ? 'V3 (S-Rank)' : 'V4 (Otimizada)';
+        const vNome = this._nomeDaVersao(this._opcoes.versao);
         const avisoTxt = document.querySelector('#est-teste-aviso-bar span');
         if (avisoTxt) avisoTxt.innerHTML = `⚡ <strong>MODO TESTE ARQUITETO:</strong> Visualizando Banner ${vNome} no lugar do banner real`;
         window.BadgeCard?.ligarTodos('#est-teste-banner-wrap [data-bc]', this._acervo);

@@ -19,7 +19,29 @@ const { JSDOM } = require('jsdom');
 
 const RAIZ = path.join(__dirname, '..');
 const REPO = path.join(RAIZ, '..', '..');
-const REF  = process.argv[2] || 'HEAD';
+
+function git(args) {
+  try {
+    // stderr silenciado: perguntar por um arquivo que ainda não existia
+    // naquele commit é caso ESPERADO, não erro a ser mostrado.
+    return execFileSync('git', args, { cwd: REPO, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  } catch (_) { return null; }
+}
+
+/* O ponto de comparação padrão é o commit ANTERIOR à extração —
+   quando as treze funções ainda moravam no estandarte.js. Comparar
+   contra HEAD não provaria nada depois que a extração entrou.
+
+   Ele é descoberto, não escrito à mão: procura-se o commit que
+   CRIOU o banners-arte.js e usa-se o pai dele. Assim o teste
+   continua valendo daqui a cinquenta commits. */
+function antesDaExtracao() {
+  const nasc = git(['log', '--diff-filter=A', '--format=%H', '-1',
+                    '--', 'webapp/frontend/js/banners-arte.js']);
+  return nasc ? nasc + '^' : 'HEAD';
+}
+
+const REF = process.argv[2] || antesDaExtracao();
 
 let falhas = 0, testes = 0;
 function ok(cond, msg) {
@@ -79,17 +101,19 @@ function renderizar(fonteEstandarte, fonteGemas, fonteEscudos) {
   return saida;
 }
 
-function doGit(ref, arquivo) {
-  try {
-    return execFileSync('git', ['show', `${ref}:${arquivo}`], { cwd: REPO, encoding: 'utf8' });
-  } catch (_) { return null; }
-}
+const doGit = (ref, arquivo) => git(['show', `${ref}:${arquivo}`]);
 
 console.log(`\n=== OS BANNERS, ANTES (${REF}) E DEPOIS ===\n`);
 
 const rel = p => path.posix.join('webapp/frontend', p);
+
+/* O lado "antes" também precisa do banners-arte.js SE ele já existia
+   naquele commit — do contrário o estandarte de lá não acha o
+   vocabulário e estoura no getter de CAMPOS. Quando o ref é anterior
+   à extração o arquivo não existe, e aí o estandarte é autossuficiente. */
+const arteAntes = doGit(REF, rel('js/banners-arte.js'));
 const antes = renderizar(
-  doGit(REF, rel('js/estandarte.js')),
+  [arteAntes, doGit(REF, rel('js/estandarte.js'))].filter(Boolean).join('\n;\n'),
   doGit(REF, rel('js/gemas.js')),
   doGit(REF, rel('js/escudos-img.js')),
 );

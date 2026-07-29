@@ -1268,10 +1268,6 @@
   <!-- O registro das peças. Não desenha nada: só precisa existir antes
        que alguma peça tente se registrar. -->
   <script src="js/pecas.js"></script>
-  <!-- As peças. Registram-se na carga e ficam à disposição; nenhuma
-       desenha nada até um hospedeiro pedir. A "classico" é a PADRÃO
-       da família banner — a rede de segurança de todas as outras. -->
-  <script src="js/pecas/hunter-card-classico.js"></script>
   <script src="js/missao-card.js"></script>
   <script src="js/forja-missao.js"></script>
   <script src="js/animations.js"></script>
@@ -1289,6 +1285,13 @@
        ANTES da Vitrine e das peças, que são suas duas clientes. -->
   <script src="js/banners-arte.js"></script>
   <script src="js/estandarte.js"></script>
+  <!-- As peças. Registram-se na carga e ficam à disposição; nenhuma
+       desenha nada até um hospedeiro pedir. A "classico" é a PADRÃO
+       da família banner — a rede de segurança de todas as outras.
+       Carregam DEPOIS de banners-arte.js e das bibliotecas de desenho,
+       que é de quem elas dependem. -->
+  <script src="js/pecas/hunter-card-classico.js"></script>
+  <script src="js/pecas/banner-v4.js"></script>
   <script src="js/balanca-economia.js"></script>
   <script src="js/arquiteto-console.js"></script>
   <!-- A bancada nova. Carrega DEPOIS do console porque reaproveita

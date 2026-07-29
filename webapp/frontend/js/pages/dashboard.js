@@ -92,12 +92,54 @@ const Dashboard = {
   // porque o CSS e o console do Arquiteto procuram por esse id.
   _slotBanner() { return document.getElementById('hunter-card'); },
 
-  // Qual peça montar. Por ora só a padrão declarada no HTML; quando
-  // a escolha virar preferência do hunter, é AQUI que ela entra —
-  // um lugar só, e nada mais muda.
+  /* ── Qual peça montar ──
+
+     A escolha é uma PREFERÊNCIA, não um deploy: trocar é mudar um
+     valor, e voltar atrás é mudá-lo de novo. Nada de reverter
+     commit para desfazer uma decisão de gosto.
+
+     Hoje mora em localStorage. Quando virar campo do usuário no
+     banco, é só esta função que muda — o resto do app não sabe que
+     existe escolha.
+
+     O padrão continua sendo a Janela de Status clássica. A V4 entra
+     por opção do Arquiteto, para que a primeira coisa que ele veja
+     ao abrir não seja uma mudança que ninguém verificou na tela. */
+  BANNER_PREF: 'sr_banner_peca',
+
   _pecaBanner() {
     const slot = this._slotBanner();
-    return (slot && slot.dataset.pecaPadrao) || 'hunter-card-classico';
+    const padrao = (slot && slot.dataset.pecaPadrao) || 'hunter-card-classico';
+    let escolhida = null;
+    try { escolhida = localStorage.getItem(this.BANNER_PREF); } catch (_) {}
+    if (!escolhida) return padrao;
+    // Preferência apontando para peça que não existe mais (foi
+    // renomeada, ou o script não carregou) não pode deixar o hunter
+    // sem cartão: o registro cairia na padrão de qualquer forma, mas
+    // é melhor não chegar lá com um aviso no console a cada pintura.
+    if (typeof Pecas !== 'undefined' && !Pecas.existe(escolhida)) return padrao;
+    return escolhida;
+  },
+
+  /* Trocar de banner, do console ou de um futuro botão:
+       Dashboard.usarBanner('banner-v4')        → a V4
+       Dashboard.usarBanner('banner-v4', {campo:'brasa'})
+       Dashboard.usarBanner(null)               → volta à clássica  */
+  usarBanner(id, opcoes) {
+    try {
+      if (id) localStorage.setItem(this.BANNER_PREF, id);
+      else    localStorage.removeItem(this.BANNER_PREF);
+      if (opcoes) localStorage.setItem(this.BANNER_PREF + '_opcoes', JSON.stringify(opcoes));
+    } catch (_) {}
+    const slot = this._slotBanner();
+    if (slot && typeof Pecas !== 'undefined') Pecas.desmontar(slot);
+    if (window.__dashDados) this._montarBanner(window.__dashDados);
+    return this._pecaBanner();
+  },
+
+  _opcoesBanner() {
+    try { return JSON.parse(localStorage.getItem(this.BANNER_PREF + '_opcoes') || '{}'); }
+    catch (_) { return {}; }
   },
 
   /* ── Relíquias: o hospedeiro busca, a peça desenha ──
@@ -247,7 +289,10 @@ const Dashboard = {
       });
       Pecas.atualizar(slot, pacote);
     } else {
-      Pecas.montar(slot, this._pecaBanner(), pacote, { acoes: this._acoesBanner() });
+      Pecas.montar(slot, this._pecaBanner(), pacote, {
+        acoes:  this._acoesBanner(),
+        opcoes: this._opcoesBanner(),
+      });
     }
 
     // As relíquias completam o cartão quando chegarem.
@@ -271,7 +316,34 @@ const Dashboard = {
       'ver-reliquias':  () => window.App && App.navigate('perfil'),
       'trocar-aura':    () => this._abrirModalAura(window.__dashDados || {}),
       'editar-altar':   () => window.AltarReliquias?.abrir(() => this._repintarBanner()),
+
+      /* Pedida só pela V4. Uma ação que a peça montada não usa não
+         custa nada — e é o hospedeiro que decide o que ela faz, por
+         isso a mesma V4 pode existir na Vitrine sem salvar nada. */
+      'editar-epigrafe': () => this._editarEpigrafe(),
     };
+  },
+
+  /* A epígrafe (bio) do hunter. Veio do estandarte.js, onde usava
+     `Swal.fire` — biblioteca que o resto do app não usa. Aqui é o
+     SoloDialog, que é o diálogo do projeto. */
+  async _editarEpigrafe() {
+    const atual = (window.__dashDados && window.__dashDados.bio) || '';
+    const nova = await SoloDialog.prompt(
+      'Qual a sua epígrafe? (até 100 caracteres)',
+      { titulo: 'Editar Citação', valor: atual, maxlength: 100, btnOk: 'Gravar' }
+    );
+    // `null` é cancelamento. String vazia NÃO é: quem quer apagar a
+    // própria epígrafe tem direito de apagá-la.
+    if (nova === null) return;
+    try {
+      await API.put('/perfil/', { bio: nova });
+      if (window.__dashDados) window.__dashDados.bio = nova;
+      this._repintarBanner();
+      SoloDialog.toast('Epígrafe gravada.', 'success');
+    } catch (e) {
+      SoloDialog.toast('Não foi possível salvar a epígrafe.', 'error');
+    }
   },
 
   // Repinta o cartão com o dado que já está em mãos, buscando as
