@@ -302,8 +302,9 @@ const MissaoCard = {
     return `
       <svg class="mc-vigia${vigor ? ' em-vigor' : ''}" data-mc-vigia="${chave}"
            aria-hidden="true" preserveAspectRatio="none" style="max-width:none">
-        <rect class="mc-vigia-halo" x="1" y="1" rx="13" pathLength="100"/>
-        <rect class="mc-vigia-fio"  x="1" y="1" rx="13" pathLength="100"/>
+        <rect class="mc-vigia-halo"   x="1" y="1" rx="13" pathLength="100"/>
+        <rect class="mc-vigia-fio"    x="1" y="1" rx="13" pathLength="100"/>
+        <rect class="mc-vigia-cometa" x="1" y="1" rx="13" pathLength="100"/>
       </svg>`;
   },
 

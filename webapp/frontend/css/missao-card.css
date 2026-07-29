@@ -99,8 +99,24 @@
    SEGUNDA camada: trama diagonal no fundo, borda superior tracejada e um
    halo no sigilo. Duas linguagens sobrepostas, cada uma dizendo uma coisa.
    ══════════════════════════════════════════════════════════ */
+/* A COR DO PROTOCOLO É A COR DO CARTÃO.
+
+   Aqui havia um índigo fixo (#6366f1) para TODO protocolo. A ideia
+   era ter duas linguagens sobrepostas — prioridade na borda
+   esquerda, índigo dizendo "isto é passivo".
+
+   Não se sustentou: um protocolo CRÍTICO ficava índigo, e a cor
+   parava de contar a urgência justamente onde ela mais importa. A
+   marca de "passivo" não precisa da cor — ela está no TRACEJADO, na
+   trama de fundo e na etiqueta. O tracejado sozinho já diz vigília;
+   a cor pode voltar a dizer urgência.
+
+   Uma linha resolve tudo: `--mc-vigilia` deixa de ser um valor e
+   passa a apontar para `--mc-cor`. Todo o resto do arquivo já a
+   usava, então dourado na Alta e vermelho na Crítica chegam de
+   graça na moldura, na barra, no halo e no rótulo. */
 .mc-passiva {
-  --mc-vigilia: #6366f1;
+  --mc-vigilia: var(--mc-cor);
   border-top-color: color-mix(in srgb, var(--mc-vigilia) 42%, transparent);
   border-right-color: color-mix(in srgb, var(--mc-vigilia) 22%, transparent);
   border-bottom-color: color-mix(in srgb, var(--mc-vigilia) 22%, transparent);
@@ -109,15 +125,17 @@
        move, ela permanece. É o oposto visual da corrente de energia. */
     repeating-linear-gradient(135deg,
       transparent 0 9px,
-      rgba(99, 102, 241, .055) 9px 10px),
-    radial-gradient(130% 150% at 100% 0%, rgba(99, 102, 241, .13), transparent 58%),
+      color-mix(in srgb, var(--mc-cor) 7%, transparent) 9px 10px),
+    radial-gradient(130% 150% at 100% 0%,
+      color-mix(in srgb, var(--mc-cor) 15%, transparent), transparent 58%),
     radial-gradient(120% 140% at 0% 0%, var(--mc-cor-suave), transparent 55%),
     linear-gradient(145deg, #0b0916, #06060d);
 }
 .mc-passiva:hover {
   border-color: color-mix(in srgb, var(--mc-vigilia) 55%, transparent);
   border-left-color: var(--mc-cor);
-  box-shadow: 0 8px 26px rgba(0,0,0,.5), 0 0 22px rgba(99, 102, 241, .2);
+  box-shadow: 0 8px 26px rgba(0,0,0,.5),
+              0 0 24px color-mix(in srgb, var(--mc-cor) 28%, transparent);
 }
 
 /* ── A VIGÍLIA CERCA, NÃO ENCIMA ───────────────────────────
@@ -168,13 +186,41 @@
 }
 /* Só corre quando o protocolo está VALENDO. Fora da janela ele
    existe, apagado e parado — o que já é a informação certa. */
-.mc-vigia.em-vigor .mc-vigia-fio  { animation: mc-vigilia 14s linear infinite; opacity: .85; }
-.mc-vigia.em-vigor .mc-vigia-halo { animation: mc-vigilia 14s linear infinite; opacity: .38; }
+.mc-vigia.em-vigor .mc-vigia-fio  { animation: mc-vigilia 7s linear infinite; opacity: .85; }
+.mc-vigia.em-vigor .mc-vigia-halo { animation: mc-vigilia 7s linear infinite; opacity: .38; }
 .mc-vigia:not(.em-vigor) rect     { opacity: .18; }
 
 @keyframes mc-vigilia {
   from { stroke-dashoffset: 0; }
   to   { stroke-dashoffset: -4.6; }   /* um período do tracejado */
+}
+
+/* ── O COMETA ──────────────────────────────────────────────
+   O tracejado sozinho é discreto por natureza: traço curto, muito
+   traço, movimento pequeno. Lê como vigília, mas não CHAMA.
+
+   O cometa é a segunda leitura: um arco curto e brilhante que dá a
+   volta completa no perímetro. `stroke-dasharray: 7 93` sobre um
+   `pathLength` de 100 significa "7% aceso, 93% apagado" — um único
+   risco de luz percorrendo a borda.
+
+   Ele é rápido (4,2s) contra o tracejado lento (7s). É o contraste
+   entre os dois que dá vida: a vigília permanece, e a energia
+   passa. Se corressem juntos, viraria uma coisa só. */
+.mc-vigia-cometa {
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-dasharray: 7 93;
+  opacity: 0;
+  filter: drop-shadow(0 0 5px var(--mc-cor));
+}
+.mc-vigia.em-vigor .mc-vigia-cometa {
+  opacity: .95;
+  animation: mc-cometa 4.2s linear infinite;
+}
+@keyframes mc-cometa {
+  from { stroke-dashoffset: 0; }
+  to   { stroke-dashoffset: -100; }   /* uma volta inteira */
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -277,6 +323,40 @@
   50%      { opacity: 1;   transform: translateY(-50%) scale(1.25); }
 }
 
+/* ── O LUSTRO ──────────────────────────────────────────────
+   Uma faixa clara que varre o trecho já cumprido, de ponta a
+   ponta. É o que faz a barra parecer VIVA mesmo parada — e ela
+   fica parada quase o tempo todo, porque anda 0,14% por minuto.
+
+   Vai em `::after` do preenchimento, e não num terceiro elemento:
+   o brilho precisa ser recortado pelo trecho cumprido, senão
+   varreria a parte vazia também e a barra deixaria de ter fim.
+
+   E SEM `overflow: hidden`. Eu havia posto — e cortaria a cabeça de
+   luz, que mora dentro do preenchimento e precisa escapar pela
+   ponta. Não faz falta: o fundo de um elemento já é recortado pela
+   caixa dele, então o lustro nunca vaza para o trecho vazio. */
+.mc-prot-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg,
+    transparent 35%,
+    color-mix(in srgb, #ffffff 55%, transparent) 50%,
+    transparent 65%);
+  background-size: 260% 100%;
+  animation: mc-prot-lustro 3.4s ease-in-out infinite;
+}
+@keyframes mc-prot-lustro {
+  0%       { background-position: 180% 0; opacity: 0; }
+  18%      { opacity: .9; }
+  70%,100% { background-position: -60% 0; opacity: 0; }
+}
+
+/* A cabeça acima do lustro: ela é a ponta, e a ponta não pode
+   piscar junto com a varredura. */
+.mc-prot-cabeca { z-index: 2; }
+
 /* Fora da janela a barra fica apagada: ela existe, mas ainda não
    está contando. Mostrar 0% brilhante seria prometer movimento. */
 .mc-passiva.st-pendente .mc-prot-fill,
@@ -293,7 +373,7 @@
   position: absolute; inset: -3px;
   border-radius: 16px;
   border: 1px solid color-mix(in srgb, var(--mc-vigilia) 50%, transparent);
-  box-shadow: 0 0 12px rgba(99, 102, 241, .3);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--mc-cor) 40%, transparent);
   pointer-events: none;
 }
 
@@ -720,10 +800,13 @@
    CONFESSADA: âmbar. Não é verde (não cumpriu) nem vermelho (não fracassou
    por descuido) — é a terceira coisa: alguém escolheu dizer a verdade quando
    podia ficar calado. Punir isso com a cor da derrota seria ensinar a mentir. */
+/* O SELO acompanha a cor do cartão pelo mesmo motivo da moldura: um
+   protocolo crítico com selo índigo esconderia a urgência atrás da
+   natureza. Quem diz "isto é vigília" é a palavra e o tracejado. */
 .mc-selo-vigilia {
-  color: #818cf8;
-  background: rgba(99, 102, 241, .1);
-  border: 1px solid rgba(99, 102, 241, .34);
+  color: color-mix(in srgb, var(--mc-cor) 60%, #ffffff);
+  background: color-mix(in srgb, var(--mc-cor) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--mc-cor) 38%, transparent);
 }
 .mc-selo-confessado {
   color: #fbbf24;
@@ -1003,7 +1086,10 @@
   /* A vigília e a cabeça da barra também param. A moldura FICA —
      ela é informação (isto é um protocolo), não enfeite; o que sai
      é só o movimento dela. */
-  .mc-vigia rect, .mc-prot-cabeca { animation: none !important; }
+  .mc-vigia rect, .mc-prot-cabeca, .mc-prot-fill::after { animation: none !important; }
+  /* O cometa some por inteiro: ele e' um risco de luz correndo, e
+     parado vira uma marca solta em cima da borda. */
+  .mc-vigia-cometa { display: none !important; }
   .mc-prot-aura, .mc-prot-fill    { transition: none !important; }
   /* Sem movimento, a corrente vira ruído estático atrás do texto — some.
      A missão em curso continua identificada pelo fio, pelo cronômetro vivo

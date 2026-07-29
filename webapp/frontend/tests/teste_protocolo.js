@@ -2,7 +2,8 @@
 
    Três pedidos do Arquiteto, e um assert para cada:
 
-     "a animação deve ser mais lenta"        -> 14s, contra 3,4s
+     "mais lenta" e depois "aumente um pouco"  -> 7s, e um cometa
+     "o tracejado tem que ser da cor do card"  -> --mc-cor manda
      "não só no topo, em volta dele inteiro" -> perímetro em SVG
      "barra de progresso dentro dela"        -> enche sozinha, com aura
 
@@ -46,8 +47,10 @@ const EM_VIGOR = {
   prazo_ate_abrir: -4.4 * 3600, prazo_minutos: 720,
   prazo_restante: Math.round(720 * 60 * 0.634),
 };
+/* CRÍTICA de propósito: é a segunda cor que o Arquiteto citou, e
+   serve para provar que a moldura não é mais índigo para todos. */
 const AGUARDANDO = Object.assign({}, EM_VIGOR, {
-  id: 9101, titulo: 'Sem cafeína após as 16h',
+  id: 9101, titulo: 'Sem cafeína após as 16h', prioridade: 'CRITICA',
   prazo_ate_abrir: 3 * 3600, prazo_minutos: 780, prazo_restante: 780 * 60,
 });
 const COMUM = {
@@ -75,8 +78,8 @@ ok(!comum.querySelector('.mc-vigia'), 'a missão comum NÃO ganha moldura de vig
 
 const svg = vigil.querySelector('svg.mc-vigia');
 ok(!!svg, 'o protocolo ganha uma moldura em SVG');
-ok(svg.querySelectorAll('rect').length === 2,
-   '  com duas camadas: o halo borrado e o traço nítido');
+ok(svg.querySelectorAll('rect').length === 3,
+   '  com três camadas: halo borrado, traço nítido e o cometa');
 ok(/\.mc-vigia\s*\{[^}]*inset:\s*0/.test(cssCod),
    'ela ocupa o cartão INTEIRO (inset: 0), não uma faixa no topo');
 ok(/\.mc-passiva \.mc-fio\s*\{\s*display:\s*none/.test(cssCod),
@@ -91,13 +94,49 @@ ok(svg.getAttribute('preserveAspectRatio') === 'none',
    '  e o SVG acompanha a caixa em vez de manter proporção');
 ok(/vector-effect:\s*non-scaling-stroke/.test(cssCod),
    '  com traço que não engorda ao esticar');
-ok(/stroke-dasharray:\s*2 2\.6/.test(cssCod), 'e o formato tracejado foi mantido');
+ok(/\.mc-vigia-fio\s*\{[^}]*stroke-dasharray:\s*2 2\.6/.test(cssCod),
+   'e o formato tracejado foi mantido');
+
+/* ══ A COR ══ */
+console.log('\n-- a cor do protocolo é a cor do cartão --');
+ok(/\.mc-passiva\s*\{\s*--mc-vigilia:\s*var\(--mc-cor\)/.test(cssCod),
+   'o índigo fixo virou a cor do cartão: dourado na Alta, vermelho na Crítica');
+ok(!/99,\s*102,\s*241/.test(cssCod),
+   '  e nenhum índigo cravado sobrou no arquivo');
+ok(/\.mc-vigia rect\s*\{[^}]*stroke:\s*var\(--mc-vigilia/.test(cssCod),
+   'a moldura puxa dela');
+ok(/\.mc-prot-fill\s*\{[^}]*var\(--mc-vigilia/.test(cssCod),
+   'a barra também');
+
+/* A prova de que a cor CHEGA: dois protocolos de prioridades
+   diferentes têm --mc-cor diferente no atributo de estilo. */
+const alta = vigil.getAttribute('style');      // Combate/ALTA  -> âmbar
+const crit = espera.getAttribute('style');
+ok(/--mc-cor:#f59e0b/.test(alta),
+   `Alta chega DOURADA (${(/--mc-cor:([^;]*)/.exec(alta)||[])[1]})`);
+ok(/--mc-cor:#e11d48/.test(crit),
+   `e Crítica chega AVERMELHADA (${(/--mc-cor:([^;]*)/.exec(crit)||[])[1]}) — dois protocolos, duas cores`);
 
 /* ══ 2. "mais lenta" ══ */
 console.log('\n-- mais lenta --');
 const dur = /\.mc-vigia\.em-vigor \.mc-vigia-fio\s*\{[^}]*animation:[^;]*?(\d+(?:\.\d+)?)s/.exec(cssCod);
-ok(dur && +dur[1] >= 12, `a volta leva ${dur ? dur[1] : '?'}s (a faixa antiga levava 3,4s)`);
+ok(dur && +dur[1] >= 6 && +dur[1] <= 9,
+   `a volta leva ${dur ? dur[1] : '?'}s — o dobro da faixa antiga (3,4s), metade dos 14s que ficaram lentos demais`);
 ok(!/mc-vigilia 3\.4s/.test(cssCod), 'a animação antiga de 3,4s não existe mais');
+
+/* O COMETA é a segunda leitura: o tracejado permanece, a energia
+   passa. Se corressem no mesmo tempo, viraria uma coisa só. */
+const cometa = /\.mc-vigia\.em-vigor \.mc-vigia-cometa\s*\{[^}]*animation:[^;]*?(\d+(?:\.\d+)?)s/.exec(cssCod);
+ok(!!cometa, 'há um cometa percorrendo o perímetro');
+ok(cometa && +cometa[1] < +dur[1],
+   `  e ele é MAIS RÁPIDO que o tracejado (${cometa ? cometa[1] : '?'}s contra ${dur[1]}s)`);
+ok(/\.mc-vigia-cometa\s*\{[^}]*stroke-dasharray:\s*7 93/.test(cssCod),
+   '  desenhado como 7% aceso e 93% apagado: um risco de luz, não uma segunda borda');
+/* `[^}]*` NÃO serve aqui: ele para no primeiro `}`, que é o do
+   `from`, e nunca alcança o `to`. Um bloco de keyframes tem chaves
+   dentro de chaves. */
+ok(/@keyframes mc-cometa[\s\S]*?stroke-dashoffset:\s*-100/.test(cssCod),
+   '  dando a volta inteira (-100 = o perímetro todo)');
 ok(/@keyframes mc-vigilia\s*\{[^}]*stroke-dashoffset/.test(cssCod),
    'e ela anda por stroke-dashoffset — o tracejado corre pelo contorno');
 
@@ -148,6 +187,9 @@ console.log('\n-- quem pediu menos movimento --');
 const bloco = /prefers-reduced-motion[^{]*\{([\s\S]*?)\n\}/.exec(css);
 ok(bloco && /\.mc-vigia rect/.test(bloco[1]), 'a vigília para de correr');
 ok(bloco && /\.mc-prot-cabeca/.test(bloco[1]), '  e a cabeça para de pulsar');
+ok(bloco && /\.mc-vigia-cometa\s*\{\s*display:\s*none/.test(bloco[1]),
+   '  o cometa some inteiro: parado, ele viraria uma marca solta na borda');
+ok(bloco && /mc-prot-fill::after/.test(bloco[1]), '  e o lustro para de varrer');
 ok(!/\.mc-vigia\s*\{\s*display:\s*none/.test(bloco ? bloco[1] : ''),
    'mas a moldura FICA: ela é informação, não enfeite');
 
