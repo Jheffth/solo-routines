@@ -1436,7 +1436,165 @@
   border-color: rgba(255, 255, 255, 0.3);
 }
 /* ── LAYOUT MOBILE (Até 900px) ── */
-@media (max-width: 900px) {
+/* ══════════════════════════════════════════════════════════
+   O BANNER MEDE A SI MESMO
+
+   O DEFEITO, medido a partir do CSS:
+
+     janela   banner   coluna do meio   altura da barra XP
+      901px    593px          -98px               0px
+     1024px    716px           25px               2px
+     1200px    892px          201px              16px
+     1363px   1055px          364px              29px     <- o print
+     1500px   1192px          501px              40px
+     1920px   1612px          921px              73px
+
+   De 901 a ~1500 o banner estava quebrado, e o pior ponto era logo
+   em 901: coluna NEGATIVA, conteúdo transbordando.
+
+   POR QUE ISSO PASSAVA DESPERCEBIDO
+
+   As media queries mediam a JANELA. Quem espreme o banner é a
+   COLUNA dele — e entre os dois há a barra lateral, que ocupa 260px
+   quando aparece e some abaixo de 768px. Os dois números nunca
+   concordam, e o desencontro cria a faixa morta inteira.
+
+   É o mesmo defeito dos cartões de missão, e a mesma correção:
+   `@container`. O banner passa a ser a régua de si mesmo, e aí
+   janela grande com barra lateral e janela pequena sem ela recebem
+   o layout que a LARGURA REAL pede.
+
+   E POR QUE A BARRA DE XP SOFRIA MAIS QUE O RESTO
+
+   Ela é um SVG com viewBox 980×78 e `width:100%`. Largura e altura
+   andam juntas: numa coluna de 364px ela renderiza com 29px de
+   altura em vez de 78. A coluna estreita não apertava a barra —
+   ACHATAVA. Daí o risco fino com o número espremido em cima.
+   ══════════════════════════════════════════════════════════ */
+.pt-v4-banner {
+  container-type: inline-size;
+  container-name: banner;
+}
+
+/* ── RESERVA para quem não tem container query ───────────────
+   Navegador sem `container-type` ignora TODO `@container` — o
+   banner ficaria preso no layout de três colunas, que é o defeito
+   de hoje. Aqui a reserva não tenta reproduzir as faixas: só
+   empilha, pela janela, num ponto folgado. Feio é melhor que
+   transbordando.
+
+   Container query é suportada desde 2022/2023 em todos os
+   navegadores atuais, e este projeto já a usa nos cartões de
+   missão. Isto é cinto de segurança, não plano principal. */
+@supports not (container-type: inline-size) {
+  @media (max-width: 1500px) {
+    .pt-v4-grid {
+      grid-template-columns: 1fr;
+      grid-template-areas: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.2rem;
+    }
+    .pt-v4-nucleo { position: static !important; width: 100%; max-width: 620px; }
+    .pt-v4-reliquias-dock,
+    .pt-v4-epigrafe { position: static !important; transform: none; white-space: normal; }
+    .pt-v4-reliquias-dock { margin: .6rem auto 0; }
+  }
+}
+
+@keyframes cq-roda-to-back {
+    0% { transform: translateY(0) scale(1); z-index: 30; opacity: 1; }
+    50% { transform: translateY(20px) scale(0.9); z-index: 15; opacity: 0.7; }
+    100% { transform: translateY(0) scale(0.8); z-index: 10; opacity: 0.4; }
+  }
+@keyframes cq-roda-to-front {
+    0% { transform: translateY(0) scale(0.8); z-index: 10; opacity: 0.4; }
+    50% { transform: translateY(-20px) scale(0.9); z-index: 20; opacity: 0.7; }
+    100% { transform: translateY(0) scale(1); z-index: 30; opacity: 1; }
+  }
+
+/* ── DEGRAU DO MEIO: 621px a 1180px de BANNER ───────────────
+
+   O layout desenhado pelo Arquiteto. Em vez de espremer três
+   colunas, ele reorganiza em faixas — e resolve a barra de XP pela
+   raiz, dando a ela a largura inteira:
+
+       ┌───────────────────────────────────────┐
+       │  [ B A R R A   D E   X P ]  larga     │
+       │  "epígrafe"                            │
+       │  [foto] NOME             [gemas]      │
+       │         "título"                       │
+       │            [ insígnias ]  centradas   │
+       └───────────────────────────────────────┘
+
+   A barra passa a ter ~890px em vez de 364 — ou seja, 71px de
+   altura em vez de 29. Volta a ser a peça que ela foi desenhada
+   para ser.
+
+   `display: contents` no núcleo é o que torna isso possível SEM
+   tocar no HTML: os três filhos dele (barra, relicário, epígrafe)
+   viram itens da mesma grade e podem ser colocados em faixas
+   diferentes. Sem isso seria preciso mexer no `htmlV4` — e aí a
+   V4 da Vitrine e a peça deixariam de ser idênticas.
+
+   O retrato encolhe de 168 para 140px porque o Arquiteto pediu
+   para NÃO esticar o banner: as faixas novas custam altura, e ela
+   volta daí. */
+@container banner (min-width: 621px) and (max-width: 1180px) {
+  .pt-v4-grid {
+    grid-template-columns: minmax(0, 1fr) max-content;
+    grid-template-areas:
+      "xp      xp"
+      "epi     epi"
+      "hunter  gemas"
+      "reliq   reliq";
+    align-items: center;
+    gap: .5rem 1.3rem;
+    padding: 22px 0 16px;
+  }
+
+  /* O núcleo deixa de ser uma caixa: seus três filhos sobem para a
+     grade e cada um vai para a sua faixa. */
+  .pt-v4-nucleo        { display: contents; }
+  .pt-v4-trilho-mestre { grid-area: xp; }
+  .pt-v4-epigrafe      { grid-area: epi; }
+  .pt-v4-avatar        { grid-area: hunter; }
+  .pt-v4-gemas         { grid-area: gemas; }
+  .pt-v4-reliquias-dock{ grid-area: reliq; }
+
+  /* A epígrafe estava `position:absolute` ancorada no núcleo. Com o
+     núcleo sem caixa, não há mais o que ancorar — e ela também não
+     precisa: agora tem faixa própria, logo abaixo da barra. */
+  .pt-v4-epigrafe {
+    position: static;
+    transform: none;
+    width: auto;
+    white-space: normal;
+    text-align: center;
+    margin: 0;
+  }
+
+  /* O relicário sai do posicionamento absoluto pelo mesmo motivo, e
+     fica centrado na faixa dele — sem esticar o banner, porque a
+     altura que ele ocupa foi devolvida pelo retrato menor. */
+  .pt-v4-reliquias-dock {
+    position: static;
+    transform: none;
+    justify-self: center;
+    padding: 6px 14px;
+    min-height: 0;
+  }
+
+  .pt-retrato { width: 140px; height: 140px; }
+  .pt-nome    { font-size: 1.6rem; }
+
+  /* O fio conector ligava as gemas ao núcleo, que agora está acima.
+     Um fio que aponta para o lugar errado é pior que fio nenhum. */
+  .pt-v4-fio-conector { display: none; }
+}
+
+@container banner (max-width: 620px) {
   .pt-v4-grid {
     grid-template-columns: 1fr;
     grid-template-areas: none; /* Desliga o grid anterior */
@@ -1510,19 +1668,6 @@
   .pt-v4-grid.cq-badges-front .pt-v4-gemas {
     animation: cq-roda-to-back 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   }
-  
-  @keyframes cq-roda-to-back {
-    0% { transform: translateY(0) scale(1); z-index: 30; opacity: 1; }
-    50% { transform: translateY(20px) scale(0.9); z-index: 15; opacity: 0.7; }
-    100% { transform: translateY(0) scale(0.8); z-index: 10; opacity: 0.4; }
-  }
-  
-  @keyframes cq-roda-to-front {
-    0% { transform: translateY(0) scale(0.8); z-index: 10; opacity: 0.4; }
-    50% { transform: translateY(-20px) scale(0.9); z-index: 20; opacity: 0.7; }
-    100% { transform: translateY(0) scale(1); z-index: 30; opacity: 1; }
-  }
-
 }
 
 /* ── AÇÕES V4 (Global, Desktop e Mobile) ── */
