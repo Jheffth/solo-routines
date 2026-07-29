@@ -353,7 +353,13 @@ const HunterCardClassico = {
     const editar = cont.querySelector('#dash-altar');
     if (editar) host.ouvir(editar, 'click', () => host.acao('editar-altar'));
 
-    window.BadgeCard?.ligarTodos('#dash-relicario [data-bc]', desb);
+    /* `ligarTodos` varre o DOCUMENTO inteiro, não o contêiner. Com
+       `#dash-relicario` ele alcançaria o relicário de qualquer outra
+       instância desta peça na página — e como o id se repete, a
+       segunda instância roubaria os cartões da primeira. O selo da
+       instância prende a varredura aqui dentro. */
+    el.dataset.pecaSelo = host.selo;
+    window.BadgeCard?.ligarTodos(`[data-peca-selo="${host.selo}"] [data-bc]`, desb);
   },
 
   /* ── Contagem animada dos cristais ──

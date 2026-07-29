@@ -1068,6 +1068,20 @@
   display: none !important;
 }
 
+/* A LARGURA. `.pt-banner` nasceu para o palco da Vitrine, que é uma
+   bancada estreita: `max-width:1000px; margin:0 auto`. No Dashboard
+   isso deixa o banner encolhido e boiando no meio de uma tela larga.
+
+   O modo teste já sabia disso e forçava 100% — mas por um seletor
+   preso ao `#est-teste-banner-wrap`, que só existe lá. Ao ligar a V4
+   no slot eu esqueci de trazer estas três linhas junto, e o banner
+   apareceu com metade do tamanho. */
+.hunter-window[data-peca="banner-v4"] .pt-banner {
+  max-width: 100% !important;
+  width: 100% !important;
+  margin: 0 !important;
+}
+
 /* ── Integração Modo Teste no Dashboard ────────────────────── */
 #hunter-card.est-teste-ativo {
   background: transparent !important;

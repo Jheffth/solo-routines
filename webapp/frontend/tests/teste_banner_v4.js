@@ -168,6 +168,44 @@ el.querySelectorAll('#dash-altar').forEach(b => b.dispatchEvent(new wB.Event('cl
 ok(pedidos.filter(p => p === 'editar-altar').length === 2,
    '  e os DOIS respondem, porque a busca é por querySelectorAll no contêiner');
 
+/* ══ 5b. Os três defeitos que o Arquiteto viu na tela ══ */
+console.log('\n-- o que apareceu errado no Dashboard --');
+
+// (a) AS FIXADAS MANDAM. Sem isto a V4 mostrava as cinco mais
+//     recentes, ignorando a escolha feita no Altar — foi o
+//     "badge com a arte errada".
+const SETE = ['a','b','c','d','e','f','g'].map(k => ({ codigo: k, icone: '🏆' }));
+P.desmontar(el);
+P.montar(el, 'banner-v4', { hunter: HUNTER, reliquias: SETE, reliquias_fixadas: ['g','b'] }, {});
+const mostradas = [...el.querySelectorAll('.est-reliquia')].map(n => n.dataset.bc);
+ok(JSON.stringify(mostradas) === JSON.stringify(['g','b']),
+   `a escolha do Altar manda: pediu [g,b], mostrou [${mostradas}]`);
+
+P.desmontar(el);
+P.montar(el, 'banner-v4', { hunter: HUNTER, reliquias: SETE, reliquias_fixadas: [] }, {});
+ok(el.querySelectorAll('.est-reliquia').length === 5,
+   'sem escolha, valem as cinco primeiras (a sexta não cabe na fila)');
+
+// (b) O HOVER. Estava passando lista VAZIA para o BadgeCard, que
+//     monta um mapa por código e só liga o que acha nele.
+const ligados = [];
+wB.BadgeCard = { ligarTodos: (sel, lista) => ligados.push({ sel, n: (lista || []).length }) };
+P.desmontar(el);
+P.montar(el, 'banner-v4', { hunter: HUNTER, reliquias: ACERVO }, {});
+ok(ligados.length === 1 && ligados[0].n === ACERVO.length,
+   `o BadgeCard recebe as ${ACERVO.length} relíquias, não uma lista vazia`);
+ok(/data-peca-selo="pc\d+"/.test(ligados[0].sel),
+   `  e o seletor é preso a ESTA instância (${ligados[0].sel})`);
+ok(el.dataset.pecaSelo && el.querySelector('[data-bc]'),
+   '  com o selo carimbado no contêiner para o seletor achar');
+
+// (c) A LARGURA é CSS, não JS: verificada no arquivo.
+const css = fs.readFileSync(path.join(RAIZ, 'css', 'estandarte.css'), 'utf8');
+ok(/\.hunter-window\[data-peca="banner-v4"\] \.pt-banner \{[^}]*width: 100%/.test(css),
+   'o CSS solta a largura do banner dentro do slot (era max-width:1000px, da bancada)');
+ok(/\.hunter-window\[data-peca="banner-v4"\] \{[^}]*padding: 0/.test(css),
+   '  e neutraliza a moldura da Janela de Status, para não haver duas');
+
 /* ══ 6. A peça não conhece o hospedeiro ══ */
 console.log('\n-- a fronteira, no código --');
 const fonte = ler('js','pecas','banner-v4.js');

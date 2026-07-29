@@ -96,9 +96,22 @@ const BannerV4 = {
   /* ── As relíquias: vêm PRONTAS do hospedeiro ──
      Antes era `this._acervo`, preenchido por duas chamadas de API
      que a Vitrine fazia. Uma peça que busca dado sozinha dispara
-     tráfego a cada preview. */
-  reliquias(lista, tam, comBotao) {
-    const acervo = (lista || []).slice(0, 5);
+     tráfego a cada preview.
+
+     AS FIXADAS MANDAM. O Altar de Relíquias existe para o hunter
+     escolher QUAIS cinco aparecem; sem escolha, valem as mais
+     recentes. Eu tinha esquecido de aplicar isso aqui: a V4 mostrava
+     sempre as cinco últimas, e quem tivesse escolhido no Altar via
+     insígnias que não pediu. Foi o "badge com a arte errada".
+
+     A regra é a mesma da peça clássica — e o fato de ela estar
+     escrita duas vezes é dívida anotada: quando houver uma terceira
+     peça com relicário, isto vira função do vocabulário. */
+  reliquias(lista, fixadas, tam, comBotao) {
+    const todas = lista || [];
+    const escolhidas = (fixadas || [])
+      .map(cod => todas.find(c => c.codigo === cod)).filter(Boolean);
+    const acervo = (escolhidas.length ? escolhidas : todas).slice(0, 5);
     if (!acervo.length) return '';
     const medalha = c => (typeof ConquistaFX !== 'undefined' && ConquistaFX.miniMedalha)
       ? ConquistaFX.miniMedalha(c, tam)
@@ -185,7 +198,7 @@ const BannerV4 = {
 
             <div class="pt-v4-reliquias-dock">
               <div class="pt-reliquias">
-                <span class="pt-reliquias-fila">${this.reliquias(dados && dados.reliquias, 50, true)
+                <span class="pt-reliquias-fila">${this.reliquias(dados && dados.reliquias, dados && dados.reliquias_fixadas, 50, true)
                   || '<span class="pt-vazio">nenhuma relíquia no altar</span>'}</span>
               </div>
             </div>
@@ -340,12 +353,16 @@ const BannerV4 = {
 
     // Relíquias: só se a lista mudou de conteúdo.
     const fila = el.querySelector('.pt-reliquias-fila');
-    const codigos = ((dados && dados.reliquias) || []).slice(0, 5).map(c => c.codigo).join(',');
+    // A chave inclui as FIXADAS: mudar a escolha no Altar sem mudar o
+    // acervo tem que redesenhar a fila, senão o hunter escolhe e nada
+    // acontece até a próxima recarga.
+    const codigos = ((dados && dados.reliquias) || []).map(c => c.codigo).join(',')
+                  + '||' + ((dados && dados.reliquias_fixadas) || []).join(',');
     if (fila && el.dataset.v4rel !== codigos) {
       el.dataset.v4rel = codigos;
-      fila.innerHTML = this.reliquias(dados && dados.reliquias, 50, true)
+      fila.innerHTML = this.reliquias(dados && dados.reliquias, dados && dados.reliquias_fixadas, 50, true)
         || '<span class="pt-vazio">nenhuma relíquia no altar</span>';
-      this.ligarAcoes(el, host);
+      this.ligarAcoes(el, dados, host);
     }
     return true;
   },
@@ -353,7 +370,7 @@ const BannerV4 = {
   /* Os cliques não sabem o que fazem: pedem ao hospedeiro. É isto
      que permite a mesma peça responder de um jeito no Dashboard
      (abrir o modal de aura) e de outro na Vitrine (não fazer nada). */
-  ligarAcoes(el, host) {
+  ligarAcoes(el, dados, host) {
     const par = [
       ['#dash-btn-trocar-aura',      'trocar-aura'],
       ['#dash-btn-editar-epigrafe',  'editar-epigrafe'],
@@ -369,10 +386,19 @@ const BannerV4 = {
     el.querySelectorAll('.est-reliquia').forEach(n =>
       host.ouvir(n, 'click', () => host.acao('ver-reliquias')));
 
-    if (window.BadgeCard && host.el) {
-      // O BadgeCard varre por seletor global; damos o contêiner para
-      // ele não alcançar outra instância da peça na mesma página.
-      window.BadgeCard.ligarTodos('[data-bc]', []);
+    /* O CARTÃO DE INSÍGNIA (hover). Eu tinha escrito
+       `ligarTodos('[data-bc]', [])` — com a lista VAZIA. O BadgeCard
+       monta um mapa por código e só liga o que encontra nele; com
+       lista vazia, nenhum elemento é ligado e o hover simplesmente
+       não existe. Era isso, e não o CSS.
+
+       O seletor também estava errado: `ligarTodos` varre o DOCUMENTO
+       inteiro, então `[data-bc]` alcançaria as relíquias de qualquer
+       outra peça na página. O selo da instância prende a varredura a
+       este contêiner. */
+    if (window.BadgeCard && window.BadgeCard.ligarTodos) {
+      const lista = (dados && dados.reliquias) || [];
+      window.BadgeCard.ligarTodos(`[data-peca-selo="${host.selo}"] [data-bc]`, lista);
     }
   },
 };
@@ -402,8 +428,9 @@ if (typeof Pecas !== 'undefined') {
         (Math.max(0, u.xp_atual || 0) / Math.max(1, u.xp_proximo_nivel || 100)) * 100).toFixed(2);
       el.dataset.v4rel = ((dados && dados.reliquias) || []).slice(0, 5).map(c => c.codigo).join(',');
 
+      el.dataset.pecaSelo = host.selo;   // prende o BadgeCard a ESTA instância
       BannerV4.ligarCarrossel(el, host);
-      BannerV4.ligarAcoes(el, host);
+      BannerV4.ligarAcoes(el, dados, host);
     },
 
     // Repinta o que mudou; devolve false quando a moldura mudou e o
