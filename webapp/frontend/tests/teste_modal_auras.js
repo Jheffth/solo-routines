@@ -128,14 +128,16 @@ ok(vazio === dC.querySelector('.ma-grade').firstElementChild,
 
 const cargo = dC.querySelector('.ma-card.ma-cargo');
 ok(!!cargo, 'a aura de cargo aparece');
-ok(!cargo.hasAttribute('data-aura'), '  não é clicável (o Sistema é quem a concede)');
-ok(cargo.textContent.includes('Concedida pelo cargo'),
-   '  e o rótulo explica em vez de mostrar cadeado de proibido');
+ok(cargo.dataset.aura === '__cargo',
+   '  e É ESCOLHÍVEL: eu havia confundido "não pode ser GRAVADA" com');
+ok(cargo.textContent.includes('Do cargo'),
+   '  "não pode ser ESCOLHIDA". O selo diz de onde ela veio, e só.');
 ok(cargo.classList.contains('ma-ativa'),
    '  está marcada como vigente, porque não há cosmética nem "sem aura"');
+ok(!!cargo.querySelector('.aura-wrap'), '  e desenha a arte da aura de cargo');
 
-ok(dC.querySelectorAll('.ma-card[data-aura]').length === 3,
-   'três cartões escolhíveis: Sem aura, Fênix e Bella Rosa');
+ok(dC.querySelectorAll('.ma-card[data-aura]').length === 4,
+   'quatro cartões escolhíveis: Sem aura, Cargo, Fênix e Bella Rosa');
 ok(dC.querySelector('[data-aura="bella-rosa"]').textContent.includes('Presente de Diana'),
    'e a aura presenteada diz de quem veio');
 C.M.fechar(); await espera(200);
@@ -180,6 +182,20 @@ ok(hist[0] === 'fenix-pioneira' && hist[1] === 'bella-rosa',
    'servidor recusando: aplica otimista e DESFAZ (fenix → bella-rosa)');
 ok(F.avisos.some(a => a[1] === 'error'), '  avisando o hunter do que houve');
 
+/* Escolher a de cargo manda `null` ao servidor — nunca o id dela,
+   que o backend recusa com razão (senão qualquer um se daria uma). */
+const H = montar({ get: Object.assign({}, INVENTARIO, { aura_ativa: 'fenix-pioneira' }) });
+const voltou = [];
+H.M.abrir(Object.assign({}, HUNTER, { aura_id: 'fenix-pioneira' }), (id) => voltou.push(id));
+await espera(30);
+H.doc.querySelector('[data-aura="__cargo"]').onclick();
+await espera(30);
+const put = H.chamadas.find(c => c[0] === 'PUT');
+ok(put && put[2].aura_id === null,
+   'escolher a de cargo envia aura_id: null, não o id "arquiteto"');
+ok(voltou[0] === null, '  e o banner volta à aura de cargo na hora');
+await espera(200);
+
 // Escolher a que já está equipada não gera chamada nenhuma.
 const G = montar({ get: INVENTARIO });
 G.M.abrir(Object.assign({}, HUNTER, { aura_id: 'fenix-pioneira' }), () => {});
@@ -201,6 +217,17 @@ const css = ler('css', 'modal-auras.css');
 const cssCodigo = css.replace(/\/\*[\s\S]*?\*\//g, '');
 ok(/clip-path:\s*polygon/.test(cssCodigo),
    'cantos chanfrados, como a .sys-plate e o banner');
+
+/* O BURACO À DIREITA. `auto-fill` reserva colunas vazias; `1fr`
+   deixava o cartão esticar sem teto. Com três auras numa caixa que
+   comporta quatro, sobrava uma coluna fantasma. */
+const grade = (cssCodigo.match(/\.ma-grade\s*\{([^}]*)\}/) || [])[1] || '';
+ok(/auto-fit/.test(grade) && !/auto-fill/.test(grade),
+   'a grade usa auto-fit: coluna vazia não fica reservada');
+ok(/minmax\(\s*150px\s*,\s*190px\s*\)/.test(grade),
+   '  com teto de 190px, senão três cartões inchariam para preencher');
+ok(/justify-content:\s*center/.test(grade),
+   '  e centralizada: o que sobra vira respiro dos dois lados');
 ok(!/backdrop-filter/.test(cssCodigo),
    'SEM backdrop-filter — era ele borrando o banner animado a cada quadro');
 ok(/backdrop-filter/.test(css),

@@ -115,9 +115,28 @@
   padding: 1.1rem 1.2rem 1.3rem;
   overflow-y: auto;
 }
+/* ── A GRADE ────────────────────────────────────────────────
+
+   Era `auto-fill` com faixa `minmax(150px, 1fr)`. As duas escolhas
+   estavam erradas, e juntas produziam o buraco à direita:
+
+     `auto-fill`  RESERVA as colunas que caberiam, mesmo vazias. Com
+                  três cartões numa caixa que comporta quatro, a
+                  quarta coluna existia — vazia — e o conjunto ficava
+                  encostado à esquerda.
+
+     `1fr`        deixava cada cartão esticar sem limite. Trocar só o
+                  auto-fill por auto-fit resolveria o buraco fazendo
+                  os três cartões incharem até ocupar a largura toda,
+                  o que é outro tipo de feio.
+
+   `auto-fit` remove as colunas vazias, o teto de 190px impede o
+   inchaço, e `justify-content: center` transforma o que sobra em
+   respiro dos dois lados — que se lê como margem, não como falta. */
 .ma-grade {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 190px));
+  justify-content: center;
   gap: .7rem;
 }
 
@@ -154,9 +173,9 @@
   background: linear-gradient(160deg, rgba(124,58,237,.16), rgba(6,182,212,.04));
   box-shadow: 0 0 22px rgba(124,58,237,.18), inset 0 0 20px rgba(168,85,247,.06);
 }
-/* A de cargo não é clicável — e o cursor precisa dizer isso antes
-   do clique, não depois. */
-.ma-cargo { opacity: .82; cursor: default; }
+/* A de cargo É clicável como qualquer outra. O que a distingue não é
+   estar proibida, é ter vindo do Sistema em vez do inventário — e
+   isso quem diz é o selo, não um cinza de desabilitado. */
 
 .ma-palco {
   position: relative;

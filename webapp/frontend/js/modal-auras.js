@@ -50,6 +50,15 @@
 
 const ModalAuras = {
 
+  /* ── O TOKEN DO CARTÃO DE CARGO ──────────────────────────────
+     Só existe dentro desta tela. Ao escolher, vira `null` — que é o
+     que o backend já entende por "sem cosmética, vale a do cargo".
+
+     Não precisou de nada novo no servidor: a aura de cargo nunca foi
+     um valor a gravar, é o que sobra quando não há outro. O erro
+     estava em desenhar o cartão como se ele não fosse uma escolha. */
+  CARGO: '__cargo',
+
   _el: null,
   _dados: null,
   _aoTrocar: null,
@@ -181,13 +190,21 @@ const ModalAuras = {
       vazio: true,
     }));
 
-    /* A AURA DE CARGO. Não é escolhível — o Sistema a concede — mas
-       também não é uma prisão: ela vale quando não há cosmética nem a
-       escolha de ficar sem nada. O rótulo diz isso, em vez do cadeado
-       que sugeria obrigação. */
+    /* A AURA DE CARGO É ESCOLHÍVEL.
+
+       Ela não pode ser GRAVADA — o backend recusa `aura_id:
+       "arquiteto"`, e com razão: quem concede é o Sistema, e aceitar
+       o valor abriria porta para alguém se dar uma aura de cargo. Mas
+       daí eu havia concluído que ela também não podia ser ESCOLHIDA,
+       e são coisas diferentes.
+
+       Escolhê-la é mandar `null`: "sem cosmética". O backend já
+       aceitava isso desde sempre. O que faltava era o cartão saber
+       que aquele clique era possível. */
     if (cargo) {
       cards.push(this._card({
-        id: cargo.id,
+        id: this.CARGO,
+        arte: cargo.id,
         nome: cargo.nome,
         descricao: cargo.descricao,
         ativa: d.cargo_ativa === true || (ativa === null),
@@ -214,7 +231,8 @@ const ModalAuras = {
   },
 
   _card(o) {
-    const clicavel = !o.cargo;
+    const clicavel = true;          // TUDO nesta grade é uma escolha
+    const arte = o.arte || o.id;
     const palco = o.vazio
       ? `<span class="ma-silhueta" aria-hidden="true">
            <svg viewBox="0 0 80 80" width="80" height="80" style="max-width:none">
@@ -227,7 +245,7 @@ const ModalAuras = {
       /* 88px, e não os 112 de antes. Cada aura é um SVG com dezenas de
          camadas animadas; quatro delas em tamanho grande faziam o modal
          inteiro engasgar — e era parte do "demora para fechar". */
-      : ((window.Auras && Auras.existe(o.id)) ? Auras.bloco(o.id, 88) : '<span class="ma-sem-arte">◈</span>');
+      : ((window.Auras && Auras.existe(arte)) ? Auras.bloco(arte, 88) : '<span class="ma-sem-arte">◈</span>');
 
     return `
       <div class="ma-card${o.ativa ? ' ma-ativa' : ''}${o.cargo ? ' ma-cargo' : ''}${o.vazio ? ' ma-vazia' : ''}"
@@ -243,7 +261,7 @@ const ModalAuras = {
                quando esta vigente. Mostrar so "Equipada" apagaria a
                unica informacao que importa ali: que essa aura nao foi
                escolhida, foi concedida — e por isso nao se clica nela. */
-            ? `<div class="ma-selo ma-selo-fraco">${o.ativa ? 'Vigente · ' : ''}Concedida pelo cargo</div>`
+            ? `<div class="ma-selo${o.ativa ? '' : ' ma-selo-fraco'}">${o.ativa ? 'Equipada · ' : ''}Do cargo</div>`
             : (o.ativa ? '<div class="ma-selo">Equipada</div>' : '')}
       </div>`;
   },
@@ -255,8 +273,10 @@ const ModalAuras = {
      O caminho anterior fazia o contrário: esperava a resposta, e
      então REABRIA o modal inteiro refazendo o fetch do inventário —
      o que o Arquiteto sentiu como "demora muito para fechar". */
-  async _escolher(id) {
-    const anterior = this._hunter ? this._hunter.aura_id : null;
+  async _escolher(escolha) {
+    // O token de tela vira o valor do servidor. `null` = vale a do cargo.
+    const id = (escolha === this.CARGO) ? null : escolha;
+    const anterior = this._hunter ? (this._hunter.aura_id ?? null) : null;
     if (id === anterior) { this.fechar(); return; }
 
     this.fechar();
