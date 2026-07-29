@@ -259,6 +259,97 @@ const BannerV4 = {
     });
   },
 
+  /* ══════════════════════════════════════════════════════════
+     REPINTURA
+
+     O Dashboard rechama o desenho a cada ação do hunter. Remontar a
+     cada uma faria o banner inteiro piscar — e piscar foi
+     exatamente a reclamação que fez as listas de missão serem
+     reescritas. Um banner que apaga e volta a cada missão iniciada
+     seria a mesma dor, num lugar mais visível.
+
+     A regra: só se toca no que MUDOU.
+
+       • os números das gemas moram num <span class="gema-valor">.
+         São texto. Trocar texto não reinicia animação nenhuma.
+       • a barra de XP é geometria calculada — a hélice, o nodo e o
+         preenchimento saem todos do `pct`. Essa precisa ser gerada
+         de novo, e só é quando o `pct` muda de verdade.
+       • o que muda a MOLDURA (rank, campo de cor, avatar, aura)
+         não cabe em repintura: aí a peça devolve `false` e o
+         registro remonta.
+     ══════════════════════════════════════════════════════════ */
+  assinatura(u, o) {
+    // O que, mudando, obriga a remontar.
+    return [o.campo, o.rank || BannersArte.letraRank(u.classe),
+            u.avatar_url || '', u.aura_id || '', u.nivel_acesso || ''].join('|');
+  },
+
+  repintar(el, dados, host) {
+    const A = BannersArte;
+    const u = (dados && dados.hunter) || {};
+    const o = {
+      campo: host.opcao('campo', this.PADRAO.campo),
+      aura:  host.opcao('aura'),
+      rank:  host.opcao('rank'),
+    };
+
+    const assin = this.assinatura(u, o);
+    if (el.dataset.v4sig !== assin) return false;      // moldura mudou → remonta
+
+    const texto = (sel, valor) => {
+      const n = el.querySelector(sel);
+      if (n && n.textContent !== String(valor)) n.textContent = valor;
+    };
+
+    texto('.pt-nome', u.nome || 'Hunter');
+    texto('.pt-titulo', `"${u.titulo || 'Sem título'}"`);
+    texto('.pt-v4-quote-text', u.bio || 'Desperte o seu sistema. Erga-se contra a maré do ordinário.');
+
+    /* Gemas: só o número, que é texto solto dentro do SVG. A ordem
+       é a da marcação — nível, mana, streak — e o `html()` acima é
+       a única coisa que pode mudá-la. */
+    const gemas = el.querySelectorAll('.pt-gema .gema-valor');
+    const valores = [
+      String(u.nivel_atual ?? 1),
+      (u.moedas ?? 0).toLocaleString('pt-BR'),
+      String(u.streak_atual ?? 0),
+    ];
+    gemas.forEach((n, i) => {
+      if (valores[i] !== undefined && n.textContent !== valores[i]) n.textContent = valores[i];
+    });
+
+    // XP
+    const xp = Math.max(0, u.xp_atual || 0);
+    const alvo = Math.max(1, u.xp_proximo_nivel || 100);
+    const pct = Math.min(100, (xp / alvo) * 100);
+    texto('.pt-xp-num', `${xp.toLocaleString('pt-BR')} / ${alvo.toLocaleString('pt-BR')} XP`);
+
+    // A barra só é redesenhada se o preenchimento realmente andou.
+    // Redesenhar à toa reiniciaria a animação dos feixes a cada
+    // número atualizado na tela.
+    const caixa = el.querySelector('.pt-feixe-caixa');
+    if (caixa && el.dataset.v4pct !== pct.toFixed(2)) {
+      el.dataset.v4pct = pct.toFixed(2);
+      const svgAntigo = caixa.querySelector('svg');
+      const molde = el.ownerDocument.createElement('div');
+      molde.innerHTML = A.barraXP(pct, A.CAMPOS[o.campo] || A.CAMPOS.petroleo);
+      const svgNovo = molde.querySelector('svg');
+      if (svgAntigo && svgNovo) svgAntigo.replaceWith(svgNovo);
+    }
+
+    // Relíquias: só se a lista mudou de conteúdo.
+    const fila = el.querySelector('.pt-reliquias-fila');
+    const codigos = ((dados && dados.reliquias) || []).slice(0, 5).map(c => c.codigo).join(',');
+    if (fila && el.dataset.v4rel !== codigos) {
+      el.dataset.v4rel = codigos;
+      fila.innerHTML = this.reliquias(dados && dados.reliquias, 50, true)
+        || '<span class="pt-vazio">nenhuma relíquia no altar</span>';
+      this.ligarAcoes(el, host);
+    }
+    return true;
+  },
+
   /* Os cliques não sabem o que fazem: pedem ao hospedeiro. É isto
      que permite a mesma peça responder de um jeito no Dashboard
      (abrir o modal de aura) e de outro na Vitrine (não fazer nada). */
@@ -296,22 +387,30 @@ if (typeof Pecas !== 'undefined') {
     opcoes: { campo: ['abissal', 'petroleo', 'brasa'] },
 
     montar(el, dados, host) {
-      el.innerHTML = BannerV4.html(dados, {
+      const u = (dados && dados.hunter) || {};
+      const o = {
         campo: host.opcao('campo', BannerV4.PADRAO.campo),
         aura:  host.opcao('aura'),
         rank:  host.opcao('rank'),
-      });
+      };
+      el.innerHTML = BannerV4.html(dados, o);
+
+      // Marcas da repintura: o que já está desenhado, para não
+      // redesenhar o que não mudou.
+      el.dataset.v4sig = BannerV4.assinatura(u, o);
+      el.dataset.v4pct = Math.min(100,
+        (Math.max(0, u.xp_atual || 0) / Math.max(1, u.xp_proximo_nivel || 100)) * 100).toFixed(2);
+      el.dataset.v4rel = ((dados && dados.reliquias) || []).slice(0, 5).map(c => c.codigo).join(',');
+
       BannerV4.ligarCarrossel(el, host);
       BannerV4.ligarAcoes(el, host);
     },
 
-    /* Sem `atualizar()`: a V4 é um bloco de HTML gerado de uma vez,
-       sem nós estáveis para repintar por dentro. O registro remonta,
-       e remontar aqui é correto — só custa o piscar.
-
-       Fazer melhor exige separar os pedaços que mudam (XP, gemas)
-       dos que não mudam (moldura, circuito), e isso é redesenho, não
-       empacotamento. Não é trabalho deste passo. */
+    // Repinta o que mudou; devolve false quando a moldura mudou e o
+    // registro precisa remontar.
+    atualizar(el, dados, host) {
+      return BannerV4.repintar(el, dados, host);
+    },
   });
 }
 

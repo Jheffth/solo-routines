@@ -344,11 +344,22 @@ const Pecas = {
       return true;
     }
     inst.dados = dados;
+    let r;
     try {
-      inst.peca.atualizar(el, dados || {}, inst.host);
+      r = inst.peca.atualizar(el, dados || {}, inst.host);
     } catch (e) {
       console.error(`[Pecas] "${inst.peca.id}" estourou em atualizar():`, e);
       return false;
+    }
+
+    /* `return false` de dentro de atualizar() significa "não dá para
+       repintar isto, remonte". Nem toda mudança de dado cabe numa
+       repintura: trocar de rank muda a cor do banner inteiro, trocar
+       de avatar muda o hexágono. A peça é quem sabe onde fica essa
+       fronteira — e é melhor ela pedir a remontagem do que fingir
+       que repintou e deixar metade da tela desatualizada. */
+    if (r === false) {
+      this.montar(el, inst.peca.id, dados, inst.opts);
     }
     return true;
   },

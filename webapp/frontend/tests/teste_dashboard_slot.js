@@ -27,8 +27,14 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
 async function main() {
 console.log('\n=== O DASHBOARD HOSPEDANDO A PEÇA ===\n');
 
+/* A `url` não é enfeite: sem ela o jsdom serve a página como
+   "about:blank", e aí `localStorage` LANÇA SecurityError. Como a
+   preferência de banner é lida dentro de um try/catch, o erro sumiria
+   em silêncio e o teste acusaria "a preferência não funciona" quando
+   o problema era o ambiente do teste. */
 const dom = new JSDOM(fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8'),
-                      { pretendToBeVisual: true, runScripts: 'outside-only' });
+                      { pretendToBeVisual: true, runScripts: 'outside-only',
+                        url: 'http://localhost/' });
 const w = dom.window, doc = w.document;
 
 /* ── Dublês: só o que renderPersonagem encosta ───────────── */
@@ -63,10 +69,17 @@ w.HTMLCanvasElement.prototype.getContext = function () {
 const erros = [];
 w.console = { log(){}, warn(){}, error: (...a) => erros.push(a.join(' ')) };
 
+/* A MESMA ORDEM do index.html. Se o teste carregasse menos scripts
+   que a página, ele provaria uma configuração que não existe — foi o
+   que aconteceu quando a V4 entrou: sem `banner-v4.js` carregado, o
+   slot caía na clássica e o teste dizia que o padrão não funcionava. */
 const ctx = vm.createContext(w);
-vm.runInContext(lerJS('js', 'pecas.js'), ctx);
-vm.runInContext(lerJS('js', 'pecas', 'hunter-card-classico.js'), ctx);
-vm.runInContext(lerJS('js', 'pages', 'dashboard.js'), ctx);
+[['js','pecas.js'],
+ ['js','gemas.js'], ['js','escudos-img.js'], ['js','banners-arte.js'],
+ ['js','pecas','hunter-card-classico.js'],
+ ['js','pecas','banner-v4.js'],
+ ['js','pages','dashboard.js'],
+].forEach(p => vm.runInContext(lerJS(...p), ctx));
 
 /* `const Dashboard = {...}` num script clássico NÃO vira propriedade
    de window — fica no escopo léxico global. É a mesma pegadinha que
@@ -80,7 +93,8 @@ const slot = doc.getElementById('hunter-card');
 console.log('-- o slot antes de qualquer coisa --');
 ok(!!slot, '#hunter-card existe no index.html');
 ok(slot.innerHTML.trim() === '', 'e está VAZIO (a marcação saiu daqui)');
-ok(slot.dataset.pecaPadrao === 'hunter-card-classico', 'com a peça padrão declarada no HTML');
+ok(slot.dataset.pecaPadrao === 'banner-v4',
+   'e o slot abre na V4 (o padrão declarado no HTML desde a ativação)');
 
 /* ── 2. O Dashboard monta ────────────────────────────────── */
 console.log('\n-- renderPersonagem() --');
@@ -90,9 +104,14 @@ const hunter = {
   xp_atual: 900, xp_proximo_nivel: 1000,
   nivel_acesso: 'Arquiteto', avatar_url: '/img/eu.png',
 };
+/* Este teste continua provando a FIDELIDADE da peça clássica: ela é
+   a rede de segurança de todas as outras, e o dia em que ela quebrar
+   é o dia em que um erro na V4 vira tela vazia. Por isso monta-se
+   ela explicitamente, e não o padrão do slot. */
+D.usarBanner('hunter-card-classico');
 D.renderPersonagem(hunter);
 ok(!!slot.__peca, 'a peça foi montada no slot');
-ok(slot.dataset.peca === 'hunter-card-classico', 'e é a clássica');
+ok(slot.dataset.peca === 'hunter-card-classico', 'e é a clássica, montada por preferência');
 ok(erros.length === 0, `sem erros no console (${erros.join(' | ') || 'nenhum'})`);
 
 /* ── 3. FIDELIDADE: a tela é a mesma? ────────────────────── */
@@ -204,12 +223,57 @@ ok(w.Pecas.diagnostico().vivas === 1, 'e não fica uma instância duplicada');
 /* ── 11. A rede de segurança ─────────────────────────────── */
 console.log('\n-- se a peça escolhida falhar --');
 D._pararTimerDash();
-slot.dataset.pecaPadrao = 'peca-que-nao-existe';
+D.usarBanner('peca-que-nao-existe');
+erros.length = 0;
+D.renderPersonagem(hunter);
+/* SÃO DUAS REDES, e é importante não confundi-las:
+   1ª — preferência apontando para peça que não existe cai no padrão
+        DECLARADO NO SLOT (hoje a V4);
+   2ª — se essa também falhasse ao montar, o registro cairia na peça
+        marcada `padrao: true`, que é a clássica.
+   Aqui se exercita a primeira. */
+ok(slot.dataset.peca === 'banner-v4',
+   'preferência inexistente cai no padrão declarado no slot');
+ok(!!slot.querySelector('.pt-v4-banner'), '  e o hunter vê um banner, não um buraco');
+ok(slot.querySelector('.pt-nome').textContent === 'Jh3ffth', '  com o nome no lugar');
+
+/* A segunda rede: a V4 registrada, mas quebrada na montagem. */
+D._pararTimerDash();
+const v4 = w.Pecas.obter('banner-v4');
+const montarBom = v4.montar;
+v4.montar = () => { throw new Error('a V4 quebrou'); };
 erros.length = 0;
 D.renderPersonagem(hunter);
 ok(slot.dataset.peca === 'hunter-card-classico',
-   'peça inexistente cai para a clássica — o hunter não vê um buraco');
-ok(slot.querySelector('#dash-nome').textContent === 'Jh3ffth', 'com os dados no lugar');
+   'V4 estourando ao montar cai para a CLÁSSICA (a rede de verdade)');
+ok(slot.querySelector('#dash-nome').textContent === 'Jh3ffth', '  e o cartão de sempre aparece');
+v4.montar = montarBom;
+
+/* E a V4 boa, montada pelo padrão do slot. */
+D._pararTimerDash();
+D.usarBanner(null);
+D.renderPersonagem(hunter);
+ok(slot.dataset.peca === 'banner-v4', 'sem preferência, o slot abre na V4');
+
+/* ── Repintura da V4: o banner NÃO pode piscar ─────────────
+   Foi a reclamação que reescreveu as listas de missão. Um banner
+   que apaga e volta a cada missão iniciada seria a mesma dor, num
+   lugar mais visível. */
+console.log('\n-- a V4 repinta sem piscar --');
+const noBanner = slot.querySelector('.pt-v4-banner');
+const noNomeV4 = slot.querySelector('.pt-nome');
+D.renderPersonagem(Object.assign({}, hunter, { moedas: 9999, xp_atual: 950 }));
+ok(slot.querySelector('.pt-v4-banner') === noBanner, 'o banner é O MESMO nó: repintou');
+ok(slot.querySelector('.pt-nome') === noNomeV4, '  e o nome também');
+const gemas = slot.querySelectorAll('.pt-gema .gema-valor');
+ok(gemas[1] && gemas[1].textContent === '9.999', '  a gema de mana chegou em 9.999');
+ok(slot.querySelector('.pt-xp-num').textContent === '950 / 1.000 XP', '  e o XP acompanhou');
+
+// Mas trocar de RANK muda a moldura inteira: aí remontar é o certo.
+D.renderPersonagem(Object.assign({}, hunter, { classe: 'B-Rank' }));
+ok(slot.querySelector('.pt-v4-banner') !== noBanner,
+   'trocar de rank REMONTA — a peça pede, porque a moldura mudou de cor');
+ok(slot.querySelector('.pt-chip-rank').textContent === 'B-Rank', '  e o chip mostra o novo rank');
 
 /* ── 12. O que o dashboard.js deixou de saber ────────────── */
 console.log('\n-- a fronteira, no código --');

@@ -464,16 +464,24 @@
                está congelada em tests/gabarito-hunter-card.html para o
                teste provar que nada mudou na tela.
 
-               `data-peca-padrao` é a rede de segurança: se a peça
-               escolhida pelo hunter não existir ou estourar ao montar, é
-               esta que entra. Ninguém vê um retângulo vazio no lugar do
-               próprio perfil.
+               `data-peca-padrao` é o que o slot abre por padrão. Desde a
+               ativação da V4 é ela — o Portal, campo Abissal.
+
+               Isso NÃO é a rede de segurança. A rede é outra: a peça
+               marcada `padrao: true` no registro, que continua sendo a
+               Janela de Status clássica. Se a V4 não carregar ou
+               estourar ao montar, é a clássica que entra. Ninguém vê um
+               retângulo vazio no lugar do próprio perfil.
+
+               Para voltar, sem tocar em código:
+                   Dashboard.usarBanner(null)
 
                O id e a classe FICAM: css/estandarte.css estiliza
-               `#hunter-card.est-teste-ativo` e o arquiteto-console.js
+               `#hunter-card.est-teste-ativo`, neutraliza a moldura
+               quando `data-peca="banner-v4"`, e o arquiteto-console.js
                procura `#hunter-card`. -->
           <div class="hunter-window" id="hunter-card"
-               data-slot="banner" data-peca-padrao="hunter-card-classico"></div>
+               data-slot="banner" data-peca-padrao="banner-v4"></div>
           <div class="dashboard-grid">
             <div class="card col-span-2" id="card-rotinas-hoje">
               <!-- Cabeçalho do extrato -->

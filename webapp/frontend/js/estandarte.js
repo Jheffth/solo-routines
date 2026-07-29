@@ -297,12 +297,24 @@ const Estandarte = {
       return;
     }
 
+    /* O SLOT É EMPRESTADO, NÃO INVADIDO.
+
+       A versão anterior fazia `card.appendChild()` dentro do
+       #hunter-card. Aquilo era uma div estática; hoje é o slot de
+       uma peça, e a peça apaga o contêiner ao montar — os dois
+       escreveriam no mesmo lugar.
+
+       Desmontar antes resolve pela raiz: o Dashboard recolhe seus
+       timers e ouvintes, a bancada usa o espaço, e no restaurar a
+       peça volta do zero. É a mesma disciplina que o contrato pede
+       de qualquer um que queira o contêiner de outro. */
+    if (typeof Pecas !== 'undefined') Pecas.desmontar(slot);
+
     this._emTesteDash = true;
     slot.classList.add('est-teste-ativo');
 
     const u = { ...this._hunter(), ...(this._perfil || {}) };
     const v = this._opcoes.versao;
-    const htmlBanner = this._htmlDaVersao(u, v);
     const vNome = this._nomeDaVersao(v);
 
     let c = document.getElementById('est-teste-banner-container');
@@ -317,17 +329,13 @@ const Estandarte = {
         </div>
         <div id="est-teste-banner-wrap"></div>
       `;
-      // IRMÃO do slot, nunca filho.
-      slot.parentNode.insertBefore(c, slot);
+      slot.appendChild(c);
       c.querySelector('#btn-restaurar-banner-direct')?.addEventListener('click', () => this.restaurarDashboard());
     }
 
-    c.querySelector('#est-teste-banner-wrap').innerHTML = htmlBanner;
+    c.querySelector('#est-teste-banner-wrap').innerHTML = this._htmlDaVersao(u, v);
     c.querySelector('#est-teste-aviso-bar span').innerHTML =
       `⚡ <strong>MODO TESTE ARQUITETO:</strong> Visualizando Banner ${vNome} no lugar do banner real`;
-
-    // O banner real sai de cena inteiro — inclusive a peça montada nele.
-    slot.style.display = 'none';
 
     SoloDialog?.toast?.(`Banner ${vNome} aplicado no lugar do banner real do Dashboard!`, 'success');
     if (this._el) this._render();
@@ -337,11 +345,16 @@ const Estandarte = {
     if (!this._emTesteDash) return;
     this._emTesteDash = false;
     document.getElementById('est-teste-banner-container')?.remove();
+
     const slot = document.getElementById('hunter-card');
-    if (slot) {
-      slot.classList.remove('est-teste-ativo');
-      slot.style.display = '';      // o banner real volta como estava
+    if (slot) slot.classList.remove('est-teste-ativo');
+
+    // Devolver o slot é REMONTAR: não existe peça hibernando fora
+    // da página, e a que estava aqui foi desmontada de propósito.
+    if (typeof Dashboard !== 'undefined' && Dashboard._montarBanner && window.__dashDados) {
+      Dashboard._montarBanner(window.__dashDados);
     }
+
     SoloDialog?.toast?.('Banner real do Dashboard restaurado!', 'info');
     if (this._el) this._render();
   },
