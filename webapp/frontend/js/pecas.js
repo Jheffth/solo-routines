@@ -182,16 +182,29 @@ const Pecas = {
         return h;
       },
 
-      /* Laço de animação com DOIS freios: o desmonte explícito e o
-         próprio DOM. Se o contêiner sair da página sem ninguém
-         avisar, o laço percebe e para sozinho. */
+      /* Laço de animação com TRÊS freios: o desmonte explícito, o
+         próprio DOM (se o contêiner sair da página sem ninguém
+         avisar, o laço percebe e para) e o retorno da função.
+
+         `return false` encerra o laço. Nem toda animação é eterna:
+         a contagem crescente dos cristais tem fim, e sem uma saída
+         ela continuaria pedindo quadros para sempre só para
+         recalcular um número que já chegou. */
       quadro(fn) {
+        /* Cada laço ocupa UMA vaga fixa, que é sobrescrita a cada
+           quadro. A versão ingênua empilhava um número por quadro:
+           depois de um minuto de partículas, `diagnostico()`
+           acusaria milhares de "quadros vivos" que já dispararam.
+           Um detector de vazamento que inventa vazamento é pior do
+           que não ter detector. */
+        const vaga = inst.quadros.length;
+        inst.quadros.push(0);
         const passo = (t) => {
-          if (inst.morta || !inst.el.isConnected) return;
-          fn(t);
-          inst.quadros.push(requestAnimationFrame(passo));
+          if (inst.morta || !inst.el.isConnected) { inst.quadros[vaga] = 0; return; }
+          if (fn(t) === false)                    { inst.quadros[vaga] = 0; return; }
+          inst.quadros[vaga] = requestAnimationFrame(passo);
         };
-        inst.quadros.push(requestAnimationFrame(passo));
+        inst.quadros[vaga] = requestAnimationFrame(passo);
       },
 
       /* Ouvintes rastreados. Importa sobretudo para `window` e
@@ -239,6 +252,7 @@ const Pecas = {
      pode derrubar a tela que a hospeda. */
   montar(el, idPeca, dados, opts) {
     if (!el) { console.error('[Pecas] montar() sem contêiner.'); return null; }
+    this._coletar();
 
     /* Trocar de peça no mesmo lugar desmonta a anterior primeiro.
        Sem isto, os timers da antiga sobreviveriam à troca — que é
@@ -277,6 +291,7 @@ const Pecas = {
   _instanciar(el, peca, dados, opts) {
     const inst = {
       el, peca, dados,
+      opts: opts || {},              // guardado para a remontagem de atualizar()
       selo: `pc${++this._seq}`,
       intervalos: [], esperas: [], quadros: [], ouvintes: [],
       morta: false,
@@ -304,6 +319,38 @@ const Pecas = {
     el.dataset.peca = peca.id;
     this._vivas.push(inst);
     return inst;
+  },
+
+  /* ══════════════════════════════════════════════════════════
+     REPINTURA
+
+     Dado novo não é peça nova. O `atualizarNumeros()` do Dashboard
+     rechama `renderPersonagem()` a cada ação do hunter — se cada
+     chamada dessas remontasse a peça, o cartão piscaria inteiro a
+     cada missão iniciada. Foi exatamente o incômodo que o
+     `_reconciliar()` do dashboard.js e o `repintar()` do
+     MissaoCard já existem para resolver.
+
+     A peça implementa `atualizar()` se souber repintar sem apagar.
+     Se não souber, remontamos — correto, só que piscando.
+     ══════════════════════════════════════════════════════════ */
+
+  atualizar(el, dados) {
+    const inst = el && el.__peca;
+    if (!inst || inst.morta) return false;
+
+    if (typeof inst.peca.atualizar !== 'function') {
+      this.montar(el, inst.peca.id, dados, inst.opts);
+      return true;
+    }
+    inst.dados = dados;
+    try {
+      inst.peca.atualizar(el, dados || {}, inst.host);
+    } catch (e) {
+      console.error(`[Pecas] "${inst.peca.id}" estourou em atualizar():`, e);
+      return false;
+    }
+    return true;
   },
 
   /* ══════════════════════════════════════════════════════════
@@ -348,6 +395,29 @@ const Pecas = {
     [...this._vivas].forEach(i => this.desmontar(i.el));
   },
 
+  /* ── A COLETA DOS ÓRFÃOS ──────────────────────────────────
+
+     Um contêiner pode sumir do DOM sem ninguém chamar desmontar():
+     basta alguém fazer `innerHTML = ''` no pai. Acontece neste
+     projeto.
+
+     O laço de quadros sobrevive a isso sozinho (ele testa
+     `isConnected`), mas o OUVINTE não: um `resize` pendurado em
+     `window` — e a Janela de Status pendura um — continua vivo
+     apontando para um elemento que ninguém mais vê. A cada
+     navegação, mais um.
+
+     Por isso a coleta roda antes de montar e ao diagnosticar.
+
+     REGRA QUE ISTO IMPÕE AO HOSPEDEIRO: quem tirar o contêiner do
+     documento e quiser devolvê-lo depois precisa REMONTAR. Não
+     existe peça hibernando fora da página. */
+  _coletar() {
+    [...this._vivas]
+      .filter(i => !i.el || !i.el.isConnected)
+      .forEach(i => this.desmontar(i.el));
+  },
+
   /* ══════════════════════════════════════════════════════════
      DIAGNÓSTICO
 
@@ -357,12 +427,14 @@ const Pecas = {
      ══════════════════════════════════════════════════════════ */
 
   diagnostico() {
+    this._coletar();
     return {
       registradas: Object.keys(this._registro).length,
       vivas: this._vivas.length,
       intervalos: this._vivas.reduce((n, i) => n + i.intervalos.length, 0),
       esperas:    this._vivas.reduce((n, i) => n + i.esperas.length, 0),
-      quadros:    this._vivas.reduce((n, i) => n + i.quadros.length, 0),
+      // só as vagas OCUPADAS: um laço encerrado deixa a vaga em 0
+      quadros:    this._vivas.reduce((n, i) => n + i.quadros.filter(Boolean).length, 0),
       ouvintes:   this._vivas.reduce((n, i) => n + i.ouvintes.length, 0),
       detalhe: this._vivas.map(i => ({
         peca: i.peca.id,

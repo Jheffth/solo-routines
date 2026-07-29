@@ -183,12 +183,25 @@ P.desmontar(el);
 await espera(60);
 ok(quadros === rodou, `e parou no desmonte (ficou em ${rodou})`);
 
-// O segundo freio: o contêiner sai do DOM sem ninguém desmontar.
+// O segundo freio: `return false` encerra um laço finito.
+let finitos = 0;
+P.registrar({ id: 'finita', nome: 'Finita', familia: 'banner',
+              montar(el, d, host) { host.quadro(() => { finitos++; return finitos < 3; }); } });
+P.montar(el, 'finita', {});
+await espera(60);
+ok(finitos === 3, `'return false' encerra o laço no ponto certo (parou em ${finitos})`);
+ok(P.diagnostico().quadros === 0, '  e não deixa quadro pendurado');
+P.desmontar(el);
+
+// O terceiro freio: o contêiner sai do DOM sem ninguém desmontar.
 const orfao = doc.createElement('div');
 doc.body.appendChild(orfao);
 let orfaos = 0;
 P.registrar({ id: 'orfa', nome: 'Órfã', familia: 'banner',
-              montar(el, d, host) { host.quadro(() => { orfaos++; }); } });
+              montar(el, d, host) {
+                host.quadro(() => { orfaos++; });
+                host.ouvir(w, 'resize', () => {});   // o perigoso: vive em window
+              } });
 P.montar(orfao, 'orfa', {});
 await espera(40);
 const antesDeArrancar = orfaos;
@@ -196,8 +209,33 @@ orfao.remove();                       // arrancado, sem desmontar
 await espera(60);
 ok(orfaos === antesDeArrancar,
    'contêiner arrancado do DOM: o laço percebe e se desliga sozinho');
+// Mas o ouvinte em `window` NÃO se desliga sozinho — daí a coleta.
+ok(P.diagnostico().vivas === 0,
+   'e a instância órfã é COLETADA: o ouvinte de window não fica pendurado');
 
-/* ── 11. Este arquivo não desenha nada sozinho ───────────── */
+/* ── 11. Repintura ───────────────────────────────────────── */
+console.log('\n-- repintura --');
+let pinturas = 0;
+P.registrar({ id: 'repintavel', nome: 'Repintável', familia: 'banner',
+              montar(el, d) { el.innerHTML = `<b>${d.n || 0}</b>`; },
+              atualizar(el, d) { pinturas++; el.querySelector('b').textContent = d.n; } });
+P.montar(el, 'repintavel', { n: 1 });
+const noAntes = el.querySelector('b');
+P.atualizar(el, { n: 2 });
+ok(el.querySelector('b') === noAntes, 'quem tem atualizar() repinta o MESMO nó (não pisca)');
+ok(el.querySelector('b').textContent === '2' && pinturas === 1, '  e o dado novo entrou');
+
+P.registrar({ id: 'burra', nome: 'Burra', familia: 'banner',
+              montar(el, d) { el.innerHTML = `<i>${d.n || 0}</i>`; } });
+P.montar(el, 'burra', { n: 1 });
+const noBurro = el.querySelector('i');
+P.atualizar(el, { n: 2 });
+ok(el.querySelector('i') !== noBurro && el.querySelector('i').textContent === '2',
+   'quem NÃO tem atualizar() é remontada — correto, só que piscando');
+ok(P.diagnostico().vivas === 1, '  e a remontagem não deixa duas instâncias vivas');
+P.desmontar(el);
+
+/* ── 12. Este arquivo não desenha nada sozinho ───────────── */
 console.log('\n-- inércia --');
 const fonte = fs.readFileSync(CAMINHO, 'utf8');
 
