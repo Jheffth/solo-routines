@@ -227,6 +227,14 @@ def me(usuario: Usuario = Depends(get_usuario_atual)):
         "avatar_url": usuario.avatar_url,
         "classe": usuario.classe,
         "titulo": usuario.titulo,
+        # A EPIGRAFE. A coluna existe desde sempre e o PUT /perfil/ ja a
+        # gravava — mas o /me nunca a devolvia. Enquanto ninguem a exibia
+        # isso passou despercebido; quando o banner V4 passou a mostra-la,
+        # o sintoma ficou obvio: o hunter gravava a frase, via na hora
+        # (porque o front atualiza o proprio estado) e a perdia no F5.
+        #
+        # Nao era o gravar que falhava: era o ler que nunca existiu.
+        "bio": getattr(usuario, "bio", None),
         "xp_total": usuario.xp_total,
         "xp_atual": usuario.xp_atual,
         "nivel_atual": usuario.nivel_atual,
