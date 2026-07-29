@@ -744,6 +744,12 @@ const Dashboard = {
 
 
   _bindFiltrosExtrato() {
+    /* Enfeita os `<select>` com a interface própria. Ele NÃO
+       substitui o elemento: o select continua sendo a verdade, e é
+       por isso que tudo abaixo desta linha segue igual ao que era —
+       `.value`, o ouvinte de `change`, a leitura no carregamento. */
+    if (typeof SrFiltro !== 'undefined') SrFiltro.montarTodos(document.getElementById('extrato-filtros'));
+
     const IDS = ['filtro-periodo','filtro-origem','filtro-tipo',
                  'filtro-categoria','filtro-status-missao'];
 

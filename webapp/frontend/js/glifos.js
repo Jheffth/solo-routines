@@ -315,8 +315,93 @@ const Glifos = {
     },
   },
 
+  /* O complemento entra no MESMO catálogo. Fundir aqui, e não
+     manter duas tabelas, é o que faz `existe()` e `linha()` valerem
+     para os dois grupos sem uma linha de exceção. */
   _achar(nome) {
-    return this._G[String(nome || '').toLowerCase()] || this._G.padrao;
+    const n = String(nome || '').toLowerCase();
+    return this._G[n] || this._extra[n] || this._G.padrao;
+  },
+
+  nomes() { return Object.keys(this._G).concat(Object.keys(this._extra)); },
+
+  /* ══════════════════════════════════════════════════════════
+     COMPLEMENTO DO ALFABETO — os filtros do Extrato
+
+     Os 41 glifos acima já cobriam tipo, categoria, prioridade,
+     dificuldade e status. Faltavam dois grupos, e por um motivo
+     que não era descuido:
+
+     Os filtros são `<select>`, e `<option>` NÃO ACEITA HTML — só
+     texto. Um SVG ali é impossível. Foi por isso que o Extrato
+     ficou sendo o único canto do app com emoji: não era preguiça,
+     era o teto do elemento.
+
+     Estes entram junto com o filtro próprio, que não usa `option`.
+     ══════════════════════════════════════════════════════════ */
+  _extra: {
+    /* ── Período ──────────────────────────────────────────── */
+    tudo: {     // o laço sem fim — todo o livro-caixa
+      base: '',
+      traco: '<path d="M8.2 12c0-2 -1.4-3.4-3.1-3.4S2 10 2 12s1.4 3.4 3.1 3.4S8.2 14 8.2 12z"/>'
+           + '<path d="M15.8 12c0 2 1.4 3.4 3.1 3.4S22 14 22 12s-1.4-3.4-3.1-3.4S15.8 10 15.8 12z"/>'
+           + '<path d="M8.2 12c0-2 1.7-3.4 3.8-3.4s3.8 1.4 3.8 3.4-1.7 3.4-3.8 3.4S8.2 14 8.2 12z"/>',
+      luz: '',
+    },
+    hoje: {     // o dia marcado no calendário
+      base: '<rect x="3.2" y="5" width="17.6" height="16" rx="2"/>',
+      traco: '<rect x="3.2" y="5" width="17.6" height="16" rx="2"/>'
+           + '<path d="M3.2 10h17.6M8 3v4M16 3v4"/>',
+      luz: '<circle cx="12" cy="15.4" r="2.3"/>',
+    },
+    janela7: {  // sete hastes: a semana como barras
+      base: '',
+      traco: '<path d="M3.5 19V9.5M7 19v-6M10.5 19v-9M14 19v-4.5M17.5 19v-7.5M21 19v-3"/>'
+           + '<path d="M2 21h20"/>',
+      luz: '',
+    },
+    janela30: { // a lua do mês, com a marca do arco
+      base: '<circle cx="12" cy="12" r="8.6"/>',
+      traco: '<circle cx="12" cy="12" r="8.6"/>'
+           + '<path d="M12 3.4a8.6 8.6 0 0 1 0 17.2"/>'
+           + '<path d="M12 6.6v5.4l3.4 2"/>',
+      luz: '',
+    },
+    arquivo: {  // a gaveta do mês corrente
+      base: '<path d="M3 7.5h18v12H3z"/>',
+      traco: '<path d="M3 7.5h18v12a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 19.5z"/>'
+           + '<path d="M2 4.5h20v3H2z"/><path d="M9.6 11.5h4.8"/>',
+      luz: '',
+    },
+
+    /* ── Os "todos" ───────────────────────────────────────
+       Cada um é o SUPERCONJUNTO do que filtra, e não um ícone
+       genérico repetido: o olho lê a diferença antes de ler o
+       rótulo. */
+    origens: {  // o globo — de onde a missão vem
+      base: '<circle cx="12" cy="12" r="8.8"/>',
+      traco: '<circle cx="12" cy="12" r="8.8"/>'
+           + '<path d="M3.2 12h17.6"/>'
+           + '<path d="M12 3.2a13 13 0 0 1 0 17.6 13 13 0 0 1 0-17.6z"/>',
+      luz: '',
+    },
+    tipos: {    // camadas empilhadas — as frequências, uma sobre a outra
+      base: '',
+      traco: '<path d="M12 2.8 21 7.4 12 12 3 7.4z"/>'
+           + '<path d="M3 12.2 12 16.8l9-4.6"/><path d="M3 16.6 12 21.2l9-4.6"/>',
+      luz: '',
+    },
+    categorias: { // as pastas do arquivo
+      base: '<path d="M2.5 6.5h6l2 2.4h11v10.6h-19z"/>',
+      traco: '<path d="M2.5 6.5h6l2 2.4h11v10.6a1 1 0 0 1-1 1h-17a1 1 0 0 1-1-1z"/>'
+           + '<path d="M5.5 6.5V4.4h5l1.7 2.1"/>',
+      luz: '',
+    },
+    status: {   // o raio — o estado, a energia da missão
+      base: '<path d="M13.4 2.5 5 13.6h5.4L9.8 21.5 18.6 10h-5.7z"/>',
+      traco: '<path d="M13.4 2.5 5 13.6h5.4L9.8 21.5 18.6 10h-5.7z"/>',
+      luz: '',
+    },
   },
 
   /* Versão RICA — para o lançador, onde o ícone é protagonista.
@@ -347,7 +432,8 @@ const Glifos = {
   },
 
   existe(nome) {
-    return !!this._G[String(nome || '').toLowerCase()];
+    const n = String(nome || '').toLowerCase();
+    return !!(this._G[n] || this._extra[n]);
   },
 };
 

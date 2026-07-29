@@ -29,6 +29,7 @@
   <link rel="stylesheet" href="css/badges.css">
   <link rel="stylesheet" href="css/hunter-publico.css">
   <link rel="stylesheet" href="css/badge-card.css">
+  <link rel="stylesheet" href="css/sr-filtro.css">
   <link rel="stylesheet" href="css/modal-auras.css">
   <link rel="stylesheet" href="css/altar-reliquias.css">
   <link rel="stylesheet" href="css/buddylist.css">
@@ -529,49 +530,49 @@
                      Padrão TUDO: um livro-caixa abre mostrando o que existe;
                      quem quiser recortar o dia, recorta. -->
                 <select id="filtro-periodo" class="sr-filtro" style="--f-cor:#7c3aed">
-                  <option value="tudo" selected>♾ Tudo</option>
-                  <option value="hoje">📅 Hoje</option>
-                  <option value="7dias">🗓 Últimos 7 dias</option>
-                  <option value="30dias">📆 Últimos 30 dias</option>
-                  <option value="mes">🗃 Este mês</option>
+                  <option value="tudo" selected data-glifo="tudo">Tudo</option>
+                  <option value="hoje" data-glifo="hoje">Hoje</option>
+                  <option value="7dias" data-glifo="janela7">Últimos 7 dias</option>
+                  <option value="30dias" data-glifo="janela30">Últimos 30 dias</option>
+                  <option value="mes" data-glifo="arquivo">Este mês</option>
                 </select>
 
                 <!-- Origem -->
                 <select id="filtro-origem" class="sr-filtro" style="--f-cor:#38bdf8">
-                  <option value="">🌐 Todas as origens</option>
-                  <option value="rotina">🔁 De rotinas</option>
-                  <option value="geral">🎯 Gerais</option>
+                  <option value="" data-glifo="origens">Todas as origens</option>
+                  <option value="rotina" data-glifo="rotina">De rotinas</option>
+                  <option value="geral" data-glifo="avulsa">Gerais</option>
                 </select>
 
                 <!-- Tipo -->
                 <select id="filtro-tipo" class="sr-filtro" style="--f-cor:#3b82f6">
-                  <option value="">🔁 Todos os tipos</option>
-                  <option value="DIARIA">🌅 Diária</option>
-                  <option value="SEMANAL">📆 Semanal</option>
-                  <option value="MENSAL">🗓 Mensal</option>
-                  <option value="ANUAL">🎯 Anual</option>
-                  <option value="AVULSA">⚡ Avulsa</option>
+                  <option value="" data-glifo="tipos">Todos os tipos</option>
+                  <option value="DIARIA" data-glifo="diaria">Diária</option>
+                  <option value="SEMANAL" data-glifo="semanal">Semanal</option>
+                  <option value="MENSAL" data-glifo="mensal">Mensal</option>
+                  <option value="ANUAL" data-glifo="anual">Anual</option>
+                  <option value="AVULSA" data-glifo="avulsa">Avulsa</option>
                 </select>
 
                 <!-- Categoria -->
                 <select id="filtro-categoria" class="sr-filtro" style="--f-cor:#06b6d4">
-                  <option value="">🗂 Todas as categorias</option>
-                  <option value="Saúde">❤️ Saúde</option>
-                  <option value="Trabalho">💼 Trabalho</option>
-                  <option value="Estudo">📚 Estudo</option>
-                  <option value="Casa">🏠 Casa</option>
-                  <option value="Pessoal">⚡ Pessoal</option>
-                  <option value="Combate">⚔️ Combate</option>
+                  <option value="" data-glifo="categorias">Todas as categorias</option>
+                  <option value="Saúde" data-glifo="saude">Saúde</option>
+                  <option value="Trabalho" data-glifo="trabalho">Trabalho</option>
+                  <option value="Estudo" data-glifo="estudo">Estudo</option>
+                  <option value="Casa" data-glifo="casa">Casa</option>
+                  <option value="Pessoal" data-glifo="pessoal">Pessoal</option>
+                  <option value="Combate" data-glifo="combate">Combate</option>
                 </select>
 
                 <!-- Status -->
                 <select id="filtro-status-missao" class="sr-filtro" style="--f-cor:#a855f7">
-                  <option value="">⚡ Todos os status</option>
-                  <option value="PENDENTE">⏳ Não Iniciada</option>
-                  <option value="ATIVA">▶ Em Curso</option>
-                  <option value="CONCLUIDA">✓ Concluída</option>
-                  <option value="FRACASSADA">☠ Fracassada</option>
-                  <option value="CANCELADA">✕ Cancelada</option>
+                  <option value="" data-glifo="status">Todos os status</option>
+                  <option value="PENDENTE" data-glifo="pendente">Não Iniciada</option>
+                  <option value="ATIVA" data-glifo="ativa">Em Curso</option>
+                  <option value="CONCLUIDA" data-glifo="concluida">Concluída</option>
+                  <option value="FRACASSADA" data-glifo="fracassada">Fracassada</option>
+                  <option value="CANCELADA" data-glifo="cancelada">Cancelada</option>
                 </select>
 
                 <!-- Toggle ocultar concluídas (Extrato) -->
@@ -1316,6 +1317,7 @@
        as acoes de teste que ja funcionam nele. -->
   <script src="js/forja-testes.js"></script>
   <script src="js/badge-card.js"></script>
+  <script src="js/sr-filtro.js"></script>
   <script src="js/modal-auras.js"></script>
   <script src="js/altar-reliquias.js"></script>
   <script src="js/buddylist.js"></script>
