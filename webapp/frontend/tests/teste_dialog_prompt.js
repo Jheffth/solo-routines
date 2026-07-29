@@ -58,6 +58,27 @@ ok(!caixa.querySelector('#solo-dialog-input + br, br + #solo-dialog-input'),
    'e nenhum <br> foi injetado dentro da tag');
 ok(visivel.includes('Qual a sua epígrafe?'), 'a pergunta, essa sim, aparece');
 
+/* ── 1b. O contador de caracteres ────────────────────────── */
+console.log('\n-- o contador --');
+const cont = doc.getElementById('solo-dialog-contador');
+ok(!!cont, 'existe um contador ao lado do campo');
+ok(cont.textContent === '8/100', `já nasce contando o que está lá ("${cont.textContent}")`);
+
+campo.value = 'a'.repeat(42);
+campo.dispatchEvent(new w.Event('input'));
+ok(cont.textContent === '42/100', 'acompanha a digitação (42/100)');
+ok(cont.style.color === 'rgb(100, 116, 139)', '  e fica discreto enquanto sobra espaço');
+
+campo.value = 'a'.repeat(92);
+campo.dispatchEvent(new w.Event('input'));
+ok(cont.style.color === 'rgb(245, 158, 11)',
+   'nos últimos 10% vira âmbar — o aviso chega ANTES de acabar');
+
+campo.value = 'a'.repeat(100);
+campo.dispatchEvent(new w.Event('input'));
+ok(cont.textContent === '100/100' && cont.style.color === 'rgb(248, 113, 113)',
+   'no limite, vermelho: a tecla que não responde deixa de parecer defeito');
+
 /* ── 2. Gravar devolve o texto ───────────────────────────── */
 console.log('\n-- gravar --');
 campo.value = 'Nova epígrafe';

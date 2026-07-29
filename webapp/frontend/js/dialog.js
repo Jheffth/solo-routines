@@ -114,14 +114,29 @@ const SoloDialog = {
         'font-size:.88rem', 'outline:none', 'box-sizing:border-box',
       ].join(';');
 
+      const limite = opts.maxlength || 200;
+
       const campoHtml =
         '<input id="solo-dialog-input" type="text"' +
         ' value="' + esc(valor) + '"' +
-        ' maxlength="' + (opts.maxlength || 200) + '"' +
+        ' maxlength="' + limite + '"' +
         ' placeholder="' + esc(opts.placeholder || '') + '"' +
         ' style="' + estilo + '">';
 
-      const corpo = msg + campoHtml;
+      /* O CONTADOR. Um campo com limite e sem contador só avisa que
+         o limite existe quando o hunter bate nele — e aí a tecla
+         simplesmente não responde, o que parece defeito. Mostrar
+         quanto falta transforma o limite de surpresa em informação. */
+      const estiloContador = [
+        'display:block', 'text-align:right', 'margin-top:.3rem',
+        'font-family:var(--font-section,Rajdhani,sans-serif)',
+        'font-size:.7rem', 'letter-spacing:.06em',
+        'color:#64748b', 'transition:color .2s',
+      ].join(';');
+      const contadorHtml =
+        '<span id="solo-dialog-contador" style="' + estiloContador + '"></span>';
+
+      const corpo = msg + campoHtml + contadorHtml;
 
       this._abrir({
         icon:   opts.icon   || '✎',
@@ -137,7 +152,23 @@ const SoloDialog = {
 
       const campo = document.getElementById('solo-dialog-input');
       if (!campo) return;
-      campo.addEventListener('input', () => { valor = campo.value; });
+
+      /* O contador acompanha o campo, e muda de cor no fim: âmbar
+         nos últimos 10%, vermelho quando encheu. A cor chega ANTES
+         do limite — avisar quando já não dá mais para escrever é
+         avisar tarde. */
+      const contador = document.getElementById('solo-dialog-contador');
+      const atualizar = () => {
+        valor = campo.value;
+        if (!contador) return;
+        const n = valor.length;
+        contador.textContent = `${n}/${limite}`;
+        contador.style.color = n >= limite ? '#f87171'
+                             : n >= limite * 0.9 ? '#f59e0b'
+                             : '#64748b';
+      };
+      atualizar();                       // já nasce mostrando o que há
+      campo.addEventListener('input', atualizar);
       campo.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
