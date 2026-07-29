@@ -411,6 +411,23 @@ def definir_reliquias(
 # AURAS COSMÉTICAS — inventário virtual e troca
 # ══════════════════════════════════════════════════════════════════════════════
 
+# ── O SENTINELA DE "NENHUMA AURA" ────────────────────────────────────────────
+#
+# `aura_id = None` NÃO significa "sem aura": significa "sem cosmética", e o
+# front então desenha a aura do CARGO. Para o Arquiteto isso era uma prisão
+# dourada — ele via a própria aura de cargo como se fosse obrigatória, sem
+# nenhum caminho para tirá-la.
+#
+# São três estados, não dois, e por isso precisam de três valores:
+#
+#     None          → sem cosmética; vale a aura do cargo
+#     "__nenhuma"   → o hunter escolheu NÃO ter aura alguma
+#     "<id>"        → uma cosmética específica
+#
+# O valor já existia no frontend: a Vitrine usa `__nenhuma` desde sempre para
+# pré-visualizar o retrato sem aura. Aqui ele só ganha existência no banco.
+SEM_AURA = "__nenhuma"
+
 # IDs de aura que são de cargo (automaticamente atribuídas pelo sistema)
 # Não podem ser trocadas pelo próprio usuário nem enviadas como presente.
 AURAS_DE_CARGO = {"arquiteto", "admin", "moderador", "suporte"}
@@ -485,6 +502,8 @@ def inventario_auras(
             "descricao": "Concedida automaticamente pelo seu cargo. Não pode ser enviada.",
             "cor":       "#fbbf24" if cargo_id == "arquiteto" else "#38bdf8",
             "enviavel":  False,
+            # Ativa apenas quando nao ha cosmetica NEM o sentinela: escolher
+            # "nenhuma" tem que apagar o realce daqui tambem.
             "ativa":     aura_ativa is None,
             "de_cargo":  True,
         })
@@ -493,6 +512,10 @@ def inventario_auras(
         "aura_ativa":       aura_ativa,
         "inventario":       inventario,
         "auras_disponiveis": list(AURAS_COSMETICAS.values()),
+        # O front precisa distinguir os TRÊS estados sem reinventar a regra:
+        "sem_aura":         SEM_AURA,
+        "nenhuma_ativa":    aura_ativa == SEM_AURA,
+        "cargo_ativa":      aura_ativa is None and bool(cargo_id),
     }
 
 
@@ -505,7 +528,10 @@ def trocar_aura(
     """Troca a aura cosmética ativa do usuário."""
     nova = payload.aura_id
 
-    if nova is not None:
+    # O sentinela passa direto: não é uma aura do catálogo, é a AUSÊNCIA de
+    # uma. Não há o que validar nem posse a conferir — ninguém precisa
+    # possuir o vazio.
+    if nova is not None and nova != SEM_AURA:
         # Valida que não é uma aura de cargo tentando ser atribuída manualmente
         if nova in AURAS_DE_CARGO:
             raise HTTPException(400,
@@ -524,11 +550,12 @@ def trocar_aura(
             raise HTTPException(403,
                 "Você não possui essa aura no inventário. Forje-a ou peça ao Arquiteto.")
 
-    # None = remover cosmética → volta à aura de cargo
     usuario.aura_id = nova
     db.commit()
-    return {
-        "ok": True,
-        "aura_id": usuario.aura_id,
-        "detalhe": f"Aura trocada para '{nova}'" if nova else "Aura cosmética removida",
-    }
+    if nova == SEM_AURA:
+        detalhe = "Nenhuma aura equipada"
+    elif nova:
+        detalhe = f"Aura trocada para '{nova}'"
+    else:
+        detalhe = "Aura cosmética removida — vale a do cargo"
+    return {"ok": True, "aura_id": usuario.aura_id, "detalhe": detalhe}

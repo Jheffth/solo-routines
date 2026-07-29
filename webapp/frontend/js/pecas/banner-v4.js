@@ -82,15 +82,15 @@ const BannerV4 = {
      `opcoes.aura` continua existindo para a Vitrine experimentar. */
   aura(u, tam, opcoes) {
     if (typeof Auras === 'undefined') return '';
-    const forcada = opcoes && opcoes.aura;
-    if (forcada === '__nenhuma') return '';
-    const id = forcada || u.aura_id || null;
-    if (id && Auras.existe && Auras.existe(id)) return Auras.bloco(id, tam);
-    const cargo = u.nivel_acesso;
-    if (cargo && Auras.existe && Auras.existe(String(cargo).toLowerCase())) {
-      return Auras.bloco(String(cargo).toLowerCase(), tam);
-    }
-    return '';
+    /* `opcoes.aura` e a escolha da BANCADA (a Vitrine experimentando);
+       `u.aura_id` e o que o hunter realmente equipou. A bancada ganha
+       quando existe, e nos dois casos quem decide entre cosmetica,
+       cargo e NENHUMA e o `Auras.resolver` — um lugar so.
+
+       Antes esta funcao reimplementava a regra, e tratava "sem
+       cosmetica" e "nenhuma aura" como a mesma coisa. */
+    const escolhida = (opcoes && opcoes.aura) || u.aura_id;
+    return Auras.blocoDe(escolhida, u.nivel_acesso, tam);
   },
 
   /* ── As relíquias: vêm PRONTAS do hospedeiro ──

@@ -147,6 +147,38 @@ const Auras = {
     return null;
   },
 
+  /* ── O SENTINELA DE "NENHUMA AURA" ────────────────────────────────
+     Espelha o `SEM_AURA` de routers/perfil.py. Os dois lados precisam
+     concordar na string, e o backend é quem manda: ele devolve o valor
+     em `sem_aura` na resposta do inventário. */
+  SEM_AURA: '__nenhuma',
+
+  /* ── QUEM DECIDE QUAL AURA DESENHAR ───────────────────────────────
+
+     São TRÊS estados, e essa era a origem da confusão:
+
+       null / vazio  →  sem cosmética; vale a aura do CARGO
+       '__nenhuma'   →  o hunter escolheu não ter aura NENHUMA
+       '<id>'        →  uma cosmética específica
+
+     Antes cada lugar reimplementava a regra com um `||` — e todos
+     tratavam os dois primeiros como a mesma coisa, o que fazia o
+     Arquiteto ficar preso à própria aura de cargo sem saída.
+
+     Devolve o id a desenhar, ou `null` para não desenhar nada. */
+  resolver(auraId, nivelAcesso) {
+    if (auraId === this.SEM_AURA) return null;
+    if (auraId && this.existe(auraId)) return auraId;
+    const cargo = this.porCargo(nivelAcesso);
+    return (cargo && this.existe(cargo)) ? cargo : null;
+  },
+
+  /* O bloco pronto, já resolvido. É o que as peças chamam. */
+  blocoDe(auraId, nivelAcesso, tam = 168) {
+    const id = this.resolver(auraId, nivelAcesso);
+    return id ? this.bloco(id, tam) : '';
+  },
+
   /* Desenha a aura do cargo direto no hexágono, trocando a anterior. */
   aplicar(hexWrap, nivelAcesso, tam = 168) {
     if (!hexWrap) return false;

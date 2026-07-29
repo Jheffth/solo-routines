@@ -53,7 +53,7 @@ w.API = {
 };
 const navegou = [];
 w.App   = { navigate: p => navegou.push(p) };
-w.Auras = { existe: () => false, bloco: () => '<div class="aura-wrap"></div>', aplicar: () => {} };
+  // `Auras` real e carregado abaixo; so o desenho e trocado.
 w.ConquistaFX = { miniMedalha: c => `<svg data-m="${c.codigo}"></svg>` };
 w.BadgeCard = { ligarTodos: () => {} };
 w.AltarReliquias = { abrir: cb => { chamadas.push('altar'); cb && cb(); } };
@@ -74,12 +74,14 @@ w.console = { log(){}, warn(){}, error: (...a) => erros.push(a.join(' ')) };
    que aconteceu quando a V4 entrou: sem `banner-v4.js` carregado, o
    slot caía na clássica e o teste dizia que o padrão não funcionava. */
 const ctx = vm.createContext(w);
-[['js','pecas.js'],
+[['js','auras.js'], ['js','pecas.js'],
  ['js','gemas.js'], ['js','escudos-img.js'], ['js','banners-arte.js'],
  ['js','pecas','hunter-card-classico.js'],
  ['js','pecas','banner-v4.js'],
  ['js','pages','dashboard.js'],
 ].forEach(p => vm.runInContext(lerJS(...p), ctx));
+// Auras REAL, desenho de mentira: a regra dos tres estados fica a de producao.
+w.Auras.bloco = (id, t) => `<div class="aura-wrap" data-a="${id}" data-t="${t}"></div>`;
 
 /* `const Dashboard = {...}` num script clássico NÃO vira propriedade
    de window — fica no escopo léxico global. É a mesma pegadinha que

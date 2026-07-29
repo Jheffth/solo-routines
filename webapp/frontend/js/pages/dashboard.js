@@ -989,195 +989,35 @@ const Dashboard = {
      contrato, quem clica pede `trocar-aura` ao hospedeiro e o id deixa
      de ser um ponto de encontro. */
 
-  async _abrirModalAura(dados) {
-    document.getElementById('dash-modal-aura')?.remove();
-    let inv = [];
-    try {
-      // Token correto: sr_token (igual à classe API)
-      const tk = localStorage.getItem('sr_token');
-      const r  = await fetch('/api/perfil/auras-inventario', {
-        headers: { Authorization: `Bearer ${tk}` }
-      });
-      const d  = await r.json();
-      inv      = d.inventario || [];
-    } catch (_) {}
+  /* ══════════════════════════════════════════════════════════
+     AURA — o modal saiu daqui
 
-    const cx = document.createElement('div');
-    cx.id    = 'dash-modal-aura';
-    cx.style.cssText = 'position:fixed;inset:0;z-index:8999;display:flex;align-items:center;' +
-      'justify-content:center;background:rgba(2,2,6,.94);backdrop-filter:blur(10px);padding:1rem';
+     Eram tres funcoes e ~200 linhas: `_abrirModalAura` montava o
+     modal com estilo embutido linha a linha, `_ativarAura` REABRIA o
+     modal inteiro refazendo o fetch, e `_removerAura` chamava
+     `Dashboard.carregar()` — o painel todo, perfil, conquistas,
+     estatisticas e extrato — so para tirar uma aura.
 
-    const auraAtiva   = (dados && dados.aura_id) || null;
-    const auraAtivaCat = auraAtiva ? inv.find(a => (a.id || a.aura_id) === auraAtiva) : null;
-
-    /* ── Seção: aura equipada atualmente ── */
-    const ativaSection = auraAtivaCat ? (() => {
-      const aId = auraAtivaCat.id || auraAtivaCat.aura_id;
-      const blocoSvg = (window.Auras && Auras.bloco) ? Auras.bloco(aId, 96) : '';
-      return `<div style="
-          background:linear-gradient(135deg,rgba(251,191,36,.12),rgba(251,191,36,.04));
-          border:1px solid rgba(251,191,36,.3);border-radius:14px;padding:1rem 1.2rem;
-          margin-bottom:1.2rem;display:flex;align-items:center;gap:1rem">
-        <div style="position:relative;width:96px;height:96px;flex-shrink:0;
-          display:flex;align-items:center;justify-content:center">
-          ${blocoSvg}
-          <div style="position:absolute;z-index:2;width:38px;height:38px;
-            background:linear-gradient(135deg,#1a1030,#0d1f36);
-            clip-path:polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%)"></div>
-        </div>
-        <div style="flex:1">
-          <div style="color:#fbbf24;font-size:.52rem;letter-spacing:.14em;
-            font-family:var(--font-section);margin-bottom:.25rem">⬡ EQUIPADA ATUALMENTE</div>
-          <div style="color:#f0c060;font-weight:700;font-size:.9rem;
-            font-family:var(--font-section)">${auraAtivaCat.nome || aId}</div>
-          <div style="color:#64748b;font-size:.6rem;font-family:var(--font-section);
-            margin-top:.2rem">${auraAtivaCat.descricao || ''}</div>
-        </div>
-        <button onclick="Dashboard._removerAura()" style="
-          padding:.3rem .75rem;border-radius:8px;cursor:pointer;white-space:nowrap;
-          background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);
-          color:#f87171;font-family:var(--font-section);font-size:.6rem;font-weight:700;
-          transition:all .18s"
-          onmouseover="this.style.background='rgba(239,68,68,.22)'"
-          onmouseout="this.style.background='rgba(239,68,68,.1)'">Desequipar</button>
-      </div>`;
-    })() : '';
-
-    /* ── Grade de auras (2 colunas, tamanho grande, com animação) ── */
-    const gridItens = inv.map(function(a) {
-      const aId   = a.id || a.aura_id;
-      const ativa = auraAtiva === aId;
-      const traved = !!a.de_cargo;
-      // Aura grande com animação completa (tamanho 112 = mesmo da Vitrine)
-      const blocoSvg = (window.Auras && Auras.bloco) ? Auras.bloco(aId, 112) : `<span style="font-size:3rem;opacity:.3">◈</span>`;
-      const labelEquip = ativa
-        ? (traved
-            ? '<div style="font-size:.52rem;color:#475569;font-family:var(--font-section)">⬡ CARGO · EQUIPADA</div>'
-            : '<div style="color:#fbbf24;font-size:.55rem;font-family:var(--font-section);letter-spacing:.06em">⬡ EQUIPADA</div>')
-        : (traved
-            ? '<div style="font-size:.52rem;color:#334155;font-family:var(--font-section)">🔒 Vinculada ao cargo</div>'
-            : '');
-      const btnAtivar = traved && ativa
-        ? `<button onclick="Dashboard._removerAura()" style="
-            margin-top:.5rem;padding:.25rem .7rem;border-radius:6px;cursor:pointer;
-            background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);
-            color:#f87171;font-family:var(--font-section);font-size:.6rem;font-weight:700;
-            transition:all .18s"
-            onmouseover="this.style.background='rgba(239,68,68,.22)'"
-            onmouseout="this.style.background='rgba(239,68,68,.1)'">Desequipar</button>`
-        : (!traved && !ativa
-            ? `<button onclick="Dashboard._ativarAura('${aId}')" style="
-                margin-top:.5rem;padding:.25rem .7rem;border-radius:6px;border:none;cursor:pointer;
-                background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.3);
-                color:#fbbf24;font-family:var(--font-section);font-size:.6rem;font-weight:700;
-                transition:all .18s"
-                onmouseover="this.style.background='rgba(251,191,36,.28)'"
-                onmouseout="this.style.background='rgba(251,191,36,.15)'">Equipar</button>`
-            : '');
-      return `<div style="
-          background:${ativa ? 'rgba(251,191,36,.08)' : 'rgba(255,255,255,.02)'};
-          border:1px solid ${ativa ? 'rgba(251,191,36,.35)' : 'rgba(255,255,255,.07)'};
-          border-radius:14px;padding:1rem .75rem;
-          display:flex;flex-direction:column;align-items:center;gap:.4rem;
-          transition:border-color .2s;cursor:${traved ? 'default' : 'pointer'}"
-          ${!traved && !ativa ? `onclick="Dashboard._ativarAura('${aId}')"` : ''}>
-        <div style="position:relative;width:112px;height:112px;
-          display:flex;align-items:center;justify-content:center">
-          ${blocoSvg}
-          <div style="position:absolute;z-index:2;width:44px;height:44px;
-            background:linear-gradient(135deg,#1a1030,#0d1f36);
-            clip-path:polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%)"></div>
-        </div>
-        <div style="text-align:center">
-          <div style="font-family:var(--font-section);font-size:.72rem;
-            color:${a.cor || '#e2e8f0'};font-weight:700">${a.nome || aId}</div>
-          ${labelEquip}
-          ${btnAtivar}
-        </div>
-      </div>`;
-    }).join('');
-
-    const semAuras = `<div style="text-align:center;padding:3rem 1rem">
-      <div style="font-size:2.5rem;opacity:.2;margin-bottom:.8rem">◈</div>
-      <div style="font-family:var(--font-section);font-size:.82rem;color:#475569">Nenhuma aura no inventário</div>
-      <div style="font-family:var(--font-section);font-size:.6rem;color:#334155;margin-top:.3rem">Forje uma na aba Materiais ou peça ao Arquiteto</div>
-    </div>`;
-
-    cx.innerHTML =
-      `<div style="width:min(560px,98%);max-height:88vh;overflow-y:auto;
-          padding:1.6rem;border-radius:20px;
-          background:linear-gradient(160deg,#09060f 0%,#050310 60%,#030208 100%);
-          border:1px solid rgba(251,191,36,.2);
-          box-shadow:0 0 60px rgba(251,191,36,.08),0 0 120px rgba(60,10,120,.1)">
-        <!-- Header -->
-        <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:1.4rem">
-          <div style="width:38px;height:38px;border-radius:50%;flex-shrink:0;
-            background:linear-gradient(135deg,rgba(251,191,36,.2),rgba(251,191,36,.06));
-            border:1px solid rgba(251,191,36,.3);
-            display:flex;align-items:center;justify-content:center;
-            box-shadow:0 0 16px rgba(251,191,36,.2);font-size:1.1rem;color:#fbbf24">◈</div>
-          <div style="flex:1">
-            <div style="font-family:var(--font-title);font-size:1.05rem;color:#f0c060;
-              text-shadow:0 0 20px rgba(251,191,36,.3)">Minhas Auras</div>
-            <div style="font-family:var(--font-section);font-size:.52rem;letter-spacing:.14em;
-              color:#334155;margin-top:.1rem">INVENTÁRIO PESSOAL</div>
-          </div>
-          <button onclick="document.getElementById('dash-modal-aura').remove()"
-            style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.04);
-            border:1px solid rgba(255,255,255,.08);color:#475569;font-size:.9rem;cursor:pointer;
-            display:flex;align-items:center;justify-content:center;transition:all .18s"
-            onmouseover="this.style.background='rgba(255,255,255,.09)'"
-            onmouseout="this.style.background='rgba(255,255,255,.04)'">✕</button>
-        </div>
-        <!-- Aura equipada -->
-        ${ativaSection}
-        <!-- Grade de auras (2 colunas) -->
-        ${inv.length
-          ? `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:.75rem">${gridItens}</div>`
-          : semAuras}
-      </div>`;
-
-    cx.addEventListener('click', e => { if (e.target === cx) cx.remove(); });
-    document.body.appendChild(cx);
+     Agora o modal e uma peca de interface propria
+     (js/modal-auras.js). O Dashboard so faz o que cabe a um
+     hospedeiro: entrega o hunter e diz o que fazer quando a escolha
+     mudar.
+     ══════════════════════════════════════════════════════════ */
+  _abrirModalAura(dados) {
+    const hunter = dados || window.__dashDados || {};
+    if (typeof ModalAuras === 'undefined') return;
+    ModalAuras.abrir(hunter, (novaAura) => this._aplicarAura(novaAura));
   },
 
+  /* Aplica a escolha na TELA, sem ida ao servidor: quem conversa com
+     ele e o modal, que ja fez a chamada e desfaz sozinho se falhar.
 
-  async _ativarAura(auraId) {
-    try {
-      const tk = localStorage.getItem('sr_token');
-      const r  = await fetch('/api/perfil/aura', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tk}` },
-        body: JSON.stringify({ aura_id: auraId }),
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.detail || 'Erro');
-      /* Antes daqui saía uma cirurgia direta no `.hunter-hex-wrap` do
-         cartão. Agora o Dashboard muda o DADO e manda repintar: quem
-         sabe onde a aura entra é a peça — e com a V4 esse lugar será
-         outro. Um hospedeiro que enfia HTML dentro da peça volta a
-         precisar conhecer a peça, que é o nó que estamos desatando. */
-      if (window.__dashDados) window.__dashDados.aura_id = auraId;
-      this._repintarBanner();
-      document.getElementById('dash-modal-aura')?.remove();
-      Dashboard._abrirModalAura(window.__dashDados || { aura_id: auraId });
-    } catch (e) { alert('Erro: ' + e.message); }
+     Repintar em vez de recarregar e a diferenca entre trocar uma aura
+     e recarregar o painel inteiro — que era o que acontecia antes. */
+  _aplicarAura(auraId) {
+    if (window.__dashDados) window.__dashDados.aura_id = auraId;
+    this._repintarBanner();
   },
 
-  async _removerAura() {
-    try {
-      const tk = localStorage.getItem('sr_token');
-      const r  = await fetch('/api/perfil/aura', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tk}` },
-        body: JSON.stringify({ aura_id: null }),
-      });
-      if (!r.ok) { const d = await r.json(); throw new Error(d.detail); }
-      if (window.__dashDados) window.__dashDados.aura_id = null;
-      this._repintarBanner();     // sem aura_id, a peça volta à aura de cargo
-      document.getElementById('dash-modal-aura')?.remove();
-      await Dashboard.carregar(); // refresh completo do dashboard
-    } catch (e) { alert('Erro: ' + e.message); }
-  }
 };
 

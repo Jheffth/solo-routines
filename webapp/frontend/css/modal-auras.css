@@ -1,0 +1,295 @@
+/* ============================================================
+   modal-auras.css — O Cofre de Auras
+
+   A linguagem é a do Sistema, não a de um modal genérico: cantos
+   CHANFRADOS (dois arredondados, dois cortados em diagonal, como a
+   `.sys-plate` e o banner), roxo e ciano, Rajdhani nos rótulos.
+   Antes eram cantos redondos e dourado avulso — bonito, mas de
+   outro aplicativo.
+
+   ────────────────────────────────────────────────────────────
+   O QUE **NÃO** TEM AQUI, E POR QUÊ
+
+   `backdrop-filter`. O modal anterior usava `blur(10px)` em tela
+   cheia. Custa caro sempre, e custa MUITO caro aqui: por trás dele
+   está o banner V4, com feixes, partículas e circuito animados. O
+   navegador tem que recompor a tela inteira, borrada, a cada
+   quadro — enquanto o modal estiver aberto.
+
+   Era uma das causas do "demora para fechar": não era o fechar que
+   estava lento, era tudo. O clique só tinha que esperar a fila.
+
+   No lugar: um fundo quase opaco com um degradê radial. Some o
+   custo, fica a leitura.
+   ============================================================ */
+
+.ma-fundo {
+  position: fixed;
+  inset: 0;
+  z-index: 8999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(124,58,237,.16), transparent 60%),
+    rgba(4, 4, 10, .93);
+  opacity: 0;
+  transition: opacity .16s ease;
+}
+.ma-fundo.ma-aberto { opacity: 1; }
+
+.ma-caixa {
+  width: min(720px, 96%);
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(160deg, #0b0a18 0%, #07060f 60%, #050409 100%);
+  border: 1px solid rgba(124,58,237,.32);
+  border-radius: 6px;
+  /* Os cantos do Sistema: dois arredondados, dois cortados. */
+  clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px,
+                     100% 100%, 18px 100%, 0 calc(100% - 18px));
+  box-shadow: 0 24px 80px rgba(0,0,0,.75), inset 0 1px 0 rgba(255,255,255,.05);
+  transform: translateY(10px) scale(.985);
+  transition: transform .18s cubic-bezier(.34,1.4,.64,1);
+}
+.ma-aberto .ma-caixa { transform: none; }
+
+/* ── Topo ──────────────────────────────────────────────────── */
+.ma-topo {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  padding: .95rem 1.2rem;
+  background: linear-gradient(100deg, rgba(124,58,237,.14), rgba(6,182,212,.05) 60%, transparent);
+  border-bottom: 1px solid rgba(124,58,237,.2);
+  flex-shrink: 0;
+}
+.ma-glifo {
+  width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  font-size: 1rem;
+  color: var(--purple-soft, #c084fc);
+  background: radial-gradient(circle at 50% 35%, rgba(168,85,247,.28), rgba(10,8,20,.9) 72%);
+  border: 1px solid rgba(168,85,247,.45);
+  clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+  text-shadow: 0 0 10px rgba(168,85,247,.7);
+}
+.ma-titulos { flex: 1; min-width: 0; }
+.ma-titulo {
+  font-family: var(--font-title, Cinzel Decorative), serif;
+  font-size: 1rem;
+  color: var(--text-primary, #e2e8f0);
+  text-shadow: 0 0 18px rgba(168,85,247,.3);
+}
+.ma-sub {
+  font-family: var(--font-section, Rajdhani), sans-serif;
+  font-size: .58rem;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--text-muted, #64748b);
+  margin-top: .1rem;
+}
+.ma-x {
+  width: 30px; height: 30px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.1);
+  color: var(--text-muted, #64748b);
+  font-size: .85rem;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.ma-x:hover {
+  background: rgba(239,68,68,.16);
+  border-color: rgba(239,68,68,.4);
+  color: #fca5a5;
+}
+
+/* ── Corpo ─────────────────────────────────────────────────── */
+.ma-corpo {
+  padding: 1.1rem 1.2rem 1.3rem;
+  overflow-y: auto;
+}
+.ma-grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: .7rem;
+}
+
+/* ── O cartão de cada aura ─────────────────────────────────── */
+.ma-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .35rem;
+  padding: .9rem .6rem .8rem;
+  text-align: center;
+  background: rgba(255,255,255,.02);
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 4px;
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px,
+                     100% 100%, 10px 100%, 0 calc(100% - 10px));
+  transition: border-color .18s, background .18s, transform .18s;
+}
+.ma-card[data-aura] { cursor: pointer; }
+.ma-card[data-aura]:hover {
+  background: rgba(124,58,237,.1);
+  border-color: rgba(168,85,247,.45);
+  transform: translateY(-2px);
+}
+.ma-card[data-aura]:focus-visible {
+  outline: 2px solid var(--purple-glow, #a855f7);
+  outline-offset: 2px;
+}
+
+/* A ATIVA. Realce por borda e luz, não por cor de fundo chapada:
+   o que tem que brilhar é a aura desenhada, não o cartão. */
+.ma-ativa {
+  border-color: rgba(168,85,247,.6);
+  background: linear-gradient(160deg, rgba(124,58,237,.16), rgba(6,182,212,.04));
+  box-shadow: 0 0 22px rgba(124,58,237,.18), inset 0 0 20px rgba(168,85,247,.06);
+}
+/* A de cargo não é clicável — e o cursor precisa dizer isso antes
+   do clique, não depois. */
+.ma-cargo { opacity: .82; cursor: default; }
+
+.ma-palco {
+  position: relative;
+  width: 96px; height: 96px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-dim, #334155);
+}
+.ma-palco svg { max-width: none; }
+
+/* O RECORTE HEXAGONAL no meio da aura: sem ele, a aura fica com um
+   buraco redondo no centro e não se lê como "halo em volta de um
+   retrato". É a mesma silhueta do hexágono do banner. */
+.ma-recorte {
+  position: absolute;
+  z-index: 2;
+  width: 38px; height: 38px;
+  background: linear-gradient(135deg, #16102a, #0b1424);
+  clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+}
+.ma-vazia .ma-recorte { background: linear-gradient(135deg, #12111c, #0a0a12); }
+.ma-silhueta { color: var(--text-dim, #334155); line-height: 0; }
+.ma-sem-arte { font-size: 2rem; opacity: .25; }
+
+.ma-nome {
+  font-family: var(--font-section, Rajdhani), sans-serif;
+  font-size: .78rem; font-weight: 700;
+  color: var(--text-primary, #e2e8f0);
+  line-height: 1.2;
+}
+.ma-desc {
+  font-family: var(--font-section, Rajdhani), sans-serif;
+  font-size: .6rem;
+  color: var(--text-muted, #64748b);
+  line-height: 1.35;
+}
+.ma-selo {
+  margin-top: .25rem;
+  padding: .12rem .55rem;
+  border-radius: 100px;
+  font-family: var(--font-section, Rajdhani), sans-serif;
+  font-size: .55rem; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--purple-soft, #c084fc);
+  border: 1px solid rgba(168,85,247,.4);
+  background: rgba(168,85,247,.1);
+}
+.ma-selo-fraco {
+  color: var(--text-muted, #64748b);
+  border-color: rgba(100,116,139,.3);
+  background: rgba(100,116,139,.08);
+}
+
+.ma-nota {
+  margin-top: .9rem;
+  padding: .6rem .8rem;
+  font-family: var(--font-section, Rajdhani), sans-serif;
+  font-size: .66rem;
+  color: var(--text-muted, #64748b);
+  border-left: 2px solid rgba(124,58,237,.35);
+  background: rgba(124,58,237,.05);
+}
+
+/* ── Carregando ────────────────────────────────────────────
+   O esqueleto pulsa para dizer "estou vindo". Sem ele o modal
+   abriria vazio por um instante, que é exatamente o que fazia
+   parecer que o cofre não tinha nada. */
+.ma-fantasma {
+  border-color: rgba(255,255,255,.05);
+  animation: ma-respirar 1.3s ease-in-out infinite;
+}
+.ma-fantasma .ma-palco {
+  border-radius: 50%;
+  background: rgba(255,255,255,.03);
+}
+.ma-fantasma .ma-nome {
+  width: 62%; height: .6rem;
+  background: rgba(255,255,255,.05);
+  border-radius: 3px;
+}
+@keyframes ma-respirar {
+  0%, 100% { opacity: .45; }
+  50%      { opacity: .8; }
+}
+
+/* ── Erro ──────────────────────────────────────────────────
+   Uma tela PRÓPRIA, e não a mesma frase do inventário vazio. O
+   hunter precisa saber a diferença entre "você não tem auras" e
+   "eu não consegui perguntar". */
+.ma-aviso {
+  text-align: center;
+  padding: 2.4rem 1rem;
+  font-family: var(--font-section, Rajdhani), sans-serif;
+}
+.ma-aviso-glifo { font-size: 2rem; color: #f59e0b; opacity: .8; }
+.ma-aviso-tit {
+  margin-top: .6rem;
+  font-size: .9rem; font-weight: 700;
+  color: var(--text-primary, #e2e8f0);
+}
+.ma-aviso-txt {
+  margin-top: .3rem;
+  font-size: .68rem;
+  color: var(--text-muted, #64748b);
+}
+.ma-btn {
+  margin-top: 1rem;
+  padding: .4rem 1.1rem;
+  border-radius: 4px;
+  font-family: var(--font-section, Rajdhani), sans-serif;
+  font-size: .7rem; font-weight: 700; letter-spacing: .08em;
+  cursor: pointer;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.14);
+  color: var(--text-secondary, #94a3b8);
+  transition: background .18s, border-color .18s, color .18s;
+}
+.ma-btn-forte {
+  background: rgba(124,58,237,.18);
+  border-color: rgba(168,85,247,.45);
+  color: var(--purple-soft, #c084fc);
+}
+.ma-btn-forte:hover {
+  background: rgba(124,58,237,.3);
+  box-shadow: 0 0 14px rgba(124,58,237,.3);
+}
+
+@media (max-width: 520px) {
+  .ma-grade { grid-template-columns: repeat(2, 1fr); gap: .5rem; }
+  .ma-palco { width: 78px; height: 78px; }
+  .ma-desc  { display: none; }   /* na tela estreita, o nome basta */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ma-fundo, .ma-caixa, .ma-card { transition: none; }
+  .ma-fantasma { animation: none; }
+}

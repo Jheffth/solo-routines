@@ -25,7 +25,7 @@ const HUNTER = {
   nome: 'Jh3ffth', titulo: 'O Arquiteto', classe: 'S-Rank',
   nivel_atual: 42, xp_atual: 900, xp_proximo_nivel: 1000,
   moedas: 1234, streak_atual: 7, nivel_acesso: 'Arquiteto',
-  avatar_url: '/img/eu.png', bio: 'Erga-se.', aura_id: 'monarca',
+  avatar_url: '/img/eu.png', bio: 'Erga-se.', aura_id: 'fenix-pioneira',
 };
 const ACERVO = [{ codigo: 'primeira-luz', icone: '🏆' }, { codigo: 'mono-evelynn', icone: '🌙' }];
 
@@ -34,11 +34,7 @@ function ambiente() {
                         { pretendToBeVisual: true });
   const w = dom.window;
   w.Auth = { getUsuario: () => HUNTER };
-  w.Auras = {
-    _registro: { arquiteto: 1, monarca: 1 },
-    existe: id => ['arquiteto', 'monarca'].includes(String(id)),
-    bloco: (id, t) => `<div class="aura-wrap" data-a="${id}" data-t="${t}"></div>`,
-  };
+  // `Auras` real e carregado abaixo; so o desenho e trocado.
   w.ConquistaFX = { miniMedalha: (c, t) => `<svg data-m="${c.codigo}" data-t="${t}"></svg>` };
   w.BadgeCard = { ligarTodos: () => {} };
   w.API = { conquistas:{listar:async()=>[]}, perfil:{reliquias:async()=>({})}, auth:{me:async()=>({})} };
@@ -48,6 +44,9 @@ function ambiente() {
 
 function rodar(w, arquivos) {
   const ctx = vm.createContext(w);
+  // Auras REAL antes de tudo; so o `bloco` (que desenha) vira marcador.
+  vm.runInContext(ler('js', 'auras.js'), ctx);
+  w.Auras.bloco = (id, t) => `<div class="aura-wrap" data-a="${id}" data-t="${t}"></div>`;
   arquivos.forEach(a => vm.runInContext(ler(...a), ctx));
   return ctx;
 }
@@ -65,7 +64,7 @@ console.log('-- a marcação, contra o htmlV4 da Vitrine --');
 const wA = ambiente();
 rodar(wA, [['js','gemas.js'], ['js','escudos-img.js'], ['js','banners-arte.js'], ['js','estandarte.js']]);
 wA.Estandarte._acervo = ACERVO;
-wA.Estandarte._auraReal = 'monarca';
+wA.Estandarte._auraReal = 'fenix-pioneira';
 wA.Estandarte._emTesteDash = true;      // é neste modo que o botão do altar aparece
 
 const wB = ambiente();

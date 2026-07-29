@@ -306,13 +306,14 @@ const HunterCardClassico = {
   aura(el, d) {
     const hw = el.querySelector('.hunter-hex-wrap');
     if (!hw || !window.Auras) return;
-    const aid = d.aura_id || null;
-    if (aid && Auras.existe(aid)) {
-      hw.querySelector('.aura-wrap')?.remove();
-      hw.insertAdjacentHTML('afterbegin', Auras.bloco(aid, 168));
-    } else {
-      Auras.aplicar(hw, d.nivel_acesso, 168);
-    }
+    /* A regra dos três estados mora no `Auras.resolver`. Aqui havia um
+       `if (aid && existe) senão cargo` — que tratava "sem cosmética" e
+       "nenhuma aura" como a mesma coisa, e por isso o Arquiteto não
+       conseguia tirar a própria aura de cargo. */
+    hw.querySelector('.aura-wrap')?.remove();
+    hw.classList.remove('chamas-arquiteto');
+    const bloco = Auras.blocoDe(d.aura_id, d.nivel_acesso, 168);
+    if (bloco) hw.insertAdjacentHTML('afterbegin', bloco);
   },
 
   /* ── Relicário: as relíquias fixadas, ou as mais recentes ──

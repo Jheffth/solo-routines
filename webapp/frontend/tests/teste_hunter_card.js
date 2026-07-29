@@ -35,6 +35,25 @@ function ok(cond, msg) {
 }
 const espera = ms => new Promise(r => setTimeout(r, ms));
 
+/* AURAS DE VERDADE, DESENHO DE MENTIRA.
+
+   Antes este arquivo tinha um dublê inteiro de `Auras` escrito à mão.
+   Quando o módulo real ganhou `resolver`/`blocoDe`, o dublê ficou para
+   trás e o teste passou a exercitar uma versão de `Auras` que não
+   existe mais — o mesmo tipo de armadilha que já mordeu aqui, em que
+   teste e implementação combinam entre si e discordam da realidade.
+
+   Agora o auras.js real é carregado, e só o `bloco` (que desenha) é
+   trocado por um marcador. A REGRA — qual aura vale entre cosmética,
+   cargo e nenhuma — continua sendo a de produção. */
+function ligarAurasReais(w, ctx, ler) {
+  vm.runInContext(ler('js', 'auras.js'), ctx);
+  const orig = w.Auras.bloco.bind(w.Auras);
+  w.Auras.bloco = (id, t) => `<div class="aura-wrap" data-a="${id}" data-t="${t}"></div>`;
+  w.Auras._blocoReal = orig;
+  return w.Auras;
+}
+
 /* Normaliza para comparar: o que importa é a marcação, não a
    indentação nem os comentários. */
 const normalizar = s => s
@@ -52,12 +71,7 @@ const w = dom.window;
 
 // Dublês do vocabulário compartilhado. A peça fala com eles, mas
 // eles não são o hospedeiro — são bibliotecas de desenho.
-const chamou = { auraAplicar: 0, auraBloco: 0, badgeCard: 0 };
-w.Auras = {
-  existe: id => id === 'aura-teste',
-  bloco: () => { chamou.auraBloco++; return '<div class="aura-wrap">aura</div>'; },
-  aplicar: () => { chamou.auraAplicar++; },
-};
+const chamou = { desenhada: null, badgeCard: 0 };
 w.ConquistaFX = { miniMedalha: c => `<svg data-m="${c.codigo}"></svg>` };
 w.BadgeCard = { ligarTodos: () => { chamou.badgeCard++; } };
 
@@ -75,6 +89,13 @@ const log = { warn: [], error: [] };
 w.console = { log(){}, warn:(...a)=>log.warn.push(a.join(' ')), error:(...a)=>log.error.push(a.join(' ')) };
 
 const ctx = vm.createContext(w);
+ligarAurasReais(w, ctx, (...p) => fs.readFileSync(path.join(RAIZ, ...p), 'utf8'));
+/* Em vez de contar CHAMADAS, o teste anota QUAL aura foi desenhada.
+   É o que realmente importa e não depende de por onde a decisão
+   passou — a versão anterior contava `bloco` e `aplicar` separados, e
+   quebrou assim que a regra virou uma função só. */
+const _bloco = w.Auras.bloco;
+w.Auras.bloco = (id, t) => { chamou.desenhada = id; return _bloco(id, t); };
 vm.runInContext(fs.readFileSync(PECAS, 'utf8'), ctx);
 vm.runInContext(fs.readFileSync(CLASSICO, 'utf8'), ctx);
 
@@ -140,8 +161,8 @@ ok(el.querySelector('.hunter-xp-track').classList.contains('quase'),
 ok(el.querySelector('#dash-rank-badge').innerHTML.includes('ARQUITETO'),
    'o selo de Arquiteto aparece');
 ok(el.querySelector('#dash-avatar').innerHTML.includes('/img/eu.png'), 'o avatar entra');
-ok(chamou.auraAplicar === 1 && chamou.auraBloco === 0,
-   'sem aura_id: cai na aura de cargo');
+ok(chamou.desenhada === 'arquiteto',
+   `sem aura_id: desenha a aura de CARGO (${chamou.desenhada})`);
 
 /* ══ 4. O que NÃO é da peça ══ */
 console.log('\n-- a fronteira: o que ficou com o hospedeiro --');
@@ -201,10 +222,17 @@ ok(el.querySelectorAll('.hunter-reliquia').length === 1 &&
 
 /* ══ 8. Aura cosmética ganha da de cargo ══ */
 console.log('\n-- aura --');
-chamou.auraAplicar = 0;
-P.atualizar(el, { hunter: Object.assign({}, hunter, { aura_id: 'aura-teste' }) });
-ok(chamou.auraBloco === 1 && chamou.auraAplicar === 0,
+chamou.desenhada = null;
+P.atualizar(el, { hunter: Object.assign({}, hunter, { aura_id: 'fenix-pioneira' }) });
+ok(chamou.desenhada === 'fenix-pioneira',
    'com aura_id válida, a cosmética ganha da aura de cargo');
+
+/* O TERCEIRO ESTADO, que não existia: o Arquiteto escolhendo NÃO ter
+   aura. Antes isto caía na do cargo, e ele ficava preso a ela. */
+chamou.desenhada = null;
+P.atualizar(el, { hunter: Object.assign({}, hunter, { aura_id: '__nenhuma' }) });
+ok(chamou.desenhada === null, 'com "__nenhuma": não desenha aura alguma');
+ok(!el.querySelector('.aura-wrap'), '  e o halo some do retrato de verdade');
 
 /* ══ 9. As partículas e a limpeza ══ */
 console.log('\n-- partículas e desmonte --');
