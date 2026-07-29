@@ -275,6 +275,75 @@ const MissaoCard = {
      O negativo é de propósito. Uma missão vencida não vira "Prazo vencido" e
      para: ela segue contando a dívida, porque o hunter ainda pode concluí-la
      (levando a punição) e o tamanho do atraso é a informação que ele quer. */
+  /* ══════════════════════════════════════════════════════════
+     A VIGÍLIA — a linha tracejada que percorre o cartão INTEIRO
+
+     Antes era uma faixa de 2px só no TOPO, com fundo tracejado
+     deslizando. Ficava parecendo um cabeçalho aceso, e não uma
+     vigília: uma vigília cerca, não encima.
+
+     Agora é um retângulo em SVG por cima do cartão, com o mesmo
+     tracejado correndo pelo perímetro.
+
+     `pathLength="100"` É A PEÇA-CHAVE, e não é detalhe: ele diz ao
+     navegador para tratar o contorno como se medisse 100, qualquer
+     que seja o tamanho real. Sem isso, o tracejado de um cartão
+     largo teria traços curtos e o de um estreito, traços longos —
+     o mesmo protocolo com duas aparências dependendo da tela. Com
+     ele, `stroke-dasharray="2 2.6"` significa a MESMA proporção em
+     qualquer largura. É o que torna a moldura responsiva de graça.
+
+     Duas camadas: um halo borrado por baixo e o traço nítido por
+     cima. Uma linha sozinha lê como borda; com o halo, lê como
+     energia parada — que é o que um protocolo é.
+     ══════════════════════════════════════════════════════════ */
+  _vigilia(m, chave) {
+    const vigor = this._emVigor(m) && m.status !== 'CONCLUIDA' && m.status !== 'CANCELADA';
+    return `
+      <svg class="mc-vigia${vigor ? ' em-vigor' : ''}" data-mc-vigia="${chave}"
+           aria-hidden="true" preserveAspectRatio="none" style="max-width:none">
+        <rect class="mc-vigia-halo" x="1" y="1" rx="13" pathLength="100"/>
+        <rect class="mc-vigia-fio"  x="1" y="1" rx="13" pathLength="100"/>
+      </svg>`;
+  },
+
+  /* ── A BARRA DO PROTOCOLO ─────────────────────────────────
+
+     Uma missão passiva não é executada: ela é ATRAVESSADA. O hunter
+     não aperta nada — o tempo passa e ela se cumpre sozinha. Por
+     isso a barra dela não mede "quanto falta para o prazo", e sim
+     QUANTO JÁ FOI CUMPRIDO. É a única barra do app que enche sem o
+     hunter fazer nada, e ver isso encher é o prêmio dela.
+
+     Três camadas no preenchimento, e cada uma faz uma coisa:
+       · a AURA — o mesmo trecho, borrado e mais alto, que vaza da
+         calha. É o que dá a impressão de brilho em volta.
+       · o CORPO — o degradê que clareia até a ponta.
+       · a CABEÇA — o ponto de luz na frente, que pulsa. Sem ele a
+         barra parece parada mesmo enquanto anda, porque o
+         movimento é lento demais para o olho perceber.
+
+     A porcentagem em texto existe porque a barra é lenta: numa
+     vigília de 13 horas, um minuto move menos de 0,2% — invisível.
+     O número é o que prova que está andando. */
+  _barraProtocolo(m, chave, prazo) {
+    const pct = Math.max(0, Math.min(100, prazo.pct || 0));
+    const vigor = this._emVigor(m);
+    return `
+      <div class="mc-prot" data-mc-prot="${chave}">
+        <div class="mc-prot-topo">
+          <span class="mc-prot-lbl">${this._g('passiva', 11)} ${vigor ? 'Vigília em curso' : 'Aguardando a hora'}</span>
+          <span class="mc-prot-pct" data-mc-prot-pct>${pct.toFixed(pct >= 99.5 ? 0 : 1)}%</span>
+        </div>
+        <div class="mc-prot-calha">
+          <div class="mc-prot-aura"  data-mc-prot-fill style="width:${pct}%"></div>
+          <div class="mc-prot-fill"  data-mc-prot-fill style="width:${pct}%">
+            <span class="mc-prot-cabeca"></span>
+          </div>
+        </div>
+      </div>`;
+  },
+
   _prazo(m) {
     const seg = this._segundosRestantes(m);
     if (seg === null) return null;
@@ -754,6 +823,7 @@ const MissaoCard = {
          data-mc-sig="${this.assinatura(m, opts)}"
          style="--mc-cor:${cor};--mc-cor-suave:${this._alpha(cor, .14)}">
       <div class="mc-fio"></div>
+      ${passiva ? this._vigilia(m, chave) : ''}
       ${this._corrente(status)}
       ${this._sigilo(cor, m.categoria)}
       <div class="mc-corpo">
@@ -776,8 +846,10 @@ const MissaoCard = {
           ${compacto ? recompensa : ''}
         </div>
 
-        ${prazo ? `<div class="mc-barra"><div class="mc-barra-fill" data-mc-barra="${chave}"
-                     style="width:${prazo.pct}%"></div></div>` : ''}
+        ${passiva && prazo
+          ? this._barraProtocolo(m, chave, prazo)
+          : (prazo ? `<div class="mc-barra"><div class="mc-barra-fill" data-mc-barra="${chave}"
+                     style="width:${prazo.pct}%"></div></div>` : '')}
 
         ${compacto ? '' : `<div class="mc-acoes">${this._acoes(status, chave, m)}</div>`}
       </div>
@@ -924,6 +996,17 @@ const MissaoCard = {
         }
         const barra = document.querySelector(`[data-mc-barra="${el.dataset.mcPrazo}"]`);
         if (barra) barra.style.width = p.pct + '%';
+
+        /* A barra do protocolo anda no MESMO tique do prazo. São duas
+           camadas (aura e corpo) e as duas recebem a mesma largura:
+           se andassem separadas, o brilho descolaria do preenchimento
+           em qualquer soluço de quadro. */
+        const prot = document.querySelector(`[data-mc-prot="${el.dataset.mcPrazo}"]`);
+        if (prot) {
+          prot.querySelectorAll('[data-mc-prot-fill]').forEach(f => { f.style.width = p.pct + '%'; });
+          const n = prot.querySelector('[data-mc-prot-pct]');
+          if (n) n.textContent = p.pct.toFixed(p.pct >= 99.5 ? 0 : 1) + '%';
+        }
       });
 
       cronos.forEach(el => {

@@ -120,20 +120,172 @@
   box-shadow: 0 8px 26px rgba(0,0,0,.5), 0 0 22px rgba(99, 102, 241, .2);
 }
 
-/* A faixa do topo vira tracejada: o protocolo não é um fluxo contínuo de
-   execução, é uma vigília — presente, intermitente, sem correr. */
-.mc-passiva .mc-fio {
-  opacity: 1;
-  height: 2px;
-  background: repeating-linear-gradient(90deg,
-    var(--mc-vigilia) 0 10px, transparent 10px 20px);
-  background-size: 40px 100%;
-  animation: mc-vigilia 3.4s linear infinite;
+/* ── A VIGÍLIA CERCA, NÃO ENCIMA ───────────────────────────
+
+   Aqui havia uma faixa tracejada de 2px no TOPO do cartão. Lia como
+   cabeçalho aceso, não como vigília — e a diferença importa: um
+   protocolo não acontece numa borda, ele envolve a missão inteira.
+
+   Agora o tracejado percorre o PERÍMETRO, em SVG. E devagar: 14
+   segundos para dar uma volta, contra os 3,4s da faixa antiga. Uma
+   vigília que corre é uma execução; o que se quer é presença.
+
+   O SVG tem `preserveAspectRatio="none"` e o retângulo usa
+   `pathLength="100"` — é isso que faz o mesmo tracejado servir a
+   um cartão largo e a um estreito sem virar dois desenhos. */
+.mc-passiva .mc-fio { display: none; }
+
+.mc-vigia {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  max-width: none;
+  pointer-events: none;
+  z-index: 2;          /* acima da trama, abaixo do conteúdo */
+  overflow: visible;
 }
+.mc-vigia rect {
+  width: calc(100% - 2px);
+  height: calc(100% - 2px);
+  fill: none;
+  stroke: var(--mc-vigilia, #6366f1);
+  vector-effect: non-scaling-stroke;   /* o traço não estica com a caixa */
+}
+/* O HALO: o mesmo contorno, borrado e mais grosso, por baixo. Uma
+   linha sozinha lê como borda; com o halo, lê como energia. */
+.mc-vigia-halo {
+  stroke-width: 3.5;
+  opacity: .22;
+  filter: blur(2.5px);
+  stroke-dasharray: 2 2.6;
+  stroke-dashoffset: 0;
+}
+.mc-vigia-fio {
+  stroke-width: 1.4;
+  opacity: .55;
+  stroke-dasharray: 2 2.6;
+  stroke-dashoffset: 0;
+}
+/* Só corre quando o protocolo está VALENDO. Fora da janela ele
+   existe, apagado e parado — o que já é a informação certa. */
+.mc-vigia.em-vigor .mc-vigia-fio  { animation: mc-vigilia 14s linear infinite; opacity: .85; }
+.mc-vigia.em-vigor .mc-vigia-halo { animation: mc-vigilia 14s linear infinite; opacity: .38; }
+.mc-vigia:not(.em-vigor) rect     { opacity: .18; }
+
 @keyframes mc-vigilia {
-  from { background-position: 0 0; }
-  to   { background-position: 40px 0; }
+  from { stroke-dashoffset: 0; }
+  to   { stroke-dashoffset: -4.6; }   /* um período do tracejado */
 }
+
+/* ══════════════════════════════════════════════════════════
+   A BARRA DO PROTOCOLO
+
+   A única barra do app que enche sem o hunter fazer nada — e é
+   justamente por isso que ela existe: a missão passiva se cumpre
+   sozinha, e ver o progresso é o prêmio dela.
+   ══════════════════════════════════════════════════════════ */
+.mc-prot {
+  position: relative;
+  z-index: 1;
+  margin-top: .75rem;
+}
+.mc-prot-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  margin-bottom: .3rem;
+  font-family: var(--font-section);
+  font-size: .56rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.mc-prot-lbl {
+  display: inline-flex; align-items: center; gap: .3rem;
+  color: color-mix(in srgb, var(--mc-vigilia) 70%, #cbd5e1);
+}
+.mc-prot-lbl svg { max-width: none; }
+/* O NÚMERO existe porque a barra é lenta demais para se ver andar:
+   numa vigília de 13 horas, um minuto move menos de 0,2%. Ele é a
+   prova de movimento que o olho não consegue dar. */
+.mc-prot-pct {
+  font-variant-numeric: tabular-nums;   /* o número não dança ao mudar */
+  color: color-mix(in srgb, var(--mc-vigilia) 95%, #ffffff);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--mc-vigilia) 60%, transparent);
+}
+
+.mc-prot-calha {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255,255,255,.045);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.5);
+  /* `overflow: visible` de propósito: a aura PRECISA vazar da calha,
+     senão ela vira só uma segunda barra por baixo. */
+  overflow: visible;
+}
+/* Máscara do trilho: o corpo é recortado, a aura não. */
+.mc-prot-calha::before {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: 3px;
+  border: 1px solid color-mix(in srgb, var(--mc-vigilia) 18%, transparent);
+  pointer-events: none;
+}
+
+.mc-prot-aura,
+.mc-prot-fill {
+  position: absolute;
+  top: 0; left: 0; height: 100%;
+  border-radius: 3px;
+  /* 1,2s: a barra anda em passos discretos (o tique do prazo), e sem
+     transição ela pularia. Longa o bastante para o passo virar
+     deslize, curta o bastante para não atrasar a informação. */
+  transition: width 1.2s cubic-bezier(.4,0,.2,1);
+}
+.mc-prot-aura {
+  height: 200%;
+  top: -50%;
+  filter: blur(5px);
+  opacity: .5;
+  background: linear-gradient(90deg,
+    transparent, color-mix(in srgb, var(--mc-vigilia) 70%, transparent));
+}
+.mc-prot-fill {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--mc-vigilia) 35%, #05040c),
+    var(--mc-vigilia) 65%,
+    color-mix(in srgb, var(--mc-vigilia) 40%, #ffffff));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--mc-vigilia) 55%, transparent);
+}
+/* A CABEÇA: o ponto de luz na frente do preenchimento. É ela que
+   diz "isto está andando" quando o avanço é lento demais para se
+   ver. Fica FORA do overflow do corpo, colada na ponta. */
+.mc-prot-cabeca {
+  position: absolute;
+  right: -2px; top: 50%;
+  width: 8px; height: 8px;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    #ffffff 0 25%, color-mix(in srgb, var(--mc-vigilia) 85%, #fff) 45%, transparent 70%);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--mc-vigilia) 90%, transparent);
+  animation: mc-prot-pulso 2.6s ease-in-out infinite;
+}
+@keyframes mc-prot-pulso {
+  0%, 100% { opacity: .75; transform: translateY(-50%) scale(.9); }
+  50%      { opacity: 1;   transform: translateY(-50%) scale(1.25); }
+}
+
+/* Fora da janela a barra fica apagada: ela existe, mas ainda não
+   está contando. Mostrar 0% brilhante seria prometer movimento. */
+.mc-passiva.st-pendente .mc-prot-fill,
+.mc-passiva.st-pendente .mc-prot-aura { opacity: .28; }
+.mc-passiva.st-pendente .mc-prot-cabeca { display: none; }
+
+/* No cartão compacto a barra some junto com a comum — lá o assunto
+   é a lista, não o detalhe. */
+.mc-compacto .mc-prot { display: none; }
 
 /* Halo de vigília no sigilo — o anel índigo em volta do ícone da categoria. */
 .mc-passiva .mc-sigilo::after {
@@ -172,7 +324,7 @@
   background: rgba(148,163,184,.06);
   border: 1px solid rgba(148,163,184,.22);
 }
-.mc-passiva.st-pendente .mc-fio { opacity: .35; }
+/* (o `.mc-fio` da passiva agora é a moldura de vigília, tratada acima) */
 .mc-passiva.st-pendente::after { opacity: .28; }
 
 /* ── Sigilo (ícone cinético) ─────────────────────────────── */
@@ -848,6 +1000,11 @@
 @media (prefers-reduced-motion: reduce) {
   .mc-sigilo-anel, .mc-sigilo-arco, .mc-fio, .mc-barra-fill, .mc-prazo.urgente,
   .mc-entrando, .mc-corrente { animation: none !important; }
+  /* A vigília e a cabeça da barra também param. A moldura FICA —
+     ela é informação (isto é um protocolo), não enfeite; o que sai
+     é só o movimento dela. */
+  .mc-vigia rect, .mc-prot-cabeca { animation: none !important; }
+  .mc-prot-aura, .mc-prot-fill    { transition: none !important; }
   /* Sem movimento, a corrente vira ruído estático atrás do texto — some.
      A missão em curso continua identificada pelo fio, pelo cronômetro vivo
      e pelo chip de status: a animação era reforço, nunca a única pista. */

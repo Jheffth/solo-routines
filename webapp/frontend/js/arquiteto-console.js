@@ -550,6 +550,42 @@ const ArquitetoConsole = {
       { id: 9005, titulo: 'Beber 3L de água', categoria: 'Saúde',
         prioridade: 'MEDIA', dificuldade: 'FACIL',
         xp_recompensa: 30, moedas_recompensa: 3, icone: '💧', status_hoje: 'FRACASSADA' },
+
+      /* ── OS PROTOCOLOS ─────────────────────────────────────
+         A missão passiva só aparece na tela DENTRO da janela dela —
+         "Sem cafeína após as 16h" só se vê depois das 16h. Julgar o
+         desenho dela significava esperar o relógio.
+
+         Aqui estão os TRÊS momentos que importam, lado a lado:
+         antes de entrar em vigor, no meio da vigília, e quase
+         cumprida. Dá para ver a moldura e a barra sem esperar
+         treze horas.
+
+         Os campos são os que o cartão realmente lê:
+           prazo_ate_abrir  segundos até a vigência começar
+                            (negativo = já começou)
+           prazo_minutos    a janela inteira
+           prazo_restante   quanto falta — daí sai a porcentagem   */
+      { id: 9101, titulo: 'Sem cafeína após as 16h', categoria: 'Saúde',
+        prioridade: 'BAIXA', dificuldade: 'NORMAL', natureza: 'PASSIVA',
+        xp_recompensa: 35, moedas_recompensa: 5, status_hoje: 'PENDENTE',
+        prazo_ate_abrir: 3 * 3600,
+        prazo_minutos:   780,
+        prazo_restante:  780 * 60 },
+
+      { id: 9102, titulo: 'Sem redes sociais entre 22h e 10h', categoria: 'Combate',
+        prioridade: 'ALTA', dificuldade: 'DIFICIL', natureza: 'PASSIVA',
+        xp_recompensa: 90, moedas_recompensa: 7, status_hoje: 'PENDENTE',
+        prazo_ate_abrir: -4.4 * 3600,
+        prazo_minutos:   720,
+        prazo_restante:  Math.round(720 * 60 * 0.634) },
+
+      { id: 9103, titulo: 'Dormir antes da meia-noite', categoria: 'Pessoal',
+        prioridade: 'CRITICA', dificuldade: 'NORMAL', natureza: 'PASSIVA',
+        xp_recompensa: 60, moedas_recompensa: 6, status_hoje: 'PENDENTE',
+        prazo_ate_abrir: -5.6 * 3600,
+        prazo_minutos:   360,
+        prazo_restante:  Math.round(360 * 60 * 0.04) },
     ];
 
     const el = document.createElement('div');
@@ -573,7 +609,9 @@ const ArquitetoConsole = {
         <div id="mc-vitrine-lista"></div>
         <div style="font-size:.62rem;color:var(--text-dim);margin-top:.8rem;font-family:var(--font-section);line-height:1.6">
           A <b>cor</b> vem da prioridade · o <b>selo de rank</b> vem da dificuldade.<br>
-          Clique em <b>Iniciar</b> para ver a máquina de estados · timer regressivo real.
+          Clique em <b>Iniciar</b> para ver a máquina de estados · timer regressivo real.<br>
+          Os três últimos são <b>protocolos</b>: moldura tracejada correndo o perímetro
+          e barra que enche sozinha — aguardando, em vigília e quase cumprido.
         </div>
       </div>`;
     el.addEventListener('click', e => { if (e.target === el) el.remove(); });
