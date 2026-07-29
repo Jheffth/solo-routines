@@ -430,6 +430,48 @@ const Pecas = {
   },
 
   /* ══════════════════════════════════════════════════════════
+     A ESCOLHA DO HUNTER
+
+     Qual peça vale para uma família é decisão do hunter, e vale em
+     TODA parte. Quando só o Dashboard hospedava banner, isso morava
+     lá dentro. Com o Perfil montando a mesma peça, a escolha deixou
+     de ser assunto de uma tela.
+
+     Se cada hospedeiro guardasse a sua, trocar o banner num lugar
+     não trocaria no outro — e voltaríamos à divergência que este
+     trabalho inteiro existe para desfazer.
+
+     Mora em `localStorage` por ora. Quando virar campo do usuário no
+     banco, é só aqui que muda.
+     ══════════════════════════════════════════════════════════ */
+
+  _CHAVE: 'sr_peca_',
+
+  escolher(familia, id, opcoes) {
+    try {
+      if (id) localStorage.setItem(this._CHAVE + familia, id);
+      else    localStorage.removeItem(this._CHAVE + familia);
+      if (opcoes) localStorage.setItem(this._CHAVE + familia + '_op', JSON.stringify(opcoes));
+    } catch (_) {}
+    return this.escolhida(familia);
+  },
+
+  /* Devolve o id escolhido, ou `padrao` se não houver escolha — ou
+     se a escolhida não existir mais. Uma preferência apontando para
+     peça que foi renomeada não pode deixar o hunter sem cartão. */
+  escolhida(familia, padrao) {
+    let id = null;
+    try { id = localStorage.getItem(this._CHAVE + familia); } catch (_) {}
+    if (!id || !this.existe(id)) return padrao || (this.padraoDa(familia) || {}).id || null;
+    return id;
+  },
+
+  opcoesDe(familia) {
+    try { return JSON.parse(localStorage.getItem(this._CHAVE + familia + '_op') || '{}'); }
+    catch (_) { return {}; }
+  },
+
+  /* ══════════════════════════════════════════════════════════
      DIAGNÓSTICO
 
      O teste de contrato: monta, desmonta, e confere que sobrou

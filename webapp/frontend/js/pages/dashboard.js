@@ -105,41 +105,26 @@ const Dashboard = {
      O padrão continua sendo a Janela de Status clássica. A V4 entra
      por opção do Arquiteto, para que a primeira coisa que ele veja
      ao abrir não seja uma mudança que ninguém verificou na tela. */
-  BANNER_PREF: 'sr_banner_peca',
-
+  /* A escolha do banner mora no REGISTRO, não aqui: o Perfil monta a
+     mesma peça, e uma preferência guardada dentro do Dashboard não
+     chegaria lá. Trocar o banner tem que trocar em toda parte. */
   _pecaBanner() {
     const slot = this._slotBanner();
-    const padrao = (slot && slot.dataset.pecaPadrao) || 'hunter-card-classico';
-    let escolhida = null;
-    try { escolhida = localStorage.getItem(this.BANNER_PREF); } catch (_) {}
-    if (!escolhida) return padrao;
-    // Preferência apontando para peça que não existe mais (foi
-    // renomeada, ou o script não carregou) não pode deixar o hunter
-    // sem cartão: o registro cairia na padrão de qualquer forma, mas
-    // é melhor não chegar lá com um aviso no console a cada pintura.
-    if (typeof Pecas !== 'undefined' && !Pecas.existe(escolhida)) return padrao;
-    return escolhida;
+    return Pecas.escolhida('banner', slot && slot.dataset.pecaPadrao);
   },
+
+  _opcoesBanner() { return Pecas.opcoesDe('banner'); },
 
   /* Trocar de banner, do console ou de um futuro botão:
-       Dashboard.usarBanner('banner-v4')        → a V4
+       Dashboard.usarBanner('banner-v4')
        Dashboard.usarBanner('banner-v4', {campo:'brasa'})
-       Dashboard.usarBanner(null)               → volta à clássica  */
+       Dashboard.usarBanner(null)               → volta ao padrão  */
   usarBanner(id, opcoes) {
-    try {
-      if (id) localStorage.setItem(this.BANNER_PREF, id);
-      else    localStorage.removeItem(this.BANNER_PREF);
-      if (opcoes) localStorage.setItem(this.BANNER_PREF + '_opcoes', JSON.stringify(opcoes));
-    } catch (_) {}
+    Pecas.escolher('banner', id, opcoes);
     const slot = this._slotBanner();
-    if (slot && typeof Pecas !== 'undefined') Pecas.desmontar(slot);
+    if (slot) Pecas.desmontar(slot);
     if (window.__dashDados) this._montarBanner(window.__dashDados);
     return this._pecaBanner();
-  },
-
-  _opcoesBanner() {
-    try { return JSON.parse(localStorage.getItem(this.BANNER_PREF + '_opcoes') || '{}'); }
-    catch (_) { return {}; }
   },
 
   /* ── Relíquias: o hospedeiro busca, a peça desenha ──

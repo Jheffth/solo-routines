@@ -1045,6 +1045,10 @@
 
 /* ── O SLOT QUANDO A PEÇA É A V4 ────────────────────────────
 
+   Vale para QUALQUER slot com a classe `.hunter-window` — o do
+   Dashboard e o do Perfil. O seletor nunca foi por id, e é por isso
+   que o Perfil não precisou de uma regra própria.
+
    `#hunter-card` é a moldura da Janela de Status: fundo, borda,
    padding, clip-path de canto cortado e uma vinheta no ::after.
    A V4 traz a moldura DELA. Montar uma dentro da outra dá duas
@@ -1726,3 +1730,35 @@
   .pt-v4-banner { padding: 1rem .8rem; }
 }
 
+
+/* ── A CÂMERA DO RETRATO ────────────────────────────────────
+   Só aparece onde o hospedeiro oferece a ação `trocar-foto` — hoje,
+   o Perfil. No Dashboard o retrato não é clicável e o distintivo
+   nem é desenhado, então não há promessa falsa de clique. */
+.pt-retrato-trocavel { cursor: pointer; }
+.pt-camera {
+  position: absolute;
+  right: 4%;
+  top: 6%;
+  z-index: 21;
+  width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .72rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%,
+    color-mix(in srgb, var(--pt-feixe) 22%, transparent), rgba(8,10,20,.92) 72%);
+  border: 1px solid color-mix(in srgb, var(--pt-feixe) 50%, transparent);
+  box-shadow: 0 2px 8px rgba(0,0,0,.6);
+  opacity: 0;
+  transform: scale(.85);
+  transition: opacity .2s, transform .2s;
+  pointer-events: none;
+}
+.pt-retrato-trocavel:hover .pt-camera,
+.pt-retrato-trocavel:focus-within .pt-camera { opacity: 1; transform: scale(1); }
+
+/* No toque não existe hover: lá o distintivo fica sempre visível,
+   senão o hunter não descobre que dá para trocar a foto. */
+@media (hover: none) {
+  .pt-camera { opacity: .9; transform: scale(1); }
+}

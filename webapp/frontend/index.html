@@ -930,7 +930,16 @@
           <div id="perfil-content">
 
             <!-- Hero card: span total -->
-            <div id="perfil-hunter-card">
+            <!-- O MESMO banner do Dashboard. Contêiner vazio: quem desenha
+                 aqui dentro é a peça escolhida pelo hunter, e a escolha vale
+                 nos dois lugares (Pecas.escolhida).
+
+                 Antes esta div recebia um segundo cartão, desenhado pelo
+                 `renderHeroCard` do perfil.js — que tinha divergido do
+                 original: nome em maiúsculas, sem relicário, sem epígrafe,
+                 e ignorando a aura cosmética equipada. -->
+            <div class="hunter-window" id="perfil-hunter-card"
+                 data-slot="banner" data-peca-padrao="banner-v4">
               <div class="loading-spinner-wrap"><div class="loading-spinner"></div></div>
             </div>
 

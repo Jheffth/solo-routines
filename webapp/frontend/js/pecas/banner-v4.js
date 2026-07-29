@@ -413,6 +413,30 @@ const BannerV4 = {
       const lista = (dados && dados.reliquias) || [];
       window.BadgeCard.ligarTodos(`[data-peca-selo="${host.selo}"] [data-bc]`, lista);
     }
+
+    /* ── A CÂMERA SÓ EXISTE ONDE FAZ SENTIDO ──────────────────
+
+       No Perfil o hunter troca a própria foto. No Dashboard, não. Na
+       vitrine de outro hunter, jamais.
+
+       A peça não precisa saber em qual tela está: ela PERGUNTA se o
+       hospedeiro oferece a ação. Uma peça que checasse
+       `if (pagina === 'perfil')` teria que ser editada a cada tela
+       nova — e é justamente isso que estamos desfazendo. */
+    if (host.temAcao('trocar-foto')) {
+      const retrato = el.querySelector('.pt-retrato');
+      if (retrato) {
+        retrato.classList.add('pt-retrato-trocavel');
+        retrato.setAttribute('title', 'Clique para trocar a foto');
+        retrato.insertAdjacentHTML('beforeend',
+          '<span class="pt-camera" aria-hidden="true">\u{1F4F7}</span>');
+        host.ouvir(retrato, 'click', (e) => {
+          // O ◈ da aura mora dentro do retrato: o clique dele não é para aqui.
+          if (e.target.closest && e.target.closest('.est-btn-aura')) return;
+          host.acao('trocar-foto');
+        });
+      }
+    }
   },
 };
 
