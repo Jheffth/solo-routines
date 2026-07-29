@@ -172,6 +172,36 @@ ok(aguardaPct === 0, 'quem ainda não entrou em vigor está em 0%');
 ok(/\.mc-passiva\.st-pendente \.mc-prot-cabeca\s*\{\s*display:\s*none/.test(cssCod),
    '  e sem a cabeça pulsando: prometer movimento parado seria mentir');
 
+/* ══ 3b. NO COMPACTO — que é onde ela realmente vive ══
+   O Extrato do Dashboard desenha com `{compacto: true}`. Eu tinha
+   copiado a regra que esconde a barra comum e escondido esta
+   também: construí a barra e a tirei justamente do lugar onde ela
+   ia ser vista. */
+console.log('\n-- no compacto, que é o Extrato do Dashboard --');
+const cxC = doc.createElement('div');
+cxC.innerHTML = [EM_VIGOR, AGUARDANDO].map(m => MC.html(m, { compacto: true })).join('');
+const vigilC = cxC.querySelectorAll('.mc-passiva')[0];
+ok(vigilC.classList.contains('mc-compacto'), 'o cartão compacto foi gerado');
+ok(!!vigilC.querySelector('.mc-prot'), 'e ele TEM a barra do protocolo');
+ok(!!vigilC.querySelector('.mc-vigia'), '  com a moldura de vigília junto');
+ok(!/\.mc-compacto \.mc-prot\s*\{\s*display:\s*none/.test(cssCod),
+   'a regra que a escondia foi removida');
+ok(/\.mc-compacto \.mc-prot-lbl\s*\{\s*display:\s*none/.test(cssCod),
+   '  o que sai é o RÓTULO: o selo PROTOCOLO no canto já diz o que é');
+ok(/\.mc-compacto \.mc-prot-pct/.test(cssCod), '  e a porcentagem fica');
+ok(/\.mc-compacto \.mc-barra\s*\{\s*display:\s*none/.test(cssCod),
+   'a barra COMUM continua escondida no compacto — ela repete o prazo em texto,');
+ok(!!vigilC.querySelector('[data-mc-prot-pct]'),
+   '  esta não repete nada: é a única coisa que se move sozinha num protocolo');
+
+/* Mesmo aguardando a hora, a barra aparece — em 0% e apagada. É a
+   informação de que a vigília ainda não começou. */
+const esperaC = cxC.querySelectorAll('.mc-passiva')[1];
+ok(!!esperaC.querySelector('.mc-prot'),
+   'quem ainda não entrou em vigor também mostra a barra, em 0%');
+ok(esperaC.querySelector('.mc-prot-lbl').textContent.includes('Aguardando'),
+   '  com o rótulo dizendo que a hora não chegou (visível no cartão inteiro)');
+
 /* ══ 4. As duas camadas andam juntas ══ */
 console.log('\n-- aura e corpo não se descolam --');
 const fills = vigil.querySelectorAll('[data-mc-prot-fill]');

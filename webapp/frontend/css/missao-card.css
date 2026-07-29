@@ -363,9 +363,39 @@
 .mc-passiva.st-pendente .mc-prot-aura { opacity: .28; }
 .mc-passiva.st-pendente .mc-prot-cabeca { display: none; }
 
-/* No cartão compacto a barra some junto com a comum — lá o assunto
-   é a lista, não o detalhe. */
-.mc-compacto .mc-prot { display: none; }
+/* ── NO COMPACTO ELA FICA. Eu tinha escondido, e errei. ───────
+
+   Copiei a regra da barra comum (`.mc-compacto .mc-barra { display:
+   none }`), com o raciocínio de que na lista o assunto é o conjunto
+   e não o detalhe.
+
+   Vale para a barra comum e NÃO vale para esta, por um motivo
+   simples: numa missão comum a barra repete o que o prazo já diz em
+   texto ao lado. Aqui ela é a única coisa que se move sozinha — o
+   protocolo não tem botão, não tem cronômetro de execução, não tem
+   nada acontecendo. Tirar a barra é tirar tudo o que ele mostra.
+
+   O Extrato do Dashboard desenha em modo compacto. Ou seja: eu tinha
+   construído a barra e escondido justamente do lugar onde ela ia
+   viver.
+
+   Fica, mais enxuta: sem o rótulo (o selo PROTOCOLO no canto já diz
+   o que é), com a porcentagem colada na barra e altura menor. */
+.mc-compacto .mc-prot {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  margin-top: .45rem;
+  grid-column: 2;          /* na faixa do conteúdo, não sob o sigilo */
+}
+.mc-compacto .mc-prot-topo {
+  margin: 0;
+  order: 2;                /* o número vai para a DIREITA da barra */
+  flex-shrink: 0;
+}
+.mc-compacto .mc-prot-lbl  { display: none; }
+.mc-compacto .mc-prot-pct  { font-size: .58rem; }
+.mc-compacto .mc-prot-calha { flex: 1; height: 5px; order: 1; }
 
 /* Halo de vigília no sigilo — o anel índigo em volta do ícone da categoria. */
 .mc-passiva .mc-sigilo::after {
