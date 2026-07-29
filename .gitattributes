@@ -1,0 +1,65 @@
+# ============================================================
+#  .gitattributes — o fim dos diffs fantasma
+#
+#  POR QUE ESTE ARQUIVO EXISTE
+#
+#  O repositorio guarda os fontes com quebra de linha LF. As
+#  ferramentas do Windows regravam os mesmos arquivos com CRLF.
+#  Como o git compara byte a byte, ele passa a enxergar CADA
+#  LINHA de CADA arquivo como alterada.
+#
+#  O estrago, medido no dia em que este arquivo foi criado:
+#
+#      13 arquivos, 10.019 insercoes, 10.019 remocoes
+#      — e ZERO diferenca real de conteudo.
+#
+#  Isso nao e cosmetico. Enquanto durava, o `git diff` ficava
+#  cego: uma correcao de 40 linhas no dashboard.js desaparecia
+#  no meio de 2.462 linhas de ruido. Ou seja, a rede de
+#  seguranca do projeto — revisar antes de aceitar, reverter com
+#  precisao — estava desligada sem ninguem ter percebido.
+#
+#  `text=auto` manda o git NORMALIZAR antes de comparar: ele
+#  converte CRLF para LF na hora do diff. O arquivo no disco
+#  continua como esta; o que muda e o git parar de confundir
+#  fim de linha com trabalho.
+# ============================================================
+
+# Padrao: o git decide o que e texto e normaliza para comparar.
+* text=auto
+
+# ── Fontes: LF no repositorio, sempre ──────────────────────
+*.py    text
+*.js    text
+*.css   text
+*.html  text
+*.md    text
+*.txt   text
+*.toml  text
+*.json  text
+
+# ── Scripts do Windows: PRECISAM de CRLF ───────────────────
+#  O cmd.exe e o PowerShell podem falhar em .bat/.ps1 com LF.
+#  Aqui o CRLF nao e sujeira: e requisito de execucao.
+*.bat   text eol=crlf
+*.ps1   text eol=crlf
+
+# ── Patches ────────────────────────────────────────────────
+#  A regra de ouro seria NAO normalizar patch: ele carrega os
+#  fins de linha do original dentro do proprio corpo.
+#
+#  Aqui nao se aplica. O v4.patch ja esta gravado como LF no
+#  repositorio, e a copia do disco e uma conversao CRLF dele
+#  (513 insercoes contra 513 remocoes — simetria perfeita, a
+#  assinatura de que so o fim de linha mudou). Deixar `-text`
+#  manteria esse ruido para sempre.
+*.patch text
+
+# ── Binarios: o git nunca deve tentar mesclar nem normalizar ─
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.ico   binary
+*.skill binary
+*.db    binary
+*.xlsx  binary
