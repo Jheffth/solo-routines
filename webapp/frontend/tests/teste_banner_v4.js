@@ -156,10 +156,16 @@ P.montar(el, 'banner-v4', { hunter: HUNTER, reliquias: ACERVO }, {
 });
 el.querySelector('#dash-btn-trocar-aura').dispatchEvent(new wB.Event('click'));
 el.querySelector('#dash-btn-editar-epigrafe').dispatchEvent(new wB.Event('click'));
-el.querySelector('.est-reliquia').dispatchEvent(new wB.Event('click'));
 ok(pedidos.includes('trocar-aura'), 'o ◈ pede "trocar-aura"');
 ok(pedidos.includes('editar-epigrafe'), 'o lápis pede "editar-epigrafe"');
-ok(pedidos.includes('ver-reliquias'), 'a relíquia pede "ver-reliquias"');
+
+/* A INSÍGNIA NÃO NAVEGA. No celular o toque é o único jeito de ver o
+   cartão dela; com navegação junto, o cartão abria e a página trocava
+   debaixo dele. O gesto tinha dois donos. */
+pedidos.length = 0;
+el.querySelector('.est-reliquia').dispatchEvent(new wB.Event('click'));
+ok(pedidos.length === 0,
+   'clicar numa insígnia NÃO pede nada ao hospedeiro — ela só se mostra');
 
 // há DOIS #dash-altar no HTML (desktop e mobile) — os dois devem funcionar
 ok(el.querySelectorAll('#dash-altar').length === 2,
@@ -201,10 +207,29 @@ ok(el.dataset.pecaSelo && el.querySelector('[data-bc]'),
 
 // (c) A LARGURA é CSS, não JS: verificada no arquivo.
 const css = fs.readFileSync(path.join(RAIZ, 'css', 'estandarte.css'), 'utf8');
+const regra = nome => (css.match(new RegExp('\\' + nome + '\\s*\\{([^}]*)\\}')) || [])[1] || '';
 ok(/\.hunter-window\[data-peca="banner-v4"\] \.pt-banner \{[^}]*width: 100%/.test(css),
    'o CSS solta a largura do banner dentro do slot (era max-width:1000px, da bancada)');
 ok(/\.hunter-window\[data-peca="banner-v4"\] \{[^}]*padding: 0/.test(css),
    '  e neutraliza a moldura da Janela de Status, para não haver duas');
+
+/* (d) O BOTÃO DE AURA. Era `#f48fb1` — um rosa que não existe em
+   nenhuma paleta do projeto, e que nenhum outro controle usa.
+   Agora se pinta com `--pt-feixe`, a energia do próprio campo: ciano
+   no Petróleo, azul no Abissal, âmbar na Brasa. Um botão assim
+   pertence ao banner em qualquer campo — e continuará pertencendo no
+   dia em que existir um campo novo, sem ninguém lembrar de vir aqui. */
+console.log('\n-- o botão de trocar aura --');
+ok(!/f48fb1|244,\s*143,\s*177/.test(css),
+   'o rosa avulso (#f48fb1) sumiu da folha inteira');
+const btnAura = regra('.est-btn-aura');
+ok(/var\(--pt-feixe2/.test(btnAura) && /--pt-feixe/.test(btnAura),
+   'o botão se pinta com a cor do CAMPO, não com uma constante');
+ok(/border:.*color-mix/.test(btnAura), '  borda e brilho também vêm de lá');
+ok(/scale\(1\.12\)/.test(regra('.est-btn-aura:hover')),
+   'e cresce no hover, como o botão do Altar ao lado — mesma língua visual');
+ok(el.querySelector('#dash-btn-trocar-aura').className === 'est-btn-aura',
+   'o botão da V4 usa a classe (nada de estilo embutido competindo)');
 
 /* ══ 6. A peça não conhece o hospedeiro ══ */
 console.log('\n-- a fronteira, no código --');

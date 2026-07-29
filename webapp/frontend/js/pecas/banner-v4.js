@@ -383,8 +383,21 @@ const BannerV4 = {
           host.acao(acao);
         }));
     }
-    el.querySelectorAll('.est-reliquia').forEach(n =>
-      host.ouvir(n, 'click', () => host.acao('ver-reliquias')));
+    /* A INSÍGNIA NÃO NAVEGA.
+
+       Havia aqui um clique que levava ao Perfil. Saiu a pedido do
+       Arquiteto, e a razão é boa: no celular, o toque é o único
+       jeito de ver o cartão da insígnia. Com a navegação junto, o
+       cartão abria e a página trocava debaixo dele — o gesto tinha
+       dois donos.
+
+       O único efeito de uma insígnia é MOSTRAR o que ela é: o
+       BadgeCard no hover, e no toque quando não há hover. Quem faz
+       isso é o `ligarTodos` logo abaixo, e ele já dá conta dos dois.
+
+       A ação `ver-reliquias` continua existindo no hospedeiro — a
+       peça clássica ainda a usa. Uma ação que esta peça não pede
+       não custa nada. */
 
     /* O CARTÃO DE INSÍGNIA (hover). Eu tinha escrito
        `ligarTodos('[data-bc]', [])` — com a lista VAZIA. O BadgeCard
