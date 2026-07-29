@@ -92,17 +92,36 @@ const SoloDialog = {
       const esc = s => String(s).replace(/[&<>"]/g, c =>
         ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-      const corpo = `${msg}
-        <input id="solo-dialog-input" type="text"
-          value="${esc(valor)}" maxlength="${opts.maxlength || 200}"
-          placeholder="${esc(opts.placeholder || '')}"
-          style="
-            width:100%;margin-top:.75rem;padding:.55rem .7rem;
-            background:rgba(15,23,42,.7);
-            border:1px solid rgba(100,116,139,.35);border-radius:.5rem;
-            color:#e2e8f0;font-family:var(--font-body,Inter,sans-serif);
-            font-size:.88rem;outline:none;box-sizing:border-box;
-          ">`;
+      /* O <input> PRECISA CABER NUMA LINHA SÓ.
+
+         `_abrir` faz `msg.replace(/\n/g, '<br>')` — o que é certo
+         para uma mensagem, e fatal para uma tag. Escrito em várias
+         linhas, o input virava:
+
+             <input id="..." type="text"<br> value="" maxlength="100"
+
+         O navegador fecha a tag no `<` do `<br>` e cospe o resto
+         como TEXTO. Foi exatamente o que apareceu na tela: os
+         atributos do campo escritos por extenso no lugar dele.
+
+         Por isso o estilo é montado em array e juntado com `;`, e a
+         tag é concatenada, nunca quebrada. */
+      const estilo = [
+        'width:100%', 'margin-top:.75rem', 'padding:.55rem .7rem',
+        'background:rgba(15,23,42,.7)',
+        'border:1px solid rgba(100,116,139,.35)', 'border-radius:.5rem',
+        'color:#e2e8f0', 'font-family:var(--font-body,Inter,sans-serif)',
+        'font-size:.88rem', 'outline:none', 'box-sizing:border-box',
+      ].join(';');
+
+      const campoHtml =
+        '<input id="solo-dialog-input" type="text"' +
+        ' value="' + esc(valor) + '"' +
+        ' maxlength="' + (opts.maxlength || 200) + '"' +
+        ' placeholder="' + esc(opts.placeholder || '') + '"' +
+        ' style="' + estilo + '">';
+
+      const corpo = msg + campoHtml;
 
       this._abrir({
         icon:   opts.icon   || '✎',
@@ -182,6 +201,38 @@ const SoloDialog = {
   },
 
   // ── Abre um dialog modal ──────────────────────────────────
+  /* ── Quebra de linha que não estraga tag ──────────────────
+
+     Aqui havia um `msg.replace(/\n/g, '<br>')`. A intenção é boa:
+     quem escreve uma mensagem em várias linhas espera vê-las
+     quebradas. O problema é que ele não distinguia TEXTO de TAG.
+
+     Uma tag escrita em várias linhas — coisa normal quando tem
+     muito `style` — virava isto:
+
+         <input id="x" type="text"<br> value="" maxlength="100"
+
+     O navegador fecha a tag no `<` do `<br>` e cospe o resto como
+     TEXTO. Na tela aparecem os atributos do campo escritos por
+     extenso, no lugar do campo.
+
+     Isso não quebra em JavaScript, não vai para o console e não
+     aparece em teste de lógica. Só se vê olhando.
+
+     Onde já estava mordendo, antes de alguém reparar:
+       gerencial.js:166  "Ajustar XP"     — o input em 5 linhas
+       gerencial.js:191  "Ajustar Moedas" — idem
+
+     A correção é separar o texto das tags e só quebrar o texto.
+     `[^>]*` engole quebras de linha, então uma tag esparramada em
+     cinco linhas continua sendo UMA tag para este split. */
+  _quebrarLinhas(txt) {
+    return String(txt)
+      .split(/(<[^>]*>)/)                       // ímpares = tags
+      .map((p, i) => (i % 2 ? p : p.replace(/\n/g, '<br>')))
+      .join('');
+  },
+
   _abrir({ icon, titulo, msg, tipo, botoes, onClose }) {
     if (!this._container) this.init();
 
@@ -250,7 +301,7 @@ const SoloDialog = {
         <div style="
           font-family:var(--font-body,Inter,sans-serif);
           font-size:.88rem;color:#cbd5e1;line-height:1.6
-        ">${msg.replace(/\n/g, '<br>')}</div>
+        ">${this._quebrarLinhas(msg)}</div>
       </div>
 
       <!-- Rodapé com botões -->
