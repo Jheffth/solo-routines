@@ -585,7 +585,7 @@ const Estandarte = {
               </div>
             </div>
             ${this._seloHex(letra, corRank)}
-            <button class="est-btn-aura" id="dash-btn-trocar-aura" title="Trocar Aura">◈</button>
+            ${BannersArte.botaoAura()}
           </div>
 
           <!-- Identidade -->
@@ -669,7 +669,7 @@ const Estandarte = {
                 </div>
               </div>
               ${this._seloHex(letra, corRank)}
-              <button class="est-btn-aura" id="dash-btn-trocar-aura" title="Trocar Aura">◈</button>
+              ${BannersArte.botaoAura()}
             </div>
 
             <div class="pt-identidade">
@@ -783,7 +783,7 @@ const Estandarte = {
                 </div>
               </div>
               ${this._seloHex(letra, corRank)}
-              <button class="est-btn-aura" id="dash-btn-trocar-aura" title="Trocar Aura">◈</button>
+              ${BannersArte.botaoAura()}
             </div>
 
             <!-- Identidade -->
@@ -926,7 +926,7 @@ const Estandarte = {
           </svg>
           <span class="est-letra">${letra}</span>
         </div>
-        <button class="est-btn-aura" id="dash-btn-trocar-aura" title="Trocar Aura">◈</button>
+        ${BannersArte.botaoAura()}
       </div>`;
   },
 

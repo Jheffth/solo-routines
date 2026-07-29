@@ -169,7 +169,7 @@ const BannerV4 = {
                 </div>
               </div>
               ${A.seloHex(letra, corRank)}
-              <button class="est-btn-aura" id="dash-btn-trocar-aura" title="Trocar Aura">◈</button>
+              ${A.botaoAura()}
             </div>
 
             <div class="pt-identidade">

@@ -222,14 +222,52 @@ ok(/\.hunter-window\[data-peca="banner-v4"\] \{[^}]*padding: 0/.test(css),
 console.log('\n-- o botão de trocar aura --');
 ok(!/f48fb1|244,\s*143,\s*177/.test(css),
    'o rosa avulso (#f48fb1) sumiu da folha inteira');
-const btnAura = regra('.est-btn-aura');
-ok(/var\(--pt-feixe2/.test(btnAura) && /--pt-feixe/.test(btnAura),
-   'o botão se pinta com a cor do CAMPO, não com uma constante');
-ok(/border:.*color-mix/.test(btnAura), '  borda e brilho também vêm de lá');
-ok(/scale\(1\.12\)/.test(regra('.est-btn-aura:hover')),
-   'e cresce no hover, como o botão do Altar ao lado — mesma língua visual');
-ok(el.querySelector('#dash-btn-trocar-aura').className === 'est-btn-aura',
-   'o botão da V4 usa a classe (nada de estilo embutido competindo)');
+
+const btn = el.querySelector('#dash-btn-trocar-aura');
+const svgAura = btn.querySelector('svg.est-aura-hex');
+ok(!!svgAura, 'o botão agora é um SVG, como o selo do rank — não um círculo de CSS');
+ok(svgAura.querySelectorAll('polygon').length >= 4,
+   `  hexágono em camadas: halo, borda, miolo e contorno (${svgAura.querySelectorAll('polygon').length} polígonos)`);
+ok(svgAura.getAttribute('style').includes('max-width:none'),
+   '  com max-width:none — a regra global svg{max-width:100%} colapsaria o desenho');
+
+// A TRANSPARÊNCIA PEDIDA: borda mais sólida que o miolo.
+const paraGrad = svgAura.querySelector('linearGradient');
+const miolo = svgAura.querySelector('radialGradient');
+const opac = g => [...g.querySelectorAll('stop')].map(s => +s.getAttribute('stop-opacity'));
+ok(Math.max(...opac(paraGrad)) > Math.max(...opac(miolo)),
+   `a borda é mais opaca que o miolo (${Math.max(...opac(paraGrad))} contra ${Math.max(...opac(miolo))})`);
+
+// A COR VEM DO CAMPO, e é o SVG que a usa agora.
+ok(svgAura.innerHTML.includes('var(--pt-feixe)'),
+   'a cor vem do campo do banner, não de uma constante');
+ok(/var\(--pt-feixe2/.test(regra('.est-aura-glifo')), '  o glifo ◈ também');
+
+// AS FAÍSCAS, apagadas até o hover.
+const faiscas = svgAura.querySelectorAll('.est-aura-faisca');
+ok(faiscas.length === 12, `doze faíscas ao redor (${faiscas.length})`);
+ok(faiscas[0].querySelectorAll('circle').length === 2,
+   '  cada uma com núcleo claro e halo colorido, como as brasas da Fênix');
+ok(/opacity:\s*0/.test(regra('.est-aura-faiscas')),
+   'apagadas por padrão');
+// A regra do hover agrupa dois seletores (hover e focus-visible), e o
+// `regra()` acima casa um seletor só. Aqui a busca é pelo bloco inteiro.
+ok(/\.est-btn-aura:hover \.est-aura-faiscas,[\s\S]{0,80}?\{[^}]*opacity:\s*1/.test(css),
+   '  e só acendem no hover — ou no foco pelo teclado, que é o toque no celular');
+ok(/animation-name:\s*est-aura-crepitar/.test(regra('.est-btn-aura:hover .est-aura-faisca,\n.est-btn-aura:focus-visible .est-aura-faisca')) ||
+   css.includes('animation-name: est-aura-crepitar'),
+   '  com o crepitar vindo da regra, não de um `animation` duplicado no mesmo nó');
+ok(css.includes('prefers-reduced-motion'),
+   'quem pediu menos movimento no sistema não recebe as faíscas piscando');
+
+// IDS ÚNICOS: dois botões na página não podem dividir gradiente.
+const outroBtn = doc.createElement('div');
+doc.body.appendChild(outroBtn);
+P.montar(outroBtn, 'banner-v4', { hunter: HUNTER }, {});
+const id1 = svgAura.querySelector('linearGradient').id;
+const id2 = outroBtn.querySelector('.est-aura-hex linearGradient').id;
+ok(id1 !== id2, `dois botões, dois gradientes (${id1} e ${id2}) — nada de herdar a cor do vizinho`);
+P.desmontar(outroBtn); outroBtn.remove();
 
 /* ══ 6. A peça não conhece o hospedeiro ══ */
 console.log('\n-- a fronteira, no código --');

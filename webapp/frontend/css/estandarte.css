@@ -1104,52 +1104,95 @@
 /* ── Botão Trocar Aura no Estandarte ───────────────────────── */
 .est-btn-aura {
   position: absolute;
-  bottom: -6px;
+  bottom: -10px;
   left: 50%;
   transform: translateX(-50%);
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  z-index: 20;
+  cursor: pointer;
+  padding: 0;
+
+  /* O BOTÃO NÃO TEM MAIS CHROME PRÓPRIO.
+     Antes ele era um círculo com fundo, borda e sombra em CSS. Agora
+     quem desenha é o SVG — hexágono com bisel, igual ao selo do rank.
+     Deixar fundo ou borda aqui criaria uma segunda moldura por baixo
+     da primeira, e a transparência pedida iria embora. */
+  background: none;
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
-  cursor: pointer;
-  z-index: 20;
-  font-size: .82rem;
-  line-height: 1;
+  filter: drop-shadow(0 3px 6px rgba(0,0,0,.7));
+  transition: transform .2s, filter .2s;
+}
+.est-btn-aura:hover { transform: translateX(-50%) scale(1.1); }
+.est-btn-aura:active { transform: translateX(-50%) scale(1.02); }
 
-  /* A COR VEM DO CAMPO, não de uma constante.
-     `--pt-feixe` é a energia do banner: ciano no Petróleo, azul no
-     Abissal, âmbar na Brasa. Um botão que se pinta com ela pertence
-     ao banner em qualquer campo, e continua pertencendo no dia em
-     que existir um campo novo — sem ninguém lembrar de vir aqui. */
+.est-aura-hex {
+  position: absolute;
+  inset: 0;
+  max-width: none;          /* a regra global svg{max-width:100%} colapsa isto */
+  pointer-events: none;
+}
+
+/* O GLIFO fica em cima do SVG, não dentro: texto dentro de SVG não
+   herda a fonte do projeto e vira outro desenho em cada navegador. */
+.est-aura-glifo {
+  position: relative;
+  z-index: 2;
+  font-size: .8rem;
+  line-height: 1;
   color: var(--pt-feixe2, #c4ccff);
-  background:
-    radial-gradient(circle at 50% 32%,
-      color-mix(in srgb, var(--pt-feixe) 20%, transparent),
-      rgba(8,10,20,.92) 72%);
-  border: 1px solid color-mix(in srgb, var(--pt-feixe) 55%, transparent);
-  box-shadow:
-    0 2px 10px rgba(0,0,0,.55),
-    0 0 10px color-mix(in srgb, var(--pt-feixe) 22%, transparent),
-    inset 0 0 8px color-mix(in srgb, var(--pt-feixe) 10%, transparent);
-  transition: background .2s, box-shadow .2s, transform .2s, border-color .2s;
+  text-shadow: 0 0 8px color-mix(in srgb, var(--pt-feixe) 70%, transparent);
+  pointer-events: none;
+  transition: text-shadow .2s;
 }
-.est-btn-aura:hover {
-  transform: translateX(-50%) scale(1.12);
-  border-color: color-mix(in srgb, var(--pt-feixe) 85%, transparent);
-  background:
-    radial-gradient(circle at 50% 32%,
-      color-mix(in srgb, var(--pt-feixe) 38%, transparent),
-      rgba(8,10,20,.9) 72%);
-  box-shadow:
-    0 2px 14px rgba(0,0,0,.6),
-    0 0 18px color-mix(in srgb, var(--pt-feixe) 45%, transparent),
-    inset 0 0 10px color-mix(in srgb, var(--pt-feixe) 18%, transparent);
+.est-btn-aura:hover .est-aura-glifo {
+  text-shadow: 0 0 14px var(--pt-feixe), 0 0 4px #fff;
 }
-.est-btn-aura:active {
-  transform: translateX(-50%) scale(1.02);
+
+/* O halo por trás do hexágono respira no hover. */
+.est-aura-halo { transition: opacity .25s; }
+.est-btn-aura:hover .est-aura-halo { opacity: .55; }
+
+/* ── AS FAÍSCAS ──────────────────────────────────────────────
+   Apagadas por padrão. O grupo controla a VISIBILIDADE e cada
+   centelha controla o próprio MOVIMENTO — são duas propriedades
+   `animation` que não podem estar no mesmo elemento, porque a
+   segunda declaração sobrescreve a primeira (lição já paga neste
+   projeto).
+
+   O desenho é o mesmo das brasas da Fênix: núcleo claro, halo
+   colorido, os dois borrados. A diferença é a cor, que vem do campo
+   do banner em vez de ser laranja fixa. */
+.est-aura-faiscas {
+  opacity: 0;
+  transition: opacity .3s;
+  pointer-events: none;
+}
+.est-btn-aura:hover .est-aura-faiscas,
+.est-btn-aura:focus-visible .est-aura-faiscas { opacity: 1; }
+
+.est-aura-faisca {
+  opacity: 0;
+  transform-origin: 24px 24px;
+}
+.est-btn-aura:hover .est-aura-faisca,
+.est-btn-aura:focus-visible .est-aura-faisca {
+  animation-name: est-aura-crepitar;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+@keyframes est-aura-crepitar {
+  0%   { opacity: 0;   transform: scale(.55) translateY(2px); }
+  35%  { opacity: .95; transform: scale(1.1) translateY(-1px); }
+  70%  { opacity: .6;  transform: scale(.85) translateY(-3px); }
+  100% { opacity: 0;   transform: scale(.5)  translateY(-5px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .est-aura-faisca { animation: none !important; opacity: .7 !important; }
 }
    V4 · S-RANK (Otimizada) - CSS Exclusivo
    ══════════════════════════════════════════════════════════ */

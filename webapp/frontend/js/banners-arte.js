@@ -412,6 +412,114 @@ const BannersArte = {
       </div>`;
   },
 
+  /* ══════════════════════════════════════════════════════════
+     O BOTÃO DE TROCAR AURA — hexágono, como o selo do rank
+
+     ANTES era um `<button>` redondo com fundo chapado. Ao lado de um
+     selo hexagonal com bisel e brilho, ele lia como peça de outro
+     conjunto: mesma tela, duas gramáticas.
+
+     Agora é a MESMA construção do `seloHex`, com três diferenças
+     deliberadas:
+
+       1. A cor vem do CAMPO (`--pt-feixe`), não do rank. O selo conta
+          quem o hunter é; o botão é um controle do Sistema. Se os dois
+          usassem a cor do rank, virariam a mesma coisa.
+
+       2. O MIOLO É VAZADO. No selo ele é escuro e opaco, porque tem
+          que segurar a letra. Aqui o pedido foi transparência maior no
+          centro que na borda — então o miolo é só um véu, e o retrato
+          aparece por baixo. É o que faz o botão parecer POUSADO sobre
+          a foto em vez de recortado nela.
+
+       3. FAÍSCAS NO HOVER. Doze centelhas ao redor, na cor do campo,
+          com o mesmo desenho das brasas da Fênix: núcleo claro,
+          halo colorido, os dois borrados. Ficam em opacidade zero até
+          o mouse chegar.
+
+     IDS ÚNICOS. Os gradientes precisam de id, e id repetido faz o
+     segundo botão da página herdar o gradiente do primeiro — a mesma
+     armadilha do `_idsUnicos` do gemas.js, onde o rubi saía roxo.
+     (O `seloHex` ainda usa ids fixos: dívida anotada, não introduzida
+     aqui.)
+     ══════════════════════════════════════════════════════════ */
+  _seqAura: 0,
+
+  botaoAura(opts = {}) {
+    const id = opts.id || 'dash-btn-trocar-aura';
+    const n = ++this._seqAura;
+    const gB = `abB${n}`, gM = `abM${n}`, fG = `abG${n}`;
+
+    const hex = (r) => {
+      const pts = [];
+      for (let i = 0; i < 6; i++) {
+        const a = (Math.PI / 3) * i - Math.PI / 2;
+        pts.push(`${(24 + r * Math.cos(a)).toFixed(2)},${(24 + r * Math.sin(a)).toFixed(2)}`);
+      }
+      return pts.join(' ');
+    };
+
+    /* As faíscas em anel, com raios e tempos irregulares de propósito:
+       doze pontos igualmente espaçados e sincronizados lêem como
+       engrenagem, não como brasa. */
+    const faiscas = Array.from({ length: 12 }, (_, i) => {
+      const ang = (i * 30 + (i % 3) * 11) * Math.PI / 180 - Math.PI / 2;
+      const r   = 20 + (i % 4) * 2.2;
+      const cx  = (24 + r * Math.cos(ang)).toFixed(2);
+      const cy  = (24 + r * Math.sin(ang)).toFixed(2);
+      const s   = (0.9 + (i % 3) * 0.45).toFixed(2);
+      const dl  = (i * 0.13).toFixed(2);
+      const du  = (1.8 + (i % 4) * 0.35).toFixed(2);
+      return `<g class="est-aura-faisca" style="animation-delay:${dl}s;animation-duration:${du}s">`
+           + `<circle cx="${cx}" cy="${cy}" r="${(s * 1.9).toFixed(2)}" fill="var(--pt-feixe)" `
+           + `fill-opacity=".45" filter="url(#${fG})"/>`
+           + `<circle cx="${cx}" cy="${cy}" r="${s}" fill="var(--pt-feixe2)" `
+           + `fill-opacity=".95" filter="url(#${fG})"/></g>`;
+    }).join('');
+
+    const arestaTopo = hex(19).split(' ');
+
+    return `
+      <button class="est-btn-aura" id="${id}" type="button" title="Trocar Aura" aria-label="Trocar Aura">
+        <svg class="est-aura-hex" viewBox="0 0 48 48" width="40" height="40"
+             style="max-width:none" aria-hidden="true" focusable="false">
+          <defs>
+            <linearGradient id="${gB}" x1=".2" y1="0" x2=".8" y2="1">
+              <stop offset="0%"   stop-color="var(--pt-feixe2)" stop-opacity=".95"/>
+              <stop offset="45%"  stop-color="var(--pt-feixe)"  stop-opacity=".8"/>
+              <stop offset="100%" stop-color="var(--pt-feixe)"  stop-opacity=".22"/>
+            </linearGradient>
+            <radialGradient id="${gM}" cx="40%" cy="30%">
+              <stop offset="0%"   stop-color="var(--pt-feixe)" stop-opacity=".20"/>
+              <stop offset="100%" stop-color="#05070f"         stop-opacity=".50"/>
+            </radialGradient>
+            <filter id="${fG}" x="-70%" y="-70%" width="240%" height="240%">
+              <feGaussianBlur stdDeviation="1.6"/>
+            </filter>
+          </defs>
+
+          <g class="est-aura-faiscas">${faiscas}</g>
+
+          <polygon class="est-aura-halo" points="${hex(18)}" fill="var(--pt-feixe)"
+                   opacity=".28" filter="url(#${fG})"/>
+          <polygon points="${hex(17)}" fill="url(#${gB})"/>
+          <polygon points="${hex(13.2)}" fill="url(#${gM})"/>
+          <polygon points="${hex(13.2)}" fill="none" stroke="var(--pt-feixe)"
+                   stroke-width=".9" opacity=".55"/>
+          <path d="M ${arestaTopo[4]} L ${arestaTopo[5]} L ${arestaTopo[0]}"
+                fill="none" stroke="#fff" stroke-width="1.2" opacity=".32" stroke-linecap="round"/>
+        </svg>
+        <span class="est-aura-glifo">◈</span>
+      </button>`
+      /* `.trim()` NAO e preciosismo: quem chama isto insere o retorno
+         num template ja indentado. Se o texto trouxesse a propria quebra
+         de linha na frente, a saida ficaria diferente da de quem escrevia
+         o botao inline — e o teste de nao-regressao dos banners, que
+         compara caractere a caractere, acusaria uma mudanca que nao
+         existe. */
+      .trim();
+  },
+
   /* MEDALHA DE RANK — evolui de E a N (Gemas.rank).
      Substituiu o sigilo lunar, que era decoração fixa. Agora a peça à
      esquerda da barra CONTA alguma coisa: quanto mais alto o rank, mais

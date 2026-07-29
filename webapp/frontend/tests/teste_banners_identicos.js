@@ -127,6 +127,33 @@ const depois = renderizar(
   fs.readFileSync(path.join(RAIZ, 'js/escudos-img.js'), 'utf8'),
 );
 
+/* ── AS MUDANÇAS PEDIDAS, declaradas ─────────────────────────
+
+   Este teste existe para provar que a EXTRAÇÃO do vocabulário não
+   mexeu em nada. Ele não pode virar um alarme que dispara toda vez
+   que alguém muda um desenho de propósito — mas também não pode ser
+   afrouxado até deixar de acusar mudança acidental.
+
+   O meio-termo: cada mudança deliberada entra AQUI, nomeada, com o
+   motivo. O que não estiver nesta lista continua tendo que sair
+   caractere por caractere idêntico.
+
+   1. O BOTÃO DE TROCAR AURA. Era um círculo de CSS num rosa
+      (#f48fb1) que não existe em nenhuma paleta do projeto. Virou
+      um hexágono em SVG, na cor do campo, com faíscas no hover — a
+      pedido do Arquiteto, para conversar com o selo do rank ao lado. */
+const MUDANCAS_PEDIDAS = [
+  { nome: 'botão de trocar aura',
+    re: /<button class="est-btn-aura"[\s\S]*?<\/button>/g },
+];
+const semAsPedidas = (html) =>
+  MUDANCAS_PEDIDAS.reduce((s, m) => s.replace(m.re, '[[' + m.nome + ']]'), html);
+
+for (const k of Object.keys(antes))  antes[k]  = semAsPedidas(antes[k]);
+for (const k of Object.keys(depois)) depois[k] = semAsPedidas(depois[k]);
+console.log(`  (ignorando ${MUDANCAS_PEDIDAS.length} mudança(s) deliberada(s): ` +
+            MUDANCAS_PEDIDAS.map(m => m.nome).join(', ') + ')\n');
+
 const chaves = [...new Set([...Object.keys(antes), ...Object.keys(depois)])].sort();
 ok(chaves.length > 0, `${chaves.length} combinações de versão × campo para comparar`);
 
