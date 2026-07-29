@@ -70,36 +70,41 @@ const Dashboard = {
     }
   },
 
-  // ── Cores por rank (Janela de Status) ──
-  _RANK_CORES: {
-    'E': '#94a3b8', 'D': '#22d3ee', 'C': '#10b981',
-    'B': '#3b82f6', 'A': '#a855f7', 'S': '#fbbf24', 'N': '#fb7185',
+  /* ══════════════════════════════════════════════════════════
+     A JANELA DE STATUS SAIU DAQUI
+
+     O desenho do cartão do hunter — cores de rank, contagem dos
+     cristais, partículas, relicário, botão de aura — virou uma
+     PEÇA: js/pecas/hunter-card-classico.js. Eram ~310 das 1.231
+     linhas deste arquivo.
+
+     O que sobrou aqui é o papel do hospedeiro:
+
+        BUSCAR o dado, ENTREGAR à peça, ATENDER o que ela pedir.
+
+     O Dashboard não sabe mais desenhar o cartão, e é isso que
+     permite que a mesma peça seja montada na Vitrine e no Perfil
+     sem uma segunda implementação. Havia uma: o `renderHeroCard()`
+     do perfil.js, que já tinha divergido desta.
+     ══════════════════════════════════════════════════════════ */
+
+  // O contêiner vazio que a peça ocupa. Continua sendo #hunter-card
+  // porque o CSS e o console do Arquiteto procuram por esse id.
+  _slotBanner() { return document.getElementById('hunter-card'); },
+
+  // Qual peça montar. Por ora só a padrão declarada no HTML; quando
+  // a escolha virar preferência do hunter, é AQUI que ela entra —
+  // um lugar só, e nada mais muda.
+  _pecaBanner() {
+    const slot = this._slotBanner();
+    return (slot && slot.dataset.pecaPadrao) || 'hunter-card-classico';
   },
 
-  _letraRank(classe) {
-    const c = (classe || 'E-Rank').toUpperCase();
-    if (c.includes('NATIONAL')) return 'N';
-    const m = c.match(/\b([EDCBAS])\b|^([EDCBAS])-/);
-    return (m && (m[1] || m[2])) || 'E';
-  },
-
-  // Contagem animada de números (Orbitron fica lindo contando)
-  _contar(el, alvo, dur = 900) {
-    if (!el) return;
-    const ini = 0, t0 = performance.now();
-    const passo = (t) => {
-      const p = Math.min(1, (t - t0) / dur);
-      const eased = 1 - Math.pow(1 - p, 3);
-      el.textContent = Math.round(ini + (alvo - ini) * eased).toLocaleString('pt-BR');
-      if (p < 1) requestAnimationFrame(passo);
-    };
-    requestAnimationFrame(passo);
-  },
-
-  // ── Relicário: as 3 últimas conquistas na Janela de Status ──
-  async _renderRelicario() {
-    const cont = document.getElementById('dash-relicario');
-    if (!cont) return;
+  /* ── Relíquias: o hospedeiro busca, a peça desenha ──
+     Antes isto DESENHAVA (era `_renderRelicario`). Agora só traz o
+     dado. A peça deixou de chamar a API por conta própria — do
+     contrário, cada preview na Vitrine dispararia duas requisições. */
+  async _carregarReliquias() {
     try {
       const [lista, altar] = await Promise.all([
         API.conquistas.listar(),
@@ -109,31 +114,8 @@ const Dashboard = {
         if (a.desbloqueada_em && b.desbloqueada_em) return new Date(b.desbloqueada_em) - new Date(a.desbloqueada_em);
         return 0;
       });
-
-      // Cinco, e só cinco: a sexta quebrava a linha e ficava órfã.
-      // O hunter escolhe quais; sem escolha, as mais recentes.
-      const fixadas = (altar.fixadas || [])
-        .map(cod => todas.find(c => c.codigo === cod)).filter(Boolean);
-      const desb = (fixadas.length ? fixadas : todas).slice(0, 5);
-      if (!desb.length) {
-        cont.innerHTML = `<span class="hunter-relicario-lbl">Nenhuma relíquia ainda — cumpra missões</span>`;
-        return;
-      }
-      const medalha = c => (typeof ConquistaFX !== 'undefined' && ConquistaFX.miniMedalha)
-        ? ConquistaFX.miniMedalha(c, 34) : (c.icone || '🏆');
-      // Sem `title`: quem conta a história da relíquia agora é o
-      // BadgeCard, não a caixinha cinza do sistema operacional.
-      cont.innerHTML = `<span class="hunter-relicario-lbl">Relíquias</span>`
-        + desb.map(c => `<span class="hunter-reliquia" data-bc="${c.codigo}">${medalha(c)}</span>`).join('')
-        + (todas.length > 1
-            ? `<button class="hunter-relicario-editar" id="dash-altar"
-                 title="Escolher quais relíquias exibir">✎</button>` : '');
-      cont.querySelectorAll('.hunter-reliquia').forEach(el =>
-        el.addEventListener('click', () => window.App && App.navigate('perfil')));
-      document.getElementById('dash-altar')?.addEventListener('click', () =>
-        window.AltarReliquias?.abrir(() => this._renderRelicario()));
-      window.BadgeCard?.ligarTodos('#dash-relicario [data-bc]', desb);
-    } catch (_) { /* silencioso */ }
+      return { reliquias: todas, reliquias_fixadas: altar.fixadas || [] };
+    } catch (_) { return { reliquias: [], reliquias_fixadas: [] }; }
   },
 
   // ── Chip: dungeon aberta agora ──
@@ -180,112 +162,27 @@ const Dashboard = {
     }, 9000);
   },
 
-  // ── Partículas de mana dentro da Janela de Status ──
-  _initFxJanela() {
-    const canvas = document.getElementById('hunter-fx');
-    if (!canvas || canvas.dataset.on) return;
-    canvas.dataset.on = '1';
-    const ctx = canvas.getContext('2d');
-    let W = 0, H = 0;
-    const ajustar = () => {
-      const r = canvas.getBoundingClientRect();
-      W = canvas.width = r.width; H = canvas.height = r.height;
-    };
-    ajustar();
-    window.addEventListener('resize', ajustar);
+  /* ══════════════════════════════════════════════════════════
+     O HOSPEDEIRO
 
-    const ps = Array.from({ length: 26 }, () => ({
-      x: Math.random(), y: Math.random(),
-      r: Math.random() * 1.6 + .4,
-      v: Math.random() * .00035 + .00012,
-      a: Math.random() * .5 + .15,
-    }));
-    const loop = () => {
-      if (!canvas.isConnected) return;
-      ctx.clearRect(0, 0, W, H);
-      const cor = getComputedStyle(document.getElementById('hunter-card'))
-        .getPropertyValue('--rank-cor').trim() || '#a855f7';
-      ps.forEach(p => {
-        p.y -= p.v;
-        if (p.y < -0.05) { p.y = 1.05; p.x = Math.random(); }
-        ctx.beginPath();
-        ctx.arc(p.x * W, p.y * H, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = cor;
-        ctx.globalAlpha = p.a;
-        ctx.fill();
-      });
-      ctx.globalAlpha = 1;
-      requestAnimationFrame(loop);
-    };
-    loop();
-  },
+     Antes esta função tinha 127 linhas e fazia duas coisas
+     misturadas: desenhava o cartão e cuidava do resto da página.
+     Ao separar, ficou claro que só a segunda metade era dela.
 
+     Agora: monta (ou repinta) a peça no slot, e trata do que NÃO é
+     o cartão — barra lateral, sussurros, chip de dungeon, busca de
+     hunters e o gancho de reset do Arquiteto.
+     ══════════════════════════════════════════════════════════ */
   renderPersonagem(dados) {
     this._iniciarSussurros();
-    this._initFxJanela();
-    // Nome
-    const elNome = document.getElementById('dash-nome');
-    if (elNome) elNome.textContent = dados.nome || 'Hunter';
+    window.__dashDados = dados;
 
+    this._montarBanner(dados);
+
+    // ── Daqui para baixo: o que NÃO é o cartão ──
     const sbNome = document.getElementById('sidebar-nome');
     if (sbNome) sbNome.textContent = dados.nome || 'Hunter';
 
-    // Titulo / classe
-    const elTitulo = document.getElementById('dash-titulo');
-    if (elTitulo) elTitulo.textContent = `"${dados.titulo || this._getTituloByRank(dados.rank)}"`;
-
-    // ── Rank: colore a janela inteira ──
-    const classe = dados.classe || dados.rank || 'E-Rank';
-    const letra  = this._letraRank(classe);
-    const cor    = this._RANK_CORES[letra] || '#a855f7';
-    const janela = document.getElementById('hunter-card');
-    if (janela) {
-      janela.style.setProperty('--rank-cor', cor);
-      janela.style.setProperty('--rank-aura', cor + '26');
-    }
-    const selo = document.getElementById('dash-rank-selo');
-    if (selo) selo.textContent = letra;
-
-    // Cristais com contagem animada
-    this._contar(document.getElementById('dash-nivel'), dados.nivel_atual || dados.nivel || 1, 700);
-    this._contar(document.getElementById('dash-moedas'), dados.moedas || 0);
-
-    // Streak (chama apaga se zerado)
-    const streak = dados.streak_atual || dados.streak_dias || 0;
-    const elStreak = document.getElementById('dash-streak');
-    if (elStreak) this._contar(elStreak, streak, 600);
-    document.querySelector('.cristal-streak')?.classList.toggle('apagado', streak === 0);
-
-    // XP
-    const xpAtual  = dados.xp_atual   || 0;
-    const xpProx   = dados.xp_proximo_nivel || dados.xp_proximo || 100;
-    const pct      = Math.min(100, Math.round((xpAtual / xpProx) * 100));
-
-    const elXPTxt = document.getElementById('dash-xp-txt');
-    if (elXPTxt) elXPTxt.textContent = `${xpAtual.toLocaleString('pt-BR')} / ${xpProx.toLocaleString('pt-BR')} XP`;
-
-    const elXPBar = document.getElementById('dash-xp-bar');
-    if (elXPBar) setTimeout(() => { elXPBar.style.width = pct + '%'; }, 120);
-    // Perto de subir (>=85%): a barra arde em ouro
-    document.querySelector('.hunter-xp-track')?.classList.toggle('quase', pct >= 85);
-
-    // Badges (rank textual + nível)
-    const elRankBadge = document.getElementById('dash-rank-badge');
-    if (elRankBadge) {
-      const ehArq = dados.nivel_acesso === 'Arquiteto';
-      elRankBadge.innerHTML = `
-        <span style="font-family:var(--font-section);font-size:.68rem;font-weight:700;letter-spacing:.12em;
-          padding:.2rem .7rem;border-radius:100px;color:${cor};
-          border:1px solid ${cor}66;background:${cor}14">${classe}</span>
-        ${ehArq ? `<span class="dg-badge-arquiteto" style="margin-left:0">★ ARQUITETO ★</span>` : ''}`;
-    }
-
-    // Relicário + chip de dungeon (extras da Janela de Status)
-    this._renderRelicario();
-    this._renderChipDungeon();
-    window.BuscaHunters?.montar();   // idempotente: só monta uma vez
-
-    // Sidebar rank
     const sbRank = document.getElementById('sidebar-rank');
     if (sbRank) {
       if (dados.nivel_acesso === 'Arquiteto') {
@@ -295,35 +192,13 @@ const Dashboard = {
       }
     }
 
-    // Avatar (o do dashboard vive num hexágono — sem border-radius)
     if (dados.avatar_url) {
-      const hex = document.getElementById('dash-avatar');
-      if (hex) hex.innerHTML = `<img src="${dados.avatar_url}" alt="Avatar" style="width:100%;height:100%;object-fit:cover">`;
       const sb = document.getElementById('sidebar-avatar');
       if (sb) sb.innerHTML = `<img src="${dados.avatar_url}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
     }
-    // Aura: cosm\u00e9tica presenteada (aura_id) > aura de cargo.
-    void (function _aplicarAura() {
-      var _hw = document.querySelector("#hunter-card .hunter-hex-wrap");
-      if (!_hw || !window.Auras) return;
-      var _aid = dados.aura_id || null;
-      if (_aid && Auras.existe(_aid)) {
-        _hw.querySelector(".aura-wrap") && _hw.querySelector(".aura-wrap").remove();
-        _hw.insertAdjacentHTML("afterbegin", Auras.bloco(_aid, 168));
-      } else { Auras.aplicar(_hw, dados.nivel_acesso, 168); }
-    }());
-    window.__dashDados = dados;
 
-    // Botão Editar Perfil
-    const btnEdit = document.getElementById('dash-btn-editar-perfil');
-    if (btnEdit) {
-      btnEdit.onclick = () => {
-        if (window.App) App.navigate('perfil');
-      };
-    }
-
-    // Bot\u00e3o "Trocar Aura" injetado ao lado de Editar Perfil
-    Dashboard._bindBtnTrocarAura(dados);
+    this._renderChipDungeon();
+    window.BuscaHunters?.montar();   // idempotente: só monta uma vez
 
     // Reset de progresso: ação perigosa — mora na Forja de Testes (Ctrl+Alt+A),
     // fora do cabeçalho. Exposto aqui para a Forja consumir.
@@ -345,6 +220,67 @@ const Dashboard = {
         SoloDialog.toast('Erro ao resetar: ' + err.message, 'error');
       }
     };
+  },
+
+  /* ── Montar ou repintar a peça ──
+
+     MONTAR é a primeira vez; REPINTAR é toda vez depois. A
+     distinção não é economia: `atualizarNumeros()` chama isto a
+     cada ação do hunter, e remontar faria o cartão inteiro piscar —
+     o mesmo incômodo já corrigido nas listas de missão.
+
+     As relíquias chegam DEPOIS, por serem duas chamadas de rede. O
+     cartão aparece na hora com o que já se sabe e completa quando
+     elas chegam. Era assim antes, e continua. */
+  _montarBanner(dados) {
+    const slot = this._slotBanner();
+    if (!slot || typeof Pecas === 'undefined') return;
+
+    const pacote = { hunter: dados };
+
+    if (slot.__peca) {
+      // Repintura: preserva as relíquias já carregadas, senão elas
+      // sumiriam a cada atualização de número.
+      Object.assign(pacote, {
+        reliquias:         slot.__peca.dados?.reliquias || [],
+        reliquias_fixadas: slot.__peca.dados?.reliquias_fixadas || [],
+      });
+      Pecas.atualizar(slot, pacote);
+    } else {
+      Pecas.montar(slot, this._pecaBanner(), pacote, { acoes: this._acoesBanner() });
+    }
+
+    // As relíquias completam o cartão quando chegarem.
+    this._carregarReliquias().then(r => {
+      if (!slot.__peca) return;
+      Pecas.atualizar(slot, Object.assign({ hunter: window.__dashDados || dados }, r));
+    });
+  },
+
+  /* ── O que a peça pode PEDIR ──
+
+     Aqui está a inversão de dependência inteira. A peça não navega,
+     não abre modal e não conhece um id deste arquivo: ela pede pelo
+     nome, e quem decide o que acontece é o Dashboard.
+
+     Trocar a peça por outra não muda nada nesta lista — é o que
+     torna a V4 aplicável sem reescrever o hospedeiro. */
+  _acoesBanner() {
+    return {
+      'editar-perfil':  () => window.App && App.navigate('perfil'),
+      'ver-reliquias':  () => window.App && App.navigate('perfil'),
+      'trocar-aura':    () => this._abrirModalAura(window.__dashDados || {}),
+      'editar-altar':   () => window.AltarReliquias?.abrir(() => this._repintarBanner()),
+    };
+  },
+
+  // Repinta o cartão com o dado que já está em mãos, buscando as
+  // relíquias de novo. Usado depois que o Altar muda a escolha.
+  async _repintarBanner() {
+    const slot = this._slotBanner();
+    if (!slot || !slot.__peca) return;
+    const r = await this._carregarReliquias();
+    Pecas.atualizar(slot, Object.assign({ hunter: window.__dashDados || {} }, r));
   },
 
   renderStats(stats) {
@@ -809,6 +745,18 @@ const Dashboard = {
     // idempotência, então sem isso a placa nunca voltaria a falar.
     if (this._sussurroTimer) { clearInterval(this._sussurroTimer); this._sussurroTimer = null; }
     if (typeof MissaoCard !== 'undefined' && MissaoCard.pararTimer) MissaoCard.pararTimer();
+
+    /* A peça do banner também morre aqui. Ela segura um laço de
+       partículas e um ouvinte de `resize` pendurado em `window` — o
+       laço se desliga sozinho ao sair do DOM, o ouvinte não.
+
+       Antes esta limpeza não existia porque não havia como fazê-la:
+       o `_initFxJanela` pendurava o `resize` e nunca mais o soltava.
+       Cada visita ao Dashboard deixava um para trás. */
+    if (typeof Pecas !== 'undefined') {
+      const slot = this._slotBanner();
+      if (slot) Pecas.desmontar(slot);
+    }
   },
 
 
@@ -960,69 +908,14 @@ const Dashboard = {
 
 
   /* ─── Aura: botão no cabeçalho + modal de inventário ───────────────── */
-  _bindBtnTrocarAura(dados) {
-    // Injeta botão ◈ DENTRO do .hunter-hex-wrap, logo abaixo do avatar
-    const hexWrap = document.querySelector('#hunter-card .hunter-hex-wrap');
+  /* O botão ◈ de trocar aura saiu daqui: virou `botaoAura()` na peça.
+     Ele era recriado a cada repintura do cartão — e o cartão repinta a
+     cada missão. Na peça nasce uma vez e só troca de título.
 
-    // Remove instância anterior para recriar sempre atualizado
-    document.getElementById('dash-btn-trocar-aura')?.remove();
-
-    const btn = document.createElement('button');
-    btn.id = 'dash-btn-trocar-aura';
-
-    if (hexWrap) {
-      // hexWrap já tem position:relative no CSS — botão fica dentro dele
-      hexWrap.style.position = 'relative';   // garante, caso o CSS mude
-      btn.style.cssText = [
-        'position:absolute',
-        'bottom:-14px',
-        'left:50%',
-        'transform:translateX(-50%)',
-        'width:28px', 'height:28px',
-        'border-radius:50%',
-        'background:linear-gradient(135deg,#2a0a3e,#130a28)',
-        'border:1.5px solid rgba(244,143,177,.65)',
-        'color:#f48fb1',
-        'font-size:.72rem',
-        'cursor:pointer',
-        'z-index:20',
-        'box-shadow:0 0 10px rgba(244,143,177,.3),inset 0 0 6px rgba(244,143,177,.1)',
-        'display:flex', 'align-items:center', 'justify-content:center',
-        'transition:box-shadow .2s,background .2s',
-        'padding:0',
-      ].join(';');
-      btn.onmouseover = () => {
-        btn.style.boxShadow = '0 0 18px rgba(244,143,177,.6),inset 0 0 8px rgba(244,143,177,.2)';
-        btn.style.background = 'linear-gradient(135deg,#3e1060,#1a0a38)';
-      };
-      btn.onmouseout = () => {
-        btn.style.boxShadow = '0 0 10px rgba(244,143,177,.3),inset 0 0 6px rgba(244,143,177,.1)';
-        btn.style.background = 'linear-gradient(135deg,#2a0a3e,#130a28)';
-      };
-      hexWrap.appendChild(btn);
-    } else {
-      // Fallback: ao lado do Editar Perfil
-      const fc = document.getElementById('dash-btn-editar-perfil')?.parentElement;
-      if (!fc) return;
-      btn.className = 'btn btn-ghost btn-sm';
-      btn.style.cssText = [
-        'font-family:var(--font-section)', 'font-size:.75rem', 'letter-spacing:.06em',
-        'border:1px solid rgba(244,143,177,.4)', 'color:#f48fb1',
-        'padding:.35rem .9rem', 'border-radius:.5rem', 'cursor:pointer',
-        'transition:all .2s', 'display:flex', 'align-items:center', 'gap:.4rem',
-      ].join(';');
-      btn.onmouseover = () => btn.style.background = 'rgba(244,143,177,.12)';
-      btn.onmouseout  = () => btn.style.background = 'transparent';
-      fc.insertBefore(btn, fc.firstChild);
-    }
-
-    const temAura = !!(dados && dados.aura_id);
-    btn.innerHTML = '◈';
-    btn.title     = temAura ? `Aura ativa: ${dados.aura_id}` : 'Gerenciar Aura';
-    // onclick direto — sem bind antigo que pode ter sido perdido
-    btn.addEventListener('click', () => Dashboard._abrirModalAura(window.__dashDados || dados));
-  },
-
+     Era este botão que escrevia `dash-btn-trocar-aura` também de dentro
+     da V4, dando dois elementos com o mesmo id na mesma página. Com o
+     contrato, quem clica pede `trocar-aura` ao hospedeiro e o id deixa
+     de ser um ponto de encontro. */
 
   async _abrirModalAura(dados) {
     document.getElementById('dash-modal-aura')?.remove();
@@ -1187,13 +1080,13 @@ const Dashboard = {
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.detail || 'Erro');
-      const hexWrap = document.querySelector('#hunter-card .hunter-hex-wrap');
-      if (hexWrap && window.Auras && Auras.existe(auraId)) {
-        const old = hexWrap.querySelector('.aura-wrap');
-        if (old) old.remove();
-        hexWrap.insertAdjacentHTML('afterbegin', Auras.bloco(auraId, 168));
-      }
+      /* Antes daqui saía uma cirurgia direta no `.hunter-hex-wrap` do
+         cartão. Agora o Dashboard muda o DADO e manda repintar: quem
+         sabe onde a aura entra é a peça — e com a V4 esse lugar será
+         outro. Um hospedeiro que enfia HTML dentro da peça volta a
+         precisar conhecer a peça, que é o nó que estamos desatando. */
       if (window.__dashDados) window.__dashDados.aura_id = auraId;
+      this._repintarBanner();
       document.getElementById('dash-modal-aura')?.remove();
       Dashboard._abrirModalAura(window.__dashDados || { aura_id: auraId });
     } catch (e) { alert('Erro: ' + e.message); }
@@ -1209,23 +1102,10 @@ const Dashboard = {
       });
       if (!r.ok) { const d = await r.json(); throw new Error(d.detail); }
       if (window.__dashDados) window.__dashDados.aura_id = null;
-      const hexWrap = document.querySelector('#hunter-card .hunter-hex-wrap');
-      if (hexWrap && window.Auras) {
-        const dados = window.__dashDados;
-        if (dados) Auras.aplicar(hexWrap, dados.nivel_acesso, 168);
-      }
+      this._repintarBanner();     // sem aura_id, a peça volta à aura de cargo
       document.getElementById('dash-modal-aura')?.remove();
       await Dashboard.carregar(); // refresh completo do dashboard
     } catch (e) { alert('Erro: ' + e.message); }
-  },
-
-  _getTituloByRank(rank) {
-    const titulos = {
-      'E': 'O Mais Fraco', 'D': 'Iniciante',
-      'C': 'Promissor', 'B': 'Experiente',
-      'A': 'Elite', 'S': 'Monarch'
-    };
-    return titulos[rank] || 'Hunter';
   }
 };
 

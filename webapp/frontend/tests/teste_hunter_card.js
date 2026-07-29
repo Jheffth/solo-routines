@@ -3,10 +3,11 @@
    A pergunta que este arquivo responde é uma só: a peça desenha
    exatamente o cartão que o index.html já desenhava?
 
-   Por isso o teste não descreve a marcação esperada — ele RECORTA
-   o bloco do index.html e compara. Se alguém mexer em um dos dois
-   lados, o teste acusa a divergência. É a única forma de provar
-   "a tela não mudou" sem ter um navegador na mão.
+   Por isso o teste não descreve a marcação esperada — ele compara
+   com o GABARITO, que é o bloco recortado do index.html antes de o
+   slot substituí-lo. Se alguém mexer em um dos dois lados, o teste
+   acusa a divergência. É a única forma de provar "a tela não mudou"
+   sem ter um navegador na mão.
 
    Uso:  npm i jsdom  &&  node webapp/frontend/tests/teste_hunter_card.js
 */
@@ -16,9 +17,15 @@ const vm = require('vm');
 const { JSDOM } = require('jsdom');
 
 const RAIZ    = path.join(__dirname, '..');
-const INDEX   = path.join(RAIZ, 'index.html');
 const PECAS   = path.join(RAIZ, 'js', 'pecas.js');
 const CLASSICO = path.join(RAIZ, 'js', 'pecas', 'hunter-card-classico.js');
+
+/* O GABARITO é a marcação como estava no index.html antes do passo 3,
+   congelada em arquivo. Enquanto o index.html ainda tinha o cartão,
+   este teste recortava de lá. Agora o index.html tem um slot vazio —
+   se a referência sumisse com ele, a garantia de "a tela não mudou"
+   morreria justamente no passo que mais precisa dela. */
+const GABARITO = path.join(__dirname, 'gabarito-hunter-card.html');
 
 let falhas = 0, testes = 0;
 function ok(cond, msg) {
@@ -27,26 +34,6 @@ function ok(cond, msg) {
   console.log((cond ? '  [ok]  ' : '  [XX]  ') + msg);
 }
 const espera = ms => new Promise(r => setTimeout(r, ms));
-
-/* ── Recorta o miolo do #hunter-card do index.html ──────────
-   Contando as <div> para achar o fecho certo: o bloco tem divs
-   aninhadas, então parar na primeira </div> pegaria o lugar
-   errado. */
-function recortarHunterCard(html) {
-  const abre = html.indexOf('<div class="hunter-window" id="hunter-card">');
-  if (abre < 0) throw new Error('não achei o #hunter-card no index.html');
-  let i = html.indexOf('>', abre) + 1;
-  const inicio = i;
-  let nivel = 1;
-  const re = /<(\/?)div\b[^>]*>/g;
-  re.lastIndex = i;
-  let m;
-  while ((m = re.exec(html))) {
-    nivel += m[1] ? -1 : 1;
-    if (nivel === 0) return html.slice(inicio, m.index);
-  }
-  throw new Error('o #hunter-card não fecha');
-}
 
 /* Normaliza para comparar: o que importa é a marcação, não a
    indentação nem os comentários. */
@@ -59,7 +46,6 @@ const normalizar = s => s
 async function main() {
 console.log('\n=== A JANELA DE STATUS COMO PEÇA ===\n');
 
-const html = fs.readFileSync(INDEX, 'utf8');
 const dom = new JSDOM('<!doctype html><body><div id="slot" data-slot="banner"></div></body>',
                       { pretendToBeVisual: true });
 const w = dom.window;
@@ -95,11 +81,11 @@ vm.runInContext(fs.readFileSync(CLASSICO, 'utf8'), ctx);
 const P = w.Pecas, doc = w.document, el = doc.getElementById('slot');
 
 /* ══ 1. FIDELIDADE — o teste que dá sentido ao passo ══ */
-console.log('-- fidelidade à marcação do index.html --');
-const doIndex = recortarHunterCard(html);
+console.log('-- fidelidade ao gabarito (a tela de antes do passo 3) --');
+const doIndex = fs.readFileSync(GABARITO, 'utf8');
 const daPeca  = w.HunterCardClassico.esqueleto();
 ok(normalizar(doIndex) === normalizar(daPeca),
-   'a marcação da peça é IDÊNTICA à do index.html');
+   'a marcação da peça é IDÊNTICA à que o index.html tinha');
 if (normalizar(doIndex) !== normalizar(daPeca)) {
   const a = normalizar(doIndex), b = normalizar(daPeca);
   let i = 0; while (i < a.length && a[i] === b[i]) i++;
@@ -190,10 +176,14 @@ ok(el.querySelector('#dash-moedas').textContent === '9',
 
 /* ══ 7. Relicário vem PRONTO do hospedeiro ══ */
 console.log('\n-- relíquias --');
-P.atualizar(el, { hunter: Object.assign({}, hunter, {
+// As relíquias vêm NO PACOTE, ao lado do hunter — não dentro dele.
+// Eu já errei este lado uma vez: montava o dado do jeito errado
+// aqui E na peça, então os dois combinavam e o teste passava. Foi o
+// teste de integração com o dashboard.js real que acusou.
+P.atualizar(el, { hunter,
   reliquias: [ {codigo:'a'},{codigo:'b'},{codigo:'c'},{codigo:'d'},{codigo:'e'},{codigo:'f'},{codigo:'g'} ],
   reliquias_fixadas: [],
-}) });
+});
 ok(el.querySelectorAll('.hunter-reliquia').length === 5,
    'sete relíquias, cinco desenhadas (a sexta quebrava a linha)');
 ok(!!el.querySelector('#dash-altar'), 'e o botão de editar o altar aparece');
@@ -202,9 +192,9 @@ el.querySelector('.hunter-reliquia').dispatchEvent(new w.Event('click'));
 ok(acoes.includes('editar-altar') && acoes.includes('ver-reliquias'),
    'os cliques viram AÇÕES pedidas ao hospedeiro (a peça não navega sozinha)');
 
-P.atualizar(el, { hunter: Object.assign({}, hunter, {
+P.atualizar(el, { hunter,
   reliquias: [{codigo:'a'},{codigo:'b'},{codigo:'c'}], reliquias_fixadas: ['c'],
-}) });
+});
 ok(el.querySelectorAll('.hunter-reliquia').length === 1 &&
    el.querySelector('.hunter-reliquia').dataset.bc === 'c',
    'com relíquias fixadas, só as fixadas aparecem');

@@ -456,71 +456,24 @@
               <div class="bh-wrap" id="busca-hunters"></div>
             </div>
           </div>
-          <!-- ═══ JANELA DE STATUS DO HUNTER ═══ -->
-          <div class="hunter-window" id="hunter-card">
-            <canvas class="hunter-window-fx" id="hunter-fx"></canvas>
-            <div class="hunter-window-body">
+          <!-- ═══ JANELA DE STATUS DO HUNTER ═══
 
-              <!-- Coluna 1: avatar em hexágono de rank -->
-              <div class="hunter-hex-wrap">
-                <div class="hunter-hex-ring"></div>
-                <div class="hunter-hex" id="dash-avatar">&#128737;&#65039;</div>
-                <div class="hunter-hex-rank" id="dash-rank-selo">E</div>
-              </div>
+               CONTÊINER VAZIO, de propósito. Quem desenha aqui dentro é
+               uma PEÇA, montada pelo Dashboard (js/pecas.js). A marcação
+               que morava aqui virou js/pecas/hunter-card-classico.js, e
+               está congelada em tests/gabarito-hunter-card.html para o
+               teste provar que nada mudou na tela.
 
-              <!-- Coluna 2: identidade + XP -->
-              <div class="hunter-ident">
-                <div class="hunter-nome" id="dash-nome">Hunter</div>
-                <div class="hunter-titulo" id="dash-titulo">"O Mais Fraco"</div>
-                <div class="hunter-badges" id="dash-rank-badge"></div>
+               `data-peca-padrao` é a rede de segurança: se a peça
+               escolhida pelo hunter não existir ou estourar ao montar, é
+               esta que entra. Ninguém vê um retângulo vazio no lugar do
+               próprio perfil.
 
-                <div class="hunter-xp">
-                  <div class="hunter-xp-top">
-                    <span class="hunter-xp-lbl">Progresso para o próximo nível</span>
-                    <span class="hunter-xp-val" id="dash-xp-txt">0 / 100 XP</span>
-                  </div>
-                  <div class="hunter-xp-track">
-                    <div class="hunter-xp-fill" id="dash-xp-bar" style="width:0%"></div>
-                    <div class="hunter-xp-ticks"></div>
-                  </div>
-                </div>
-
-                <!-- Relíquias recentes -->
-                <div class="hunter-relicario" id="dash-relicario"></div>
-              </div>
-
-              <!-- Coluna 3: cristais de status -->
-              <div class="hunter-cristais">
-                <div class="cristal cristal-nivel">
-                  <div class="cristal-gema"><span id="dash-nivel">1</span></div>
-                  <div class="cristal-lbl">Nível</div>
-                </div>
-                <div class="cristal cristal-moedas">
-                  <div class="cristal-gema"><span id="dash-moedas">0</span></div>
-                  <div class="cristal-lbl">Mana Coins</div>
-                </div>
-                <div class="cristal cristal-streak">
-                  <div class="cristal-gema">
-                    <span class="cristal-chama" id="dash-streak-chama">&#128293;</span>
-                    <span id="dash-streak">0</span>
-                  </div>
-                  <div class="cristal-lbl">Streak</div>
-                </div>
-              </div>
-            </div>
-
-          <div style="margin-top:.25rem;display:flex;justify-content:flex-end;gap:.5rem">
-            <button id="dash-btn-reset-arquiteto" style="display:none"></button>
-            <button id="dash-btn-editar-perfil" class="btn btn-ghost btn-sm" style="
-              font-family:var(--font-section);font-size:.75rem;letter-spacing:.06em;
-              border:1px solid rgba(124,58,237,.4);color:var(--purple-glow);
-              padding:.35rem .9rem;border-radius:.5rem;cursor:pointer;
-              transition:all .2s;display:flex;align-items:center;gap:.4rem;
-            " onmouseover="this.style.background='rgba(124,58,237,.15)'" onmouseout="this.style.background='transparent'">
-              &#9998; Editar Perfil
-            </button>
-          </div>
-        </div>
+               O id e a classe FICAM: css/estandarte.css estiliza
+               `#hunter-card.est-teste-ativo` e o arquiteto-console.js
+               procura `#hunter-card`. -->
+          <div class="hunter-window" id="hunter-card"
+               data-slot="banner" data-peca-padrao="hunter-card-classico"></div>
           <div class="dashboard-grid">
             <div class="card col-span-2" id="card-rotinas-hoje">
               <!-- Cabeçalho do extrato -->

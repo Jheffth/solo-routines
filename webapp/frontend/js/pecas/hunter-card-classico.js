@@ -72,10 +72,22 @@ const HunterCardClassico = {
     'B': '#3b82f6', 'A': '#a855f7', 'S': '#fbbf24', 'N': '#fb7185',
   },
 
+  /* Os títulos, exatamente como no `_getTituloByRank` do dashboard.js.
+
+     Eu havia escrito outros aqui — "Aprendiz de Caçador", "Caçador
+     Supremo" — inventados. Ficariam bonitos e estariam ERRADOS: o
+     hunter veria o próprio título mudar sozinho no dia em que a
+     peça entrasse. O teste de fidelidade não pegaria, porque ele
+     compara a marcação vazia, e o título só aparece depois de
+     pintar com dados. Por isso existe um teste só para esta tabela.
+
+     Note que NÃO há 'N' e que a chave é o `rank` CRU, não a letra
+     extraída — é assim que está hoje, e fidelidade vem antes de
+     coerência. Corrigir isto é assunto de outro commit, visível. */
   TITULOS: {
-    'E': 'O Mais Fraco', 'D': 'Aprendiz de Caçador', 'C': 'Caçador Competente',
-    'B': 'Caçador de Elite', 'A': 'Caçador Veterano', 'S': 'Caçador Supremo',
-    'N': 'Nível Nacional',
+    'E': 'O Mais Fraco', 'D': 'Iniciante',
+    'C': 'Promissor',    'B': 'Experiente',
+    'A': 'Elite',        'S': 'Monarch',
   },
 
   letraRank(classe) {
@@ -85,7 +97,7 @@ const HunterCardClassico = {
     return (m && (m[1] || m[2])) || 'E';
   },
 
-  tituloDe(rank) { return this.TITULOS[this.letraRank(rank)] || this.TITULOS.E; },
+  tituloDe(rank) { return this.TITULOS[rank] || 'Hunter'; },
 
   /* ══════════════════════════════════════════════════════════
      A MARCAÇÃO
@@ -168,9 +180,18 @@ const HunterCardClassico = {
      repintura faria o cartão inteiro piscar — o mesmo incômodo que
      o hunter já reclamou nas listas de missão.
      ══════════════════════════════════════════════════════════ */
+  /* `dados` é o PACOTE inteiro que o hospedeiro entrega:
+     { hunter, reliquias, reliquias_fixadas }. Não é só o hunter.
+
+     Eu já errei isto aqui: `pintar` recebia apenas `dados.hunter` e
+     o relicário procurava `hunter.reliquias`, que nunca existe. Os
+     testes da peça isolada passavam porque eu montava o dado do
+     jeito errado nos dois lados — foi o teste de integração com o
+     dashboard.js de verdade que acusou. */
   pintar(el, dados, host, animar) {
     const q = s => el.querySelector(s);   // SEMPRE preso ao contêiner
-    const d = dados || {};
+    const pacote = dados || {};
+    const d = pacote.hunter || {};
 
     const classe = d.classe || d.rank || 'E-Rank';
     const letra  = this.letraRank(classe);
@@ -230,7 +251,53 @@ const HunterCardClassico = {
     }
 
     this.aura(el, d);
-    this.relicario(el, d, host);
+    this.relicario(el, pacote, host);
+
+    // O botão ◈ já existe (criado na montagem); aqui só o rótulo muda.
+    const btnAura = el.querySelector('#dash-btn-trocar-aura');
+    if (btnAura) btnAura.title = d.aura_id ? `Aura ativa: ${d.aura_id}` : 'Gerenciar Aura';
+  },
+
+  /* ── O botão ◈, dentro do hexágono ──────────────────────
+
+     Vinha do `_bindBtnTrocarAura` do dashboard.js, que o recriava
+     A CADA repintura — e o hunter repinta o cartão a cada missão.
+     Aqui ele nasce UMA vez, na montagem, e depois só troca de
+     título. Recriar um nó a cada repintura era o tipo de coisa que
+     nunca aparece num teste e sempre aparece num perfilador.
+
+     O clique não sabe o que faz: pede `trocar-aura` ao hospedeiro.
+     Era este botão que escrevia `dash-btn-trocar-aura` de dentro da
+     V4, colidindo com o do Dashboard. */
+  botaoAura(el, host) {
+    const hexWrap = el.querySelector('.hunter-hex-wrap');
+    if (!hexWrap) return;
+    hexWrap.style.position = 'relative';   // garante, caso o CSS mude
+
+    const btn = el.ownerDocument.createElement('button');
+    btn.id = 'dash-btn-trocar-aura';
+    btn.innerHTML = '◈';
+    btn.style.cssText = [
+      'position:absolute', 'bottom:-14px', 'left:50%',
+      'transform:translateX(-50%)',
+      'width:28px', 'height:28px', 'border-radius:50%',
+      'background:linear-gradient(135deg,#2a0a3e,#130a28)',
+      'border:1.5px solid rgba(244,143,177,.65)',
+      'color:#f48fb1', 'font-size:.72rem', 'cursor:pointer', 'z-index:20',
+      'box-shadow:0 0 10px rgba(244,143,177,.3),inset 0 0 6px rgba(244,143,177,.1)',
+      'display:flex', 'align-items:center', 'justify-content:center',
+      'transition:box-shadow .2s,background .2s', 'padding:0',
+    ].join(';');
+    btn.onmouseover = () => {
+      btn.style.boxShadow = '0 0 18px rgba(244,143,177,.6),inset 0 0 8px rgba(244,143,177,.2)';
+      btn.style.background = 'linear-gradient(135deg,#3e1060,#1a0a38)';
+    };
+    btn.onmouseout = () => {
+      btn.style.boxShadow = '0 0 10px rgba(244,143,177,.3),inset 0 0 6px rgba(244,143,177,.1)';
+      btn.style.background = 'linear-gradient(135deg,#2a0a3e,#130a28)';
+    };
+    host.ouvir(btn, 'click', () => host.acao('trocar-aura'));
+    hexWrap.appendChild(btn);
   },
 
   /* ── Aura: cosmética presenteada (aura_id) > aura de cargo ──
@@ -254,15 +321,15 @@ const HunterCardClassico = {
      chamadas). Agora recebe pronto: o hospedeiro é dono dos dados.
      Sem isso a peça não poderia ser montada na Vitrine sem
      disparar tráfego de rede a cada preview. */
-  relicario(el, d, host) {
+  relicario(el, pacote, host) {
     const cont = el.querySelector('#dash-relicario');
     if (!cont) return;
 
-    const todas = d.reliquias || [];
+    const todas = pacote.reliquias || [];
     if (!todas.length) { cont.innerHTML = ''; return; }
 
     // Cinco, e só cinco: a sexta quebrava a linha e ficava órfã.
-    const fixadas = (d.reliquias_fixadas || [])
+    const fixadas = (pacote.reliquias_fixadas || [])
       .map(cod => todas.find(c => c.codigo === cod)).filter(Boolean);
     const desb = (fixadas.length ? fixadas : todas).slice(0, 5);
     if (!desb.length) {
@@ -363,7 +430,8 @@ if (typeof Pecas !== 'undefined') {
 
     montar(el, dados, host) {
       el.innerHTML = HunterCardClassico.esqueleto();
-      HunterCardClassico.pintar(el, dados.hunter || {}, host, true);
+      HunterCardClassico.botaoAura(el, host);
+      HunterCardClassico.pintar(el, dados, host, true);
       HunterCardClassico.fx(el, host);
       const editar = el.querySelector('#dash-btn-editar-perfil');
       if (editar) host.ouvir(editar, 'click', () => host.acao('editar-perfil'));
@@ -371,7 +439,7 @@ if (typeof Pecas !== 'undefined') {
 
     // Repinta sem apagar: nada de piscar a cada missão iniciada.
     atualizar(el, dados, host) {
-      HunterCardClassico.pintar(el, dados.hunter || {}, host, false);
+      HunterCardClassico.pintar(el, dados, host, false);
     },
 
     /* Não há destruir(): timers e ouvintes já são recolhidos pelo
