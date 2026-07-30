@@ -586,6 +586,50 @@ const ArquitetoConsole = {
         prazo_ate_abrir: -5.6 * 3600,
         prazo_minutos:   360,
         prazo_restante:  Math.round(360 * 60 * 0.04) },
+
+      /* ── AS REPETIÇÕES ─────────────────────────────────────
+         Quatro amostras, e cada uma existe para julgar UMA coisa
+         que não dá para ver nas outras:
+
+           0/5   a barra vazia — que é o estado em que o hunter
+                 mais vai ver este cartão, e o mais fácil de
+                 desenhar mal
+           3/5   um segmento em curso, pulsando
+           5/5   cumprida: a moldura APAGA e o botão de somar some
+           68/100 o caso difícil que o Arquiteto apontou — dez
+                 blocos de dezena com o sétimo pela metade, em vez
+                 de cem fatias de 1px
+           87    o BÔNUS: nenhuma barra, só o número. É aqui que se
+                 confere que a caixa não virou uma barra disfarçada.
+
+         Os botões funcionam: `montar({demo:true})` faz a contagem
+         andar sem tocar na API — contar de verdade numa vitrine
+         criaria XP a partir de uma amostra. */
+      { id: 9201, titulo: 'Responder 5 questões de História', categoria: 'Estudo',
+        prioridade: 'ALTA', dificuldade: 'NORMAL', natureza: 'REPETICAO',
+        xp_recompensa: 70, moedas_recompensa: 7, status_hoje: 'PENDENTE',
+        alvo_repeticoes: 5, repeticoes: 0 },
+
+      { id: 9202, titulo: 'Responder 5 questões de História', categoria: 'Estudo',
+        prioridade: 'CRITICA', dificuldade: 'DIFICIL', natureza: 'REPETICAO',
+        xp_recompensa: 140, moedas_recompensa: 12, status_hoje: 'PENDENTE',
+        alvo_repeticoes: 5, repeticoes: 3 },
+
+      { id: 9203, titulo: 'Alongar 5 vezes ao dia', categoria: 'Saúde',
+        prioridade: 'MEDIA', dificuldade: 'FACIL', natureza: 'REPETICAO',
+        xp_recompensa: 40, moedas_recompensa: 4, status_hoje: 'CONCLUIDA',
+        alvo_repeticoes: 5, repeticoes: 5, xp_ganho: 40, moedas_ganhas: 4 },
+
+      { id: 9204, titulo: 'Cem pulinhos', categoria: 'Combate',
+        prioridade: 'ALTA', dificuldade: 'DIFICIL', natureza: 'REPETICAO',
+        xp_recompensa: 160, moedas_recompensa: 14, status_hoje: 'PENDENTE',
+        alvo_repeticoes: 100, repeticoes: 68 },
+
+      { id: 9205, titulo: 'Questões avulsas', categoria: 'Estudo',
+        prioridade: 'MEDIA', dificuldade: 'NORMAL', natureza: 'REPETICAO',
+        status_hoje: 'PENDENTE',
+        alvo_repeticoes: null, repeticoes: 87,
+        total_contador: 412, unidade_contador: 'questões' },
     ];
 
     const el = document.createElement('div');
@@ -610,8 +654,12 @@ const ArquitetoConsole = {
         <div style="font-size:.62rem;color:var(--text-dim);margin-top:.8rem;font-family:var(--font-section);line-height:1.6">
           A <b>cor</b> vem da prioridade · o <b>selo de rank</b> vem da dificuldade.<br>
           Clique em <b>Iniciar</b> para ver a máquina de estados · timer regressivo real.<br>
-          Os três últimos são <b>protocolos</b>: moldura tracejada correndo o perímetro
-          e barra que enche sozinha — aguardando, em vigília e quase cumprido.
+          Os <b>protocolos</b> (9101–9103): moldura tracejada correndo o perímetro
+          e barra que enche sozinha — aguardando, em vigília e quase cumprido.<br>
+          As <b>repetições</b> (9201–9205): barra segmentada em 0/5, 3/5 e cumprida;
+          os <b>cem pulinhos</b> em dez blocos de dezena, não cem fatias de 1px;
+          e o <b>contador livre</b> — só o número, sem barra nenhuma.
+          <b>Os botões + e − funcionam</b> aqui, sem tocar na API.
         </div>
       </div>`;
     el.addEventListener('click', e => { if (e.target === el) el.remove(); });
