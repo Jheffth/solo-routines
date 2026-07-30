@@ -44,7 +44,7 @@ class TarefaCreate(BaseModel):
     hora_inicio: Optional[str] = None         # janela da passiva
     alvo_repeticoes: Optional[int] = None
     contador_id: Optional[int] = None
-    xp_por_repeticao: Optional[int] = None
+    # SEM `xp_por_repeticao`: quem precifica e a Balanca.
     intervalo_min_seg: Optional[int] = None
 
 
@@ -65,7 +65,7 @@ class TarefaUpdate(BaseModel):
     hora_inicio: Optional[str] = None
     alvo_repeticoes: Optional[int] = None
     contador_id: Optional[int] = None
-    xp_por_repeticao: Optional[int] = None
+    # SEM `xp_por_repeticao`: quem precifica e a Balanca.
     intervalo_min_seg: Optional[int] = None
 
 
@@ -101,7 +101,6 @@ def _tarefa_to_dict(t: TarefaDia) -> dict:
         "confessada_em":     t.confessada_em.isoformat() if getattr(t, "confessada_em", None) else None,
         "alvo_repeticoes":   getattr(t, "alvo_repeticoes", None),
         "contador_id":       getattr(t, "contador_id", None),
-        "xp_por_repeticao":  getattr(t, "xp_por_repeticao", None),
         "repeticoes":        (getattr(t, "repeticoes", 0) or 0),
     }
 
@@ -221,8 +220,6 @@ def criar_tarefa(
         alvo = payload.alvo_repeticoes
         tarefa.alvo_repeticoes = int(alvo) if alvo and int(alvo) > 0 else None
         tarefa.contador_id = _contador_valido(db, usuario, payload.contador_id)
-        teto = economia.repeticao_tetos(db)["por_clique"]
-        tarefa.xp_por_repeticao = max(0, min(int(payload.xp_por_repeticao or 1), teto))
         tarefa.intervalo_min_seg = max(0, int(payload.intervalo_min_seg or 0)) or None
 
     db.add(tarefa)

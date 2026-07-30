@@ -138,7 +138,7 @@ const ForjaMissao = {
       prazo_custom: false, prazo_valor: 30, prazo_unidade: 60,   // 30 × 60 = meia hora
       xp: null, mc: null, pen: null, auto: true, descricao: '',
       rep_modo: 'META', alvo_repeticoes: '', contador_id: null,
-      xp_por_repeticao: 1, contador_novo: '',
+      contador_novo: '',
     };
 
     if (ed) this._carregarEdicao(ed, opts.tipo);
@@ -252,14 +252,17 @@ const ForjaMissao = {
 
     // O teto do XP por clique vem do servidor, não de um número
     // digitado aqui — a Balança pode mudar sem tocar nesta tela.
+    // O QUE A BALANCA DIZ. Numeros do servidor, sempre — se estivessem
+    // escritos aqui, mudar a Balanca deixaria a tela mentindo ate o
+    // proximo deploy.
     const teto = document.getElementById('fm-rep-teto');
     if (teto) {
-      const t = this._servidor?.repeticao?.por_clique ?? 3;
-      const d = this._servidor?.repeticao?.por_dia ?? 30;
-      const v = Math.min(e.xp_por_repeticao ?? 1, t);
-      teto.innerHTML = `máx <b>${t}</b> por clique · até <b>${d}</b> XP por dia`
-        + (((e.xp_por_repeticao ?? 1) > t)
-            ? ` <span class="fm-rep-corte">(vai valer ${v})</span>` : '');
+      const r = this._servidor?.repeticao;
+      teto.innerHTML = r
+        ? `${this._gl('xp', 12)} Cada repetição paga <b>${r.por_clique} XP</b>,
+           até <b>${r.por_dia}</b> por dia neste contador.
+           <span class="fm-rep-fonte">definido na Balança</span>`
+        : `${this._gl('xp', 12)} <i>consultando a Balança…</i>`;
     }
 
     this.TOKEN_N.lastIndex = 0;
@@ -375,7 +378,6 @@ const ForjaMissao = {
       e.rep_modo = (Number.isFinite(alvo) && alvo > 0) ? 'META' : 'BONUS';
       e.alvo_repeticoes = e.rep_modo === 'META' ? alvo : '';
       e.contador_id = ed.contador_id ?? null;
-      e.xp_por_repeticao = ed.xp_por_repeticao ?? 1;
       // Editar ja e ter decidido: a sugestao nao pode reescrever a
       // escolha que o hunter fez quando criou.
       e._contadorTocado = true;
@@ -528,15 +530,12 @@ const ForjaMissao = {
                 <div class="fm-rep-previa" id="fm-rep-previa"></div>
               </div>
 
+              <!-- O XP NAO E CAMPO. Havia um input aqui, e ele era a unica
+                   porta do app por onde o hunter mandava um preco. Quem
+                   precifica e a Balanca, como em todo o resto — entao o
+                   numero e MOSTRADO, nao pedido. -->
               <div id="fm-rep-bonus" ${e.rep_modo === 'BONUS' ? '' : 'style="display:none"'}>
-                <div class="fm-rep-linha">
-                  <label class="fm-rep-campo">
-                    <span class="fm-rep-lbl">XP por repetição</span>
-                    <input type="number" min="0" max="9" class="fm-input fm-input-mini"
-                           data-fm-xprep value="${e.xp_por_repeticao ?? 1}">
-                  </label>
-                  <div class="fm-rep-dica" id="fm-rep-teto"></div>
-                </div>
+                <div class="fm-rep-balanca" id="fm-rep-teto"></div>
               </div>
 
               <div class="fm-rep-contador">
@@ -803,11 +802,6 @@ const ForjaMissao = {
       if (t.matches('[data-fm-alvo]')) {
         const v = parseInt(t.value, 10);
         this._estado.alvo_repeticoes = (Number.isFinite(v) && v > 0) ? v : '';
-        this._previaTitulo();
-        this._atualizar(); return;
-      }
-      if (t.matches('[data-fm-xprep]')) {
-        this._estado.xp_por_repeticao = Math.max(0, parseInt(t.value, 10) || 0);
         this._previaTitulo();
         this._atualizar(); return;
       }
@@ -1113,7 +1107,6 @@ const ForjaMissao = {
           payload.alvo_repeticoes = meta ? parseInt(e.alvo_repeticoes, 10) : null;
           payload.titulo = this._resolverTitulo(payload.titulo,
                                                 payload.alvo_repeticoes);
-          payload.xp_por_repeticao = meta ? 0 : Math.max(0, e.xp_por_repeticao ?? 1);
           payload.contador_id = await this._resolverContador();
         }
         salvo = this._editId ? await API.rotinas.atualizar(this._editId, payload)
@@ -1151,7 +1144,6 @@ const ForjaMissao = {
           payload.alvo_repeticoes = meta ? parseInt(e.alvo_repeticoes, 10) : null;
           payload.titulo = this._resolverTitulo(payload.titulo,
                                                 payload.alvo_repeticoes);
-          payload.xp_por_repeticao = meta ? 0 : Math.max(0, e.xp_por_repeticao ?? 1);
           payload.contador_id = await this._resolverContador();
         }
 

@@ -621,3 +621,32 @@
 .fm-rep-item-sub { font-size: .68rem; color: #64748b; }
 .fm-rep-item.sel .fm-rep-item-sub { color: color-mix(in srgb, var(--fm-rep) 55%, #94a3b8); }
 .fm-rep-vazio { font-size: .78rem; color: #64748b; padding: 8px 2px; }
+
+/* O XP DA REPETIÇÃO É LEITURA, NÃO CAMPO.
+
+   Havia um `<input>` aqui, e ele era a única porta do app por onde o
+   hunter mandava um preço. A regra geral do projeto sempre foi que
+   quem precifica é a Balança — eu abri uma exceção sem perceber que
+   era exceção, e o Arquiteto cortou a raiz.
+
+   Como leitura, o bloco tem que PARECER leitura: sem borda de campo,
+   sem cursor de texto, sem afordância de edição. Um número que parece
+   editável e não é ensina o hunter a desconfiar da tela. */
+.fm-rep-balanca {
+  display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  margin-top: 10px; padding: 10px 14px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--fm-rep) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--fm-rep) 22%, transparent);
+  font-size: .8rem; color: #94a3b8; line-height: 1.5;
+}
+.fm-rep-balanca b { color: color-mix(in srgb, var(--fm-rep) 90%, #ffffff); }
+.fm-rep-balanca i { color: #64748b; }
+.fm-rep-balanca svg { flex: none; color: var(--fm-rep); }
+/* A PROCEDÊNCIA importa mais que o número: sabendo de onde ele vem, o
+   hunter para de procurar onde mudá-lo. */
+.fm-rep-fonte {
+  font-size: .66rem; letter-spacing: .07em; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 999px;
+  background: rgba(148,163,184,.12); color: #64748b;
+}

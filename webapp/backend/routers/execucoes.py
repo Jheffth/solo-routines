@@ -489,8 +489,7 @@ def _mover(db: Session, usuario: Usuario, rotina_id: int, passo: int,
         # BÔNUS. Recalcula o total devido e move só a diferença — ver o
         # porquê em `economia.xp_acumulado_repeticao`.
         outros = _pago_pelos_outros(db, rotina, hoje)
-        devido = economia.xp_acumulado_repeticao(
-            depois, rotina.xp_por_repeticao, outros, db)
+        devido = economia.xp_acumulado_repeticao(depois, outros, db)
         xp_delta = devido - int(ed.xp_repeticao_pago or 0)
         ed.xp_repeticao_pago = devido
 
@@ -611,8 +610,7 @@ def _mover_tarefa(db: Session, usuario: Usuario, tarefa_id: int, passo: int) -> 
                                     TarefaDia.id != t.id).scalar()) or 0
             outros = int(outros_rot) + int(outras_tar)
 
-        devido = economia.xp_acumulado_repeticao(
-            depois, t.xp_por_repeticao, outros, db)
+        devido = economia.xp_acumulado_repeticao(depois, outros, db)
         xp_delta = devido - int(t.xp_repeticao_pago or 0)
         t.xp_repeticao_pago = devido
 

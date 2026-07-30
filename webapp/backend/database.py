@@ -136,7 +136,11 @@ class Rotina(Base):
     # Só no BÔNUS. O que a rotina DECLARA por clique — o quanto ela paga de
     # verdade passa pelos tetos da Balança (motors/economia.py), porque sem
     # eles isto seria um campo de texto virando XP.
-    xp_por_repeticao = Column(Integer, nullable=True)
+    # SEM `xp_por_repeticao`. Ele existiu por cinco commits e nunca
+    # deveria ter existido: guardava, por missao, um preco que so a
+    # Balanca pode dizer. Coluna que ninguem le e palpite gravado no
+    # esquema — a mesma regra que me fez tirar `escopo` e `congelado_em`
+    # no primeiro dia deste recurso, e que eu quebrei aqui sem notar.
     # Atrito opcional: "beber água 5 vezes" clicado cinco vezes seguidas não
     # é hidratação, é um botão. Não é antifraude — quem quer se enganar
     # consegue —, é atrito onde o hábito precisa dele. Opcional porque
@@ -293,7 +297,11 @@ class TarefaDia(Base):
     hora_inicio         = Column(String(5), nullable=True)   # janela da passiva
     alvo_repeticoes     = Column(Integer, nullable=True)
     contador_id         = Column(Integer, ForeignKey("contadores.id"), nullable=True, index=True)
-    xp_por_repeticao    = Column(Integer, nullable=True)
+    # SEM `xp_por_repeticao`. Ele existiu por cinco commits e nunca
+    # deveria ter existido: guardava, por missao, um preco que so a
+    # Balanca pode dizer. Coluna que ninguem le e palpite gravado no
+    # esquema — a mesma regra que me fez tirar `escopo` e `congelado_em`
+    # no primeiro dia deste recurso, e que eu quebrei aqui sem notar.
     intervalo_min_seg   = Column(Integer, nullable=True)
     repeticoes          = Column(Integer, nullable=False, default=0, server_default="0")
     xp_repeticao_pago   = Column(Integer, nullable=False, default=0, server_default="0")

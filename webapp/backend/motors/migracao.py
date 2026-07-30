@@ -91,7 +91,6 @@ COLUNAS = [
     ("tarefas_dia",  "confessada_em",      "DATETIME",                    "TIMESTAMP"),
     ("tarefas_dia",  "alvo_repeticoes",    "INTEGER",                     "INTEGER"),
     ("tarefas_dia",  "contador_id",        "INTEGER",                     "INTEGER"),
-    ("tarefas_dia",  "xp_por_repeticao",   "INTEGER",                     "INTEGER"),
     ("tarefas_dia",  "intervalo_min_seg",  "INTEGER",                     "INTEGER"),
     ("tarefas_dia",  "repeticoes",         "INTEGER NOT NULL DEFAULT 0",  "INTEGER NOT NULL DEFAULT 0"),
     ("tarefas_dia",  "xp_repeticao_pago",  "INTEGER NOT NULL DEFAULT 0",  "INTEGER NOT NULL DEFAULT 0"),
@@ -108,7 +107,6 @@ COLUNAS = [
     # nao significa nada — a natureza e quem manda.
     ("rotinas",      "alvo_repeticoes",    "INTEGER",                     "INTEGER"),
     ("rotinas",      "contador_id",        "INTEGER",                     "INTEGER"),
-    ("rotinas",      "xp_por_repeticao",   "INTEGER",                     "INTEGER"),
     ("rotinas",      "intervalo_min_seg",  "INTEGER",                     "INTEGER"),
     # DEFAULT 0, e nao NULL: o cartao soma e compara estes numeros. Um NULL
     # viraria `None + 1` em Python e `NULL > 0` em SQL — os dois erram em

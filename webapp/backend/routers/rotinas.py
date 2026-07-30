@@ -48,7 +48,9 @@ class RotinaCreate(BaseModel):
     # com alvo existe "cumprir" (META), sem alvo existe so "registrar" (BONUS).
     alvo_repeticoes:   Optional[int]       = None
     contador_id:       Optional[int]       = None
-    xp_por_repeticao:  Optional[int]       = None
+    # SEM `xp_por_repeticao`. Quem precifica e a Balanca — o campo aqui
+    # era a unica porta do app por onde o hunter mandava um preco, e o
+    # Arquiteto cortou a raiz em vez de clampar a folha.
     intervalo_min_seg: Optional[int]       = None
 
 
@@ -73,7 +75,6 @@ class RotinaUpdate(BaseModel):
     natureza:          Optional[str]       = None
     alvo_repeticoes:   Optional[int]       = None
     contador_id:       Optional[int]       = None
-    xp_por_repeticao:  Optional[int]       = None
     intervalo_min_seg: Optional[int]       = None
 
 
@@ -143,7 +144,9 @@ def _rotina_to_dict(r: Rotina, exec_dia: "ExecucaoDia | None" = None,
         "hora_fim":         getattr(r, "hora_fim",    None),
         "alvo_repeticoes":  getattr(r, "alvo_repeticoes", None),
         "contador_id":      getattr(r, "contador_id", None),
-        "xp_por_repeticao": getattr(r, "xp_por_repeticao", None),
+        # O XP por clique vem da Balanca, entao ele NAO viaja por missao.
+        # Devolve-lo daqui faria o cartao acreditar num numero gravado que
+        # nao manda em nada — segunda verdade de novo.
         "ativo":            r.ativo,
         "ultima_execucao":  r.ultima_execucao.isoformat() if r.ultima_execucao else None,
         "criado_em":        r.criado_em.isoformat() if r.criado_em else None,
@@ -367,18 +370,14 @@ def criar_rotina(
     try: rotina.hora_fim      = payload.hora_fim
     except Exception: pass
 
-    # ROTINA DE REPETICOES. O `xp_por_repeticao` passa pelo teto da Balanca
-    # AQUI, na entrada: guardar 500 e limitar so na hora de pagar deixaria o
-    # numero mentiroso no lancador e no cartao.
+    # ROTINA DE REPETICOES. So o que e da MISSAO: o alvo, o balde e o
+    # intervalo. O quanto vale cada clique e da Balanca.
     if natureza == especiais.REPETICAO:
         alvo = payload.alvo_repeticoes
         try: rotina.alvo_repeticoes = int(alvo) if alvo and int(alvo) > 0 else None
         except Exception: rotina.alvo_repeticoes = None
         try: rotina.contador_id = _contador_valido(db, usuario, payload.contador_id)
         except Exception: rotina.contador_id = None
-        teto = economia.repeticao_tetos(db)["por_clique"]
-        try: rotina.xp_por_repeticao = max(0, min(int(payload.xp_por_repeticao or 1), teto))
-        except Exception: rotina.xp_por_repeticao = 1
         try: rotina.intervalo_min_seg = max(0, int(payload.intervalo_min_seg or 0)) or None
         except Exception: rotina.intervalo_min_seg = None
 

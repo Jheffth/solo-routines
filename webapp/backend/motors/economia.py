@@ -115,8 +115,17 @@ SEMENTE = [
     # entre si: um teto único faria "questões de português" e "flexões"
     # disputarem o mesmo orçamento, e quem estuda de manhã chegaria à
     # academia sem nada a ganhar. O Sistema puniria a diversidade.
-    ("xp_por_repeticao_max", "PADRAO",  3, "Máximo de XP por clique", 1),
-    ("xp_repeticao_teto_dia", "PADRAO", 30, "Teto de XP por dia, por contador", 1),
+    #
+    # `xp_por_repeticao` NAO e um teto: e O PRECO. Na primeira versao ele
+    # se chamava `xp_por_repeticao_max` e limitava um numero que o HUNTER
+    # digitava no lancador — e isso violava a regra geral deste projeto,
+    # que o Arquiteto teve de me lembrar: quem precifica e a Balanca.
+    #
+    # Um campo de XP no lancador era uma segunda fonte de preco. Nao
+    # bastava clampa-lo: o hunter nao decide quanto vale o proprio
+    # esforco em lugar nenhum do app, e nao podia decidir aqui.
+    ("xp_por_repeticao",     "PADRAO",  1, "XP que cada repetição paga", 1),
+    ("xp_repeticao_teto_dia", "PADRAO", 30, "Teto de XP por dia, por contador", 2),
 ]
 
 # Rótulos amigáveis dos grupos, para a tela do Arquiteto.
@@ -131,7 +140,7 @@ GRUPOS = {
     "penal_prioridade": "Penalidade ao falhar (fração do XP)",
     "prazo_prioridade": "Prazo base em MINUTOS (por prioridade)",
     "custo_reerguer":   "Reerguer missão fechada (custo em Mana)",
-    "xp_por_repeticao_max":  "Repetição — teto do XP por clique",
+    "xp_por_repeticao":      "Repetição — XP por clique",
     "xp_repeticao_teto_dia": "Repetição — teto de XP por dia (por contador)",
 }
 
@@ -287,47 +296,50 @@ def repeticao_tetos(db=None) -> dict:
     """
     t = tabelas(db)
     return {
-        "por_clique": max(0, int(_v(t, "xp_por_repeticao_max", "PADRAO", 3))),
+        "por_clique": max(0, int(_v(t, "xp_por_repeticao", "PADRAO", 1))),
         "por_dia":    max(0, int(_v(t, "xp_repeticao_teto_dia", "PADRAO", 30))),
     }
 
 
-def xp_acumulado_repeticao(n, xp_por_clique, pago_por_outros=0, db=None) -> int:
+def xp_acumulado_repeticao(n, pago_por_outros=0, db=None) -> int:
     """
-    Quanto DEVEM ter pago, no total, `n` cliques desta rotina hoje.
+    Quanto DEVEM ter pago, no total, `n` cliques desta missão hoje.
 
-    Função pura de `n` — e é por isso que ela existe. O endpoint não
+    O PRECO NAO E PARAMETRO. Esta funcao recebia `xp_por_clique` de
+    fora, vindo de uma coluna que vinha de um campo no lancador. O
+    Arquiteto cortou a raiz: quem precifica e a Balanca, aqui como em
+    todo o resto do app. Entao o valor e LIDO, nao recebido — e some
+    junto a unica porta por onde um preco inventado podia entrar.
+
+    Funcao pura de `n`, e e por isso que ela existe. O endpoint nao
     soma nem subtrai XP: ele calcula quanto o total DEVERIA ser e move
-    a diferença. Somar no `+` e subtrair no `−` parece igual e não é:
-    um clique que pagou 1 por bater o teto seria devolvido como 3, e a
-    conta iria descolando a cada desfazer.
+    a diferenca. Somar no `+` e subtrair no `-` parece igual e nao e:
+    um clique que pagou menos por bater o teto seria devolvido pelo
+    preco cheio, e a conta iria descolando a cada desfazer.
 
-    Assim, desfazer é apenas recalcular com `n-1`. A operação vira
-    idempotente de graça: repetir a mesma chamada não muda nada, o que
-    importa num botão que o hunter vai apertar rápido.
+    Assim, desfazer e apenas recalcular com `n-1`. A operacao vira
+    idempotente de graca, o que importa num botao feito para ser
+    apertado depressa.
 
-    `pago_por_outros` é o que as OUTRAS rotinas do mesmo contador já
-    pagaram hoje — o teto é por contador, nunca global, porque as
-    missões podem ser de categorias diferentes.
+    `pago_por_outros` e o que as OUTRAS missoes do mesmo contador ja
+    pagaram hoje — o teto e por contador, nunca global, porque as
+    missoes podem ser de categorias diferentes.
     """
     t = repeticao_tetos(db)
-    por_clique = max(0, min(int(xp_por_clique or 0), t["por_clique"]))
     resta = max(0, t["por_dia"] - max(0, int(pago_por_outros or 0)))
-    return min(max(0, int(n or 0)) * por_clique, resta)
+    return min(max(0, int(n or 0)) * t["por_clique"], resta)
 
 
-def xp_da_repeticao(xp_por_clique, ja_pago_hoje, db=None) -> int:
-    """Quanto ESTA repetição paga, agora, respeitando os dois tetos.
+def xp_da_repeticao(ja_pago_hoje, db=None) -> int:
+    """
+    Quanto paga O PROXIMO clique. Atalho de leitura sobre o acumulado.
 
-    Devolve 0 quando o teto do dia já foi atingido — e devolver zero é
-    resposta legítima, não erro: a repetição continua CONTANDO no registro.
-    Quem chama precisa saber a diferença entre "não contou" e "contou e não
-    pagou", porque é exatamente essa distinção que o cartão mostra.
+    Tambem perdeu o parametro de preco, e pelo mesmo motivo: nao ha
+    dois lugares onde um XP de repeticao possa ser decidido.
     """
     t = repeticao_tetos(db)
-    valor = max(0, min(int(xp_por_clique or 0), t["por_clique"]))
     resta = max(0, t["por_dia"] - max(0, int(ja_pago_hoje or 0)))
-    return min(valor, resta)
+    return min(t["por_clique"], resta)
 
 
 def confissao(alvo) -> dict:

@@ -44,7 +44,7 @@ w.API = {
     if (u.startsWith('/contadores')) return w.__contadores;
     if (u.startsWith('/economia/simular')) return {
       xp_recompensa: 50, moedas_recompensa: 5, penalidade_xp: 7,
-      prazo_minutos: 60, repeticao: { por_clique: 3, por_dia: 30 },
+      prazo_minutos: 60, repeticao: { por_clique: 1, por_dia: 30 },
     };
     return {};
   },
@@ -132,13 +132,19 @@ ok($('#fm-rep-bonus').style.display === 'none', '  e o painel do livre escondido
 clicar(doc.querySelector('[data-fm-valor="BONUS"]'));
 ok($('#fm-rep-bonus').style.display !== 'none', 'trocar para Livre mostra o outro painel');
 ok($('#fm-rep-meta').style.display === 'none', '  e esconde o da meta');
-ok(/máx.*3.*por clique/i.test($('#fm-rep-teto').textContent),
-   'o teto por clique vem do SERVIDOR (3), não escrito na tela');
-ok(/30/.test($('#fm-rep-teto').textContent), '  e o teto do dia também (30)');
-digitar(doc.querySelector('[data-fm-xprep]'), '9');
-ok(/vai valer 3/.test($('#fm-rep-teto').textContent),
-   'pedir 9 avisa que vai valer 3 — o corte é dito ANTES de salvar');
-digitar(doc.querySelector('[data-fm-xprep]'), '1');
+/* O XP NÃO É CAMPO. Havia um `<input>` aqui, e ele era a única porta
+   do app por onde o hunter mandava um preço — quem precifica é a
+   Balança, e eu tinha aberto uma exceção sem perceber que era uma. */
+ok(!doc.querySelector('[data-fm-xprep]'),
+   'NÃO existe campo de XP: o hunter não decide quanto vale o esforço dele');
+ok($('#fm-rep-bonus').querySelectorAll('input').length === 0,
+   '  nem nenhum outro input no painel do Livre');
+const balanca = $('#fm-rep-teto').textContent;
+ok(/paga\s*1\s*XP/i.test(balanca),
+   'o valor vem do SERVIDOR (1 XP por clique), não escrito na tela');
+ok(/30/.test(balanca), '  e o teto do dia também (30)');
+ok(/Balan/i.test(balanca),
+   'e a tela DIZ de onde o número vem — sabendo isso, o hunter para de procurar onde mudá-lo');
 clicar(doc.querySelector('[data-fm-valor="META"]'));
 
 /* ══ 5. O token {n} ══ */
@@ -233,12 +239,12 @@ ok(p.alvo_repeticoes === 5, 'o alvo vai (5)');
 ok(p.titulo === 'Responder 5 questões',
    'e o TÍTULO VAI RESOLVIDO — o {n} morre aqui, não vaza para o resto do app');
 ok(p.contador_id === 1, 'o contador escolhido vai');
-ok(p.xp_por_repeticao === 0,
-   'META não paga por clique: a recompensa é cumprir, não apertar');
+ok(!('xp_por_repeticao' in p),
+   'e NENHUM preço viaja no payload — o servidor não pode nem receber um');
 
-p = await salvar({ rep_modo: 'BONUS', xp_por_repeticao: 2, contador_id: 2 });
+p = await salvar({ rep_modo: 'BONUS', contador_id: 2 });
 ok(p.alvo_repeticoes === null, 'no BONUS o alvo vai nulo — é o que define o modo');
-ok(p.xp_por_repeticao === 2, '  e o XP por clique vai');
+ok(!('xp_por_repeticao' in p), '  e continua sem preço nenhum');
 
 /* Criar contador: só agora bate no servidor. */
 chamadas.length = 0;
@@ -268,8 +274,7 @@ ok(chamadas.some(c => c[0] === 'TOAST' && /n[úu]mero/i.test(c[1])),
 /* ══ 10. Editar traz de volta ══ */
 console.log('\n-- editar --');
 FM.abrir({ edicao: { id: 9, titulo: 'Responder 5 questões', tipo: 'DIARIA',
-                     natureza: 'REPETICAO', alvo_repeticoes: 5, contador_id: 1,
-                     xp_por_repeticao: 1 } });
+                     natureza: 'REPETICAO', alvo_repeticoes: 5, contador_id: 1 } });
 await esperar(); await esperar();
 ok(FM._estado.rep_modo === 'META', 'editar uma META volta em META');
 ok(FM._estado.alvo_repeticoes === 5, '  com o alvo');
@@ -278,11 +283,9 @@ ok(FM._estado._contadorTocado === true,
    '  e a sugestão fica calada: editar já é ter decidido');
 
 FM.abrir({ edicao: { id: 9, titulo: 'Beber água', tipo: 'DIARIA',
-                     natureza: 'REPETICAO', alvo_repeticoes: null,
-                     xp_por_repeticao: 2 } });
+                     natureza: 'REPETICAO', alvo_repeticoes: null } });
 await esperar(); await esperar();
 ok(FM._estado.rep_modo === 'BONUS', 'e um sem alvo volta em BONUS');
-ok(FM._estado.xp_por_repeticao === 2, '  com o XP por clique');
 
 /* ══ 10b. A NATUREZA NÃO É EXCLUSIVA DA ROTINA ══ */
 console.log('\n-- missão geral também tem natureza --');
