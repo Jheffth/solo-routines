@@ -68,7 +68,7 @@ def rodar():
         r = Rotina(titulo=titulo, tipo="DIARIA", categoria="Estudo",
                    prioridade="MEDIA", dificuldade="NORMAL",
                    natureza="REPETICAO", usuario_id=u.id, ativo=True,
-                   alvo_repeticoes=alvo, xp_por_repeticao=xp,
+                   alvo_repeticoes=alvo,
                    intervalo_min_seg=intervalo,
                    contador_id=cont.id if contador else None)
         db.add(r)
@@ -93,7 +93,7 @@ def rodar():
     j = r.json()
     ok(j["repeticoes"] == 1, "conta 1")
     ok(j["modo"] == "BONUS", "e se declara BONUS")
-    ok(j["xp_ganho"] == 1, "pagando 1 XP, como o Arquiteto pediu")
+    ok(j["xp_ganho"] == 1, "pagando o 1 XP que a Balanca define")
     ok(j["alvo"] is None, "sem alvo — nao ha o que cumprir")
     ok(j["meta_cumprida"] is False, "  logo nunca 'cumprida'")
 
@@ -110,7 +110,7 @@ def rodar():
     db.expire_all()
     ed = db.query(ExecucaoDia).filter_by(rotina_id=b.id, data=hoje).first()
     ok(ed.repeticoes == 65, f"65 cliques contam 65 ({ed.repeticoes})")
-    ok(ed.xp_repeticao_pago == t["por_dia"],
+    ok(ed.xp_repeticao_pago == 30,
        f"mas pagam o teto: {ed.xp_repeticao_pago} XP, nao 65")
 
     j = clicar(b.id).json()
@@ -163,22 +163,22 @@ def rodar():
     j = desfazer(d.id).json()
     db.expire_all()
     ok(j["repeticoes"] == 1, "volta para 1")
-    ok(db.query(Usuario).get(u.id).xp_total == antes_xp - 3,
-       "devolvendo os 3 XP daquele clique, nem mais nem menos")
+    ok(db.query(Usuario).get(u.id).xp_total == antes_xp - 1,
+       "devolvendo o XP daquele clique, nem mais nem menos")
 
     # A ARMADILHA: o clique que pagou MENOS por bater o teto.
     e = nova("Teto quebrado", alvo=None, xp=3, contador=False)
-    clicar(e.id, 9)          # 9 x 3 = 27
-    j = clicar(e.id).json()  # o 10o so cabe 3 -> fecha em 30
-    ok(j["xp_ganho"] == 3, f"o 10o clique fecha o teto pagando 3 ({j['xp_ganho']})")
+    clicar(e.id, 29)
+    j = clicar(e.id).json()  # o 30o fecha o teto
+    ok(j["xp_ganho"] == 1, f"o 30o clique fecha o teto pagando 1 ({j['xp_ganho']})")
     j = clicar(e.id).json()
-    ok(j["xp_ganho"] == 0, "o 11o paga 0")
+    ok(j["xp_ganho"] == 0, "o 31o paga 0")
     db.expire_all()
     antes_xp = db.query(Usuario).get(u.id).xp_total
     desfazer(e.id)
     db.expire_all()
     ok(db.query(Usuario).get(u.id).xp_total == antes_xp,
-       "desfazer um clique que pagou ZERO devolve ZERO — nao os 3 do preco cheio")
+       "desfazer um clique que pagou ZERO devolve ZERO — nao o preco cheio")
 
     # ══ 6. META: conta, conclui e pune ═══════════════════════════
     print("\n-- a missao de META --")

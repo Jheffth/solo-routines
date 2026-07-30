@@ -38,31 +38,36 @@ def rodar():
     # ══ 1. OS TETOS ══════════════════════════════════════════════
     print("-- os dois tetos, antes de qualquer XP correr --")
     t = economia.repeticao_tetos(db)
-    ok(t["por_clique"] == 3, f"teto por clique = {t['por_clique']}")
+    ok(t["por_clique"] == 1, f"XP por clique = {t['por_clique']} (o PRECO, vindo da Balanca)")
     ok(t["por_dia"] == 30, f"teto por dia, por contador = {t['por_dia']}")
 
-    # A TORNEIRA. Uma rotina declarando 500 XP por clique nao paga 500.
-    ok(economia.xp_da_repeticao(500, 0, db) == 3,
-       "rotina pedindo 500 XP por clique paga 3 — o teto de entrada segura")
-    ok(economia.xp_da_repeticao(1, 0, db) == 1,
-       "e quem pede 1 recebe 1: o teto limita, nao nivela")
+    # O PRECO NAO E PARAMETRO. As duas funcoes perderam o argumento de
+    # XP: nao ha assinatura por onde um preco de fora possa entrar.
+    # `as assinaturas`, nao `import inspect`: o nome cru sombreava o
+    # `inspect` do SQLAlchemy usado adiante, e o erro so aparecia trinta
+    # linhas depois, num `inspect(engine)` que nao tinha culpa nenhuma.
+    import inspect as assinaturas
+    for fn in (economia.xp_da_repeticao, economia.xp_acumulado_repeticao):
+        args = list(assinaturas.signature(fn).parameters)
+        ok(not any("clique" in a for a in args),
+           f"{fn.__name__}{tuple(args)} nao recebe preco — a Balanca e quem diz")
 
-    # O teto do DIA: 30 pagos, o 31o clique paga zero.
-    ok(economia.xp_da_repeticao(3, 29, db) == 1,
-       "com 29 ja pagos hoje, o proximo clique paga so 1 (fecha em 30)")
-    ok(economia.xp_da_repeticao(3, 30, db) == 0,
+    ok(economia.xp_da_repeticao(0, db) == 1, "o 1o clique do dia paga 1")
+    ok(economia.xp_da_repeticao(29, db) == 1,
+       "com 29 ja pagos hoje, o proximo ainda paga 1 (fecha em 30)")
+    ok(economia.xp_da_repeticao(30, db) == 0,
        "no teto do dia, o clique paga ZERO")
-    ok(economia.xp_da_repeticao(3, 999, db) == 0,
+    ok(economia.xp_da_repeticao(999, db) == 0,
        "e passar do teto nunca vira XP negativo")
 
     # A simulacao que prova o ponto: 500 cliques nao fazem 500 XP.
     pago, total = 0, 0
     for _ in range(500):
-        x = economia.xp_da_repeticao(3, pago, db)
+        x = economia.xp_da_repeticao(pago, db)
         pago += x
         total += x
     ok(total == 30,
-       f"500 cliques num dia pagam {total} XP, nao 1500 — a torneira nao abre")
+       f"500 cliques num dia pagam {total} XP, nao 500 — a torneira nao abre")
 
     # ══ 2. A NATUREZA ════════════════════════════════════════════
     print("\n-- REPETICAO no catalogo de naturezas --")
@@ -104,7 +109,7 @@ def rodar():
        "e SEM `total`: ele e somado das execucoes, senao vira segunda verdade")
 
     rot = {c["name"] for c in i.get_columns("rotinas")}
-    for c in ("alvo_repeticoes", "contador_id", "xp_por_repeticao", "intervalo_min_seg"):
+    for c in ("alvo_repeticoes", "contador_id", "intervalo_min_seg"):
         ok(c in rot, f"rotinas.{c}")
     ed = {c["name"] for c in i.get_columns("execucao_dia")}
     for c in ("repeticoes", "xp_repeticao_pago", "ultima_repeticao_em"):
@@ -133,7 +138,7 @@ def rodar():
     for i_dia, reps in enumerate([7, 12, 4]):
         r = Rotina(titulo=f"Questões dia {i_dia}", tipo="DIARIA", categoria="Estudo",
                    prioridade="MEDIA", dificuldade="NORMAL",
-                   natureza="REPETICAO", contador_id=c.id, xp_por_repeticao=1,
+                   natureza="REPETICAO", contador_id=c.id,
                    usuario_id=u.id, ativo=True)
         db.add(r); db.flush()
         db.add(ExecucaoDia(rotina_id=r.id, usuario_id=u.id,

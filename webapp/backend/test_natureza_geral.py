@@ -77,7 +77,7 @@ def rodar():
     cont = cli.post("/api/contadores", json={"nome": "Questoes",
                                              "unidade": "questoes"}, headers=H).json()
     r = nova(titulo="Questoes do simulado", natureza="REPETICAO",
-             contador_id=cont["id"], xp_por_repeticao=1)
+             contador_id=cont["id"])
     ok(r.status_code in (200, 201), f"cria missao geral de repeticao ({r.status_code})")
     t = r.json()
     tid = t["id"]
@@ -96,9 +96,8 @@ def rodar():
     # ══ 2. OS TETOS VALEM AQUI TAMBEM ════════════════════════════
     print("\n-- o teto nao escolhe frente --")
     r = nova(titulo="Ganancia", natureza="REPETICAO", xp_por_repeticao=500)
-    ok(r.json()["xp_por_repeticao"] == 3,
-       f"pedir 500 XP por clique GRAVA 3 ({r.json()['xp_por_repeticao']}) — "
-       "o teto de entrada nao e exclusivo da rotina")
+    ok("xp_por_repeticao" not in r.json(),
+       "a missao geral tambem nao tem preco proprio — a porta foi tapada nas duas")
 
     g = r.json()["id"]
     clicar(g, 40)
@@ -112,8 +111,7 @@ def rodar():
     print("\n-- rotina e tarefa dividem a mesma cota --")
     rot = Rotina(titulo="Questoes diarias", tipo="DIARIA", categoria="Estudo",
                  prioridade="MEDIA", dificuldade="NORMAL", natureza="REPETICAO",
-                 usuario_id=u.id, ativo=True, contador_id=cont["id"],
-                 xp_por_repeticao=1)
+                 usuario_id=u.id, ativo=True, contador_id=cont["id"])
     db.add(rot); db.commit()
     for _ in range(40):
         cli.post("/api/execucoes/repetir", json={"rotina_id": rot.id}, headers=H)
@@ -123,7 +121,7 @@ def rodar():
        "a rotina esgotou a cota do balde e a MISSAO GERAL do mesmo balde nao "
        "ganha mais — senao bastaria criar as duas para dobrar o XP do dia")
 
-    solta = nova(titulo="Outro balde", natureza="REPETICAO", xp_por_repeticao=1).json()["id"]
+    solta = nova(titulo="Outro balde", natureza="REPETICAO").json()["id"]
     ok(clicar(solta).json()["xp_ganho"] == 1,
        "e uma missao de OUTRO balde continua pagando: o teto nunca foi global")
 

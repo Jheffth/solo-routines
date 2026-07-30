@@ -77,24 +77,34 @@ def rodar():
                 dificuldade="NORMAL", natureza="REPETICAO")
     r = cli.post("/api/rotinas/", headers=H,
                  json={**base, "titulo": "Responder 5 questões",
-                       "alvo_repeticoes": 5, "contador_id": cid,
-                       "xp_por_repeticao": 0})
+                       "alvo_repeticoes": 5, "contador_id": cid})
     ok(r.status_code in (200, 201), f"cria a rotina META ({r.status_code})")
     meta_id = r.json()["id"]
     ok(r.json()["alvo_repeticoes"] == 5, "o alvo volta na resposta")
     ok(r.json()["contador_id"] == cid, "  e o contador")
     ok(r.json()["natureza"] == "REPETICAO", "  e a natureza")
 
-    # O TETO NA ENTRADA. Guardar 500 e limitar so na hora de pagar
-    # deixaria o numero mentiroso no lancador e no cartao.
+    # QUEM PRECIFICA E A BALANCA. O `xp_por_repeticao` chegou a ser um
+    # campo no lancador — a unica porta do app por onde o hunter mandava
+    # um preco. O Arquiteto lembrou a regra geral, e a porta foi tapada
+    # na raiz: o servidor nem RECEBE mais o numero.
     r = cli.post("/api/rotinas/", headers=H,
                  json={**base, "titulo": "Beber água", "contador_id": cid,
                        "xp_por_repeticao": 500})
     bonus_id = r.json()["id"]
-    ok(r.json()["xp_por_repeticao"] == 3,
-       f"pedir 500 XP por clique GRAVA 3 ({r.json()['xp_por_repeticao']}) — "
-       "o teto age na entrada, nao so no pagamento")
+    ok(r.status_code in (200, 201),
+       "mandar um preco direto na API nao explode — ele so e ignorado")
+    ok("xp_por_repeticao" not in r.json(),
+       "e a resposta nem devolve o campo: nao ha preco por missao")
     ok(r.json()["alvo_repeticoes"] is None, "sem alvo, o modo e BONUS")
+
+    # A PROVA: o clique paga o que a BALANCA diz, nao o que veio no JSON.
+    from motors import economia as _eco
+    preco = _eco.repeticao_tetos(db)["por_clique"]
+    j = cli.post("/api/execucoes/repetir", json={"rotina_id": bonus_id},
+                 headers=H).json()
+    ok(j["xp_ganho"] == preco,
+       f"e o clique paga {preco} (o preco da Balanca), nao 500")
 
     # ══ 3. A POSSE ═══════════════════════════════════════════════
     print("\n-- a posse do balde --")
@@ -117,7 +127,7 @@ def rodar():
     print("\n-- clicar --")
     for _ in range(3):
         cli.post("/api/execucoes/repetir", json={"rotina_id": meta_id}, headers=H)
-    for _ in range(7):
+    for _ in range(6):     # +1 que ja foi dado na prova do preco acima
         cli.post("/api/execucoes/repetir", json={"rotina_id": bonus_id}, headers=H)
 
     d = cli.get(f"/api/contadores/{cid}", headers=H).json()
