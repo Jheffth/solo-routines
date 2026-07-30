@@ -1316,11 +1316,31 @@
 /* ── A CAIXA DO CONTADOR (modo BÔNUS) ──────────────────────
    Sem barra. O Arquiteto: "para o contador apenas um contador, uma
    box bonita com o número por extenso do que já foi feito".
-   Barra aqui significaria "quanto falta" numa coisa sem fim. */
+   Barra aqui significaria "quanto falta" numa coisa sem fim.
+
+   O CARTÃO ESTAVA GROSSO, e o Arquiteto reportou.
+
+   O defeito não era a caixa: era o TOTAL numa linha própria embaixo
+   dela. Isso dava cinco faixas empilhadas — título, chips, caixa,
+   total, botões — contra as três de um cartão comum, e o contador
+   ficava desproporcional na lista.
+
+   Os dois viraram uma linha só. O total é informação SECUNDÁRIA
+   ("quantas ao todo"), então ele acompanha o número principal em vez
+   de disputar altura com ele — que era, aliás, o que a hierarquia já
+   dizia e o layout contradizia.
+
+   Com o número menor (1.45rem contra 1.85) e o padding mais justo,
+   o miolo saiu de ~81px para ~44px. O `flex-wrap` devolve o
+   empilhamento no celular, onde não há largura para os dois. */
+.mc-rep-bonus {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: 6px 14px;
+}
 .mc-cont-caixa {
   display: inline-flex; flex-direction: column; align-items: center;
-  gap: 1px; padding: 9px 20px 7px;
-  border-radius: 12px;
+  gap: 1px; padding: 6px 16px 5px;
+  border-radius: 10px;
   background:
     radial-gradient(120% 140% at 50% 0%,
       color-mix(in srgb, var(--mc-vigilia) 18%, transparent), transparent 70%),
@@ -1330,18 +1350,17 @@
               0 0 18px color-mix(in srgb, var(--mc-vigilia) 16%, transparent);
 }
 .mc-cont-num {
-  font-size: 1.85rem; font-weight: 800; line-height: 1;
+  font-size: 1.45rem; font-weight: 800; line-height: 1.05;
   font-variant-numeric: tabular-nums;
   color: color-mix(in srgb, var(--mc-vigilia) 92%, #ffffff);
   text-shadow: 0 0 14px color-mix(in srgb, var(--mc-vigilia) 55%, transparent);
 }
 .mc-cont-unid {
-  font-size: .62rem; letter-spacing: .11em; text-transform: uppercase;
+  font-size: .58rem; letter-spacing: .1em; text-transform: uppercase;
   color: color-mix(in srgb, var(--mc-vigilia) 55%, #94a3b8);
 }
 .mc-cont-total {
   display: flex; align-items: center; gap: 5px;
-  margin-top: 7px;
   font-size: .7rem;
   color: color-mix(in srgb, var(--mc-vigilia) 45%, #94a3b8);
 }
@@ -1382,9 +1401,14 @@
 .mc-compacto .mc-rep { margin-top: 7px; }
 .mc-compacto .mc-rep-trilha { height: 7px; gap: 2px; }
 .mc-compacto .mc-rep-lbl { font-size: .62rem; }
-.mc-compacto .mc-cont-caixa { padding: 5px 14px 4px; border-radius: 9px; }
-.mc-compacto .mc-cont-num { font-size: 1.25rem; }
-.mc-compacto .mc-cont-total { margin-top: 4px; font-size: .64rem; }
+.mc-compacto .mc-rep-bonus { gap: 4px 11px; }
+.mc-compacto .mc-cont-caixa { padding: 4px 12px 3px; border-radius: 8px; }
+.mc-compacto .mc-cont-num { font-size: 1.15rem; }
+.mc-compacto .mc-cont-unid { font-size: .54rem; }
+/* Sem `margin-top` aqui: o total deixou de ser uma linha embaixo e
+   passou a ser vizinho da caixa. Uma margem vertical sobrando teria
+   desfeito, no Extrato, exatamente a altura que se foi cortar. */
+.mc-compacto .mc-cont-total { font-size: .64rem; }
 
 @media (prefers-reduced-motion: reduce) {
   .mc-rep-seg.meio::after,

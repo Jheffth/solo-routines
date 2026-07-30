@@ -38,6 +38,7 @@ const ctx = vm.createContext(w);
 vm.runInContext(ler('js', 'glifos.js'), ctx);
 vm.runInContext(ler('js', 'missao-card.js'), ctx);
 const MC = vm.runInContext('MissaoCard', ctx);
+const css = ler('css', 'missao-card.css');
 
 const base = {
   id: 1, uid: 'r1', origem: 'rotina', rotina_id: 1,
@@ -93,6 +94,32 @@ ok(!/XP/i.test(c87.querySelector('.mc-rep').textContent),
 ok(!frag(MC.html(bonus(3))).querySelector('.mc-cont-total'),
    'sem contador atrelado, a linha de total nem existe');
 
+/* ── A ALTURA ─────────────────────────────────────────────
+   O Arquiteto reportou o cartão "grosso": o total ocupava uma linha
+   própria embaixo da caixa, dando CINCO faixas empilhadas contra as
+   três de um cartão comum. Estes asserts existem para que ele não
+   volte a engrossar sem alguém decidir isso de propósito. */
+console.log('\n-- a altura --');
+const regra = nome => {
+  const m = new RegExp('\\' + nome + '\\s*\\{([^}]*)\\}').exec(
+    css.replace(/\/\*[\s\S]*?\*\//g, ''));
+  return m ? m[1] : '';
+};
+ok(/display:\s*flex/.test(regra('.mc-rep-bonus')),
+   'a caixa e o total ficam LADO A LADO, não empilhados — foi a linha extra '
+   + 'que engrossou o cartão');
+ok(/flex-wrap:\s*wrap/.test(regra('.mc-rep-bonus')),
+   '  com wrap: no celular não há largura para os dois, e aí eles empilham');
+ok(!/margin-top/.test(regra('.mc-cont-total')),
+   'e o total não tem mais margem de cima — ela devolveria a altura cortada');
+
+const num = parseFloat(/font-size:\s*([\d.]+)rem/.exec(regra('.mc-cont-num'))[1]);
+ok(num <= 1.5,
+   `o número está em ${num}rem — grande o bastante para ser o protagonista, `
+   + 'pequeno o bastante para não desproporcionar a lista');
+const padTop = parseFloat(/padding:\s*([\d.]+)px/.exec(regra('.mc-cont-caixa'))[1]);
+ok(padTop <= 7, `e a caixa respira ${padTop}px em cima, não mais que isso`);
+
 /* ══ 3. A barra segmentada, e os 100 pulinhos ══ */
 console.log('\n-- os segmentos --');
 const segs = el => el.querySelectorAll('.mc-rep-seg').length;
@@ -129,7 +156,6 @@ ok(true, 'todo alvo entre 21 e 200 cai numa contagem de 4 a 20 blocos');
 
 /* ══ 4. A trilha usa grid, não flex ══ */
 console.log('\n-- a trilha --');
-const css = ler('css', 'missao-card.css');
 ok(/\.mc-rep-trilha\s*\{[^}]*display:\s*grid/.test(css),
    'grid com colunas iguais — flex+gap deixaria segmentos 1px diferentes entre si');
 ok(/grid-template-columns:\s*repeat\(var\(--blocos/.test(css),
