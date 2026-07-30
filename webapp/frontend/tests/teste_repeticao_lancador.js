@@ -346,6 +346,90 @@ ok(!chamadas.some(c => c[0] === 'CRIAR_TAREFA'),
 ok(chamadas.some(c => c[0] === 'TOAST' && /janela/i.test(c[1])),
    '  e diz o porquê');
 
+/* ══ 10c. A PRÉVIA MUDA DE ESTRUTURA ══ */
+console.log('\n-- a prévia acompanha a natureza --');
+/* A prévia mudava de cor, de rank e de prazo — e NÃO mudava na única
+   coisa que muda o cartão inteiro. O objeto passado ao MissaoCard não
+   tinha `natureza`, então trocar de Ativa para Repetições reescrevia o
+   miolo de verdade e a prévia continuava desenhando missão comum.
+
+   Estes asserts olham a ESTRUTURA, não o texto: é a estrutura que
+   muda, e um assert de texto passaria mesmo com o defeito de volta. */
+FM.abrir();
+await esperar(); await esperar();
+const prev2 = () => $('#fm-previa');
+const cartao = () => prev2().querySelector('[data-mc-card]');
+
+clicar(doc.querySelector('[data-fm-valor="ATIVA"]'));
+ok(!!cartao(), 'a prévia desenha um cartão');
+ok(!cartao().classList.contains('mc-passiva') &&
+   !cartao().classList.contains('mc-repeticao'),
+   'em ATIVA, sem marca de natureza nenhuma');
+ok(!prev2().querySelector('.mc-conta') && !prev2().querySelector('.mc-vigia'),
+   '  e sem moldura');
+
+clicar(doc.querySelector('[data-fm-valor="REPETICAO"]'));
+await esperar();
+ok(cartao().classList.contains('mc-repeticao'),
+   'trocar para REPETIÇÕES muda o cartão da prévia — era isto que faltava');
+ok(!!prev2().querySelector('.mc-conta'), '  com a moldura da contagem');
+ok(!prev2().querySelector('.mc-vigia'), '  e não a da passiva');
+ok(!!prev2().querySelector('[data-mc-acao="repetir"]'),
+   '  e o botão de somar, que é a mudança mais visível de todas');
+
+/* META e LIVRE desenham miolos diferentes — a prévia tem que separar. */
+digitar(doc.querySelector('[data-fm-alvo]'), '5');
+ok(prev2().querySelectorAll('.mc-rep-seg').length === 5,
+   'com alvo 5, a prévia mostra 5 segmentos');
+ok([...prev2().querySelectorAll('.mc-rep-seg')].some(s => s.classList.contains('cheio')),
+   '  com alguns acesos: tudo em zero seria honesto e inútil para julgar o desenho');
+digitar(doc.querySelector('[data-fm-alvo]'), '12');
+ok(prev2().querySelectorAll('.mc-rep-seg').length === 12,
+   '  e ela acompanha o alvo a cada tecla (12)');
+
+clicar(doc.querySelector('[data-fm-valor="BONUS"]'));
+ok(!prev2().querySelector('.mc-rep-seg'),
+   'trocar para Livre TIRA os segmentos');
+ok(!!prev2().querySelector('.mc-cont-num'), '  e põe a caixa do contador');
+ok(!prev2().querySelector('[data-mc-conta-arco]'),
+   '  e a borda deixa de ter arco: sem alvo não há fração');
+
+/* A passiva. Sem os campos de prazo o cartão cai no layout comum — a
+   prévia mentiria de um jeito mais sutil que antes. */
+clicar(doc.querySelector('[data-fm-valor="PASSIVA"]'));
+await esperar();
+ok(cartao().classList.contains('mc-passiva'), 'em PASSIVA o cartão vira protocolo');
+ok(!!prev2().querySelector('.mc-vigia'), '  com a moldura da vigília');
+ok(!prev2().querySelector('.mc-conta'), '  e não a da contagem');
+ok(!!prev2().querySelector('.mc-prot-calha'),
+   'e a BARRA DO PROTOCOLO aparece — ela só existe se houver prazo na amostra');
+ok(prev2().querySelector('.mc-vigia').classList.contains('em-vigor'),
+   '  com a moldura acesa: é o estado em que o protocolo passa a vida');
+ok(!!prev2().querySelector('[data-mc-acao="confessar"]'),
+   '  e o único botão dele: confessar');
+
+clicar(doc.querySelector('[data-fm-valor="ATIVA"]'));
+ok(!cartao().classList.contains('mc-passiva') &&
+   !cartao().classList.contains('mc-repeticao'),
+   'e voltar para Ativa desfaz tudo — a prévia não acumula estados');
+
+/* A NOTA. Com dois casos, a repetição caía no `else` e era descrita
+   como "missão normal". Explicação errada é pior que nenhuma. */
+console.log('\n-- a nota explica a natureza certa --');
+const nota = () => $('#fm-nota-natureza').textContent;
+clicar(doc.querySelector('[data-fm-valor="REPETICAO"]'));
+clicar(doc.querySelector('[data-fm-valor="META"]'));
+ok(/conclui sozinha/i.test(nota()) && !/Missão normal/i.test(nota()),
+   'a META tem nota própria, não a de missão comum');
+ok(/sequência/i.test(nota()), '  dizendo que conta para a sequência');
+clicar(doc.querySelector('[data-fm-valor="BONUS"]'));
+ok(/não conta para a\s+sequência|não conta para a sequência/i.test(nota().replace(/\s+/g, ' ')),
+   'e o LIVRE avisa que NÃO conta para a sequência — é a diferença que muda a decisão');
+clicar(doc.querySelector('[data-fm-valor="PASSIVA"]'));
+ok(/Protocolo/i.test(nota()), 'a passiva mantém a dela');
+clicar(doc.querySelector('[data-fm-valor="ATIVA"]'));
+ok(/Missão normal/i.test(nota()), 'e a ativa também');
+
 /* ══ 11. Nada de emoji ══ */
 console.log('\n-- o alfabeto --');
 const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2190}-\u{27BF}\u{2B00}-\u{2BFF}\u{2600}-\u{26FF}]/u;

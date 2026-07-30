@@ -893,6 +893,73 @@ const ForjaMissao = {
     return `${min}min`;
   },
 
+  /* ── A AMOSTRA DA PRÉVIA ──────────────────────────────────
+
+     Este objeto era construído inline dentro do `_atualizar`, e sem
+     `natureza`. O resultado: a prévia mudava de cor, de rank, de
+     prazo — e NÃO mudava na única coisa que muda o cartão inteiro.
+     Trocar de Ativa para Repetições reescreve o miolo, a moldura e os
+     botões, e a prévia continuava desenhando uma missão comum.
+
+     O Arquiteto pegou. Virou método por isso: um objeto que precisa
+     de três formas diferentes não cabe mais como literal no meio de
+     outra função.
+
+     CADA NATUREZA PRECISA DE CAMPOS DIFERENTES, e é aí que estava a
+     armadilha — não bastava passar `natureza` adiante:
+
+       PASSIVA     o cartão só desenha a moldura e a barra do
+                   protocolo se houver PRAZO. Sem `prazo_ate_abrir`,
+                   `prazo_minutos` e `prazo_restante` ele cai no
+                   layout comum e a prévia continuaria mentindo, agora
+                   de um jeito mais sutil.
+
+       REPETIÇÃO   com alvo, precisa de `repeticoes` para os segmentos
+                   terem o que mostrar; sem alvo, precisa de um total
+                   para a caixa fazer sentido.
+
+     OS NÚMEROS DA AMOSTRA SÃO INVENTADOS, e de propósito: uma missão
+     que ainda não existe não tem progresso. Mostrar tudo em zero
+     seria honesto e inútil — o hunter não veria o desenho que está
+     escolhendo. A nota abaixo da prévia já diz que é ilustração. */
+  _amostra(e, xp, mc) {
+    const base = {
+      id: 0, titulo: e.titulo || 'Título da missão…',
+      categoria: e.categoria, prioridade: e.prioridade, dificuldade: e.dificuldade,
+      xp_recompensa: xp, moedas_recompensa: mc,
+      hora_inicio: e.janela ? e.hora_inicio : '', hora_fim: e.janela ? e.hora_fim : '',
+      status_hoje: 'PENDENTE',
+      natureza: e.natureza || 'ATIVA',
+    };
+
+    if (e.natureza === 'PASSIVA') {
+      // Em vigor e a meio caminho: é o estado em que o protocolo passa
+      // a maior parte da vida, e o único em que dá para julgar a
+      // moldura correndo e a barra enchendo.
+      const janela = 12 * 60;
+      return { ...base,
+        prazo_ate_abrir: -3600,               // negativo = já começou
+        prazo_minutos:   janela,
+        prazo_restante:  Math.round(janela * 60 * 0.55) };
+    }
+
+    if (e.natureza === 'REPETICAO') {
+      const alvo = e.rep_modo === 'META' ? parseInt(e.alvo_repeticoes, 10) : null;
+      if (Number.isFinite(alvo) && alvo > 0) {
+        // Pouco mais de um terço: acende segmentos cheios E deixa um
+        // em curso, que é o que mostra o preenchimento por dentro.
+        return { ...base, alvo_repeticoes: alvo,
+                 repeticoes: Math.max(1, Math.round(alvo * 0.4)) };
+      }
+      const c = (this._contadores || []).find(x => x.id === e.contador_id);
+      return { ...base, alvo_repeticoes: null, repeticoes: 7,
+               total_contador: c ? (c.total || 0) + 7 : 128,
+               unidade_contador: c?.unidade || '' };
+    }
+
+    return base;
+  },
+
   _atualizar() {
     const e = this._estado;
     const pri = this.PRIORIDADES.find(p => p.id === e.prioridade) || this.PRIORIDADES[2];
@@ -921,15 +988,8 @@ const ForjaMissao = {
     // Prévia: usa o COMPONENTE REAL do cartão
     const previa = document.getElementById('fm-previa');
     if (previa && window.MissaoCard) {
-      const fake = {
-        id: 0, titulo: e.titulo || 'Título da missão…',
-        categoria: e.categoria, prioridade: e.prioridade, dificuldade: e.dificuldade,
-        xp_recompensa: xp, moedas_recompensa: mc,
-        hora_inicio: e.janela ? e.hora_inicio : '', hora_fim: e.janela ? e.hora_fim : '',
-        status_hoje: 'PENDENTE',
-      };
       MissaoCard.cachear([]);            // prévia não entra no timer global
-      previa.innerHTML = MissaoCard.html(fake);
+      previa.innerHTML = MissaoCard.html(this._amostra(e, xp, mc));
     }
 
     // Resumo econômico
@@ -954,13 +1014,27 @@ const ForjaMissao = {
     // é só uma palavra — e o hunter descobre o que ela faz só no dia seguinte.
     const nota = document.getElementById('fm-nota-natureza');
     if (nota) {
-      nota.innerHTML = e.natureza === 'PASSIVA'
-        ? `${this._gl('passiva', 12)} <b>Protocolo:</b> ela se acende sozinha no
+      // TRES naturezas, tres notas. Com duas, a repeticao caia no `else`
+      // e era descrita como "missao normal" — a explicacao errada e pior
+      // que nenhuma, porque o hunter acredita nela.
+      const NOTAS = {
+        PASSIVA: `${this._gl('passiva', 12)} <b>Protocolo:</b> ela se acende sozinha no
            início da janela e se <b>cumpre sozinha</b> no fim. Você só age se
            <b>quebrar</b> — aí confessa, paga metade da punição e mantém a sequência.
-           <i>Ex.: sem cafeína das 16:00 às 05:00.</i>`
-        : `${this._gl('ativa', 12)} <b>Missão normal:</b> você precisa iniciar e
-           concluir. Passar do prazo é fracasso.`;
+           <i>Ex.: sem cafeína das 16:00 às 05:00.</i>`,
+        REPETICAO: e.rep_modo === 'META'
+          ? `${this._gl('repeticao', 12)} <b>Meta:</b> você aperta <b>+1</b> a cada vez
+             que fizer, e a missão se <b>conclui sozinha</b> ao bater o número. Conta
+             para a sequência e pune se o dia acabar sem cumprir.
+             <i>Ex.: responder 5 questões de História.</i>`
+          : `${this._gl('repeticao', 12)} <b>Livre:</b> um contador sem fim. Cada
+             clique vale um XP pequeno, com teto diário. <b>Não conta para a
+             sequência e não pune</b> — é bônus, não cobrança.
+             <i>Ex.: quantos copos de água eu bebi.</i>`,
+        ATIVA: `${this._gl('ativa', 12)} <b>Missão normal:</b> você precisa iniciar e
+           concluir. Passar do prazo é fracasso.`,
+      };
+      nota.innerHTML = NOTAS[e.natureza] || NOTAS.ATIVA;
     }
 
     // Botão só habilita com título
