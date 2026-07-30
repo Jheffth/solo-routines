@@ -48,6 +48,25 @@ def concluir_rotina(
     if ja_executou:
         raise HTTPException(400, "Esta rotina já foi concluída hoje!")
 
+    return anexar(*_liquidar(db, usuario, rotina, hoje, payload.observacao))
+
+
+def _liquidar(db: Session, usuario: Usuario, rotina: Rotina, hoje: date,
+              observacao: Optional[str] = None):
+    """
+    O NÚCLEO DA CONCLUSÃO — prazo, liquidação, XP, punição e carimbo.
+
+    Era o corpo do `concluir_rotina` e virou função porque a missão de
+    repetição em modo META precisa concluir a rotina sozinha ao bater o
+    alvo, e ela tem que concluir do MESMO jeito: mesmo cálculo de
+    prazo, mesma punição por atraso, mesmo streak.
+
+    Copiar estas cinquenta linhas para o outro endpoint teria criado a
+    sexta segunda-verdade deste projeto — e a divergência apareceria
+    devagar, num ajuste da Balança que só um dos dois caminhos honra.
+
+    Devolve `(corpo, resultado)` já pronto para o `anexar()`.
+    """
     rotina.ultima_execucao = hoje
     db.flush()
 
@@ -79,7 +98,7 @@ def concluir_rotina(
         moedas=liq["moedas"],
         hoje=hoje,
         rotina_id=rotina.id,
-        observacao=payload.observacao or f"Rotina concluída: {rotina.titulo}",
+        observacao=observacao or f"Rotina concluída: {rotina.titulo}",
     )
 
     # A punição do atraso é cobrada aqui, depois do crédito, para que o
@@ -99,10 +118,8 @@ def concluir_rotina(
         db.rollback()
     # ──────────────────────────────────────────────────────
 
-    return anexar(
-        {"rotina_id": rotina.id, "resultado": resultado, "liquidacao": liq},
-        resultado,
-    )
+    return ({"rotina_id": rotina.id, "resultado": resultado, "liquidacao": liq},
+            resultado)
 
 
 class ReerguerRequest(BaseModel):
@@ -331,3 +348,175 @@ def heatmap(
         mapa[d.isoformat()] += 1
 
     return dict(mapa)
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  ROTINA DE REPETIÇÕES
+#
+#  Dois modos, e a diferença entre eles não é cosmética:
+#
+#  META  (alvo_repeticoes preenchido)
+#      "Responder 5 questões." Os cliques só CONTAM. Ao bater o alvo, a
+#      rotina é concluída pelo caminho normal — mesmo prazo, mesmo
+#      streak, mesma punição por atraso. Ela é uma missão de verdade.
+#
+#  BÔNUS (alvo_repeticoes nulo)
+#      "Quantos copos de água eu bebi?" Não tem fim, então não pode ter
+#      cobrança: NÃO conta streak e NÃO pune. Paga um XP pequeno por
+#      clique, com teto por clique e teto diário POR CONTADOR.
+#
+#  O teto e o intervalo mínimo moram AQUI, no servidor. No cliente eles
+#  seriam uma sugestão — e o primeiro `curl` faria XP do nada.
+# ══════════════════════════════════════════════════════════════════════
+
+class RepetirRequest(BaseModel):
+    rotina_id: int
+
+
+def _rotina_de_repeticao(db: Session, usuario: Usuario, rotina_id: int) -> Rotina:
+    rotina = db.query(Rotina).filter(
+        Rotina.id == rotina_id,
+        Rotina.usuario_id == usuario.id,
+        Rotina.ativo == True,
+    ).first()
+    if not rotina:
+        raise HTTPException(404, "Rotina não encontrada")
+    if especiais.normalizar(getattr(rotina, "natureza", None)) != especiais.REPETICAO:
+        raise HTTPException(400, "Esta rotina não é uma rotina de repetições")
+    return rotina
+
+
+def _execucao_do_dia(db: Session, usuario: Usuario, rotina: Rotina, hoje: date) -> ExecucaoDia:
+    ed = db.query(ExecucaoDia).filter(
+        ExecucaoDia.rotina_id  == rotina.id,
+        ExecucaoDia.usuario_id == usuario.id,
+        ExecucaoDia.data       == hoje,
+    ).first()
+    if not ed:
+        ed = ExecucaoDia(rotina_id=rotina.id, usuario_id=usuario.id,
+                         data=hoje, status="ATIVA", repeticoes=0,
+                         xp_repeticao_pago=0)
+        db.add(ed)
+        db.flush()
+    return ed
+
+
+def _pago_pelos_outros(db: Session, rotina: Rotina, hoje: date) -> int:
+    """
+    Quanto as OUTRAS rotinas do mesmo contador já pagaram hoje.
+
+    A consulta filtra por `contador_id` e MAIS NADA — sem `usuario_id`.
+    É essa ausência, e só ela, que faz um contador de guilda somar
+    certo no dia em que ele existir, sem reescrever nada aqui.
+
+    Rotina sem contador não divide teto com ninguém: ela é o próprio
+    balde.
+    """
+    if not getattr(rotina, "contador_id", None):
+        return 0
+    from sqlalchemy import func
+    total = (db.query(func.sum(ExecucaoDia.xp_repeticao_pago))
+               .join(Rotina, Rotina.id == ExecucaoDia.rotina_id)
+               .filter(Rotina.contador_id == rotina.contador_id,
+                       ExecucaoDia.data == hoje,
+                       ExecucaoDia.rotina_id != rotina.id)
+               .scalar()) or 0
+    return int(total)
+
+
+def _mover(db: Session, usuario: Usuario, rotina_id: int, passo: int) -> dict:
+    rotina = _rotina_de_repeticao(db, usuario, rotina_id)
+    hoje   = tempo.hoje()
+    ed     = _execucao_do_dia(db, usuario, rotina, hoje)
+
+    antes = int(ed.repeticoes or 0)
+    if passo < 0 and antes == 0:
+        raise HTTPException(400, "Não há repetição para desfazer hoje")
+
+    # O INTERVALO MÍNIMO, se a rotina pedir um. Só vale para somar:
+    # corrigir um erro nunca deve ficar bloqueado por espera.
+    if passo > 0 and (rotina.intervalo_min_seg or 0) > 0 and ed.ultima_repeticao_em:
+        espera = int(rotina.intervalo_min_seg)
+        falta  = espera - (tempo.agora() - ed.ultima_repeticao_em).total_seconds()
+        if falta > 0:
+            raise HTTPException(429, f"Espere {int(falta) + 1}s para a próxima")
+
+    depois = max(0, antes + passo)
+    ed.repeticoes = depois
+
+    alvo    = getattr(rotina, "alvo_repeticoes", None)
+    eh_meta = bool(alvo and int(alvo) > 0)
+    resultado, xp_delta = None, 0
+
+    if not eh_meta:
+        # BÔNUS. Recalcula o total devido e move só a diferença — ver o
+        # porquê em `economia.xp_acumulado_repeticao`.
+        outros = _pago_pelos_outros(db, rotina, hoje)
+        devido = economia.xp_acumulado_repeticao(
+            depois, rotina.xp_por_repeticao, outros, db)
+        xp_delta = devido - int(ed.xp_repeticao_pago or 0)
+        ed.xp_repeticao_pago = devido
+
+        if xp_delta > 0:
+            # Sem streak e sem linha de histórico: os dois motivos estão
+            # documentados em `gamificacao.aplicar_xp`.
+            resultado = aplicar_xp(
+                db=db, usuario=usuario, xp_base=xp_delta, moedas=0, hoje=hoje,
+                rotina_id=rotina.id, observacao=f"Repetição: {rotina.titulo}",
+                conta_streak=False, registrar_execucao=False,
+            )
+        elif xp_delta < 0:
+            usuario.xp_total = max(0, (usuario.xp_total or 0) + xp_delta)
+            usuario.xp_atual = max(0, (usuario.xp_atual or 0) + xp_delta)
+
+    if passo > 0:
+        ed.ultima_repeticao_em = tempo.agora()
+
+    # META CUMPRIDA. Conclui pelo caminho de sempre — e só uma vez: o
+    # `status` é a trava, então desfazer e refazer não paga duas vezes.
+    cumpriu = eh_meta and depois >= int(alvo) and ed.status != "CONCLUIDA"
+    if cumpriu:
+        corpo, resultado = _liquidar(
+            db, usuario, rotina, hoje,
+            observacao=f"{rotina.titulo} — {depois}/{alvo}")
+    else:
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+
+    from sqlalchemy import func
+    total_contador = None
+    if getattr(rotina, "contador_id", None):
+        total_contador = int((db.query(func.sum(ExecucaoDia.repeticoes))
+                                .join(Rotina, Rotina.id == ExecucaoDia.rotina_id)
+                                .filter(Rotina.contador_id == rotina.contador_id)
+                                .scalar()) or 0)
+
+    corpo = {
+        "rotina_id":      rotina.id,
+        "repeticoes":     depois,
+        "alvo":           int(alvo) if eh_meta else None,
+        "modo":           "META" if eh_meta else "BONUS",
+        "xp_ganho":       xp_delta,
+        "xp_pago_hoje":   int(ed.xp_repeticao_pago or 0),
+        "meta_cumprida":  bool(cumpriu),
+        "status":         ed.status,
+        "total_contador": total_contador,
+        "resultado":      resultado,
+    }
+    return anexar(corpo, resultado) if resultado else corpo
+
+
+@router.post("/repetir")
+def repetir(payload: RepetirRequest, db: Session = Depends(get_db),
+            usuario: Usuario = Depends(get_usuario_atual)):
+    """+1 repetição no dia de hoje."""
+    return _mover(db, usuario, payload.rotina_id, +1)
+
+
+@router.post("/desfazer-repeticao")
+def desfazer_repeticao(payload: RepetirRequest, db: Session = Depends(get_db),
+                       usuario: Usuario = Depends(get_usuario_atual)):
+    """−1 repetição. Devolve exatamente o que aquele clique pagou."""
+    return _mover(db, usuario, payload.rotina_id, -1)

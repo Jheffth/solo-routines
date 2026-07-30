@@ -324,14 +324,46 @@ def aplicar_xp(
     rotina_id: int = None,
     tarefa_id: int = None,
     observacao: str = None,
+    conta_streak: bool = True,
+    registrar_execucao: bool = True,
 ) -> dict:
     """
     Aplica XP ao usuário, atualiza streak, processa level-up e conquistas.
     Retorna dicionário com todos os eventos para o frontend exibir.
+
+    OS DOIS INTERRUPTORES, e por que eles existem
+    ─────────────────────────────────────────────
+    Nasceram com o contador de repetições (missão BONUS), e os dois
+    default `True`: nenhuma das dezenas de chamadas existentes muda de
+    comportamento por causa deles.
+
+    `conta_streak=False`
+        Um clique no contador NÃO pode manter a ofensiva viva. O
+        Arquiteto foi explícito: "o contador... pode ser encarada como
+        uma missão BONUS, assim ela não conta para o Streak". Sem este
+        interruptor, quem clicasse um contador uma vez ao dia nunca
+        mais perderia o streak — e a ofensiva deixaria de significar
+        "cumpri minhas missões".
+
+        Ele também zera o `bonus_streak`, e isso NÃO é detalhe: o teto
+        diário de XP de repetição é calculado sobre o `xp_base`. Se o
+        bônus de ofensiva entrasse por cima, um teto de 30 pagaria 45
+        para quem tem streak alto — o teto viraria enfeite.
+
+    `registrar_execucao=False`
+        Uma linha em `Execucao` por clique poluiria o histórico e o
+        heatmap com trinta registros de um dia só. Pior: o
+        `/execucoes/rotina` usa exatamente essa tabela para barrar
+        conclusão dupla, então a rotina passaria a se achar concluída
+        no primeiro clique.
     """
     # Streak
-    streak = atualizar_streak(db, usuario, hoje)
-    bonus_streak = calcular_bonus_streak(xp_base, streak)
+    if conta_streak:
+        streak = atualizar_streak(db, usuario, hoje)
+        bonus_streak = calcular_bonus_streak(xp_base, streak)
+    else:
+        streak = usuario.streak_atual or 0   # lido, não tocado
+        bonus_streak = 0
     xp_total_ganho = xp_base + bonus_streak
 
     # Aplicar XP e moedas
@@ -340,18 +372,19 @@ def aplicar_xp(
     usuario.moedas   += moedas
 
     # Registrar execução
-    execucao = Execucao(
-        usuario_id=usuario.id,
-        rotina_id=rotina_id,
-        tarefa_id=tarefa_id,
-        data_execucao=hoje,
-        xp_ganho=xp_total_ganho,
-        moedas_ganhas=moedas,
-        streak_na_hora=streak,
-        bonus_streak=bonus_streak,
-        observacao=observacao,
-    )
-    db.add(execucao)
+    if registrar_execucao:
+        execucao = Execucao(
+            usuario_id=usuario.id,
+            rotina_id=rotina_id,
+            tarefa_id=tarefa_id,
+            data_execucao=hoje,
+            xp_ganho=xp_total_ganho,
+            moedas_ganhas=moedas,
+            streak_na_hora=streak,
+            bonus_streak=bonus_streak,
+            observacao=observacao,
+        )
+        db.add(execucao)
     db.flush()
 
     # Level-up

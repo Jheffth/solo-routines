@@ -292,6 +292,30 @@ def repeticao_tetos(db=None) -> dict:
     }
 
 
+def xp_acumulado_repeticao(n, xp_por_clique, pago_por_outros=0, db=None) -> int:
+    """
+    Quanto DEVEM ter pago, no total, `n` cliques desta rotina hoje.
+
+    Função pura de `n` — e é por isso que ela existe. O endpoint não
+    soma nem subtrai XP: ele calcula quanto o total DEVERIA ser e move
+    a diferença. Somar no `+` e subtrair no `−` parece igual e não é:
+    um clique que pagou 1 por bater o teto seria devolvido como 3, e a
+    conta iria descolando a cada desfazer.
+
+    Assim, desfazer é apenas recalcular com `n-1`. A operação vira
+    idempotente de graça: repetir a mesma chamada não muda nada, o que
+    importa num botão que o hunter vai apertar rápido.
+
+    `pago_por_outros` é o que as OUTRAS rotinas do mesmo contador já
+    pagaram hoje — o teto é por contador, nunca global, porque as
+    missões podem ser de categorias diferentes.
+    """
+    t = repeticao_tetos(db)
+    por_clique = max(0, min(int(xp_por_clique or 0), t["por_clique"]))
+    resta = max(0, t["por_dia"] - max(0, int(pago_por_outros or 0)))
+    return min(max(0, int(n or 0)) * por_clique, resta)
+
+
 def xp_da_repeticao(xp_por_clique, ja_pago_hoje, db=None) -> int:
     """Quanto ESTA repetição paga, agora, respeitando os dois tetos.
 
