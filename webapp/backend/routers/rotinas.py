@@ -44,6 +44,12 @@ class RotinaCreate(BaseModel):
     hora_inicio:       Optional[str]       = None   # "HH:MM" janela de execução
     hora_fim:          Optional[str]       = None   # "HH:MM" prazo da janela
     natureza:          Optional[str]       = None   # ATIVA | PASSIVA (premium)
+    # ROTINA DE REPETICOES. `alvo_repeticoes` e o que separa os dois modos:
+    # com alvo existe "cumprir" (META), sem alvo existe so "registrar" (BONUS).
+    alvo_repeticoes:   Optional[int]       = None
+    contador_id:       Optional[int]       = None
+    xp_por_repeticao:  Optional[int]       = None
+    intervalo_min_seg: Optional[int]       = None
 
 
 class RotinaUpdate(BaseModel):
@@ -65,9 +71,31 @@ class RotinaUpdate(BaseModel):
     hora_inicio:       Optional[str]       = None
     hora_fim:          Optional[str]       = None
     natureza:          Optional[str]       = None
+    alvo_repeticoes:   Optional[int]       = None
+    contador_id:       Optional[int]       = None
+    xp_por_repeticao:  Optional[int]       = None
+    intervalo_min_seg: Optional[int]       = None
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
+def _contador_valido(db, usuario, contador_id):
+    """
+    Um contador so pode ser atrelado pelo dono. Sem esta checagem, mandar
+    um `contador_id` qualquer faria uma rotina somar no balde de outro
+    hunter — e o outro veria o total subir sem nenhuma rotina sua ter
+    mexido, que e o tipo de bug que ninguem consegue relatar.
+
+    Devolve None em vez de erro: rotina sem contador e um caso legitimo
+    (ela conta so o dia), entao um id invalido degrada para isso.
+    """
+    if not contador_id:
+        return None
+    from database import Contador
+    c = db.query(Contador).filter(Contador.id == int(contador_id),
+                                  Contador.usuario_id == usuario.id).first()
+    return c.id if c else None
+
+
 def _calcular_xp(tipo: str, prioridade: str, dificuldade: str) -> int:
     base       = _XP_TIPO.get(tipo, 50)
     mult       = _MULT_DIFIC.get(dificuldade, 1.0)
@@ -113,6 +141,9 @@ def _rotina_to_dict(r: Rotina, exec_dia: "ExecucaoDia | None" = None,
         "penalidade_xp":    getattr(r, "penalidade_xp", 0),
         "hora_inicio":      getattr(r, "hora_inicio", None),
         "hora_fim":         getattr(r, "hora_fim",    None),
+        "alvo_repeticoes":  getattr(r, "alvo_repeticoes", None),
+        "contador_id":      getattr(r, "contador_id", None),
+        "xp_por_repeticao": getattr(r, "xp_por_repeticao", None),
         "ativo":            r.ativo,
         "ultima_execucao":  r.ultima_execucao.isoformat() if r.ultima_execucao else None,
         "criado_em":        r.criado_em.isoformat() if r.criado_em else None,
@@ -129,6 +160,9 @@ def _rotina_to_dict(r: Rotina, exec_dia: "ExecucaoDia | None" = None,
         "xp_ganho_hoje":    ed.xp_ganho      if ed else 0,
         "xp_perdido_hoje":  ed.xp_perdido    if ed else 0,
         "moedas_hoje":      ed.moedas_ganhas if ed else 0,
+        # A CONTAGEM DO DIA. Sem ela o cartao de repeticao nasce em 0 a cada
+        # recarga, e o hunter perde o que fez ao trocar de aba.
+        "repeticoes":       (ed.repeticoes if ed else 0) or 0,
 
         # Retrocompat com exec_hoje (Execucao histórica)
         "exec_hoje": {
@@ -332,6 +366,21 @@ def criar_rotina(
     except Exception: pass
     try: rotina.hora_fim      = payload.hora_fim
     except Exception: pass
+
+    # ROTINA DE REPETICOES. O `xp_por_repeticao` passa pelo teto da Balanca
+    # AQUI, na entrada: guardar 500 e limitar so na hora de pagar deixaria o
+    # numero mentiroso no lancador e no cartao.
+    if natureza == especiais.REPETICAO:
+        alvo = payload.alvo_repeticoes
+        try: rotina.alvo_repeticoes = int(alvo) if alvo and int(alvo) > 0 else None
+        except Exception: rotina.alvo_repeticoes = None
+        try: rotina.contador_id = _contador_valido(db, usuario, payload.contador_id)
+        except Exception: rotina.contador_id = None
+        teto = economia.repeticao_tetos(db)["por_clique"]
+        try: rotina.xp_por_repeticao = max(0, min(int(payload.xp_por_repeticao or 1), teto))
+        except Exception: rotina.xp_por_repeticao = 1
+        try: rotina.intervalo_min_seg = max(0, int(payload.intervalo_min_seg or 0)) or None
+        except Exception: rotina.intervalo_min_seg = None
 
     db.add(rotina)
     db.commit()

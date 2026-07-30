@@ -24,13 +24,31 @@ const ForjaMissao = {
 
   /* NATUREZA — a inversão. Só aparece para quem tem permissão, e só na
      Rotina: um protocolo que vale uma vez só não é protocolo. */
+  /* A PASSIVA é da Staff; a REPETIÇÃO é de todo mundo.
+
+     Por isso o bloco inteiro deixou de depender de `_podeEspeciais`:
+     esconder a natureza para o hunter comum esconderia junto uma opção
+     que ele PODE usar. Agora o bloco aparece sempre (em rotina) e é a
+     opção PASSIVA que some — a permissão é por item, não por bloco. */
   NATUREZAS: [
-    { id: 'ATIVA',   ico: 'ativa',   txt: 'Ativa',   cor: '#8b5cf6',
+    { id: 'ATIVA',     ico: 'ativa',     txt: 'Ativa',     cor: '#8b5cf6',
       sub: 'você cumpre' },
-    { id: 'PASSIVA', ico: 'passiva', txt: 'Passiva', cor: '#6366f1',
-      sub: 'você mantém' },
+    { id: 'REPETICAO', ico: 'repeticao', txt: 'Repetições', cor: '#0ea5e9',
+      sub: 'você acumula' },
+    { id: 'PASSIVA',   ico: 'passiva',   txt: 'Passiva',   cor: '#6366f1',
+      sub: 'você mantém', premium: true },
+  ],
+  _naturezas() {
+    return this.NATUREZAS.filter(n => !n.premium || this._podeEspeciais);
+  },
+  REP_MODOS: [
+    { id: 'META',  ico: 'concluida',  txt: 'Meta',  cor: '#0ea5e9',
+      sub: 'tem um número para bater' },
+    { id: 'BONUS', ico: 'repeticao', txt: 'Livre', cor: '#22d3ee',
+      sub: 'conta sem fim' },
   ],
   _podeEspeciais: false,
+  _contadores: null,
   FREQUENCIAS: [
     { id: 'DIARIA',  ico: 'diaria', txt: 'Diária'  },
     { id: 'SEMANAL', ico: 'semanal', txt: 'Semanal' },
@@ -119,6 +137,8 @@ const ForjaMissao = {
       data_prevista: hoje,
       prazo_custom: false, prazo_valor: 30, prazo_unidade: 60,   // 30 × 60 = meia hora
       xp: null, mc: null, pen: null, auto: true, descricao: '',
+      rep_modo: 'META', alvo_repeticoes: '', contador_id: null,
+      xp_por_repeticao: 1, contador_novo: '',
     };
 
     if (ed) this._carregarEdicao(ed, opts.tipo);
@@ -144,11 +164,169 @@ const ForjaMissao = {
     } catch (_) {
       this._podeEspeciais = false;    // na dúvida, não oferece
     }
+    // O BLOCO NÃO DEPENDE MAIS DA PERMISSÃO — só a opção PASSIVA depende.
+    // Antes, esconder o bloco para o hunter comum escondia junto a
+    // REPETIÇÃO, que ele pode usar. A permissão passou a ser por item.
     const bloco = document.getElementById('fm-bloco-natureza');
-    if (bloco) {
-      bloco.style.display =
-        (this._podeEspeciais && this._estado.tipo === 'ROTINA') ? '' : 'none';
+    if (bloco) bloco.style.display = this._estado.tipo === 'ROTINA' ? '' : 'none';
+    this._repintarNaturezas();
+  },
+
+  /* Redesenha as opções de natureza depois que o servidor respondeu.
+     Sem isto, quem TEM permissão abriria o lançador sem a Passiva —
+     ela chegaria só na segunda abertura. */
+  _repintarNaturezas() {
+    const alvo = document.querySelector('#fm-bloco-natureza .fm-opcoes');
+    if (!alvo || !this._podeEspeciais) return;
+    if (alvo.querySelector('[data-fm-valor="PASSIVA"]')) return;
+    const o = this.NATUREZAS.find(n => n.id === 'PASSIVA');
+    alvo.insertAdjacentHTML('beforeend', `
+      <div class="fm-op ${this._estado.natureza === o.id ? 'sel' : ''}"
+           style="--op-cor:${o.cor}"
+           data-fm-campo="natureza" data-fm-valor="${o.id}">
+        <span class="ico">${this._ico(o.ico)}</span>
+        <span class="txt">${o.txt}</span>
+        <span class="sub">${o.sub}</span>
+      </div>`);
+  },
+
+  /* "Criar contador" cria de verdade, e so na hora de salvar.
+
+     Criar no clique deixaria contadores orfaos toda vez que o hunter
+     abrisse o lancador, mudasse de ideia e fechasse — e um contador
+     vazio na lista e ruido permanente, porque arquivar e o unico jeito
+     de tirar. */
+  async _resolverContador() {
+    const e = this._estado;
+    if (e.contador_id === 'novo') {
+      const nome = (this._resolverTitulo(e.titulo, e.alvo_repeticoes) || '').trim();
+      if (!nome) return null;
+      try {
+        const c = await API.post('/contadores', { nome: nome.slice(0, 80) });
+        return c?.id ?? null;
+      } catch (_) { return null; }
     }
+    return Number.isFinite(e.contador_id) ? e.contador_id : null;
+  },
+
+  /* ── O TOKEN {n} ──────────────────────────────────────────
+
+     "Responder {n} questões de História" com alvo 5 vira "Responder
+     5 questões de História".
+
+     TRÊS DECISÕES, e todas foram no sentido de cobrar menos:
+
+     · A PRÉVIA É OBRIGATÓRIA. É a primeira sintaxe que este app pede
+       ao hunter. Sem ver o resultado ele não confia — e com razão.
+
+     · O {n} É OPCIONAL. Quem não quiser escreve o número na mão e o
+       Sistema não reclama. A variável é um ganho para quem muda o
+       alvo depois, não um imposto para quem nunca vai mudar.
+
+     · A RESOLUÇÃO ACONTECE NO TÍTULO SALVO, não na exibição. Guardar
+       "{n}" e resolver toda vez que o cartão desenha espalharia a
+       sintaxe pelo app inteiro — o Extrato, a busca, a notificação do
+       bot, a futura guilda, todos teriam que conhecê-la. O lançador
+       é o único lugar onde ela precisa existir.
+
+     Aceita {n} e {N}, e não toca em mais nada entre chaves: quem
+     escrever "{5}" está escrevendo cinco entre chaves. */
+  TOKEN_N: /\{[nN]\}/g,
+
+  _resolverTitulo(titulo, alvo) {
+    const t = String(titulo || '');
+    if (!this.TOKEN_N.test(t)) { this.TOKEN_N.lastIndex = 0; return t; }
+    this.TOKEN_N.lastIndex = 0;
+    return t.replace(this.TOKEN_N, alvo ? String(alvo) : '__');
+  },
+
+  _previaTitulo() {
+    const el = document.getElementById('fm-rep-previa');
+    const e  = this._estado;
+    if (!el) return;
+
+    // O teto do XP por clique vem do servidor, não de um número
+    // digitado aqui — a Balança pode mudar sem tocar nesta tela.
+    const teto = document.getElementById('fm-rep-teto');
+    if (teto) {
+      const t = this._servidor?.repeticao?.por_clique ?? 3;
+      const d = this._servidor?.repeticao?.por_dia ?? 30;
+      const v = Math.min(e.xp_por_repeticao ?? 1, t);
+      teto.innerHTML = `máx <b>${t}</b> por clique · até <b>${d}</b> XP por dia`
+        + (((e.xp_por_repeticao ?? 1) > t)
+            ? ` <span class="fm-rep-corte">(vai valer ${v})</span>` : '');
+    }
+
+    this.TOKEN_N.lastIndex = 0;
+    const tem = this.TOKEN_N.test(e.titulo || '');
+    this.TOKEN_N.lastIndex = 0;
+
+    if (e.rep_modo !== 'META' || !tem) { el.innerHTML = ''; el.hidden = true; return; }
+    const esc = s => String(s).replace(/[&<>"]/g,
+      c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    el.hidden = false;
+    el.innerHTML = e.alvo_repeticoes
+      ? `<span class="fm-rep-seta">↳</span> ficará: <b>${esc(this._resolverTitulo(e.titulo, e.alvo_repeticoes))}</b>`
+      : `<span class="fm-rep-seta">↳</span> <i>informe o número acima para ver o título final</i>`;
+  },
+
+  /* ── OS CONTADORES ────────────────────────────────────────
+     "A sugestão de contador vem ANTES da lista": escolher entre trinta
+     é trabalho, confirmar uma sugestão é um olhar. */
+  async _consultarContadores() {
+    try { this._contadores = await API.get('/contadores') || []; }
+    catch (_) { this._contadores = []; }
+    this._pintarContadores();
+  },
+
+  /* Acha o contador cujo nome mais se parece com o título da missão.
+     Palavras de 4+ letras, sem acento — "Responder 5 questões de
+     História" acha "Questões" por causa de "questoes". */
+  _sugerirContador(titulo) {
+    const norm = s => (s || '').toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '');   // marcas de acento
+    const alvo = norm(titulo);
+    if (!alvo || !this._contadores?.length) return null;
+    let melhor = null, pontos = 0;
+    for (const c of this._contadores) {
+      const p = norm(c.nome).split(/\s+/)
+        .filter(w => w.length >= 4 && alvo.includes(w)).length;
+      if (p > pontos) { pontos = p; melhor = c; }
+    }
+    return pontos ? melhor : null;
+  },
+
+  _pintarContadores() {
+    const el = document.getElementById('fm-rep-contadores');
+    if (!el) return;
+    const e = this._estado;
+    const esc = s => String(s || '').replace(/[&<>"]/g,
+      c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+    if (this._contadores === null) { el.innerHTML = '<div class="fm-rep-vazio">carregando…</div>'; return; }
+
+    // A sugestão só age enquanto o hunter não escolheu nada. Depois
+    // disso, mudar o título não pode remexer na escolha dele.
+    if (e.contador_id === null && !e._contadorTocado) {
+      const s = this._sugerirContador(e.titulo);
+      if (s) e.contador_id = s.id;
+    }
+
+    const item = (id, txt, sub, sel, extra = '') =>
+      `<button type="button" class="fm-rep-item${sel ? ' sel' : ''}"
+               data-fm-contador="${id}" ${extra}>
+         <span class="fm-rep-item-nome">${esc(txt)}</span>
+         ${sub ? `<span class="fm-rep-item-sub">${esc(sub)}</span>` : ''}
+       </button>`;
+
+    el.innerHTML =
+      this._contadores.map(c => item(c.id, c.nome,
+        `${(c.total || 0).toLocaleString('pt-BR')} ${c.unidade || 'no total'}`,
+        e.contador_id === c.id)).join('')
+      + item('novo', '+ Criar contador', 'a partir do título desta missão',
+             e.contador_id === 'novo')
+      + item('', '— Nenhum', 'conta só o dia, sem acumular',
+             e.contador_id === null || e.contador_id === '');
   },
 
   /* "2026-07-25" no fuso LOCAL. toISOString() daria o dia UTC — que depois
@@ -186,6 +364,16 @@ const ForjaMissao = {
     } else {
       e.frequencia = ed.tipo || 'DIARIA';
       e.natureza = (ed.natureza || 'ATIVA').toUpperCase();
+    if (e.natureza === 'REPETICAO') {
+      const alvo = parseInt(ed.alvo_repeticoes, 10);
+      e.rep_modo = (Number.isFinite(alvo) && alvo > 0) ? 'META' : 'BONUS';
+      e.alvo_repeticoes = e.rep_modo === 'META' ? alvo : '';
+      e.contador_id = ed.contador_id ?? null;
+      e.xp_por_repeticao = ed.xp_por_repeticao ?? 1;
+      // Editar ja e ter decidido: a sugestao nao pode reescrever a
+      // escolha que o hunter fez quando criou.
+      e._contadorTocado = true;
+    }
       e.dias_semana = Array.isArray(ed.dias_semana) ? [...ed.dias_semana]
         : (typeof ed.dias_semana === 'string' && ed.dias_semana
             ? (() => { try { return JSON.parse(ed.dias_semana); } catch (_) { return []; } })()
@@ -303,11 +491,54 @@ const ForjaMissao = {
                  Nasce oculto e só aparece se o servidor autorizar
                  (_consultarEspeciais). Nunca decidimos isso pelo cargo que
                  temos em mãos: a permissão é do servidor. -->
-            <div class="fm-bloco fm-full" id="fm-bloco-natureza" style="display:none">
-              <div class="fm-rotulo">${gl("passiva", 14)} Natureza da missão
-                <span class="fm-selo-premium">Premium</span></div>
-              ${grupo('natureza', this.NATUREZAS, 2)}
+            <div class="fm-bloco fm-full" id="fm-bloco-natureza"
+                 ${e.tipo === 'TAREFA' ? 'style="display:none"' : ''}>
+              <div class="fm-rotulo">${gl("passiva", 14)} Natureza da missão</div>
+              ${grupo('natureza', this._naturezas(), 3)}
               <div class="fm-nota-natureza" id="fm-nota-natureza"></div>
+            </div>
+
+            <!-- REPETIÇÕES — só aparece quando a natureza é REPETICAO. -->
+            <div class="fm-bloco fm-full" id="fm-bloco-repeticao"
+                 ${e.natureza === 'REPETICAO' ? '' : 'style="display:none"'}>
+              <div class="fm-rotulo">${gl("repeticao", 14)} Como contar</div>
+              ${grupo('rep_modo', this.REP_MODOS, 2)}
+
+              <div id="fm-rep-meta" ${e.rep_modo === 'META' ? '' : 'style="display:none"'}>
+                <div class="fm-rep-linha">
+                  <label class="fm-rep-campo">
+                    <span class="fm-rep-lbl">Quantas vezes?</span>
+                    <input type="number" min="1" max="999" class="fm-input fm-input-mini"
+                           data-fm-alvo value="${e.alvo_repeticoes || ''}" placeholder="5">
+                  </label>
+                  <div class="fm-rep-dica">
+                    Escreva <code>{n}</code> no título e ele vira o número.
+                  </div>
+                </div>
+                <!-- A PRÉVIA É OBRIGATÓRIA. O token {n} é a primeira sintaxe
+                     que este app pede ao hunter; sem ver o resultado ele não
+                     confia, e com razão.
+                     (Sem crase aqui dentro: este HTML mora num template
+                     literal, e uma crase o fecharia no meio.) -->
+                <div class="fm-rep-previa" id="fm-rep-previa"></div>
+              </div>
+
+              <div id="fm-rep-bonus" ${e.rep_modo === 'BONUS' ? '' : 'style="display:none"'}>
+                <div class="fm-rep-linha">
+                  <label class="fm-rep-campo">
+                    <span class="fm-rep-lbl">XP por repetição</span>
+                    <input type="number" min="0" max="9" class="fm-input fm-input-mini"
+                           data-fm-xprep value="${e.xp_por_repeticao ?? 1}">
+                  </label>
+                  <div class="fm-rep-dica" id="fm-rep-teto"></div>
+                </div>
+              </div>
+
+              <div class="fm-rep-contador">
+                <div class="fm-rep-lbl">${gl("etiqueta", 12)} Contador
+                  <span class="fm-rep-sub">onde este número se acumula</span></div>
+                <div class="fm-rep-lista" id="fm-rep-contadores"></div>
+              </div>
             </div>
 
             <div class="fm-bloco fm-full" id="fm-bloco-data" ${e.tipo === 'TAREFA' ? '' : 'style="display:none"'}>
@@ -464,8 +695,25 @@ const ForjaMissao = {
           mostra('fm-bloco-prazo', t);
           // Protocolo que vale uma vez só não é protocolo: a natureza
           // passiva não existe para tarefa avulsa.
-          mostra('fm-bloco-natureza', !t && this._podeEspeciais);
+          mostra('fm-bloco-natureza', !t);
           if (t) this._estado.natureza = 'ATIVA';
+          mostra('fm-bloco-repeticao', !t && this._estado.natureza === 'REPETICAO');
+        }
+        if (op.dataset.fmCampo === 'natureza') {
+          const rep = this._estado.natureza === 'REPETICAO';
+          mostra('fm-bloco-repeticao', rep);
+          if (rep) {
+            // A lista só é buscada quando ela vai aparecer. Consultar na
+            // abertura seria uma requisição em toda missão criada, e a
+            // esmagadora maioria não é de repetição.
+            if (this._contadores === null) this._consultarContadores();
+            else this._pintarContadores();
+          }
+        }
+        if (op.dataset.fmCampo === 'rep_modo') {
+          mostra('fm-rep-meta',  this._estado.rep_modo === 'META');
+          mostra('fm-rep-bonus', this._estado.rep_modo === 'BONUS');
+          this._previaTitulo();
         }
         // A passiva EXIGE janela — é dela que sai o "das 16:00 às 05:00".
         // Marcar sozinho evita o erro do servidor num caminho que o hunter
@@ -491,6 +739,16 @@ const ForjaMissao = {
           this._agendarConsulta();
         }
         this._atualizar();
+        return;
+      }
+      const ct = ev.target.closest('[data-fm-contador]');
+      if (ct) {
+        const v = ct.dataset.fmContador;
+        this._estado.contador_id = v === '' ? null : (v === 'novo' ? 'novo' : parseInt(v, 10));
+        // A partir daqui a sugestao se cala. Ela ajuda quem nao decidiu;
+        // sobrescrever quem decidiu seria o app discordando do hunter.
+        this._estado._contadorTocado = true;
+        this._pintarContadores();
         return;
       }
       if (ev.target.closest('[data-fm-fechar]')) { this.fechar(); return; }
@@ -529,7 +787,26 @@ const ForjaMissao = {
 
     bd.addEventListener('input', (ev) => {
       const t = ev.target;
-      if (t.id === 'fm-titulo-input') { this._estado.titulo = t.value; this._atualizar(); return; }
+      if (t.id === 'fm-titulo-input') {
+        this._estado.titulo = t.value;
+        this._previaTitulo();
+        // A sugestao de contador segue o titulo — mas so ate o hunter
+        // escolher um. Depois disso, mexer no titulo nao pode remexer
+        // na escolha dele.
+        if (!this._estado._contadorTocado) this._pintarContadores();
+        this._atualizar(); return;
+      }
+      if (t.matches('[data-fm-alvo]')) {
+        const v = parseInt(t.value, 10);
+        this._estado.alvo_repeticoes = (Number.isFinite(v) && v > 0) ? v : '';
+        this._previaTitulo();
+        this._atualizar(); return;
+      }
+      if (t.matches('[data-fm-xprep]')) {
+        this._estado.xp_por_repeticao = Math.max(0, parseInt(t.value, 10) || 0);
+        this._previaTitulo();
+        this._atualizar(); return;
+      }
       if (t.matches('[data-fm-prazo-valor]')) {
         this._estado.prazo_valor = Math.max(1, parseInt(t.value, 10) || 1);
         this._atualizar();
@@ -718,6 +995,15 @@ const ForjaMissao = {
       return;
     }
 
+    // A META SEM NUMERO nao e meta: sem alvo o cartao nao sabe em quantos
+    // segmentos se dividir, e o servidor a trataria como BONUS — o hunter
+    // veria uma missao que nunca cumpre.
+    if (e.tipo === 'ROTINA' && e.natureza === 'REPETICAO' && e.rep_modo === 'META'
+        && !(parseInt(e.alvo_repeticoes, 10) > 0)) {
+      SoloDialog?.toast?.('Quantas vezes? A meta precisa de um numero.', 'error');
+      return;
+    }
+
     const btn = document.querySelector('[data-fm-salvar]');
     if (btn) btn.disabled = true;
     try {
@@ -740,6 +1026,18 @@ const ForjaMissao = {
           hora_fim:    e.janela ? (e.hora_fim || null) : null,
           natureza:    e.natureza || 'ATIVA',
         };
+
+        if (e.natureza === 'REPETICAO') {
+          const meta = e.rep_modo === 'META';
+          // O {n} e resolvido AQUI, uma vez, e o titulo salvo ja vai
+          // pronto. Guardar a sintaxe obrigaria o Extrato, a busca, o bot
+          // e a futura guilda a conhece-la.
+          payload.alvo_repeticoes = meta ? parseInt(e.alvo_repeticoes, 10) : null;
+          payload.titulo = this._resolverTitulo(payload.titulo,
+                                                payload.alvo_repeticoes);
+          payload.xp_por_repeticao = meta ? 0 : Math.max(0, e.xp_por_repeticao ?? 1);
+          payload.contador_id = await this._resolverContador();
+        }
         salvo = this._editId ? await API.rotinas.atualizar(this._editId, payload)
                              : await API.rotinas.criar(payload);
       } else {

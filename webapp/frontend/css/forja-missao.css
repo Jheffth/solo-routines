@@ -552,3 +552,72 @@
 /* O rótulo do bloco também alinha pelo centro do glifo. */
 .fm-rotulo, .fm-previa-lbl { line-height: 1.15; }
 .fm-rotulo svg, .fm-previa-lbl svg { flex: none; }
+
+/* ══════════════════════════════════════════════════════════════
+   BLOCO DA ROTINA DE REPETIÇÕES
+   ══════════════════════════════════════════════════════════════ */
+#fm-bloco-repeticao { --fm-rep: #0ea5e9; }
+
+.fm-rep-linha {
+  display: flex; align-items: flex-end; gap: 14px;
+  flex-wrap: wrap; margin-top: 10px;
+}
+.fm-rep-campo { display: flex; flex-direction: column; gap: 5px; }
+.fm-rep-lbl {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: .7rem; letter-spacing: .08em; text-transform: uppercase;
+  color: #94a3b8;
+}
+.fm-rep-sub {
+  text-transform: none; letter-spacing: 0;
+  font-size: .68rem; color: #64748b;
+}
+.fm-input-mini { width: 90px; text-align: center; font-variant-numeric: tabular-nums; }
+.fm-rep-dica { font-size: .74rem; color: #64748b; padding-bottom: 9px; }
+.fm-rep-dica b { color: color-mix(in srgb, var(--fm-rep) 80%, #e2e8f0); }
+.fm-rep-dica code {
+  padding: 1px 5px; border-radius: 4px;
+  background: color-mix(in srgb, var(--fm-rep) 15%, transparent);
+  color: color-mix(in srgb, var(--fm-rep) 90%, #ffffff);
+  font-size: .82em;
+}
+.fm-rep-corte { color: #f59e0b; }
+
+/* A PRÉVIA. Sem ela o {n} é sintaxe às cegas — e o hunter, com
+   razão, não confiaria numa chave que não sabe o que faz. */
+.fm-rep-previa {
+  margin-top: 9px; padding: 8px 12px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--fm-rep) 9%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--fm-rep) 32%, transparent);
+  font-size: .82rem; color: #94a3b8;
+}
+.fm-rep-previa[hidden] { display: none; }
+.fm-rep-previa b { color: color-mix(in srgb, var(--fm-rep) 88%, #ffffff); }
+.fm-rep-previa i { color: #64748b; }
+.fm-rep-seta { color: var(--fm-rep); margin-right: 4px; }
+
+.fm-rep-contador { margin-top: 16px; }
+.fm-rep-lista {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 8px; margin-top: 8px;
+}
+.fm-rep-item {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 9px 12px; text-align: left;
+  border-radius: 10px; cursor: pointer;
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(148,163,184,.18);
+  color: #cbd5e1;
+  transition: border-color .16s, background .16s;
+}
+.fm-rep-item:hover { border-color: color-mix(in srgb, var(--fm-rep) 45%, transparent); }
+.fm-rep-item.sel {
+  border-color: var(--fm-rep);
+  background: color-mix(in srgb, var(--fm-rep) 13%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--fm-rep) 22%, transparent);
+}
+.fm-rep-item-nome { font-size: .84rem; font-weight: 600; }
+.fm-rep-item-sub { font-size: .68rem; color: #64748b; }
+.fm-rep-item.sel .fm-rep-item-sub { color: color-mix(in srgb, var(--fm-rep) 55%, #94a3b8); }
+.fm-rep-vazio { font-size: .78rem; color: #64748b; padding: 8px 2px; }

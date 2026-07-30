@@ -155,4 +155,7 @@ def simular(tipo: str = "DIARIA", prioridade: str = "MEDIA",
     v = (economia.recompensa_tarefa(prioridade, dificuldade, categoria, db)
          if avulsa else
          economia.recompensa_rotina(tipo, prioridade, dificuldade, categoria, db))
-    return v
+    # Os tetos da repetição vêm juntos, pela mesma razão que o resto: o
+    # lançador precisa dizer "máx 3 por clique" sem ter esse 3 escrito
+    # nele. Assim a Balança pode mudar sem tocar na tela.
+    return {**v, "repeticao": economia.repeticao_tetos(db)}
