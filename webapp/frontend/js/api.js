@@ -204,8 +204,13 @@ class API {
   /* ── Execucoes ───────────────────────────────────────── */
   static execucoes = {
     concluirRotina: async (rotinaId) => API.post('/execucoes/rotina', { rotina_id: rotinaId }),
-    repetir:        async (rotinaId) => API.post('/execucoes/repetir', { rotina_id: rotinaId }),
-    desfazerRep:    async (rotinaId) => API.post('/execucoes/desfazer-repeticao', { rotina_id: rotinaId }),
+    // `avulsa` decide QUAL id viaja. As duas frentes usam o mesmo
+    // endpoint de proposito: o teto e o intervalo sao os mesmos, e
+    // duas rotas seriam duas chances de eles divergirem.
+    repetir:     async (id, avulsa = false) =>
+      API.post('/execucoes/repetir', avulsa ? { tarefa_id: id } : { rotina_id: id }),
+    desfazerRep: async (id, avulsa = false) =>
+      API.post('/execucoes/desfazer-repeticao', avulsa ? { tarefa_id: id } : { rotina_id: id }),
     historico:      async (periodo = 'semana') => API.get('/execucoes/historico?periodo=' + periodo),
     heatmap:        async () => API.get('/execucoes/heatmap'),
   };

@@ -167,8 +167,13 @@ const ForjaMissao = {
     // O BLOCO NÃO DEPENDE MAIS DA PERMISSÃO — só a opção PASSIVA depende.
     // Antes, esconder o bloco para o hunter comum escondia junto a
     // REPETIÇÃO, que ele pode usar. A permissão passou a ser por item.
-    const bloco = document.getElementById('fm-bloco-natureza');
-    if (bloco) bloco.style.display = this._estado.tipo === 'ROTINA' ? '' : 'none';
+    // A NATUREZA VALE PARA OS DOIS TIPOS. Ela estava presa a ROTINA por
+    // uma regra que eu mesmo inventei — "protocolo que vale uma vez so
+    // nao e protocolo" — e que confundia RECORRENCIA com NATUREZA.
+    //
+    // O Arquiteto desmontou em uma frase: um protocolo para a vespera de
+    // uma prova, um contador usado "vez ou outra". Sao missoes gerais, e
+    // recusa-las era o app decidindo pelo hunter o que ele quer registrar.
     this._repintarNaturezas();
   },
 
@@ -353,6 +358,7 @@ const ForjaMissao = {
     if (ehTarefa) {
       e.data_prevista = (ed.data_prevista || '').slice(0, 10) || e.data_prevista;
       if (ed.hora_limite) { e.janela = true; e.hora_fim = ed.hora_limite; }
+      if (ed.hora_inicio) { e.janela = true; e.hora_inicio = ed.hora_inicio; }
       if (ed.prazo_personalizado && ed.prazo_minutos) {
         e.prazo_custom = true;
         // Reapresenta na maior unidade inteira: 2880 vira "2 dias", não "2880 min".
@@ -491,8 +497,7 @@ const ForjaMissao = {
                  Nasce oculto e só aparece se o servidor autorizar
                  (_consultarEspeciais). Nunca decidimos isso pelo cargo que
                  temos em mãos: a permissão é do servidor. -->
-            <div class="fm-bloco fm-full" id="fm-bloco-natureza"
-                 ${e.tipo === 'TAREFA' ? 'style="display:none"' : ''}>
+            <div class="fm-bloco fm-full" id="fm-bloco-natureza">
               <div class="fm-rotulo">${gl("passiva", 14)} Natureza da missão</div>
               ${grupo('natureza', this._naturezas(), 3)}
               <div class="fm-nota-natureza" id="fm-nota-natureza"></div>
@@ -695,9 +700,8 @@ const ForjaMissao = {
           mostra('fm-bloco-prazo', t);
           // Protocolo que vale uma vez só não é protocolo: a natureza
           // passiva não existe para tarefa avulsa.
-          mostra('fm-bloco-natureza', !t);
-          if (t) this._estado.natureza = 'ATIVA';
-          mostra('fm-bloco-repeticao', !t && this._estado.natureza === 'REPETICAO');
+          // O bloco de natureza NAO some mais ao trocar para tarefa.
+          mostra('fm-bloco-repeticao', this._estado.natureza === 'REPETICAO');
         }
         if (op.dataset.fmCampo === 'natureza') {
           const rep = this._estado.natureza === 'REPETICAO';
@@ -989,7 +993,7 @@ const ForjaMissao = {
     // A passiva sem janela seria um protocolo que dura o dia todo e se cumpre
     // sozinho à meia-noite: XP de graça, todo dia. O servidor recusa; aqui a
     // mensagem explica o porquê antes da viagem.
-    if (e.tipo === 'ROTINA' && e.natureza === 'PASSIVA' && !(e.janela && e.hora_inicio && e.hora_fim)) {
+    if (e.natureza === 'PASSIVA' && !(e.janela && e.hora_inicio && e.hora_fim)) {
       SoloDialog?.toast?.('Missão passiva precisa da janela de horário — '
                         + 'é dela que sai o protocolo (ex.: 16:00 → 05:00).', 'error');
       return;
@@ -998,7 +1002,7 @@ const ForjaMissao = {
     // A META SEM NUMERO nao e meta: sem alvo o cartao nao sabe em quantos
     // segmentos se dividir, e o servidor a trataria como BONUS — o hunter
     // veria uma missao que nunca cumpre.
-    if (e.tipo === 'ROTINA' && e.natureza === 'REPETICAO' && e.rep_modo === 'META'
+    if (e.natureza === 'REPETICAO' && e.rep_modo === 'META'
         && !(parseInt(e.alvo_repeticoes, 10) > 0)) {
       SoloDialog?.toast?.('Quantas vezes? A meta precisa de um numero.', 'error');
       return;
@@ -1060,7 +1064,23 @@ const ForjaMissao = {
           // tabela — o servidor a recalcula e ignora qualquer outro pedido.
           prazo_minutos: e.prazo_custom
             ? Math.max(5, e.prazo_valor * e.prazo_unidade) : null,
+          // A NATUREZA VIAJA TAMBEM NA MISSAO GERAL. `hora_inicio` abre a
+          // janela da passiva; o `hora_limite` acima ja fechava. Nao criei
+          // um `hora_fim` novo aqui de proposito — duas colunas para o
+          // mesmo horario seriam duas verdades.
+          natureza: e.natureza || 'ATIVA',
+          hora_inicio: e.janela ? (e.hora_inicio || null) : null,
         };
+
+        if (e.natureza === 'REPETICAO') {
+          const meta = e.rep_modo === 'META';
+          payload.alvo_repeticoes = meta ? parseInt(e.alvo_repeticoes, 10) : null;
+          payload.titulo = this._resolverTitulo(payload.titulo,
+                                                payload.alvo_repeticoes);
+          payload.xp_por_repeticao = meta ? 0 : Math.max(0, e.xp_por_repeticao ?? 1);
+          payload.contador_id = await this._resolverContador();
+        }
+
         salvo = this._editId ? await API.tarefas.atualizar(this._editId, payload)
                              : await API.tarefas.criar(payload);
       }

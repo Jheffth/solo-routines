@@ -40,7 +40,7 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import date, timedelta
 
-from database import get_db, Contador, Rotina, ExecucaoDia, Usuario
+from database import get_db, Contador, Rotina, ExecucaoDia, TarefaDia, Usuario
 from auth.router import get_usuario_atual
 from motors import tempo
 
@@ -64,11 +64,26 @@ def _meu(db: Session, usuario: Usuario, contador_id: int) -> Contador:
 
 
 def total_de(db: Session, contador_id: int) -> int:
-    """Sem `usuario_id`. Ver o cabeçalho — é a porta da guilda."""
-    return int((db.query(func.sum(ExecucaoDia.repeticoes))
-                  .join(Rotina, Rotina.id == ExecucaoDia.rotina_id)
-                  .filter(Rotina.contador_id == contador_id)
-                  .scalar()) or 0)
+    """
+    O total do balde — DAS DUAS FRENTES.
+
+    Um contador é alimentado por rotinas (que têm instância diária) e
+    por missões gerais (que guardam a contagem em si mesmas). Somar só
+    uma metade daria um total que contradiz a lista de fontes logo
+    abaixo dele na tela — o tipo de erro que faz o hunter parar de
+    confiar no número.
+
+    Sem `usuario_id` em nenhuma das duas. Ver o cabeçalho: é a porta
+    da guilda.
+    """
+    das_rotinas = (db.query(func.sum(ExecucaoDia.repeticoes))
+                     .join(Rotina, Rotina.id == ExecucaoDia.rotina_id)
+                     .filter(Rotina.contador_id == contador_id)
+                     .scalar()) or 0
+    das_gerais = (db.query(func.sum(TarefaDia.repeticoes))
+                    .filter(TarefaDia.contador_id == contador_id)
+                    .scalar()) or 0
+    return int(das_rotinas) + int(das_gerais)
 
 
 def _resumo(db: Session, c: Contador) -> dict:
@@ -135,6 +150,15 @@ def detalhe(contador_id: int, db: Session = Depends(get_db),
                 .group_by(ExecucaoDia.data).all())
     por_dia = {d: int(n or 0) for d, n in linhas}
 
+    # AS MISSOES GERAIS entram pelo dia previsto delas. Sem isto, o
+    # grafico e a "melhor dia" contariam so metade do balde enquanto o
+    # total ao lado contaria tudo — dois numeros brigando na mesma tela.
+    for d, n in (db.query(TarefaDia.data_prevista, func.sum(TarefaDia.repeticoes))
+                   .filter(TarefaDia.contador_id == c.id, TarefaDia.repeticoes > 0)
+                   .group_by(TarefaDia.data_prevista).all()):
+        if d:
+            por_dia[d] = por_dia.get(d, 0) + int(n or 0)
+
     total   = sum(por_dia.values())
     dias    = len(por_dia)
     melhor  = max(por_dia.values()) if por_dia else 0
@@ -155,6 +179,14 @@ def detalhe(contador_id: int, db: Session = Depends(get_db),
             "rotina_id": r.id, "titulo": r.titulo, "n": n,
             "modo": "META" if (r.alvo_repeticoes or 0) > 0 else "BONUS",
             "arquivada": not r.ativo,
+        })
+    for t in (db.query(TarefaDia)
+                .filter(TarefaDia.contador_id == c.id).all()):
+        fontes.append({
+            "tarefa_id": t.id, "titulo": t.titulo, "n": int(t.repeticoes or 0),
+            "modo": "META" if (t.alvo_repeticoes or 0) > 0 else "BONUS",
+            "avulsa": True,
+            "arquivada": t.status == "CANCELADA",
         })
     fontes.sort(key=lambda f: -f["n"])
 

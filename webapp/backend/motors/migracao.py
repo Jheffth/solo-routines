@@ -77,6 +77,25 @@ COLUNAS = [
     ("rotinas",      "natureza",           "VARCHAR(20) NOT NULL DEFAULT 'ATIVA'",
                                             "VARCHAR(20) NOT NULL DEFAULT 'ATIVA'"),
     ("execucao_dia", "confessada_em",      "DATETIME",                    "TIMESTAMP"),
+    # AS NATUREZAS NA MISSAO GERAL. A passiva e a repeticao existiam so em
+    # rotina, por uma regra que eu mesmo inventei ("protocolo de um dia so
+    # nao e protocolo") e que confundia RECORRENCIA com NATUREZA. Sao eixos
+    # independentes: com que frequencia a missao aparece, e de que jeito ela
+    # se cumpre.
+    #
+    # A contagem mora na propria tarefa porque a missao geral acontece uma
+    # vez — ela nao tem instancia diaria onde guardar o numero.
+    ("tarefas_dia",  "natureza",           "VARCHAR(20) NOT NULL DEFAULT 'ATIVA'",
+                                            "VARCHAR(20) NOT NULL DEFAULT 'ATIVA'"),
+    ("tarefas_dia",  "hora_inicio",        "VARCHAR(5)",                  "VARCHAR(5)"),
+    ("tarefas_dia",  "confessada_em",      "DATETIME",                    "TIMESTAMP"),
+    ("tarefas_dia",  "alvo_repeticoes",    "INTEGER",                     "INTEGER"),
+    ("tarefas_dia",  "contador_id",        "INTEGER",                     "INTEGER"),
+    ("tarefas_dia",  "xp_por_repeticao",   "INTEGER",                     "INTEGER"),
+    ("tarefas_dia",  "intervalo_min_seg",  "INTEGER",                     "INTEGER"),
+    ("tarefas_dia",  "repeticoes",         "INTEGER NOT NULL DEFAULT 0",  "INTEGER NOT NULL DEFAULT 0"),
+    ("tarefas_dia",  "xp_repeticao_pago",  "INTEGER NOT NULL DEFAULT 0",  "INTEGER NOT NULL DEFAULT 0"),
+    ("tarefas_dia",  "ultima_repeticao_em","DATETIME",                    "TIMESTAMP"),
 
     # REPETICAO — a missao que conta em vez de concluir.
     #

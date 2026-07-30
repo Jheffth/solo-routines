@@ -8,7 +8,8 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import date, datetime
 from motors import tempo
-from motors import economia, prazos
+from motors import economia, prazos, especiais
+from routers.rotinas import _contador_valido
 
 from database import get_db, TarefaDia, Usuario
 from auth.router import get_usuario_atual
@@ -36,6 +37,15 @@ class TarefaCreate(BaseModel):
     # prioridade e dificuldade. Se prazo maior pagasse mais, criar missões de
     # um ano viraria a nova porta do exploit de 999.999 XP.
     prazo_minutos: Optional[int] = None
+    # AS NATUREZAS NA MISSAO GERAL. Um protocolo para a vespera de uma
+    # prova e um contador usado "vez ou outra" sao missoes gerais, nao
+    # rotinas — recorrencia e natureza sao eixos independentes.
+    natureza: Optional[str] = None            # ATIVA | PASSIVA | REPETICAO
+    hora_inicio: Optional[str] = None         # janela da passiva
+    alvo_repeticoes: Optional[int] = None
+    contador_id: Optional[int] = None
+    xp_por_repeticao: Optional[int] = None
+    intervalo_min_seg: Optional[int] = None
 
 
 class TarefaUpdate(BaseModel):
@@ -51,6 +61,12 @@ class TarefaUpdate(BaseModel):
     moedas_recompensa: Optional[int] = None
     penalidade_xp: Optional[int] = None
     prazo_minutos: Optional[int] = None
+    natureza: Optional[str] = None
+    hora_inicio: Optional[str] = None
+    alvo_repeticoes: Optional[int] = None
+    contador_id: Optional[int] = None
+    xp_por_repeticao: Optional[int] = None
+    intervalo_min_seg: Optional[int] = None
 
 
 def _tarefa_to_dict(t: TarefaDia) -> dict:
@@ -73,6 +89,20 @@ def _tarefa_to_dict(t: TarefaDia) -> dict:
         "prazo_personalizado": bool(getattr(t, "prazo_personalizado", False)),
         "iniciada_em":       t.iniciada_em.isoformat() if getattr(t, "iniciada_em", None) else None,
         "concluida_em":      t.concluida_em.isoformat() if t.concluida_em else None,
+        # AS NATUREZAS. O cartao le exatamente estes nomes — sao os mesmos
+        # da rotina de proposito: um so componente desenha os dois, e a
+        # missao geral nao vira um segundo dialeto.
+        "natureza":          getattr(t, "natureza", "ATIVA") or "ATIVA",
+        "hora_inicio":       getattr(t, "hora_inicio", None),
+        # `hora_fim` NAO e coluna nova: a missao geral ja tinha o
+        # `hora_limite`, e e ele que fecha a janela. Duplicar seria criar
+        # duas verdades sobre o mesmo horario.
+        "hora_fim":          t.hora_limite,
+        "confessada_em":     t.confessada_em.isoformat() if getattr(t, "confessada_em", None) else None,
+        "alvo_repeticoes":   getattr(t, "alvo_repeticoes", None),
+        "contador_id":       getattr(t, "contador_id", None),
+        "xp_por_repeticao":  getattr(t, "xp_por_repeticao", None),
+        "repeticoes":        (getattr(t, "repeticoes", 0) or 0),
     }
 
 
@@ -171,6 +201,29 @@ def criar_tarefa(
                 tarefa.prazo_minutos = valores["prazo_minutos"]
     except Exception:
         pass
+
+    # ── A NATUREZA ──────────────────────────────────────────────────
+    natureza = especiais.normalizar(payload.natureza)
+    if not especiais.pode_criar(usuario, natureza):
+        raise HTTPException(403, "Missoes especiais sao exclusivas da Staff por enquanto.")
+
+    # A PASSIVA EXIGE JANELA, aqui como na rotina. Sem ela seria um
+    # protocolo que dura o dia todo e se cumpre sozinho a meia-noite:
+    # XP de graca. A missao geral ja tinha `hora_limite` para o fim —
+    # so faltava o inicio.
+    if natureza == especiais.PASSIVA and not (payload.hora_inicio and payload.hora_limite):
+        raise HTTPException(400, "Missao passiva exige janela de horario: "
+                                 "ela vale de um horario a outro.")
+    tarefa.natureza = natureza
+    tarefa.hora_inicio = payload.hora_inicio
+
+    if natureza == especiais.REPETICAO:
+        alvo = payload.alvo_repeticoes
+        tarefa.alvo_repeticoes = int(alvo) if alvo and int(alvo) > 0 else None
+        tarefa.contador_id = _contador_valido(db, usuario, payload.contador_id)
+        teto = economia.repeticao_tetos(db)["por_clique"]
+        tarefa.xp_por_repeticao = max(0, min(int(payload.xp_por_repeticao or 1), teto))
+        tarefa.intervalo_min_seg = max(0, int(payload.intervalo_min_seg or 0)) or None
 
     db.add(tarefa)
     db.commit()

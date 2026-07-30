@@ -298,18 +298,12 @@ const MissaoCard = {
      energia parada — que é o que um protocolo é.
      ══════════════════════════════════════════════════════════ */
   _vigilia(m, chave) {
-    // "Em vigor" quer dizer coisas diferentes nas duas naturezas, e é
-    // por isso que a conta mora aqui e não no chamador:
-    //   PASSIVA    a janela está aberta (16:00 → 05:00)
-    //   REPETIÇÃO  ainda há o que fazer. Uma meta cumprida apaga a
-    //              moldura — o cartão para de pedir atenção, que é o
-    //              prêmio de ter acabado. No modo BÔNUS ela nunca
-    //              apaga: não existe acabar.
-    const vivo = m.status !== 'CONCLUIDA' && m.status !== 'CANCELADA';
-    const vigor = this._ehRepeticao(m)
-      ? (() => { const a = this._alvoDe(m);
-                 return a === null ? true : (vivo && this._feitas(m) < a); })()
-      : (this._emVigor(m) && vivo);
+    // EXCLUSIVA DA PASSIVA. Houve uma versão em que a repetição usava
+    // esta mesma moldura — "mesma família", escrevi. O Arquiteto
+    // reportou, e tinha razão: família não é o mesmo rosto. Duas
+    // naturezas com a mesma animação não são parentes, são
+    // indistinguíveis. A repetição tem a sua em `_contagem()`.
+    const vigor = this._emVigor(m) && m.status !== 'CONCLUIDA' && m.status !== 'CANCELADA';
     return `
       <svg class="mc-vigia${vigor ? ' em-vigor' : ''}" data-mc-vigia="${chave}"
            aria-hidden="true" preserveAspectRatio="none" style="max-width:none">
@@ -374,6 +368,50 @@ const MissaoCard = {
   _feitas(m) {
     const n = parseInt(m?.repeticoes, 10);
     return Number.isFinite(n) && n > 0 ? n : 0;
+  },
+
+  /* ── A MOLDURA DA CONTAGEM ────────────────────────────────
+
+     A repetição usava a moldura da passiva. O Arquiteto reportou, e o
+     erro era de raciocínio, não de código: eu tratei "as duas são
+     missões que não se concluem apertando um botão" como se fosse
+     parentesco visual. Não é. Duas naturezas com a mesma animação não
+     parecem primas — parecem a mesma coisa.
+
+     Elas contam coisas OPOSTAS, e o desenho tem que dizer isso:
+
+       PASSIVA     o tempo passa sozinho. Traço denso e uniforme,
+                   deslizando LINEAR, mais um cometa que dá a volta.
+                   Fluxo contínuo — nada acontece, e é esse o ponto.
+
+       REPETIÇÃO   alguém está contando. Ticks esparsos como marcas
+                   numa parede, avançando em PASSOS DISCRETOS
+                   (`steps()`), como um contador mecânico batendo. E
+                   no modo META a própria borda é a barra: ela CRESCE
+                   a cada clique e fica onde está — o movimento vem do
+                   hunter, não do relógio.
+
+     Nenhuma classe, nenhum keyframe e nenhum `dasharray` é
+     compartilhado com a vigília. O teste verifica isso. */
+  _contagem(m, chave) {
+    const alvo   = this._alvoDe(m);
+    const feitas = this._feitas(m);
+    const vivo   = m.status !== 'CONCLUIDA' && m.status !== 'CANCELADA';
+    // A meta cumprida PARA de contar: o cartão deixa de pedir atenção,
+    // que é o prêmio de ter acabado. O bônus nunca para — não há fim.
+    const contando = alvo === null ? true : (vivo && feitas < alvo);
+    const pct = alvo ? Math.max(0, Math.min(100, (feitas / alvo) * 100)) : 0;
+
+    return `
+      <svg class="mc-conta${contando ? ' contando' : ''}${alvo !== null ? ' com-alvo' : ''}"
+           data-mc-conta="${chave}" aria-hidden="true"
+           preserveAspectRatio="none" style="max-width:none">
+        <rect class="mc-conta-halo"   x="1" y="1" rx="13" pathLength="100"/>
+        <rect class="mc-conta-trilho" x="1" y="1" rx="13" pathLength="100"/>
+        ${alvo !== null ? `
+        <rect class="mc-conta-arco" x="1" y="1" rx="13" pathLength="100"
+              data-mc-conta-arco style="stroke-dasharray:${pct.toFixed(2)} 100"/>` : ''}
+      </svg>`;
   },
 
   /* ── OS SEGMENTOS, e o problema dos 100 pulinhos ──────────
@@ -1008,7 +1046,7 @@ const MissaoCard = {
          data-mc-sig="${this.assinatura(m, opts)}"
          style="--mc-cor:${cor};--mc-cor-suave:${this._alpha(cor, .14)}">
       <div class="mc-fio"></div>
-      ${passiva || repet ? this._vigilia(m, chave) : ''}
+      ${repet ? this._contagem(m, chave) : (passiva ? this._vigilia(m, chave) : '')}
       ${this._corrente(status)}
       ${this._sigilo(cor, m.categoria)}
       <div class="mc-corpo">
@@ -1324,6 +1362,82 @@ const MissaoCard = {
     }
   },
 
+  /* ── REPINTAR A CONTAGEM SEM REFAZER O CARTÃO ─────────────
+
+     `repintar()` troca o nó inteiro por `outerHTML`. Isso é certo
+     quando a cara do cartão muda — e é EXATAMENTE errado aqui.
+
+     Uma transição CSS só roda se o elemento SOBREVIVER à mudança. Um
+     nó recém-criado já nasce no valor final: o arco apareceria no
+     tamanho novo em vez de crescer, e os segmentos acenderiam secos.
+     Eu teria entregue as duas animações mortas sem perceber, porque
+     nada quebra — só não acontece.
+
+     É o mesmo princípio que o projeto já usa no cronômetro: quem
+     muda a cada segundo escreve NO NÓ EXISTENTE. Aqui vale para o
+     clique, que é o momento em que o hunter está olhando.
+
+     A `assinatura()` continua contendo a contagem, e deve continuar:
+     uma leitura vinda do servidor tem mesmo que repintar. Este
+     caminho é só o do clique local.
+
+     Devolve `false` quando não dá para ser cirúrgico — o chamador
+     cai no repintar inteiro. */
+  _repintarContagem(chave) {
+    const m  = this._cache?.[chave];
+    const el = document.querySelector(`[data-mc-card="${chave}"]`);
+    if (!m || !el || !this._ehRepeticao(m)) return false;
+
+    const alvo   = this._alvoDe(m);
+    const feitas = this._feitas(m);
+    const vivo   = m.status !== 'CONCLUIDA' && m.status !== 'CANCELADA';
+    const contando = alvo === null ? true : (vivo && feitas < alvo);
+
+    // A MOLDURA. Trocar a classe é o que dispara o brilho de "fechou".
+    const moldura = el.querySelector('.mc-conta');
+    if (moldura) moldura.classList.toggle('contando', contando);
+
+    const arco = el.querySelector('[data-mc-conta-arco]');
+    if (arco && alvo) {
+      const pct = Math.max(0, Math.min(100, (feitas / alvo) * 100));
+      arco.style.strokeDasharray = `${pct.toFixed(2)} 100`;
+    }
+
+    if (alvo !== null) {
+      const { n, porBloco } = this._segmentos(alvo);
+      const segs = el.querySelectorAll('.mc-rep-seg');
+      if (segs.length !== n) return false;      // mudou o agrupamento: refaz
+      const capado = Math.min(feitas, alvo);
+      segs.forEach((s, i) => {
+        const cheio = Math.max(0, Math.min(1, (capado - i * porBloco) / porBloco));
+        s.style.setProperty('--p', (cheio * 100).toFixed(1) + '%');
+        s.classList.toggle('cheio', cheio >= 1);
+        s.classList.toggle('meio', cheio > 0 && cheio < 1);
+      });
+      const cont = el.querySelector('[data-mc-rep-conta]');
+      if (cont) cont.innerHTML = `<b>${capado}</b>/${alvo}`;
+      el.querySelector('.mc-rep')?.classList.toggle('mc-rep-pleno', feitas >= alvo);
+    } else {
+      const num = el.querySelector('[data-mc-rep-conta]');
+      if (num) num.textContent = String(feitas);
+      const unid = el.querySelector('.mc-cont-unid');
+      if (unid && !(m.unidade_contador || m.unidade))
+        unid.textContent = (feitas === 1 ? 'vez' : 'vezes') + ' hoje';
+      const tot = el.querySelector('.mc-cont-total b');
+      const t = parseInt(m.total_contador, 10);
+      if (tot && Number.isFinite(t)) tot.textContent = t.toLocaleString('pt-BR');
+    }
+
+    // Os botões SÃO html — o `−` nasce e morre conforme a contagem.
+    // Refazer só esta caixa não mata as transições do miolo.
+    const status = m.status_hoje || m.status || 'PENDENTE';
+    el.querySelectorAll('.mc-acoes').forEach(cx => {
+      cx.innerHTML = this._acoes(status, chave, m);
+    });
+    el.dataset.mcSig = this.assinatura(m, this._render_opts?.[chave] || {});
+    return true;
+  },
+
   /* ── O CLIQUE QUE CONTA ───────────────────────────────────
 
      Este é o único botão do app feito para ser apertado DEPRESSA:
@@ -1343,7 +1457,9 @@ const MissaoCard = {
      O DEMO NÃO CHAMA A API. Na Forja o cartão é amostra: contar
      de verdade ali criaria XP a partir de uma vitrine. */
   async _repetir(chave, btn, passo) {
-    const { m, id } = this._rota(chave);
+    // A MISSAO GERAL conta na propria tarefa; a rotina, na execucao do
+    // dia. Quem sabe disso e o servidor — daqui so sai QUAL das duas.
+    const { m, id, tarefa } = this._rota(chave);
     const alvo   = this._alvoDe(m);
     const antes  = this._feitas(m);
     const antesT = m.total_contador;
@@ -1352,25 +1468,29 @@ const MissaoCard = {
     m.repeticoes = Math.max(0, antes + passo);
     if (Number.isFinite(parseInt(m.total_contador, 10)))
       m.total_contador = Math.max(0, parseInt(m.total_contador, 10) + passo);
-    this.repintar(chave);
+    // CIRURGICO, para as transicoes sobreviverem — ver o porque em
+    // `_repintarContagem`. O repintar inteiro fica de reserva.
+    if (!this._repintarContagem(chave)) this.repintar(chave);
 
     if (this._demo) return;
 
     if (!Number.isFinite(Number(id))) {
-      m.repeticoes = antes; m.total_contador = antesT; this.repintar(chave);
+      m.repeticoes = antes; m.total_contador = antesT;
+      if (!this._repintarContagem(chave)) this.repintar(chave);
       SoloDialog?.toast?.('Não consegui identificar a missão — recarregue a lista.', 'error');
       return;
     }
 
     try {
-      const resp = passo > 0 ? await API.execucoes.repetir(id)
-                             : await API.execucoes.desfazerRep(id);
+      const resp = passo > 0 ? await API.execucoes.repetir(id, tarefa)
+                             : await API.execucoes.desfazerRep(id, tarefa);
       // O SERVIDOR É A VERDADE. Ele pode discordar do palpite otimista
       // — teto batido, intervalo, outra aba contando junto — e quando
       // discorda é ele que vale.
       if (resp && typeof resp.repeticoes === 'number') m.repeticoes = resp.repeticoes;
       if (resp && typeof resp.total_contador === 'number') m.total_contador = resp.total_contador;
-      if (resp?.meta_cumprida) {
+      const cumpriu = !!resp?.meta_cumprida;
+      if (cumpriu) {
         m.status = 'CONCLUIDA';
         m.status_hoje = 'CONCLUIDA';
         const g = resp.resultado || {};
@@ -1380,12 +1500,14 @@ const MissaoCard = {
         if (typeof missionComplete === 'function' && card)
           missionComplete(card, g.xp_ganho || 0, g.moedas_ganhas || 0);
       }
-      this.repintar(chave);
+      // Meta cumprida muda o cartao inteiro (selo, recompensa, status):
+      // ai o repintar completo e o certo.
+      if (cumpriu || !this._repintarContagem(chave)) this.repintar(chave);
       if (this._onMudou) await this._onMudou(resp, passo > 0 ? 'repetir' : 'desfazer-rep', id, chave);
     } catch (err) {
       m.repeticoes = antes;
       m.total_contador = antesT;
-      this.repintar(chave);
+      if (!this._repintarContagem(chave)) this.repintar(chave);
       SoloDialog?.toast?.(err.message || String(err), 'error');
     }
   },

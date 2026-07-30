@@ -53,6 +53,10 @@ w.API = {
     criar:     async (p) => { chamadas.push(['CRIAR', p]); return { id: 1, ...p }; },
     atualizar: async (i, p) => { chamadas.push(['ATUALIZAR', i, p]); return { id: i, ...p }; },
   },
+  tarefas: {
+    criar:     async (p) => { chamadas.push(['CRIAR_TAREFA', p]); return { id: 2, ...p }; },
+    atualizar: async (i, p) => { chamadas.push(['ATUALIZAR_TAREFA', i, p]); return { id: i, ...p }; },
+  },
 };
 w.SoloDialog = { toast: (m, t) => chamadas.push(['TOAST', m, t]) };
 w.__staff = false;
@@ -279,6 +283,68 @@ FM.abrir({ edicao: { id: 9, titulo: 'Beber água', tipo: 'DIARIA',
 await esperar(); await esperar();
 ok(FM._estado.rep_modo === 'BONUS', 'e um sem alvo volta em BONUS');
 ok(FM._estado.xp_por_repeticao === 2, '  com o XP por clique');
+
+/* ══ 10b. A NATUREZA NÃO É EXCLUSIVA DA ROTINA ══ */
+console.log('\n-- missão geral também tem natureza --');
+/* Eu tinha prendido as duas naturezas a ROTINA, com a justificativa
+   "um protocolo que vale uma vez só não é protocolo". O Arquiteto
+   desmontou em uma frase: um protocolo para a véspera de uma prova,
+   um contador usado "vez ou outra".
+
+   A regra confundia RECORRÊNCIA com NATUREZA — eixos independentes:
+   com que frequência a missão aparece, e de que jeito ela se cumpre. */
+w.__staff = true;
+FM.abrir({ tipo: 'TAREFA' });
+await esperar(); await esperar();
+ok($('#fm-bloco-natureza').style.display !== 'none',
+   'na TAREFA o bloco de natureza APARECE — antes ele sumia');
+const opsT = [...doc.querySelectorAll('[data-fm-campo="natureza"]')].map(o => o.dataset.fmValor);
+ok(opsT.includes('REPETICAO') && opsT.includes('PASSIVA'),
+   '  com as três opções: um contador avulso e um protocolo de um dia são legítimos');
+
+clicar(doc.querySelector('[data-fm-valor="REPETICAO"]'));
+await esperar();
+ok($('#fm-bloco-repeticao').style.display !== 'none',
+   'e o bloco de repetição abre igual, sem segundo dialeto');
+
+/* Trocar ROTINA→TAREFA não pode mais forçar ATIVA. */
+FM.abrir();
+await esperar(); await esperar();
+clicar(doc.querySelector('[data-fm-valor="REPETICAO"]'));
+clicar(doc.querySelector('[data-fm-valor="TAREFA"]'));
+ok(FM._estado.natureza === 'REPETICAO',
+   'trocar para TAREFA NÃO joga a natureza de volta para ATIVA');
+ok($('#fm-bloco-repeticao').style.display !== 'none',
+   '  e o bloco continua aberto: a escolha do hunter sobrevive à troca de tipo');
+
+/* O payload da tarefa carrega tudo. */
+chamadas.length = 0;
+FM.abrir({ tipo: 'TAREFA' });
+await esperar(); await esperar();
+FM._contadores = w.__contadores;
+Object.assign(FM._estado, { tipo: 'TAREFA', natureza: 'REPETICAO',
+  rep_modo: 'META', alvo_repeticoes: 5, titulo: 'Responder {n} questões',
+  contador_id: 1 });
+await FM._salvar();
+const pt = chamadas.find(c => c[0] === 'CRIAR_TAREFA')?.[1];
+ok(!!pt, 'a missão geral é criada');
+ok(pt.natureza === 'REPETICAO', '  com a natureza no payload');
+ok(pt.alvo_repeticoes === 5, '  o alvo');
+ok(pt.contador_id === 1, '  o contador');
+ok(pt.titulo === 'Responder 5 questões',
+   '  e o {n} resolvido aqui também — a sintaxe morre no lançador nas duas frentes');
+
+/* A passiva avulsa exige janela — a validação deixou de olhar o tipo. */
+chamadas.length = 0;
+FM.abrir({ tipo: 'TAREFA' });
+await esperar(); await esperar();
+Object.assign(FM._estado, { tipo: 'TAREFA', natureza: 'PASSIVA',
+  titulo: 'Sem café', janela: false });
+await FM._salvar();
+ok(!chamadas.some(c => c[0] === 'CRIAR_TAREFA'),
+   'passiva avulsa SEM janela não salva — seria XP de graça à meia-noite');
+ok(chamadas.some(c => c[0] === 'TOAST' && /janela/i.test(c[1])),
+   '  e diz o porquê');
 
 /* ══ 11. Nada de emoji ══ */
 console.log('\n-- o alfabeto --');

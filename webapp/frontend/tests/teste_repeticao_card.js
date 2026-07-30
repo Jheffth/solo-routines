@@ -197,18 +197,104 @@ ok(!btns(frag(MC.html(meta(2, 5)))).includes('concluir'),
 ok(btns(frag(MC.html(meta(2, 5)))).includes('editar'),
    'mas editar e excluir continuam, como em qualquer missão');
 
-/* ══ 7. A moldura ══ */
-console.log('\n-- a moldura --');
-const vig = el => el.querySelector('.mc-vigia');
-ok(!!vig(frag(MC.html(meta(2, 5)))), 'reaproveita a moldura da vigília — mesma família');
-ok(vig(frag(MC.html(meta(2, 5)))).classList.contains('em-vigor'),
-   '  acesa enquanto falta fazer');
-ok(!vig(frag(MC.html(meta(5, 5)))).classList.contains('em-vigor'),
-   'e APAGA na meta cumprida: parar de pedir atenção é o prêmio de terminar');
-ok(vig(frag(MC.html(bonus(999)))).classList.contains('em-vigor'),
-   'no BÔNUS nunca apaga — não existe acabar');
+/* ══ 7. A moldura — E ELA NÃO É A DA PASSIVA ══ */
+console.log('\n-- a moldura é própria --');
+/* O erro que o Arquiteto reportou: a repetição usava a moldura da
+   passiva. Eu tinha tratado "as duas não se concluem apertando um
+   botão" como parentesco visual — e duas naturezas com a mesma
+   animação não parecem primas, parecem a mesma coisa. */
+const cRep = frag(MC.html(meta(2, 5)));
+ok(!cRep.querySelector('.mc-vigia'),
+   'a repetição NÃO usa `.mc-vigia` — a moldura da passiva ficou só na passiva');
+ok(!!cRep.querySelector('.mc-conta'), 'ela tem a sua: `.mc-conta`');
+
+const passivaHtml = MC.html({ ...base, natureza: 'PASSIVA',
+  hora_inicio: '16:00', hora_fim: '05:00', prazo_janela: true });
+ok(/mc-vigia/.test(passivaHtml) && !/mc-conta/.test(passivaHtml),
+   'e a passiva continua com a dela, sem contaminação no sentido inverso');
+
+/* NENHUM VALOR COMPARTILHADO. Se um dia alguém "simplificar"
+   reaproveitando o dasharray ou o keyframe, o desenho volta a ser o
+   mesmo — e a regressão seria invisível num diff. */
+const bloco = re => { const m = re.exec(css.replace(/\/\*[\s\S]*?\*\//g, '')); return m ? m[1] : ''; };
+const dashVig  = /stroke-dasharray:\s*([\d.]+\s+[\d.]+)/.exec(bloco(/\.mc-vigia-fio\s*\{([^}]*)\}/))?.[1];
+const dashCont = /stroke-dasharray:\s*([\d.]+\s+[\d.]+)/.exec(bloco(/\.mc-conta-trilho\s*\{([^}]*)\}/))?.[1];
+ok(dashVig && dashCont && dashVig !== dashCont,
+   `o tracejado é outro: passiva "${dashVig}" vs repetição "${dashCont}"`);
+
+const animCont = bloco(/\.mc-conta\.contando\s+\.mc-conta-trilho\s*\{([^}]*)\}/);
+ok(/steps\(/.test(animCont),
+   'e o movimento é em PASSOS DISCRETOS — um contador batendo, não um fluxo correndo');
+ok(!/steps\(/.test(css.slice(css.indexOf('.mc-vigia.em-vigor'), css.indexOf('.mc-prot {'))),
+   '  enquanto a passiva continua linear: o tempo passa, ele não bate');
+/* `--mc-vigilia` é a VARIÁVEL DE COR do cartão, e compartilhá-la é o
+   certo — é dela que vem o dourado da Alta e o vermelho da Crítica.
+   O que não pode ser compartilhado é a ANIMAÇÃO. A primeira versão
+   deste assert procurava o nome cru e acusava a variável. */
+const trechoConta = css.slice(css.indexOf('.mc-conta {'),
+                              css.indexOf('.mc-rep { margin-top'));
+const animacoes = [...trechoConta.matchAll(/animation:\s*([\w-]+)/g)].map(m => m[1]);
+ok(animacoes.length > 0, `a repetição declara ${animacoes.length} animações`);
+ok(!animacoes.some(a => a === 'mc-vigilia' || a === 'mc-cometa'),
+   `e nenhuma é da vigília — usa ${[...new Set(animacoes)].join(', ')}`);
+ok(/var\(--mc-vigilia/.test(trechoConta),
+   'a COR, essa sim, continua compartilhada: é a prioridade do cartão');
+ok(/@keyframes\s+mc-contagem/.test(css), 'ela tem keyframe próprio (mc-contagem)');
+
+console.log('\n-- e a moldura acompanha a contagem --');
+const conta = el => el.querySelector('.mc-conta');
+ok(conta(frag(MC.html(meta(2, 5)))).classList.contains('contando'),
+   'contando enquanto falta fazer');
+ok(!conta(frag(MC.html(meta(5, 5)))).classList.contains('contando'),
+   'e PARA na meta cumprida: deixar de pedir atenção é o prêmio de terminar');
+ok(conta(frag(MC.html(bonus(999)))).classList.contains('contando'),
+   'no BÔNUS nunca para — não existe acabar');
+
+/* A BORDA É A BARRA. Só o META tem arco, e ele é a fração. */
+const arco = el => el.querySelector('[data-mc-conta-arco]');
+ok(!!arco(frag(MC.html(meta(2, 5)))), 'o META tem arco na borda');
+ok(arco(frag(MC.html(meta(2, 5)))).getAttribute('style').includes('40.00 100'),
+   '  e ele É a fração: 2/5 desenha 40% do perímetro');
+ok(arco(frag(MC.html(meta(5, 5)))).getAttribute('style').includes('100.00 100'),
+   '  fechando a volta ao cumprir');
+ok(!arco(frag(MC.html(bonus(87)))),
+   'o BÔNUS não tem arco: sem alvo não há fração, e desenhar uma seria mentira');
+ok(/\.mc-conta-arco\s*\{[^}]*transition:[^}]*stroke-dasharray/.test(css),
+   'o arco CRESCE por transição — o movimento vem do hunter, não do relógio');
+
 ok(/\.mc-repeticao\s*\{[^}]*--mc-vigilia:\s*var\(--mc-cor\)/.test(css),
    'a cor da moldura é a do cartão: dourado na Alta, vermelho na Crítica');
+
+/* ══ 7b. O clique não pode matar as transições ══ */
+console.log('\n-- o clique preserva o nó --');
+/* `repintar()` troca o nó por outerHTML, e uma transição CSS só roda
+   se o elemento SOBREVIVER. Sem o caminho cirúrgico as duas animações
+   estariam mortas sem nada quebrar — só não aconteceria. */
+const caixa = doc.createElement('div');
+doc.body.appendChild(caixa);
+const alvoM = meta(2, 5);
+MC.cachear([alvoM]);
+caixa.innerHTML = MC.html(alvoM);
+const antesNo = caixa.querySelector('[data-mc-card]');
+const antesArco = antesNo.querySelector('[data-mc-conta-arco]');
+alvoM.repeticoes = 3;
+ok(MC._repintarContagem(MC._chave(alvoM, 'missao')) === true,
+   'o repintar cirúrgico dá conta');
+ok(caixa.querySelector('[data-mc-card]') === antesNo,
+   'e o CARTÃO é o mesmo nó — se fosse trocado, a transição não rodaria');
+ok(caixa.querySelector('[data-mc-conta-arco]') === antesArco,
+   '  e o arco também: é ele que precisa sobreviver para crescer');
+ok(antesArco.style.strokeDasharray.startsWith('60.00'),
+   '  com o valor novo já aplicado (3/5 = 60%)');
+ok(antesNo.querySelectorAll('.mc-rep-seg.cheio').length === 3,
+   'os segmentos acompanham');
+ok([...antesNo.querySelectorAll('[data-mc-acao]')].some(b => b.dataset.mcAcao === 'desfazer-rep'),
+   'e os botões são refeitos — o `−` nasce quando há o que desfazer');
+alvoM.repeticoes = 5;
+MC._repintarContagem(MC._chave(alvoM, 'missao'));
+ok(!antesNo.querySelector('.mc-conta').classList.contains('contando'),
+   'chegar ao alvo apaga a contagem sem refazer o cartão');
+caixa.remove();
 
 /* ══ 8. O compacto MOSTRA ══ */
 console.log('\n-- o compacto (Extrato) --');

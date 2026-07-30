@@ -273,6 +273,33 @@ class TarefaDia(Base):
     iniciada_em      = Column(DateTime, nullable=True)
     concluida_em     = Column(DateTime, nullable=True)
 
+    # ══ NATUREZAS NA MISSAO GERAL ═══════════════════════════════════
+    #
+    # A passiva e a repeticao existiam so em ROTINA. Eu tinha escrito
+    # no codigo que "um protocolo que vale uma vez so nao e protocolo"
+    # — e o Arquiteto mostrou o contra-exemplo em uma frase: um
+    # protocolo para UM dia especifico (a vespera de uma prova, uma
+    # viagem) e um contador que se usa "vez ou outra" sao missoes
+    # gerais, nao rotinas.
+    #
+    # A regra que eu tinha inventado confundia RECORRENCIA com
+    # NATUREZA. Sao eixos independentes: com que frequencia a missao
+    # aparece, e de que jeito ela se cumpre.
+    #
+    # Por que a contagem mora AQUI e nao numa ExecucaoDia:
+    # a missao geral acontece uma vez, entao ela nao tem instancia
+    # diaria. O numero e dela mesma — e isso simplifica, nao complica.
+    natureza            = Column(String(20), default="ATIVA")
+    hora_inicio         = Column(String(5), nullable=True)   # janela da passiva
+    alvo_repeticoes     = Column(Integer, nullable=True)
+    contador_id         = Column(Integer, ForeignKey("contadores.id"), nullable=True, index=True)
+    xp_por_repeticao    = Column(Integer, nullable=True)
+    intervalo_min_seg   = Column(Integer, nullable=True)
+    repeticoes          = Column(Integer, nullable=False, default=0, server_default="0")
+    xp_repeticao_pago   = Column(Integer, nullable=False, default=0, server_default="0")
+    ultima_repeticao_em = Column(DateTime, nullable=True)
+    confessada_em       = Column(DateTime, nullable=True)    # "quebrei o protocolo"
+
     usuario          = relationship("Usuario", back_populates="tarefas")
     execucoes        = relationship("Execucao", back_populates="tarefa", lazy="dynamic")
 
