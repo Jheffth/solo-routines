@@ -1194,3 +1194,200 @@
 @media (prefers-reduced-motion: reduce) {
   .mc-crono-vivo svg { animation: none; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   ROTINA DE REPETIÇÕES
+
+   Herda quase tudo do protocolo, e isso é de propósito: as duas
+   são missões que não se "concluem" apertando um botão, e devem
+   parecer da mesma família. A moldura da vigília é literalmente o
+   mesmo SVG.
+
+   `--mc-vigilia: var(--mc-cor)` de novo — dourado na Alta,
+   avermelhado na Crítica. Uma linha, e a moldura, os segmentos, o
+   número e o halo já chegam na cor certa do cartão.
+   ══════════════════════════════════════════════════════════════ */
+.mc-repeticao {
+  --mc-vigilia: var(--mc-cor);
+  border-top-color: color-mix(in srgb, var(--mc-vigilia) 38%, transparent);
+  border-right-color: color-mix(in srgb, var(--mc-vigilia) 20%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--mc-vigilia) 20%, transparent);
+  background:
+    /* trama de CONTAGEM: barras verticais curtas, como marcas de
+       parede. A passiva usa diagonais (permanência); esta usa
+       traços em pé, que é como se conta à mão desde sempre. */
+    repeating-linear-gradient(90deg,
+      transparent 0 13px,
+      color-mix(in srgb, var(--mc-cor) 6%, transparent) 13px 14px),
+    radial-gradient(130% 150% at 100% 0%,
+      color-mix(in srgb, var(--mc-cor) 13%, transparent), transparent 58%),
+    radial-gradient(120% 140% at 0% 0%, var(--mc-cor-suave), transparent 55%),
+    linear-gradient(145deg, #0b0916, #06060d);
+}
+.mc-repeticao .mc-fio { display: none; }
+.mc-repeticao:hover {
+  border-color: color-mix(in srgb, var(--mc-vigilia) 52%, transparent);
+  border-left-color: var(--mc-cor);
+  box-shadow: 0 8px 26px rgba(0,0,0,.5),
+              0 0 24px color-mix(in srgb, var(--mc-cor) 26%, transparent);
+}
+
+.mc-rep { margin-top: 10px; }
+.mc-rep-topo {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; margin-bottom: 6px;
+}
+.mc-rep-lbl {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: .68rem; letter-spacing: .09em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--mc-vigilia) 70%, #cbd5e1);
+}
+.mc-rep-conta {
+  font-variant-numeric: tabular-nums;
+  font-size: .78rem;
+  color: color-mix(in srgb, var(--mc-vigilia) 60%, #94a3b8);
+}
+.mc-rep-conta b {
+  font-size: .95rem;
+  color: color-mix(in srgb, var(--mc-vigilia) 95%, #ffffff);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--mc-vigilia) 55%, transparent);
+}
+
+/* ── A TRILHA SEGMENTADA ───────────────────────────────────
+   `grid` com `--blocos` colunas iguais. Um `flex` com `gap`
+   pareceria igual e não é: com 20 segmentos o arredondamento de
+   subpixel deixaria alguns 1px mais largos, e o olho lê isso como
+   "aquele ali é diferente" — exatamente a informação errada. */
+.mc-rep-trilha {
+  display: grid;
+  grid-template-columns: repeat(var(--blocos, 5), 1fr);
+  gap: 3px;
+  height: 10px;
+}
+.mc-rep-seg {
+  position: relative; overflow: hidden;
+  border-radius: 3px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid color-mix(in srgb, var(--mc-vigilia) 16%, transparent);
+}
+/* O preenchimento POR DENTRO: é o que faz o bloco de dezena
+   funcionar. Em 68/100, o sétimo bloco está 80% cheio — e é essa
+   fração que permite ler "setenta e poucos" sem contar. */
+.mc-rep-seg::after {
+  content: ''; position: absolute; inset: 0;
+  width: var(--p, 0%);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--mc-vigilia) 95%, #ffffff),
+    var(--mc-vigilia));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--mc-vigilia) 60%, transparent);
+  transition: width .32s cubic-bezier(.22,1,.36,1);
+}
+.mc-rep-seg.cheio { border-color: color-mix(in srgb, var(--mc-vigilia) 55%, transparent); }
+/* O bloco EM CURSO respira. Só ele: se todos pulsassem, nenhum
+   seria "onde eu estou". */
+.mc-rep-seg.meio::after { animation: mc-rep-pulso 1.9s ease-in-out infinite; }
+@keyframes mc-rep-pulso {
+  0%, 100% { filter: brightness(1); }
+  50%      { filter: brightness(1.45); }
+}
+
+.mc-rep-continua {
+  height: 10px; border-radius: 5px; overflow: hidden;
+  background: rgba(255,255,255,.05);
+  border: 1px solid color-mix(in srgb, var(--mc-vigilia) 16%, transparent);
+}
+.mc-rep-continua i {
+  display: block; height: 100%;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--mc-vigilia) 40%, #05040c), var(--mc-vigilia));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--mc-vigilia) 55%, transparent);
+  transition: width .32s cubic-bezier(.22,1,.36,1);
+}
+
+/* Meta cumprida: a trilha inteira acende uma vez e a moldura para.
+   O prêmio de terminar é o cartão deixar de pedir atenção. */
+.mc-rep-pleno .mc-rep-trilha { animation: mc-rep-plena .9s ease-out 1; }
+@keyframes mc-rep-plena {
+  0%   { filter: brightness(1); }
+  35%  { filter: brightness(1.9) saturate(1.3); }
+  100% { filter: brightness(1); }
+}
+
+/* ── A CAIXA DO CONTADOR (modo BÔNUS) ──────────────────────
+   Sem barra. O Arquiteto: "para o contador apenas um contador, uma
+   box bonita com o número por extenso do que já foi feito".
+   Barra aqui significaria "quanto falta" numa coisa sem fim. */
+.mc-cont-caixa {
+  display: inline-flex; flex-direction: column; align-items: center;
+  gap: 1px; padding: 9px 20px 7px;
+  border-radius: 12px;
+  background:
+    radial-gradient(120% 140% at 50% 0%,
+      color-mix(in srgb, var(--mc-vigilia) 18%, transparent), transparent 70%),
+    rgba(255,255,255,.035);
+  border: 1px solid color-mix(in srgb, var(--mc-vigilia) 30%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06),
+              0 0 18px color-mix(in srgb, var(--mc-vigilia) 16%, transparent);
+}
+.mc-cont-num {
+  font-size: 1.85rem; font-weight: 800; line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--mc-vigilia) 92%, #ffffff);
+  text-shadow: 0 0 14px color-mix(in srgb, var(--mc-vigilia) 55%, transparent);
+}
+.mc-cont-unid {
+  font-size: .62rem; letter-spacing: .11em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--mc-vigilia) 55%, #94a3b8);
+}
+.mc-cont-total {
+  display: flex; align-items: center; gap: 5px;
+  margin-top: 7px;
+  font-size: .7rem;
+  color: color-mix(in srgb, var(--mc-vigilia) 45%, #94a3b8);
+}
+.mc-cont-total b {
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--mc-vigilia) 80%, #e2e8f0);
+}
+
+/* ── OS BOTÕES ─────────────────────────────────────────────
+   O `+` é o único botão do app feito para ser apertado depressa,
+   então tem alvo grande e resposta imediata ao toque. */
+.mc-btn-mais {
+  display: inline-flex; align-items: center; gap: 6px;
+  border-color: color-mix(in srgb, var(--mc-vigilia) 45%, transparent);
+  color: color-mix(in srgb, var(--mc-vigilia) 92%, #ffffff);
+  background: color-mix(in srgb, var(--mc-vigilia) 13%, transparent);
+  font-weight: 600;
+}
+.mc-btn-mais:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--mc-vigilia) 24%, transparent);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--mc-vigilia) 35%, transparent);
+}
+/* O recuo no toque é o retorno tátil que o clique rápido precisa —
+   sem ele, apertar dez vezes seguidas não dá sinal de nada. */
+.mc-btn-mais:active:not(:disabled) { transform: scale(.94); }
+.mc-btn-menos {
+  color: #94a3b8;
+  border-color: rgba(148,163,184,.28);
+  background: transparent;
+}
+.mc-btn-menos:hover:not(:disabled) { color: #e2e8f0; border-color: rgba(148,163,184,.5); }
+.mc-btn-menos:active:not(:disabled) { transform: scale(.94); }
+
+/* ── COMPACTO (Extrato) ────────────────────────────────────
+   O protocolo já foi escondido aqui uma vez por engano, e o
+   Arquiteto reportou. A regra que sobrou: no compacto o miolo
+   ENCOLHE, nunca some — é no Extrato que estes cartões vivem. */
+.mc-compacto .mc-rep { margin-top: 7px; }
+.mc-compacto .mc-rep-trilha { height: 7px; gap: 2px; }
+.mc-compacto .mc-rep-lbl { font-size: .62rem; }
+.mc-compacto .mc-cont-caixa { padding: 5px 14px 4px; border-radius: 9px; }
+.mc-compacto .mc-cont-num { font-size: 1.25rem; }
+.mc-compacto .mc-cont-total { margin-top: 4px; font-size: .64rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mc-rep-seg.meio::after,
+  .mc-rep-pleno .mc-rep-trilha { animation: none; }
+  .mc-rep-seg::after, .mc-rep-continua i { transition: none; }
+}

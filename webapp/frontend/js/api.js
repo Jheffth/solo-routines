@@ -204,6 +204,8 @@ class API {
   /* ── Execucoes ───────────────────────────────────────── */
   static execucoes = {
     concluirRotina: async (rotinaId) => API.post('/execucoes/rotina', { rotina_id: rotinaId }),
+    repetir:        async (rotinaId) => API.post('/execucoes/repetir', { rotina_id: rotinaId }),
+    desfazerRep:    async (rotinaId) => API.post('/execucoes/desfazer-repeticao', { rotina_id: rotinaId }),
     historico:      async (periodo = 'semana') => API.get('/execucoes/historico?periodo=' + periodo),
     heatmap:        async () => API.get('/execucoes/heatmap'),
   };

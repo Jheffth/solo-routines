@@ -298,7 +298,18 @@ const MissaoCard = {
      energia parada — que é o que um protocolo é.
      ══════════════════════════════════════════════════════════ */
   _vigilia(m, chave) {
-    const vigor = this._emVigor(m) && m.status !== 'CONCLUIDA' && m.status !== 'CANCELADA';
+    // "Em vigor" quer dizer coisas diferentes nas duas naturezas, e é
+    // por isso que a conta mora aqui e não no chamador:
+    //   PASSIVA    a janela está aberta (16:00 → 05:00)
+    //   REPETIÇÃO  ainda há o que fazer. Uma meta cumprida apaga a
+    //              moldura — o cartão para de pedir atenção, que é o
+    //              prêmio de ter acabado. No modo BÔNUS ela nunca
+    //              apaga: não existe acabar.
+    const vivo = m.status !== 'CONCLUIDA' && m.status !== 'CANCELADA';
+    const vigor = this._ehRepeticao(m)
+      ? (() => { const a = this._alvoDe(m);
+                 return a === null ? true : (vivo && this._feitas(m) < a); })()
+      : (this._emVigor(m) && vivo);
     return `
       <svg class="mc-vigia${vigor ? ' em-vigor' : ''}" data-mc-vigia="${chave}"
            aria-hidden="true" preserveAspectRatio="none" style="max-width:none">
@@ -343,6 +354,156 @@ const MissaoCard = {
           </div>
         </div>
       </div>`;
+  },
+
+  /* ══════════════════════════════════════════════════════════
+     ROTINA DE REPETIÇÕES
+     ══════════════════════════════════════════════════════════ */
+
+  _ehRepeticao(m) {
+    return (m?.natureza || 'ATIVA').toUpperCase() === 'REPETICAO';
+  },
+
+  /* META tem alvo; BÔNUS não tem. É a única diferença, e ela muda
+     tudo: com alvo existe "cumprir", sem alvo existe só "registrar". */
+  _alvoDe(m) {
+    const a = parseInt(m?.alvo_repeticoes, 10);
+    return Number.isFinite(a) && a > 0 ? a : null;
+  },
+
+  _feitas(m) {
+    const n = parseInt(m?.repeticoes, 10);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  },
+
+  /* ── OS SEGMENTOS, e o problema dos 100 pulinhos ──────────
+
+     O Arquiteto pediu a barra dividida e já apontou onde ela
+     quebra: "se eu precisar das 100 pulinhos eu posso ter uma
+     barra dividida em 100 barrinhas". Pode — e aí ela some. Numa
+     barra de 300px, 100 segmentos dão 1px cada: uma linha
+     pontilhada, não uma medida.
+
+     Três faixas:
+       ≤ 20   uma barrinha por repetição
+       > 20   agrupa em DEZENAS — 100 vira 10 blocos de 10, e o
+              bloco em curso enche por dentro
+       > 200  segmentar deixou de informar; barra contínua
+
+     O agrupamento é o que salva os 100: dez blocos legíveis, o
+     sétimo pela metade, e a leitura "estou no setenta e poucos"
+     sem contar nada. É como a mente já conta coisas grandes.
+
+     Devolve `{ n, porBloco }` — n é quantos blocos DESENHAR. */
+  _segmentos(alvo) {
+    if (alvo <= 20)  return { n: alvo, porBloco: 1 };
+    if (alvo <= 200) {
+      // Divisor que caiba entre 5 e 20 blocos. Dezena primeiro,
+      // porque é a unidade em que se conta de cabeça.
+      for (const d of [10, 5, 20, 25, 50]) {
+        const n = Math.ceil(alvo / d);
+        if (n >= 4 && n <= 20) return { n, porBloco: d };
+      }
+      return { n: 10, porBloco: Math.ceil(alvo / 10) };
+    }
+    return { n: 0, porBloco: 0 };          // 0 = barra contínua
+  },
+
+  /* A barra da META. Um segmento por repetição, ou por dezena.
+
+     Cada bloco é uma div com preenchimento próprio, e não um SVG
+     com `stroke-dasharray`: aqui os blocos precisam encher POR
+     DENTRO (o sétimo bloco em 68/100 está 80% cheio), e tracejado
+     não faz isso. O `pathLength` continua servindo à moldura,
+     que é onde ele resolve o problema de largura variável. */
+  _barraSegmentada(m, chave) {
+    const alvo   = this._alvoDe(m);
+    const feitas = Math.min(this._feitas(m), alvo);
+    const { n, porBloco } = this._segmentos(alvo);
+    const pct = alvo ? (feitas / alvo) * 100 : 0;
+    const pleno = feitas >= alvo;
+
+    let blocos;
+    if (n === 0) {
+      blocos = `<div class="mc-rep-continua"><i style="width:${pct}%"></i></div>`;
+    } else {
+      let s = '';
+      for (let i = 0; i < n; i++) {
+        const cheio = Math.max(0, Math.min(1, (feitas - i * porBloco) / porBloco));
+        s += `<i class="mc-rep-seg${cheio >= 1 ? ' cheio' : (cheio > 0 ? ' meio' : '')}"
+                 style="--p:${(cheio * 100).toFixed(1)}%"></i>`;
+      }
+      blocos = s;
+    }
+
+    return `
+      <div class="mc-rep mc-rep-meta${pleno ? ' mc-rep-pleno' : ''}" data-mc-rep="${chave}">
+        <div class="mc-rep-topo">
+          <span class="mc-rep-lbl">${this._g('repeticao', 11)} ${pleno ? 'Meta cumprida' : 'Progresso'}</span>
+          <span class="mc-rep-conta" data-mc-rep-conta><b>${feitas}</b>/${alvo}</span>
+        </div>
+        <div class="mc-rep-trilha" style="--blocos:${n || 1}">${blocos}</div>
+      </div>`;
+  },
+
+  /* ── A CAIXA DO BÔNUS ─────────────────────────────────────
+
+     O Arquiteto foi explícito: "para o contador, ter uma barra
+     que mede XP não faz sentido, isso acabaria bugando a cabeça
+     do user, para o contador apenas um contador, uma box bonita
+     com o número por extenso do que já foi feito".
+
+     Ele está certo por um motivo que vale registrar: em todo o
+     resto do app, barra significa "quanto falta". Um contador não
+     tem fim — uma barra cheia leria "acabou" numa coisa que nunca
+     acaba, e uma barra medindo o teto de XP leria "seu progresso"
+     quando na verdade mede um limite. Reusar a forma para outro
+     sentido é mentira de vocabulário.
+
+     Então: o número, grande, e a unidade embaixo. Nada mais. */
+  _caixaContador(m, chave) {
+    const hoje  = this._feitas(m);
+    const total = parseInt(m.total_contador, 10);
+    const unid  = this._esc(m.unidade_contador || m.unidade || '');
+    const temTotal = Number.isFinite(total) && total > hoje;
+
+    return `
+      <div class="mc-rep mc-rep-bonus" data-mc-rep="${chave}">
+        <div class="mc-cont-caixa">
+          <span class="mc-cont-num" data-mc-rep-conta>${hoje}</span>
+          <span class="mc-cont-unid">${unid || (hoje === 1 ? 'vez' : 'vezes')} hoje</span>
+        </div>
+        ${temTotal ? `<div class="mc-cont-total">
+          ${this._g('repeticao', 11)} <b>${total.toLocaleString('pt-BR')}</b>
+          ${unid || 'no total'}${unid ? ' acumuladas' : ''}
+        </div>` : ''}
+      </div>`;
+  },
+
+  /* Os botões. `−` só existe quando há o que desfazer: um botão
+     permanentemente inerte ensina o hunter a ignorar botões. */
+  _acoesRepeticao(m, chave, gerir, extinguir) {
+    const b = (acao, cls, rot, extra = '') =>
+      `<button class="mc-btn ${cls}" data-mc-acao="${acao}" data-mc-id="${chave}" ${extra}>${rot}</button>`;
+    const alvo   = this._alvoDe(m);
+    const feitas = this._feitas(m);
+    const pleno  = alvo !== null && feitas >= alvo;
+
+    if (pleno) {
+      return `<span class="mc-selo mc-selo-ok">${this._g('concluida', 13)} ${feitas}/${alvo} cumprida</span>`
+           + (feitas > 0 ? b('desfazer-rep', 'mc-btn-menos', this._g('menos', 13),
+                             'title="Desfazer uma repetição"') : '')
+           + gerir + extinguir;
+    }
+
+    return (feitas > 0
+              ? b('desfazer-rep', 'mc-btn-menos', this._g('menos', 13),
+                  'title="Desfazer uma repetição"')
+              : '')
+         + b('repetir', 'mc-btn-mais', this._g('mais', 14) +
+             (alvo === null ? ' Registrar' : ' Fiz uma'),
+             'title="Somar uma repetição"')
+         + gerir + extinguir;
   },
 
   _prazo(m) {
@@ -563,6 +724,15 @@ const MissaoCard = {
       return `<span class="mc-selo mc-selo-neutro">${this._g('agendada', 13)} Agendada</span>` + gerir + extinguir;
     }
 
+    // ── ROTINA DE REPETIÇÕES: não se conclui, se acumula ────
+    // Não tem Iniciar (não há o que começar), não tem Pausar, e o
+    // Concluir foi substituído pelo próprio ato de contar: no META a
+    // rotina fecha sozinha ao bater o alvo, no BÔNUS ela nunca fecha.
+    if (this._ehRepeticao(m)) {
+      if (status === 'CONFESSADA' || status === 'CANCELADA') return this._selo(status) + gerir + extinguir;
+      return this._acoesRepeticao(m, chave, gerir, extinguir);
+    }
+
     // ── MISSÃO PASSIVA: tudo se inverte ─────────────────────
     // Ela não tem "Iniciar" (acende sozinha às 16:00), não tem "Concluir"
     // (cumpre-se sozinha às 05:00) e não tem "Pausar" — pausar um protocolo
@@ -775,6 +945,11 @@ const MissaoCard = {
       m.iniciada_em || '', m.concluida_em || '', m.fracassada_em || '', m.cancelada_em || '',
       m.reerguida ? 'R' : '', m.prazo_janela ? 'J' : '',
       m.natureza || 'ATIVA', m.confessada_em || '',
+      // A contagem MUDA A CARA do cartão: enche um segmento, troca o
+      // número, faz o `−` aparecer. Diferente do cronômetro, que anda
+      // sozinho e é escrito no nó existente, isto é estado — e sem
+      // entrar aqui a reconciliação repintaria por cima do clique.
+      m.repeticoes ?? '', m.alvo_repeticoes ?? '', m.total_contador ?? '',
       // O protocolo muda de cara quando entra em vigor (o botão Confessar
       // aparece). Sem isto na assinatura, a reconciliação não perceberia a
       // virada das 16:00 e o cartão ficaria dizendo "entra em vigor" a noite
@@ -819,12 +994,21 @@ const MissaoCard = {
     // inteira: não é um estado passageiro como "em curso", é o que a missão É.
     const passiva = this._ehPassiva(m) ? ' mc-passiva' : '';
 
+    // REPETIÇÃO. Também vai na raiz, e pelo mesmo motivo do protocolo:
+    // não é um estado passageiro, é o que a missão É. A moldura da
+    // vigília é reaproveitada — no META ela acompanha o progresso, e é
+    // o mesmo SVG com outro número.
+    const repet = this._ehRepeticao(m) ? ' mc-repeticao' : '';
+    const modoRep = repet
+      ? (this._alvoDe(m) !== null ? ' mc-rep-modo-meta' : ' mc-rep-modo-bonus')
+      : '';
+
     return `
-    <div class="mc ${st.classe}${compacto}${selado}${passiva}" data-mc-card="${chave}"
+    <div class="mc ${st.classe}${compacto}${selado}${passiva}${repet}${modoRep}" data-mc-card="${chave}"
          data-mc-sig="${this.assinatura(m, opts)}"
          style="--mc-cor:${cor};--mc-cor-suave:${this._alpha(cor, .14)}">
       <div class="mc-fio"></div>
-      ${passiva ? this._vigilia(m, chave) : ''}
+      ${passiva || repet ? this._vigilia(m, chave) : ''}
       ${this._corrente(status)}
       ${this._sigilo(cor, m.categoria)}
       <div class="mc-corpo">
@@ -847,10 +1031,14 @@ const MissaoCard = {
           ${compacto ? recompensa : ''}
         </div>
 
-        ${passiva && prazo
-          ? this._barraProtocolo(m, chave, prazo)
-          : (prazo ? `<div class="mc-barra"><div class="mc-barra-fill" data-mc-barra="${chave}"
-                     style="width:${prazo.pct}%"></div></div>` : '')}
+        ${repet
+          ? (this._alvoDe(m) !== null
+               ? this._barraSegmentada(m, chave)
+               : this._caixaContador(m, chave))
+          : (passiva && prazo
+              ? this._barraProtocolo(m, chave, prazo)
+              : (prazo ? `<div class="mc-barra"><div class="mc-barra-fill" data-mc-barra="${chave}"
+                     style="width:${prazo.pct}%"></div></div>` : ''))}
 
         ${compacto ? '' : `<div class="mc-acoes">${this._acoes(status, chave, m)}</div>`}
       </div>
@@ -1087,6 +1275,8 @@ const MissaoCard = {
     // que custa, e que não paga.
     if (acao === 'reerguer') return this._reerguer(chave, btn);
     if (acao === 'confessar') return this._confessar(chave, btn);
+    if (acao === 'repetir' || acao === 'desfazer-rep')
+      return this._repetir(chave, btn, acao === 'repetir' ? +1 : -1);
     if (this._demo) return this._demoTransicao(acao, chave);
 
     // Trava de segurança: origem "rotina" sem rotina_id significa que a lista
@@ -1131,6 +1321,72 @@ const MissaoCard = {
     } catch (err) {
       SoloDialog?.toast?.(err.message || String(err), 'error');
       btn.disabled = false;
+    }
+  },
+
+  /* ── O CLIQUE QUE CONTA ───────────────────────────────────
+
+     Este é o único botão do app feito para ser apertado DEPRESSA:
+     "respondi mais uma, mais uma, mais uma". Isso muda o desenho.
+
+     PINTA ANTES DE PERGUNTAR. O número sobe no mesmo quadro do
+     clique e a chamada segue por baixo. Esperar a rede aqui daria
+     ~200ms de nada entre apertar e ver — imperceptível numa
+     conclusão, insuportável no décimo clique seguido. Se o
+     servidor recusar, o cartão volta ao que era e o hunter é
+     avisado; foi assim que o modal de auras ficou rápido.
+
+     E é seguro porque o servidor NÃO acumula o que recebe: ele
+     recalcula o total devido para `n` cliques. Um clique perdido
+     ou repetido no meio do caminho não desalinha a conta.
+
+     O DEMO NÃO CHAMA A API. Na Forja o cartão é amostra: contar
+     de verdade ali criaria XP a partir de uma vitrine. */
+  async _repetir(chave, btn, passo) {
+    const { m, id } = this._rota(chave);
+    const alvo   = this._alvoDe(m);
+    const antes  = this._feitas(m);
+    const antesT = m.total_contador;
+    if (passo < 0 && antes === 0) return;
+
+    m.repeticoes = Math.max(0, antes + passo);
+    if (Number.isFinite(parseInt(m.total_contador, 10)))
+      m.total_contador = Math.max(0, parseInt(m.total_contador, 10) + passo);
+    this.repintar(chave);
+
+    if (this._demo) return;
+
+    if (!Number.isFinite(Number(id))) {
+      m.repeticoes = antes; m.total_contador = antesT; this.repintar(chave);
+      SoloDialog?.toast?.('Não consegui identificar a missão — recarregue a lista.', 'error');
+      return;
+    }
+
+    try {
+      const resp = passo > 0 ? await API.execucoes.repetir(id)
+                             : await API.execucoes.desfazerRep(id);
+      // O SERVIDOR É A VERDADE. Ele pode discordar do palpite otimista
+      // — teto batido, intervalo, outra aba contando junto — e quando
+      // discorda é ele que vale.
+      if (resp && typeof resp.repeticoes === 'number') m.repeticoes = resp.repeticoes;
+      if (resp && typeof resp.total_contador === 'number') m.total_contador = resp.total_contador;
+      if (resp?.meta_cumprida) {
+        m.status = 'CONCLUIDA';
+        m.status_hoje = 'CONCLUIDA';
+        const g = resp.resultado || {};
+        m.xp_ganho      = g.xp_ganho      ?? m.xp_ganho ?? 0;
+        m.moedas_ganhas = g.moedas_ganhas ?? m.moedas_ganhas ?? 0;
+        const card = document.querySelector(`[data-mc-card="${chave}"]`);
+        if (typeof missionComplete === 'function' && card)
+          missionComplete(card, g.xp_ganho || 0, g.moedas_ganhas || 0);
+      }
+      this.repintar(chave);
+      if (this._onMudou) await this._onMudou(resp, passo > 0 ? 'repetir' : 'desfazer-rep', id, chave);
+    } catch (err) {
+      m.repeticoes = antes;
+      m.total_contador = antesT;
+      this.repintar(chave);
+      SoloDialog?.toast?.(err.message || String(err), 'error');
     }
   },
 

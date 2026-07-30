@@ -170,6 +170,23 @@ const Glifos = {
            + '<path d="M7.4 11.6c1.4-2 2.9-3 4.6-3s3.2 1 4.6 3c-1.4 2-2.9 3-4.6 3s-3.2-1-4.6-3z"/>',
       luz: '<circle cx="12" cy="11.6" r="1.5" opacity=".95"/>',
     },
+    repeticao: {  // duas setas em ciclo — o ato que volta
+      base: '<circle cx="12" cy="12" r="8.6"/>',
+      traco: '<path d="M5 10.4a7.4 7.4 0 0 1 12.3-3.1l1.9 1.9"/>'
+           + '<path d="M19 13.6a7.4 7.4 0 0 1-12.3 3.1L4.8 14.8"/>'
+           + '<path d="M19.4 4.8v4.4H15"/><path d="M4.6 19.2v-4.4H9"/>',
+      luz: '<circle cx="12" cy="12" r="2" opacity=".9"/>',
+    },
+    mais: {       // o clique que soma
+      base: '<circle cx="12" cy="12" r="9"/>',
+      traco: '<circle cx="12" cy="12" r="8.4"/><path d="M12 7.6v8.8M7.6 12h8.8"/>',
+      luz: '',
+    },
+    menos: {      // o clique que corrige
+      base: '<circle cx="12" cy="12" r="9"/>',
+      traco: '<circle cx="12" cy="12" r="8.4"/><path d="M7.6 12h8.8"/>',
+      luz: '',
+    },
     confessada: { // mão erguida sobre uma linha — quem se entrega
       base: '',
       traco: '<path d="M12 3.2v7.4"/><path d="M9.2 5.6 12 3.2l2.8 2.4"/>'
