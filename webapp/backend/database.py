@@ -123,6 +123,25 @@ class Rotina(Base):
     # a escolha dele em vez de sobrescrever.
     prazo_minutos       = Column(Integer, nullable=True)
     prazo_personalizado = Column(Boolean, default=False)
+
+    # ── REPETIÇÃO (natureza = REPETICAO) ────────────────────────────────
+    # UM campo separa os dois modos, e é a ausência dele que decide:
+    #   alvo_repeticoes = 5     META  — barra com fim, fracassa, pune, streak
+    #   alvo_repeticoes = None  BÔNUS — o placar é o resultado; não fracassa
+    #
+    # Duas naturezas separadas dariam duas máquinas de estado e dois lugares
+    # para o fechamento decidir o mesmo. Uma coluna nula resolve.
+    alvo_repeticoes  = Column(Integer, nullable=True)
+    contador_id      = Column(Integer, ForeignKey("contadores.id"), nullable=True, index=True)
+    # Só no BÔNUS. O que a rotina DECLARA por clique — o quanto ela paga de
+    # verdade passa pelos tetos da Balança (motors/economia.py), porque sem
+    # eles isto seria um campo de texto virando XP.
+    xp_por_repeticao = Column(Integer, nullable=True)
+    # Atrito opcional: "beber água 5 vezes" clicado cinco vezes seguidas não
+    # é hidratação, é um botão. Não é antifraude — quem quer se enganar
+    # consegue —, é atrito onde o hábito precisa dele. Opcional porque
+    # "entregar cerveja no balcão" não quer nenhum.
+    intervalo_min_seg = Column(Integer, nullable=True)
     ultima_execucao  = Column(Date, nullable=True)
     concluida_em     = Column(DateTime, nullable=True)
     cancelada_em     = Column(DateTime, nullable=True)
@@ -182,6 +201,30 @@ class ExecucaoDia(Base):
     # Ela merece campo próprio porque não é fracasso nem conclusão: é a
     # terceira coisa, e o extrato precisa saber diferenciar as três.
     confessada_em = Column(DateTime, nullable=True)
+
+    # ── REPETIÇÃO — a contagem DESTE DIA ────────────────────────────────
+    # `repeticoes` é o registro, e ele NÃO tem teto: limitar o registro
+    # seria mentir sobre o que a pessoa fez.
+    #
+    # `xp_repeticao_pago` é a recompensa, e ela TEM teto. Guardar quanto já
+    # foi pago hoje é o que permite parar de pagar sem parar de contar — e
+    # é a diferença entre "não contou" e "contou e não pagou", que o cartão
+    # precisa saber para não parecer quebrado.
+    #
+    # `server_default` ALEM do `default`, e os dois sao necessarios por
+    # motivos diferentes — descoberto conferindo os dois caminhos de
+    # criacao lado a lado:
+    #
+    #   default=0         vale quando o Python cria a linha
+    #   server_default    vale no DDL, e e o que a MIGRACAO escreve
+    #
+    # Sem o server_default, um banco criado do zero (`create_all`) ficava
+    # sem DEFAULT no esquema enquanto um banco migrado ficava com ele —
+    # dois esquemas diferentes para o mesmo codigo, e a divergencia so
+    # apareceria num INSERT que nao passasse pelo ORM.
+    repeticoes          = Column(Integer, nullable=False, default=0, server_default="0")
+    xp_repeticao_pago   = Column(Integer, nullable=False, default=0, server_default="0")
+    ultima_repeticao_em = Column(DateTime, nullable=True)
 
     # Uma rotina só pode ter UMA instância por dia. Sem isto, duas requisições
     # simultâneas (ou o job + o app abrindo junto) criavam missões duplicadas
@@ -570,6 +613,46 @@ class AuraUsuario(Base):
     mensagem        = Column(String(300), nullable=True)         # bilhete do remetente
     celebrada       = Column(Boolean, default=False)             # False = cerim\u00f4nia pendente
 
+
+
+# ==============================================================================
+# CONTADORES — o recipiente que atravessa as missões
+# ==============================================================================
+# Uma missão vive um dia. "Responder 5 questões" nasce hoje, morre hoje, e
+# amanhã nasce outra. Isso responde "cumpri hoje?" e nunca responde a
+# pergunta que o hunter faz depois de três meses: QUANTAS EU FIZ?
+#
+# O contador é onde essa resposta mora. Várias rotinas apontam para ele —
+# a meta diária de história e a contagem livre de português somam no mesmo
+# lugar — e ele acumula enquanto o hunter existir.
+#
+# O TOTAL NÃO FICA AQUI, e é a decisão mais importante desta tabela.
+# Ele é somado das execuções, sempre:
+#
+#     SELECT SUM(ed.repeticoes) FROM execucao_dia ed
+#       JOIN rotinas r ON r.id = ed.rotina_id
+#      WHERE r.contador_id = :id
+#
+# Guardar um `total` aqui criaria uma segunda verdade, que diverge no
+# primeiro desfazer e na primeira exclusão. Este projeto pagou por segunda
+# verdade cinco vezes; a última foram as placas do Dashboard somando de uma
+# tabela que o resto do app tinha abandonado.
+#
+# A CONSULTA SOMA POR `contador_id` E NADA MAIS — nunca `AND usuario_id`.
+# Não é estilo: é o que deixa a porta da guilda aberta. No dia em que um
+# contador for de vários hunters, a soma já estará pronta.
+class Contador(Base):
+    __tablename__ = "contadores"
+
+    id           = Column(Integer, primary_key=True, index=True)
+    usuario_id   = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    nome         = Column(String(80), nullable=False)      # "Fazer questões"
+    unidade      = Column(String(30), nullable=True)       # "questões" — para o texto
+    criado_em    = Column(DateTime, default=datetime.utcnow)
+    # Arquivar não é apagar: o contador some das listas e continua somando o
+    # que já foi feito. Apagar de verdade destrói história de anos, e por
+    # isso pede confirmação que diga o número.
+    arquivado_em = Column(DateTime, nullable=True)
 
 
 # ==============================================================================

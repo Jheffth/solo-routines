@@ -88,6 +88,35 @@ SEMENTE = [
     ("prazo_prioridade", "ALTA",     120,   "Alta",    2),
     ("prazo_prioridade", "MEDIA",    480,   "Média",   3),
     ("prazo_prioridade", "BAIXA",   2880,   "Baixa",   4),
+
+    # ── REPETIÇÃO — os dois tetos, e por que eles vêm ANTES do resto ──
+    #
+    # A missão de repetição no modo LIVRE paga XP a cada clique: o hunter
+    # responde uma questão, aperta +, ganha 1 XP. É bom de produto e é uma
+    # TORNEIRA: quinhentos cliques dariam quinhentos XP, e nada no caminho
+    # diria não.
+    #
+    # Este projeto já teve um vazamento de XP — as dungeons fora do motor —
+    # e ele só foi descoberto quando o gráfico do Arquiteto disparou. Um
+    # segundo vazamento por um botão que existe para ser clicado seria pior:
+    # não haveria nem anomalia no gráfico, só uma linha subindo.
+    #
+    # A saída não é limitar o clique. É SEPARAR duas coisas que pareciam uma:
+    #
+    #     87 questões hoje    o REGISTRO. Sem teto. É o que a pessoa fez.
+    #     +30 XP por elas     a RECOMPENSA. Com teto.
+    #
+    # Limitar o registro seria mentir sobre o feito; limitar a recompensa é
+    # justo. E o cartão mostra os dois, com o teto visível — um Sistema que
+    # para de pagar e avisa é honesto; um que para em silêncio parece
+    # quebrado.
+    #
+    # O TETO É POR CONTADOR, e não global, porque os hábitos não competem
+    # entre si: um teto único faria "questões de português" e "flexões"
+    # disputarem o mesmo orçamento, e quem estuda de manhã chegaria à
+    # academia sem nada a ganhar. O Sistema puniria a diversidade.
+    ("xp_por_repeticao_max", "PADRAO",  3, "Máximo de XP por clique", 1),
+    ("xp_repeticao_teto_dia", "PADRAO", 30, "Teto de XP por dia, por contador", 1),
 ]
 
 # Rótulos amigáveis dos grupos, para a tela do Arquiteto.
@@ -102,6 +131,8 @@ GRUPOS = {
     "penal_prioridade": "Penalidade ao falhar (fração do XP)",
     "prazo_prioridade": "Prazo base em MINUTOS (por prioridade)",
     "custo_reerguer":   "Reerguer missão fechada (custo em Mana)",
+    "xp_por_repeticao_max":  "Repetição — teto do XP por clique",
+    "xp_repeticao_teto_dia": "Repetição — teto de XP por dia (por contador)",
 }
 
 # Teto duro. Nenhuma combinação legítima chega perto; existe como última
@@ -242,6 +273,37 @@ def custo_reerguer(db=None) -> int:
     """Mana cobrada para reabrir uma missão de janela que já fechou."""
     t = tabelas(db)
     return max(0, int(_v(t, "custo_reerguer", "PADRAO", 25)))
+
+
+def repeticao_tetos(db=None) -> dict:
+    """Os dois limites do XP por repetição.
+
+    `por_clique` limita o que uma ROTINA pode declarar: sem ele, criar uma
+    missão com 500 XP por clique seria só digitar 500.
+
+    `por_dia` limita o que um CONTADOR paga num dia, somando todas as
+    rotinas que o alimentam. É o teto que importa — o outro só evita o
+    absurdo de entrada.
+    """
+    t = tabelas(db)
+    return {
+        "por_clique": max(0, int(_v(t, "xp_por_repeticao_max", "PADRAO", 3))),
+        "por_dia":    max(0, int(_v(t, "xp_repeticao_teto_dia", "PADRAO", 30))),
+    }
+
+
+def xp_da_repeticao(xp_por_clique, ja_pago_hoje, db=None) -> int:
+    """Quanto ESTA repetição paga, agora, respeitando os dois tetos.
+
+    Devolve 0 quando o teto do dia já foi atingido — e devolver zero é
+    resposta legítima, não erro: a repetição continua CONTANDO no registro.
+    Quem chama precisa saber a diferença entre "não contou" e "contou e não
+    pagou", porque é exatamente essa distinção que o cartão mostra.
+    """
+    t = repeticao_tetos(db)
+    valor = max(0, min(int(xp_por_clique or 0), t["por_clique"]))
+    resta = max(0, t["por_dia"] - max(0, int(ja_pago_hoje or 0)))
+    return min(valor, resta)
 
 
 def confissao(alvo) -> dict:

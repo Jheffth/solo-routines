@@ -20,6 +20,26 @@ AS NATUREZAS
   ATIVA    o estado natural é o FRACASSO. O hunter age para vencer.
            Se o prazo vence sem conclusão → FRACASSADA + punição.
 
+  REPETICAO  o desfecho não é um evento, é uma CONTAGEM.
+
+           Dois modos, e o que os separa é um campo que pode faltar:
+
+             com `alvo_repeticoes`   META. A barra tem fim, o Sistema sabe
+                                     o que é vencer. Fracassa no prazo,
+                                     pune, conta para o streak.
+             sem `alvo_repeticoes`   BÔNUS. Não há meta, o placar é o
+                                     resultado. Não fracassa, não pune,
+                                     NÃO conta para o streak.
+
+           O bônus não entra no streak de propósito: streak é a moeda da
+           constância, e constância se mede contra um compromisso. Uma
+           missão que não promete nada não pode manter a corrente viva com
+           um clique.
+
+           ELA NÃO É PREMIUM, e nada aqui a trava — entra no catálogo só
+           para o `normalizar()` não a rebaixar a ATIVA, o que apagaria a
+           contagem inteira em silêncio.
+
   PASSIVA  o estado natural é o SUCESSO. O hunter age para PERDER.
            Se o prazo vence sem confissão → CONCLUIDA + recompensa.
            É um protocolo: "sem cafeína após as 16h", corrido até as 05:00.
@@ -31,7 +51,8 @@ from auth.router import NIVEIS_ADMIN
 # Naturezas conhecidas. "ATIVA" é o padrão de todo o app até aqui.
 ATIVA = "ATIVA"
 PASSIVA = "PASSIVA"
-NATUREZAS = (ATIVA, PASSIVA)
+REPETICAO = "REPETICAO"
+NATUREZAS = (ATIVA, PASSIVA, REPETICAO)
 
 # Naturezas que exigem permissão para serem criadas. ATIVA é de todos.
 PREMIUM = (PASSIVA,)

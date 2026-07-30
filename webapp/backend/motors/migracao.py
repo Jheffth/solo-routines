@@ -77,6 +77,26 @@ COLUNAS = [
     ("rotinas",      "natureza",           "VARCHAR(20) NOT NULL DEFAULT 'ATIVA'",
                                             "VARCHAR(20) NOT NULL DEFAULT 'ATIVA'"),
     ("execucao_dia", "confessada_em",      "DATETIME",                    "TIMESTAMP"),
+
+    # REPETICAO — a missao que conta em vez de concluir.
+    #
+    # A tabela `contadores` nao entra aqui: ela e NOVA, e o `create_all()`
+    # do passo 1 da migracao cuida de tabela nova. Esta lista existe so
+    # para coluna em tabela que JA EXISTE, que e o que o create_all nao faz.
+    #
+    # Todas nulas ou com default: rotina antiga nao vira missao de
+    # repeticao por acidente, e `alvo_repeticoes` NULL numa rotina ATIVA
+    # nao significa nada — a natureza e quem manda.
+    ("rotinas",      "alvo_repeticoes",    "INTEGER",                     "INTEGER"),
+    ("rotinas",      "contador_id",        "INTEGER",                     "INTEGER"),
+    ("rotinas",      "xp_por_repeticao",   "INTEGER",                     "INTEGER"),
+    ("rotinas",      "intervalo_min_seg",  "INTEGER",                     "INTEGER"),
+    # DEFAULT 0, e nao NULL: o cartao soma e compara estes numeros. Um NULL
+    # viraria `None + 1` em Python e `NULL > 0` em SQL — os dois erram em
+    # silencio, cada um do seu jeito.
+    ("execucao_dia", "repeticoes",         "INTEGER NOT NULL DEFAULT 0",  "INTEGER NOT NULL DEFAULT 0"),
+    ("execucao_dia", "xp_repeticao_pago",  "INTEGER NOT NULL DEFAULT 0",  "INTEGER NOT NULL DEFAULT 0"),
+    ("execucao_dia", "ultima_repeticao_em","DATETIME",                    "TIMESTAMP"),
 ]
 
 
