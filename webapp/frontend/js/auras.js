@@ -1063,4 +1063,217 @@ Auras.registrar('fenix-pioneira', function (tam) {
   </svg>`;
 });
 
+/* ============================================================
+   AURA DO PUNIDOR — "A Sentença Viva"
+
+   CONCEITO INÉDITO: Nada de pétalas, chamas ou espirais
+   convencionais. Esta aura é construída sobre três linguagens
+   visuais exclusivas:
+
+   1. LÂMINAS DE JULGAMENTO: 16 lâminas assimétricas, como
+      fragmentos de pena/espada, que giram lentamente ao redor
+      do avatar. Cada lâmina é mais escura na base e mais fina
+      na ponta — a geometria do veredito iminente.
+
+   2. VÉU DE TINTA: Duas coroas de traços finos (como linhas
+      manuscritas de um decreto), girando em sentidos opostos.
+      Criam a ilusão de texto se formando ao redor do portador.
+
+   3. SANGUE EM ÓRBITA: 24 gotículas carmesim que oscilam em
+      amplitude irregular — algumas próximas, outras distantes —
+      como respingos de uma sentença acabada de ser selada.
+
+   PALETA: Preto-abissal (#0d0d1a), Carmesim-vivo (#c0392b),
+           Rubi-escuro (#8b0000), Cinza-aço (#8b9dc3)
+   ============================================================ */
+Auras.registrar('pena-punidor', function (tam) {
+  const C = 150;
+
+  /* Helper: ponto em coordenada polar */
+  const pt = (r, deg) => {
+    const a = (deg - 90) * Math.PI / 180;
+    return [C + r * Math.cos(a), C + r * Math.sin(a)];
+  };
+
+  /* ── 1. LÂMINAS DE JULGAMENTO ─────────────────────────── */
+  // Cada lâmina: forma de cunha assimétrica, inclinada
+  const laminas = (n, rBase, altura, largBase, fill, op, rotOffset = 0) => {
+    const ps = [];
+    for (let i = 0; i < n; i++) {
+      const ang = (360 / n) * i + rotOffset;
+      const a = (ang - 90) * Math.PI / 180;
+      // Centro da base da lâmina
+      const bx = C + rBase * Math.cos(a);
+      const by = C + rBase * Math.sin(a);
+      // Pontas da base (perpendicular à direção radial)
+      const perp = a + Math.PI / 2;
+      const bx1 = bx + largBase * Math.cos(perp);
+      const by1 = by + largBase * Math.sin(perp);
+      const bx2 = bx - largBase * 0.4 * Math.cos(perp);
+      const by2 = by - largBase * 0.4 * Math.sin(perp);
+      // Ponta afilada
+      const px = C + (rBase + altura) * Math.cos(a);
+      const py = C + (rBase + altura) * Math.sin(a);
+      ps.push(
+        `<path d="M ${bx1.toFixed(1)} ${by1.toFixed(1)}` +
+        ` L ${bx2.toFixed(1)} ${by2.toFixed(1)}` +
+        ` L ${px.toFixed(1)} ${py.toFixed(1)} Z"` +
+        ` fill="${fill}" opacity="${op}"/>`
+      );
+    }
+    return ps.join('');
+  };
+
+  /* ── 2. VÉU DE TINTA (traços de decreto em órbita) ───── */
+  const tracosDecreto = (n, r, compMin, compMax, sw, color, op) => {
+    const ps = [];
+    for (let i = 0; i < n; i++) {
+      const ang = (360 / n) * i;
+      const a1 = (ang - 90) * Math.PI / 180;
+      // Cada traço é uma linha tangencial curta (perpendicular ao raio)
+      const perp = a1 + Math.PI / 2;
+      const cx2 = C + r * Math.cos(a1);
+      const cy2 = C + r * Math.sin(a1);
+      const comp = compMin + (i % 3) * ((compMax - compMin) / 2);
+      // Leve curvatura — não são linhas retas, são arcos de escrita
+      const cx3 = cx2 + comp * Math.cos(perp);
+      const cy3 = cy2 + comp * Math.sin(perp);
+      const cx4 = cx2 - comp * 0.3 * Math.cos(perp);
+      const cy4 = cy2 - comp * 0.3 * Math.sin(perp);
+      const midX = (cx3 + cx4) / 2 + (i % 2 === 0 ? 3 : -3);
+      const midY = (cy3 + cy4) / 2 + (i % 2 === 0 ? -3 : 3);
+      ps.push(
+        `<path d="M ${cx3.toFixed(1)} ${cy3.toFixed(1)}` +
+        ` Q ${midX.toFixed(1)} ${midY.toFixed(1)},` +
+        ` ${cx4.toFixed(1)} ${cy4.toFixed(1)}"` +
+        ` fill="none" stroke="${color}" stroke-width="${sw}"` +
+        ` stroke-opacity="${op}" stroke-linecap="round"/>`
+      );
+    }
+    return ps.join('');
+  };
+
+  /* ── 3. GOTÍCULAS DE SANGUE EM ÓRBITA ─────────────────── */
+  const gotas = (n, rMin, rMax) => {
+    const ps = [];
+    const cores = ['#c0392b', '#e74c3c', '#8b0000', '#ff4444'];
+    for (let i = 0; i < n; i++) {
+      const ang = (360 / n) * i + (i * 11) % 25;
+      const a = (ang - 90) * Math.PI / 180;
+      const r = rMin + (rMax - rMin) * ((i * 7 + 3) % 10) / 10;
+      const x = C + r * Math.cos(a);
+      const y = C + r * Math.sin(a);
+      const cor = cores[i % cores.length];
+      const raio = (1.2 + (i % 4) * 0.7).toFixed(1);
+      const del = (i * 0.21).toFixed(2);
+      ps.push(
+        `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${raio}"` +
+        ` fill="${cor}" opacity="0.80"` +
+        ` style="animation:pnp-gota-orb 2.2s ${del}s ease-in-out infinite"/>`
+      );
+    }
+    return ps.join('');
+  };
+
+  /* ── Renderização ─────────────────────────────────────── */
+  const lamExt   = laminas(16, 68, 52, 6.5,  'url(#pnpAuraCarm)', .78, 0);
+  const lamInt   = laminas(12, 62, 36, 4.5,  'url(#pnpAuraAco)',  .55, 11.25);
+  const decExt   = tracosDecreto(32, 126, 6, 16, 1.4, '#c0392b', .60);
+  const decInt   = tracosDecreto(24, 100, 4, 10, 0.9, '#8b9dc3', .40);
+  const sangue   = gotas(24, 78, 140);
+
+  return `
+  <svg viewBox="0 0 300 300" width="${tam}" height="${tam}"
+       class="aura-svg" aria-hidden="true" focusable="false"
+       style="display:block;overflow:visible;max-width:none;width:${tam}px;height:${tam}px">
+    <style>
+      .pnp-r1{transform-origin:150px 150px;animation:aura-girar 44s linear infinite}
+      .pnp-r2{transform-origin:150px 150px;animation:aura-girar 30s linear infinite reverse}
+      .pnp-r3{transform-origin:150px 150px;animation:aura-girar 20s linear infinite}
+      .pnp-r4{transform-origin:150px 150px;animation:aura-girar 68s linear infinite reverse}
+      .pnp-pulse{transform-origin:150px 150px;animation:pnp-pulso-aura 3.2s ease-in-out infinite}
+      .pnp-halo{animation:pnp-halo-aura 4.5s ease-in-out infinite}
+      @keyframes pnp-pulso-aura{0%,100%{transform:scale(1);opacity:.80}50%{transform:scale(1.07);opacity:1}}
+      @keyframes pnp-halo-aura{0%,100%{opacity:.35}50%{opacity:.90}}
+      @keyframes pnp-gota-orb{0%,100%{transform:scale(.75);opacity:.25}50%{transform:scale(1.35);opacity:.95}}
+      @media(prefers-reduced-motion:reduce){
+        .pnp-r1,.pnp-r2,.pnp-r3,.pnp-r4,.pnp-pulse,.pnp-halo{animation:none}
+        circle[style*="pnp-gota-orb"]{animation:none!important}
+      }
+    </style>
+    <defs>
+      <!-- Gradiente das lâminas carmesim -->
+      <radialGradient id="pnpAuraCarm" cx="50%" cy="0%">
+        <stop offset="0%"   stop-color="#ff4444" stop-opacity="1"/>
+        <stop offset="30%"  stop-color="#c0392b" stop-opacity=".90"/>
+        <stop offset="70%"  stop-color="#6b0f0f" stop-opacity=".55"/>
+        <stop offset="100%" stop-color="#1a0808" stop-opacity="0"/>
+      </radialGradient>
+      <!-- Gradiente das lâminas de aço (internas) -->
+      <radialGradient id="pnpAuraAco" cx="50%" cy="0%">
+        <stop offset="0%"   stop-color="#d4dde8" stop-opacity=".95"/>
+        <stop offset="35%"  stop-color="#8b9dc3" stop-opacity=".65"/>
+        <stop offset="75%"  stop-color="#2d3d5a" stop-opacity=".30"/>
+        <stop offset="100%" stop-color="#0d0d1a" stop-opacity="0"/>
+      </radialGradient>
+      <!-- Halos de fundo -->
+      <radialGradient id="pnpHaloExt" cx="50%" cy="50%">
+        <stop offset="0%"   stop-color="#8b0000" stop-opacity="0"/>
+        <stop offset="42%"  stop-color="#8b0000" stop-opacity="0"/>
+        <stop offset="56%"  stop-color="#c0392b" stop-opacity=".38"/>
+        <stop offset="72%"  stop-color="#8b0000" stop-opacity=".22"/>
+        <stop offset="88%"  stop-color="#4a0000" stop-opacity=".10"/>
+        <stop offset="100%" stop-color="#1a0808" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="pnpHaloInt" cx="50%" cy="50%">
+        <stop offset="0%"   stop-color="#2d1b3d" stop-opacity="0"/>
+        <stop offset="40%"  stop-color="#2d1b3d" stop-opacity="0"/>
+        <stop offset="55%"  stop-color="#3d2060" stop-opacity=".28"/>
+        <stop offset="70%"  stop-color="#1a1a2e" stop-opacity=".15"/>
+        <stop offset="100%" stop-color="#0d0d1a" stop-opacity="0"/>
+      </radialGradient>
+      <!-- Filtros -->
+      <filter id="pnpAuraBlur" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="14"/>
+      </filter>
+      <filter id="pnpAuraGlow" x="-30%" y="-30%" width="160%" height="160%">
+        <feGaussianBlur stdDeviation="3"/>
+      </filter>
+      <filter id="pnpSharp" x="-25%" y="-25%" width="150%" height="150%">
+        <feGaussianBlur stdDeviation="1"/>
+      </filter>
+    </defs>
+
+    <!-- Halos de fundo (névoa do julgamento) -->
+    <circle cx="${C}" cy="${C}" r="134" fill="url(#pnpHaloExt)" class="pnp-halo" filter="url(#pnpAuraBlur)"/>
+    <circle cx="${C}" cy="${C}" r="112" fill="url(#pnpHaloInt)" class="pnp-halo"/>
+
+    <!-- Camada 1: Véu externo de decreto (traços carmesim) -->
+    <g class="pnp-r1" filter="url(#pnpSharp)">${decExt}</g>
+
+    <!-- Camada 2: Lâminas externas de julgamento (carmesim) -->
+    <g class="pnp-r2"><g class="pnp-pulse" filter="url(#pnpAuraGlow)">${lamExt}</g></g>
+
+    <!-- Camada 3: Lâminas internas de aço (sentença fria) -->
+    <g class="pnp-r1"><g filter="url(#pnpAuraGlow)">${lamInt}</g></g>
+
+    <!-- Camada 4: Véu interno de decreto (traços de aço) -->
+    <g class="pnp-r3" filter="url(#pnpSharp)">${decInt}</g>
+
+    <!-- Camada 5: Gotículas de sangue carmesim em órbita livre -->
+    <g class="pnp-r4" filter="url(#pnpSharp)">${sangue}</g>
+
+    <!-- Camada 6: Anel duplo de decreto (borda da sentença) -->
+    <g class="pnp-r1">
+      <circle cx="${C}" cy="${C}" r="132" fill="none"
+              stroke="#8b0000" stroke-width="1.4" stroke-opacity=".55"
+              stroke-dasharray="12 9" filter="url(#pnpSharp)"/>
+      <circle cx="${C}" cy="${C}" r="136" fill="none"
+              stroke="#c0392b" stroke-width="0.7" stroke-opacity=".35"
+              stroke-dasharray="3 15" filter="url(#pnpSharp)"/>
+    </g>
+  </svg>`;
+});
+
 window.Auras = Auras;
+

@@ -453,6 +453,7 @@ AURAS_VALIDAS = {
     "bella-rosa":     "Bella Rosa — Femme Fatale",
     "pink-spirit":    "Pink Spirit",
     "fenix-pioneira": "Fênix — Chama Imortal",
+    "pena-punidor":   "Pena do Punidor — A Sentença Viva",
 }
 
 

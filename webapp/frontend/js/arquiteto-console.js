@@ -1208,24 +1208,28 @@ const ArquitetoConsole = {
 
 
         ${sec('auras', '🌸 Auras Cosm\u00e9ticas', false, [
-          bt('Preview: Fênix (Chama Imortal)', 'window.Auras?.vitrine("fenix-pioneira")', 'ouro', true),
-          bt('Preview: Bella Rosa',           'window.Auras?.vitrine("bella-rosa")', 'rosa', true),
-          bt('Preview: Pink Spirit',          'window.Auras?.vitrine("pink-spirit")', 'rosa', true),
-          bt('Preview: todas as auras',       'window.Auras?.vitrine()', 'ouro', true),
-          bt('Diagn\u00f3stico de auras',     'window.Auras?.diagnostico?.()', 'cinza', true),
-          bt('\u2736 Forjar Fênix (meu)',       'ArquitetoConsole._forjarAura("fenix-pioneira")', 'ouro', false),
-          bt('\u2736 Forjar Bella Rosa (meu)',  'ArquitetoConsole._forjarAura("bella-rosa")', 'rosa', false),
-          bt('\u2736 Forjar Pink Spirit (meu)', 'ArquitetoConsole._forjarAura("pink-spirit")', 'rosa', false),
-          bt('\u2736 Enviar Aura a Hunter',     'ArquitetoConsole.enviarAura()', 'ouro', false),
+          bt('Preview: Fênix (Chama Imortal)',   'window.Auras?.vitrine("fenix-pioneira")', 'ouro', true),
+          bt('Preview: Pena do Punidor',           'window.Auras?.vitrine("pena-punidor")',   'vermelho', true),
+          bt('Preview: Bella Rosa',                'window.Auras?.vitrine("bella-rosa")', 'rosa', true),
+          bt('Preview: Pink Spirit',               'window.Auras?.vitrine("pink-spirit")', 'rosa', true),
+          bt('Preview: todas as auras',            'window.Auras?.vitrine()', 'ouro', true),
+          bt('Diagnóstico de auras',          'window.Auras?.diagnostico?.()', 'cinza', true),
+          bt('\u2736 Forjar Pena do Punidor (meu)','ArquitetoConsole._forjarAura("pena-punidor")', 'vermelho', false),
+          bt('\u2736 Forjar Fênix (meu)',          'ArquitetoConsole._forjarAura("fenix-pioneira")', 'ouro', false),
+          bt('\u2736 Forjar Bella Rosa (meu)',      'ArquitetoConsole._forjarAura("bella-rosa")', 'rosa', false),
+          bt('\u2736 Forjar Pink Spirit (meu)',     'ArquitetoConsole._forjarAura("pink-spirit")', 'rosa', false),
+          bt('\u2736 Enviar Aura a Hunter',         'ArquitetoConsole.enviarAura()', 'ouro', false),
         ])}
 
         ${sec('insignias', '🎖 Insígnias com arte própria', false, [
-          bt('Cerimônia: Mono Evelynn',   'window.EvelynnFX.cerimonia()', 'rosa', true),
-          bt('Cerimônia: Fênix Pioneira', 'window.FenixFX.cerimonia()', 'ouro', true),
-          bt('Vitrine: Mono Evelynn',     'vitrineInsignia("mono_evelynn")', 'rosa', true),
-          bt('Vitrine: Isabella Costa',   'vitrineInsignia("isabella")', 'rosa', true),
-          bt('Vitrine: Fênix Pioneira',     'vitrineInsignia("fenix_pioneira")', 'ouro', true),
-          bt('Nexus Social (vitrine)',     'vitrineInsignia("nexus-social")', 'ciano', true),
+          bt('Cerimônia: Mono Evelynn',        'window.EvelynnFX.cerimonia()', 'rosa', true),
+          bt('Cerimônia: Fênix Pioneira',      'window.FenixFX.cerimonia()', 'ouro', true),
+          bt('Cerimônia: Pena do Punidor',      'window.PenaPunidorFX.cerimonia()', 'vermelho', true),
+          bt('Vitrine: Mono Evelynn',            'vitrineInsignia("mono_evelynn")', 'rosa', true),
+          bt('Vitrine: Isabella Costa',          'vitrineInsignia("isabella")', 'rosa', true),
+          bt('Vitrine: Fênix Pioneira',          'vitrineInsignia("fenix_pioneira")', 'ouro', true),
+          bt('Vitrine: Pena do Punidor',         'vitrineInsignia("pena_do_punidor")', 'vermelho', true),
+          bt('Nexus Social (vitrine)',            'vitrineInsignia("nexus-social")', 'ciano', true),
           bt('Vitrine: todas as artes',   'vitrineInsignia()', 'ciano', true),
           bt('Aura: Bella Rosa (preview)', 'window.Auras?.vitrine("bella-rosa")', 'rosa', true),
           bt('Aura: Vitrine completa',     'window.Auras?.vitrine()', 'ouro', true),
@@ -2215,7 +2219,8 @@ ArquitetoConsole.vitrineInsignia = function (codigo) {
    ENVIAR AURA — modal que lista hunters, seleciona aura e envia via API */
 ArquitetoConsole.enviarAura = async function () {
   const AURAS = [
-    { id: 'fenix-pioneira', nome: 'Fênix — Chama Imortal', cor: '#ff6d00' },
+    { id: 'fenix-pioneira', nome: 'Fênix — Chama Imortal',       cor: '#ff6d00' },
+    { id: 'pena-punidor',   nome: 'Pena do Punidor — A Sentença', cor: '#c0392b' },
     { id: 'bella-rosa',     nome: 'Bella Rosa — Femme Fatale', cor: '#f48fb1' },
     { id: 'pink-spirit',    nome: 'Pink Spirit',                  cor: '#f48fb1' },
     { id: 'arquiteto',      nome: 'A Forja Viva',                 cor: '#fbbf24' },

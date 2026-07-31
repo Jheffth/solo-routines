@@ -45,6 +45,15 @@ AURAS = {
         "cor":       "#ff6d00",
         "enviavel":  True,
     },
+    "pena-punidor": {
+        "id":        "pena-punidor",
+        "nome":      "Pena do Punidor — A Sentença Viva",
+        "descricao": "Aura exclusiva do Arquiteto Legislador. 6 camadas: lâminas de julgamento "
+                     "carmesim e aço, véu de decreto em tinta, gotículas de sangue em órbita "
+                     "e anel de sentença. Não se compra — se ganha por direito.",
+        "cor":       "#c0392b",
+        "enviavel":  False,
+    },
 }
 
 
