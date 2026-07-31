@@ -26,7 +26,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from database import get_db, Usuario, Rotina, ExecucaoDia, TarefaDia
+from database import get_db, Usuario, Rotina, ExecucaoDia, TarefaDia, Contador
 from auth.router import get_usuario_atual
 from motors import fechamento
 
@@ -114,6 +114,10 @@ def _missao_de_rotina(ed: ExecucaoDia, r: Rotina, hoje: date) -> dict:
         "confessada_em": ed.confessada_em.isoformat()
                          if getattr(ed, "confessada_em", None) else None,
 
+        # ROTINA DE REPETICOES. A contagem e do DIA, entao vem da
+        # instancia diaria — nao da rotina, que so guarda o alvo.
+        **_repeticao(r, getattr(ed, "repeticoes", 0)),
+
         # Duas permissões diferentes, e confundi-las custa caro:
         #   editavel    → EXECUTAR (iniciar/concluir). Só faz sentido hoje:
         #                 ninguém conclui ontem, ninguém adianta amanhã.
@@ -121,6 +125,25 @@ def _missao_de_rotina(ed: ExecucaoDia, r: Rotina, hoje: date) -> dict:
         #                 histórico e não se reescreve.
         "editavel":    ed.data == hoje,
         "gerenciavel": ed.data >= hoje,
+    }
+
+
+def _repeticao(fonte, repeticoes) -> dict:
+    """
+    Os campos da repeticao, num lugar so.
+
+    ESTE ERA O TERCEIRO SERIALIZADOR do mesmo conceito — `rotinas.py`,
+    `tarefas.py` e aqui — e foi exatamente por isso que o Arquiteto
+    lancou uma missao de repeticao e recebeu um cartao comum: eu tinha
+    atualizado os dois primeiros e nao sabia que existia o terceiro.
+
+    O cartao le so quatro nomes. Emitir os quatro juntos, de uma funcao
+    unica, e o que impede a proxima tela de nascer sem eles.
+    """
+    return {
+        "alvo_repeticoes": getattr(fonte, "alvo_repeticoes", None),
+        "contador_id":     getattr(fonte, "contador_id", None),
+        "repeticoes":      int(repeticoes or 0),
     }
 
 
@@ -146,7 +169,10 @@ def _missao_geral(t: TarefaDia, hoje: date) -> dict:
         "tipo":       "AVULSA",
 
         "status":     status,
-        "hora_inicio": None,
+        # `hora_inicio` era None fixo. A missao geral passou a poder ser
+        # um PROTOCOLO de um dia so, e sem o inicio da janela o cartao
+        # nao sabe quando ela entra em vigor.
+        "hora_inicio": getattr(t, "hora_inicio", None),
         "hora_fim":    t.hora_limite,
 
         "xp_recompensa":     t.xp_recompensa,
@@ -167,9 +193,17 @@ def _missao_geral(t: TarefaDia, hoje: date) -> dict:
         **prazos.para_json(prazos.da_tarefa(t)),
         "reerguida": False,
         "mana_gasta": 0,
-        # Missão geral nunca é passiva: passiva é protocolo que se repete.
-        "natureza": "ATIVA",
-        "confessada_em": None,
+
+        # AQUI ESTAVA CRAVADO `"natureza": "ATIVA"`, com um comentario meu
+        # dizendo "missao geral nunca e passiva". Era a regra que confundia
+        # RECORRENCIA com NATUREZA — a mesma que o Arquiteto ja tinha
+        # derrubado no lancador e no banco. Ela sobreviveu aqui porque
+        # estava escrita como CONSTANTE, e constante nao aparece quando se
+        # procura por quem le o campo.
+        "natureza": getattr(t, "natureza", "ATIVA") or "ATIVA",
+        "confessada_em": t.confessada_em.isoformat()
+                         if getattr(t, "confessada_em", None) else None,
+        **_repeticao(t, getattr(t, "repeticoes", 0)),
 
         "editavel":    t.data_prevista == hoje,
         "gerenciavel": t.data_prevista >= hoje if t.data_prevista else False,
@@ -238,6 +272,23 @@ def listar_extrato(
             q2 = q2.filter(TarefaDia.categoria == categoria)
         for t in q2.all():
             missoes.append(_missao_geral(t, hoje))
+
+    # ── O TOTAL DOS CONTADORES ────────────────────────────────────────
+    # A caixa do modo LIVRE mostra "412 questoes acumuladas", e esse total
+    # e derivado. Buscar por cartao seria um N+1 num extrato de 200 linhas:
+    # aqui vai UMA consulta por balde distinto da pagina, e so se houver
+    # algum. Extrato sem repeticao nao paga nada por isto existir.
+    baldes = {m["contador_id"] for m in missoes if m.get("contador_id")}
+    if baldes:
+        from routers.contadores import total_de
+        totais = {b: total_de(db, b) for b in baldes}
+        nomes = {c.id: c for c in db.query(Contador)
+                                    .filter(Contador.id.in_(baldes)).all()}
+        for m in missoes:
+            b = m.get("contador_id")
+            if b in totais:
+                m["total_contador"] = totais[b]
+                m["unidade_contador"] = getattr(nomes.get(b), "unidade", None)
 
     # Filtro de status depois da união: o vocabulário já está normalizado.
     if status:
