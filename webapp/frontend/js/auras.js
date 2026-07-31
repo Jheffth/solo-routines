@@ -1086,193 +1086,208 @@ Auras.registrar('fenix-pioneira', function (tam) {
    PALETA: Preto-abissal (#0d0d1a), Carmesim-vivo (#c0392b),
            Rubi-escuro (#8b0000), Cinza-aço (#8b9dc3)
    ============================================================ */
+/* ══════════════════════════════════════════════════════════════
+   AURA — PENA DO PUNIDOR · A SENTENÇA
+
+   A primeira versão era uma CÓPIA RENOMEADA da Fênix. Bastou olhar as
+   classes lado a lado para ver:
+
+     fnx-r1 fnx-r2 fnx-r3 fnx-r4  ·  fnx-halo  ·  fnx-pulse
+     pnp-r1 pnp-r2 pnp-r3 pnp-r4  ·  pnp-halo  ·  pnp-pulse
+
+   Mesmo esqueleto, outro nome, outra cor. O Arquiteto viu na hora, e a
+   ordem foi clara: única, bonita, devastadora, sem parecer com nenhuma
+   outra.
+
+   O PROBLEMA REAL não era a cor. Era que TODAS as auras deste app
+   falam a mesma gramática: coisas dispostas em RAIO em volta do
+   centro, GIRANDO. Fênix, Bella Rosa, Pink Spirit — pétalas, chamas,
+   lâminas: muda o desenho, não a sintaxe. Trocar laranja por carmesim
+   nunca ia resolver.
+
+   Então esta aura quebra a gramática. Ela não gira e não irradia:
+
+     1. O SELO FECHA        três anéis de decreto que CONTRAEM até
+                            travar, e recomeçam. Um selo não gira —
+                            ele se fecha sobre alguém.
+
+     2. A TINTA CAI         traços verticais descendo, como uma
+                            sentença sendo escrita de cima. É o gesto
+                            que nenhuma outra aura tem: movimento
+                            VERTICAL num app onde tudo orbita.
+
+     3. O CARIMBO BATE      quatro cunhas que golpeiam para DENTRO, em
+                            intervalos, e recuam. Não é rotação: é
+                            impacto.
+
+     4. A ASSINATURA        o mesmo floreio da insígnia, escrevendo-se
+                            na base. A aura e a medalha são o mesmo
+                            objeto em duas escalas.
+
+   PALETA: carmesim #ff0a3c e azul #2b6bff — as duas cores do giroflex
+   da penitência. A Fênix é laranja; não há como confundir.
+   ══════════════════════════════════════════════════════════════ */
 Auras.registrar('pena-punidor', function (tam) {
   const C = 150;
+  const u = 'pn' + (++Auras._seq);   // ids únicos: duas auras na mesma tela
 
-  /* Helper: ponto em coordenada polar */
-  const pt = (r, deg) => {
-    const a = (deg - 90) * Math.PI / 180;
-    return [C + r * Math.cos(a), C + r * Math.sin(a)];
-  };
+  /* ── 1. O SELO ─────────────────────────────────────────────
+     Três anéis de traços. Eles CONTRAEM e travam — a animação vai de
+     1.18 a 1.00 e para, depois reinicia. É o oposto de girar: um selo
+     se fecha sobre alguém. */
+  const selo = [
+    { r: 132, w: 1.6, dash: '2 10', cor: '#ff0a3c', op: .60, dur: 3.2, atraso: 0 },
+    { r: 116, w: 1.1, dash: '1 14', cor: '#2b6bff', op: .45, dur: 3.2, atraso: .35 },
+    { r: 100, w: 2.2, dash: '26 220', cor: '#ff0a3c', op: .75, dur: 3.2, atraso: .7 },
+  ].map((a, k) => `
+    <circle class="${u}-selo ${u}-selo${k}" cx="${C}" cy="${C}" r="${a.r}"
+            fill="none" stroke="${a.cor}" stroke-width="${a.w}"
+            stroke-dasharray="${a.dash}" stroke-linecap="round"
+            opacity="${a.op}"
+            style="animation-duration:${a.dur}s;animation-delay:${a.atraso}s"/>`).join('');
 
-  /* ── 1. LÂMINAS DE JULGAMENTO ─────────────────────────── */
-  // Cada lâmina: forma de cunha assimétrica, inclinada
-  const laminas = (n, rBase, altura, largBase, fill, op, rotOffset = 0) => {
-    const ps = [];
-    for (let i = 0; i < n; i++) {
-      const ang = (360 / n) * i + rotOffset;
-      const a = (ang - 90) * Math.PI / 180;
-      // Centro da base da lâmina
-      const bx = C + rBase * Math.cos(a);
-      const by = C + rBase * Math.sin(a);
-      // Pontas da base (perpendicular à direção radial)
-      const perp = a + Math.PI / 2;
-      const bx1 = bx + largBase * Math.cos(perp);
-      const by1 = by + largBase * Math.sin(perp);
-      const bx2 = bx - largBase * 0.4 * Math.cos(perp);
-      const by2 = by - largBase * 0.4 * Math.sin(perp);
-      // Ponta afilada
-      const px = C + (rBase + altura) * Math.cos(a);
-      const py = C + (rBase + altura) * Math.sin(a);
-      ps.push(
-        `<path d="M ${bx1.toFixed(1)} ${by1.toFixed(1)}` +
-        ` L ${bx2.toFixed(1)} ${by2.toFixed(1)}` +
-        ` L ${px.toFixed(1)} ${py.toFixed(1)} Z"` +
-        ` fill="${fill}" opacity="${op}"/>`
-      );
-    }
-    return ps.join('');
-  };
+  /* ── 2. A TINTA QUE CAI ────────────────────────────────────
+     Dezoito traços verticais, de comprimentos e velocidades
+     diferentes, caindo de cima. O movimento vertical é a assinatura
+     desta aura — nenhuma outra do app tem gravidade. */
+  let chuva = '';
+  for (let i = 0; i < 18; i++) {
+    const x = 26 + (i * 16.4) % 248;
+    const len = 14 + (i * 7) % 34;
+    const dur = 2.1 + ((i * 13) % 17) / 10;
+    const atraso = ((i * 29) % 31) / 10;
+    const cor = i % 3 === 0 ? '#2b6bff' : '#ff0a3c';
+    chuva += `<line class="${u}-tinta" x1="${x}" y1="-10" x2="${x}" y2="${-10 + len}"
+                    stroke="${cor}" stroke-width="${i % 4 === 0 ? 2 : 1.2}"
+                    stroke-linecap="round" opacity="0"
+                    style="animation-duration:${dur.toFixed(2)}s;animation-delay:${atraso.toFixed(2)}s"/>`;
+  }
 
-  /* ── 2. VÉU DE TINTA (traços de decreto em órbita) ───── */
-  const tracosDecreto = (n, r, compMin, compMax, sw, color, op) => {
-    const ps = [];
-    for (let i = 0; i < n; i++) {
-      const ang = (360 / n) * i;
-      const a1 = (ang - 90) * Math.PI / 180;
-      // Cada traço é uma linha tangencial curta (perpendicular ao raio)
-      const perp = a1 + Math.PI / 2;
-      const cx2 = C + r * Math.cos(a1);
-      const cy2 = C + r * Math.sin(a1);
-      const comp = compMin + (i % 3) * ((compMax - compMin) / 2);
-      // Leve curvatura — não são linhas retas, são arcos de escrita
-      const cx3 = cx2 + comp * Math.cos(perp);
-      const cy3 = cy2 + comp * Math.sin(perp);
-      const cx4 = cx2 - comp * 0.3 * Math.cos(perp);
-      const cy4 = cy2 - comp * 0.3 * Math.sin(perp);
-      const midX = (cx3 + cx4) / 2 + (i % 2 === 0 ? 3 : -3);
-      const midY = (cy3 + cy4) / 2 + (i % 2 === 0 ? -3 : 3);
-      ps.push(
-        `<path d="M ${cx3.toFixed(1)} ${cy3.toFixed(1)}` +
-        ` Q ${midX.toFixed(1)} ${midY.toFixed(1)},` +
-        ` ${cx4.toFixed(1)} ${cy4.toFixed(1)}"` +
-        ` fill="none" stroke="${color}" stroke-width="${sw}"` +
-        ` stroke-opacity="${op}" stroke-linecap="round"/>`
-      );
-    }
-    return ps.join('');
-  };
+  /* ── 3. O CARIMBO ──────────────────────────────────────────
+     Quatro cunhas nos pontos cardeais. Elas AVANÇAM para o centro e
+     recuam — impacto, não órbita. Cada uma com atraso próprio, senão
+     seria um zoom. */
+  const carimbo = [0, 90, 180, 270].map((ang, k) => `
+    <path class="${u}-cunha" d="M${C} ${C - 88} L${C + 13} ${C - 122} L${C - 13} ${C - 122} Z"
+          fill="url(#${u}-cunhaG)" opacity=".85"
+          transform="rotate(${ang} ${C} ${C})"
+          style="animation-delay:${(k * .18).toFixed(2)}s"/>`).join('');
 
-  /* ── 3. GOTÍCULAS DE SANGUE EM ÓRBITA ─────────────────── */
-  const gotas = (n, rMin, rMax) => {
-    const ps = [];
-    const cores = ['#c0392b', '#e74c3c', '#8b0000', '#ff4444'];
-    for (let i = 0; i < n; i++) {
-      const ang = (360 / n) * i + (i * 11) % 25;
-      const a = (ang - 90) * Math.PI / 180;
-      const r = rMin + (rMax - rMin) * ((i * 7 + 3) % 10) / 10;
-      const x = C + r * Math.cos(a);
-      const y = C + r * Math.sin(a);
-      const cor = cores[i % cores.length];
-      const raio = (1.2 + (i % 4) * 0.7).toFixed(1);
-      const del = (i * 0.21).toFixed(2);
-      ps.push(
-        `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${raio}"` +
-        ` fill="${cor}" opacity="0.80"` +
-        ` style="animation:pnp-gota-orb 2.2s ${del}s ease-in-out infinite"/>`
-      );
-    }
-    return ps.join('');
-  };
-
-  /* ── Renderização ─────────────────────────────────────── */
-  const lamExt   = laminas(16, 68, 52, 6.5,  'url(#pnpAuraCarm)', .78, 0);
-  const lamInt   = laminas(12, 62, 36, 4.5,  'url(#pnpAuraAco)',  .55, 11.25);
-  const decExt   = tracosDecreto(32, 126, 6, 16, 1.4, '#c0392b', .60);
-  const decInt   = tracosDecreto(24, 100, 4, 10, 0.9, '#8b9dc3', .40);
-  const sangue   = gotas(24, 78, 140);
+  /* ── 4. A ASSINATURA ───────────────────────────────────────
+     O mesmo floreio da insígnia. A aura e a medalha são o mesmo
+     objeto em duas escalas — e é isso que faz o conjunto parecer
+     desenhado por uma pessoa só. */
+  const assinatura = `
+    <path class="${u}-assina"
+          d="M64 244 C 92 262, 140 264, 178 250 C 200 242, 206 226, 192 219
+             C 178 212, 168 228, 182 238 C 196 248, 224 244, 238 232"
+          stroke="url(#${u}-tintaG)" stroke-width="2.6" fill="none"
+          stroke-linecap="round" opacity=".9"/>`;
 
   return `
-  <svg viewBox="0 0 300 300" width="${tam}" height="${tam}"
-       class="aura-svg" aria-hidden="true" focusable="false"
-       style="display:block;overflow:visible;max-width:none;width:${tam}px;height:${tam}px">
-    <style>
-      .pnp-r1{transform-origin:150px 150px;animation:aura-girar 44s linear infinite}
-      .pnp-r2{transform-origin:150px 150px;animation:aura-girar 30s linear infinite reverse}
-      .pnp-r3{transform-origin:150px 150px;animation:aura-girar 20s linear infinite}
-      .pnp-r4{transform-origin:150px 150px;animation:aura-girar 68s linear infinite reverse}
-      .pnp-pulse{transform-origin:150px 150px;animation:pnp-pulso-aura 3.2s ease-in-out infinite}
-      .pnp-halo{animation:pnp-halo-aura 4.5s ease-in-out infinite}
-      @keyframes pnp-pulso-aura{0%,100%{transform:scale(1);opacity:.80}50%{transform:scale(1.07);opacity:1}}
-      @keyframes pnp-halo-aura{0%,100%{opacity:.35}50%{opacity:.90}}
-      @keyframes pnp-gota-orb{0%,100%{transform:scale(.75);opacity:.25}50%{transform:scale(1.35);opacity:.95}}
-      @media(prefers-reduced-motion:reduce){
-        .pnp-r1,.pnp-r2,.pnp-r3,.pnp-r4,.pnp-pulse,.pnp-halo{animation:none}
-        circle[style*="pnp-gota-orb"]{animation:none!important}
-      }
-    </style>
-    <defs>
-      <!-- Gradiente das lâminas carmesim -->
-      <radialGradient id="pnpAuraCarm" cx="50%" cy="0%">
-        <stop offset="0%"   stop-color="#ff4444" stop-opacity="1"/>
-        <stop offset="30%"  stop-color="#c0392b" stop-opacity=".90"/>
-        <stop offset="70%"  stop-color="#6b0f0f" stop-opacity=".55"/>
-        <stop offset="100%" stop-color="#1a0808" stop-opacity="0"/>
-      </radialGradient>
-      <!-- Gradiente das lâminas de aço (internas) -->
-      <radialGradient id="pnpAuraAco" cx="50%" cy="0%">
-        <stop offset="0%"   stop-color="#d4dde8" stop-opacity=".95"/>
-        <stop offset="35%"  stop-color="#8b9dc3" stop-opacity=".65"/>
-        <stop offset="75%"  stop-color="#2d3d5a" stop-opacity=".30"/>
-        <stop offset="100%" stop-color="#0d0d1a" stop-opacity="0"/>
-      </radialGradient>
-      <!-- Halos de fundo -->
-      <radialGradient id="pnpHaloExt" cx="50%" cy="50%">
-        <stop offset="0%"   stop-color="#8b0000" stop-opacity="0"/>
-        <stop offset="42%"  stop-color="#8b0000" stop-opacity="0"/>
-        <stop offset="56%"  stop-color="#c0392b" stop-opacity=".38"/>
-        <stop offset="72%"  stop-color="#8b0000" stop-opacity=".22"/>
-        <stop offset="88%"  stop-color="#4a0000" stop-opacity=".10"/>
-        <stop offset="100%" stop-color="#1a0808" stop-opacity="0"/>
-      </radialGradient>
-      <radialGradient id="pnpHaloInt" cx="50%" cy="50%">
-        <stop offset="0%"   stop-color="#2d1b3d" stop-opacity="0"/>
-        <stop offset="40%"  stop-color="#2d1b3d" stop-opacity="0"/>
-        <stop offset="55%"  stop-color="#3d2060" stop-opacity=".28"/>
-        <stop offset="70%"  stop-color="#1a1a2e" stop-opacity=".15"/>
-        <stop offset="100%" stop-color="#0d0d1a" stop-opacity="0"/>
-      </radialGradient>
-      <!-- Filtros -->
-      <filter id="pnpAuraBlur" x="-50%" y="-50%" width="200%" height="200%">
-        <feGaussianBlur stdDeviation="14"/>
-      </filter>
-      <filter id="pnpAuraGlow" x="-30%" y="-30%" width="160%" height="160%">
-        <feGaussianBlur stdDeviation="3"/>
-      </filter>
-      <filter id="pnpSharp" x="-25%" y="-25%" width="150%" height="150%">
-        <feGaussianBlur stdDeviation="1"/>
-      </filter>
-    </defs>
+<svg class="aura-svg" width="${tam}" height="${tam}" viewBox="0 0 300 300"
+     xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <defs>
+    <radialGradient id="${u}-veu" cx=".5" cy=".5" r=".5">
+      <stop offset="0"   stop-color="#ff0a3c" stop-opacity=".30"/>
+      <stop offset=".55" stop-color="#7a0f2e" stop-opacity=".16"/>
+      <stop offset="1"   stop-color="#2b6bff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="${u}-cunhaG" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0"   stop-color="#ff0a3c" stop-opacity="0"/>
+      <stop offset=".55" stop-color="#ff0a3c" stop-opacity=".9"/>
+      <stop offset="1"   stop-color="#fff" stop-opacity=".95"/>
+    </linearGradient>
+    <linearGradient id="${u}-tintaG" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0"   stop-color="#ff0a3c"/>
+      <stop offset=".5"  stop-color="#a2185a"/>
+      <stop offset="1"   stop-color="#2b6bff"/>
+    </linearGradient>
+    <filter id="${u}-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <!-- A chuva é recortada ao círculo da aura: sem isto ela escorre
+         para fora e vira listra na tela. -->
+    <clipPath id="${u}-corte"><circle cx="${C}" cy="${C}" r="142"/></clipPath>
+  </defs>
 
-    <!-- Halos de fundo (névoa do julgamento) -->
-    <circle cx="${C}" cy="${C}" r="134" fill="url(#pnpHaloExt)" class="pnp-halo" filter="url(#pnpAuraBlur)"/>
-    <circle cx="${C}" cy="${C}" r="112" fill="url(#pnpHaloInt)" class="pnp-halo"/>
+  <style>
+    /* O SELO CONTRAI E TRAVA. Nada gira nesta aura — é o que a separa
+       de todas as outras do app. */
+    .${u}-selo {
+      transform-origin: ${C}px ${C}px;
+      animation-name: ${u}-fechar;
+      animation-timing-function: cubic-bezier(.16,.9,.3,1);
+      animation-iteration-count: infinite;
+    }
+    @keyframes ${u}-fechar {
+      0%       { transform: scale(1.18); opacity: 0; }
+      22%      { opacity: 1; }
+      55%, 88% { transform: scale(1); }
+      100%     { transform: scale(1); opacity: .25; }
+    }
 
-    <!-- Camada 1: Véu externo de decreto (traços carmesim) -->
-    <g class="pnp-r1" filter="url(#pnpSharp)">${decExt}</g>
+    /* A TINTA CAI. Movimento vertical — a assinatura desta aura. */
+    .${u}-tinta {
+      animation-name: ${u}-cair;
+      animation-timing-function: cubic-bezier(.4,0,.9,.5);
+      animation-iteration-count: infinite;
+    }
+    @keyframes ${u}-cair {
+      0%   { transform: translateY(0);     opacity: 0; }
+      12%  { opacity: .9; }
+      82%  { opacity: .55; }
+      100% { transform: translateY(320px); opacity: 0; }
+    }
 
-    <!-- Camada 2: Lâminas externas de julgamento (carmesim) -->
-    <g class="pnp-r2"><g class="pnp-pulse" filter="url(#pnpAuraGlow)">${lamExt}</g></g>
+    /* O CARIMBO BATE. Avança rápido, recua devagar — é o ritmo de um
+       golpe, e o oposto de uma rotação constante. */
+    .${u}-cunha {
+      transform-box: fill-box;
+      animation: ${u}-bater 2.6s cubic-bezier(.2,.9,.3,1) infinite;
+    }
+    @keyframes ${u}-bater {
+      0%, 62%  { transform: translateY(0);    opacity: .30; }
+      70%      { transform: translateY(26px); opacity: 1; }
+      100%     { transform: translateY(0);    opacity: .30; }
+    }
 
-    <!-- Camada 3: Lâminas internas de aço (sentença fria) -->
-    <g class="pnp-r1"><g filter="url(#pnpAuraGlow)">${lamInt}</g></g>
+    /* A ASSINATURA se escreve, e some para recomeçar. */
+    .${u}-assina {
+      stroke-dasharray: 300;
+      animation: ${u}-assinar 5.4s ease-in-out infinite;
+    }
+    @keyframes ${u}-assinar {
+      0%       { stroke-dashoffset: 300; opacity: 0; }
+      18%      { opacity: .9; }
+      55%, 78% { stroke-dashoffset: 0;   opacity: .9; }
+      100%     { stroke-dashoffset: 0;   opacity: 0; }
+    }
 
-    <!-- Camada 4: Véu interno de decreto (traços de aço) -->
-    <g class="pnp-r3" filter="url(#pnpSharp)">${decInt}</g>
+    .${u}-veu { animation: ${u}-veu 4.8s ease-in-out infinite; transform-origin: ${C}px ${C}px; }
+    @keyframes ${u}-veu {
+      0%, 100% { opacity: .55; transform: scale(1); }
+      50%      { opacity: .9;  transform: scale(1.05); }
+    }
 
-    <!-- Camada 5: Gotículas de sangue carmesim em órbita livre -->
-    <g class="pnp-r4" filter="url(#pnpSharp)">${sangue}</g>
+    @media (prefers-reduced-motion: reduce) {
+      .${u}-selo, .${u}-tinta, .${u}-cunha, .${u}-assina, .${u}-veu { animation: none; }
+      .${u}-tinta { opacity: .5; }
+      .${u}-assina { stroke-dashoffset: 0; opacity: .9; }
+    }
+  </style>
 
-    <!-- Camada 6: Anel duplo de decreto (borda da sentença) -->
-    <g class="pnp-r1">
-      <circle cx="${C}" cy="${C}" r="132" fill="none"
-              stroke="#8b0000" stroke-width="1.4" stroke-opacity=".55"
-              stroke-dasharray="12 9" filter="url(#pnpSharp)"/>
-      <circle cx="${C}" cy="${C}" r="136" fill="none"
-              stroke="#c0392b" stroke-width="0.7" stroke-opacity=".35"
-              stroke-dasharray="3 15" filter="url(#pnpSharp)"/>
-    </g>
-  </svg>`;
+  <!-- O véu de fundo: carmesim no centro, azul dissolvendo na borda.
+       UM só — dois halos brigam entre si. -->
+  <circle class="${u}-veu" cx="${C}" cy="${C}" r="142" fill="url(#${u}-veu)"/>
+
+  <g clip-path="url(#${u}-corte)">${chuva}</g>
+
+  <g filter="url(#${u}-glow)">${selo}</g>
+  <g filter="url(#${u}-glow)">${carimbo}</g>
+  ${assinatura}
+</svg>`;
 });
 
 window.Auras = Auras;

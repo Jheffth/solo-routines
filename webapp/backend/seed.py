@@ -66,6 +66,17 @@ CONQUISTAS_PRESENTE = [
     # Fênix — insígnia para os primeiros assinantes do serviço (js/badges/fenix-pioneira.js)
     ("fenix_pioneira", "Fênix · Assinante Pioneiro",
      "Comercialização — A chama imortal dos primeiros assinantes que acreditaram no Sistema", "🔥", "#f97316", 5000, 1000),
+    # Pena do Punidor — insígnia do Arquiteto Legislador (js/badges/pena-do-punidor.js)
+    #
+    # A ARTE EXISTIA E A CONQUISTA NAO. O badge estava registrado no
+    # ConquistaFX pelo frontend, mas sem linha aqui o backend nunca soube
+    # do codigo `pena_do_punidor` — e a Forja caia no texto generico
+    # "Insígnia com arte própria", que e o fallback para arte orfa.
+    # Registrar a arte sem registrar a conquista deixa a metade visivel
+    # do trabalho parecendo inacabada.
+    ("pena_do_punidor", "Pena do Punidor",
+     "Forjada pelo Arquiteto que escreveu as leis de ferro do Sistema — "
+     "cada traço desta pena é uma sentença inapelável", "✒", "#ff0a3c", 7777, 777),
 ]
 
 

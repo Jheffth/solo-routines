@@ -48,10 +48,14 @@ AURAS = {
     "pena-punidor": {
         "id":        "pena-punidor",
         "nome":      "Pena do Punidor — A Sentença Viva",
-        "descricao": "Aura exclusiva do Arquiteto Legislador. 6 camadas: lâminas de julgamento "
-                     "carmesim e aço, véu de decreto em tinta, gotículas de sangue em órbita "
-                     "e anel de sentença. Não se compra — se ganha por direito.",
-        "cor":       "#c0392b",
+        # A descricao antiga ("gotículas de sangue EM ÓRBITA") descrevia a
+        # primeira arte, que era a Fenix renomeada. A arte mudou; o texto
+        # tinha de mudar junto, senao o catalogo mente sobre o produto.
+        "descricao": "Quatro atos de uma sentença: o selo se fecha em três anéis, "
+                     "a tinta desce em traços de decreto, quatro carimbos batem "
+                     "para dentro e a assinatura do Punidor se escreve sozinha. "
+                     "Não se compra — se ganha por direito.",
+        "cor":       "#ff0a3c",
         "enviavel":  False,
     },
 }
