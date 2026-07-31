@@ -1,49 +1,53 @@
 /* ============================================================
    pacto.js — O PACTO
 
-   O lugar reservado da punição. O Arquiteto pediu "tal como as rotinas
-   já possuem", e a distinção que justifica a tela é esta:
+   ESTA PÁGINA É SÓ O CARDÁPIO.
 
-     no EXTRATO   a penitência existe para INCOMODAR — topo da lista,
-                  giroflex, cronômetro correndo
-     aqui         ela existe para ser CONSULTADA
+   A primeira versão listava aqui as dívidas em aberto e as já
+   quitadas. O Arquiteto cortou, e a correção é de ARQUITETURA:
 
-   E a tela responde a pergunta que o Extrato não responde: **quanto eu
-   já paguei?** Sem ela, a penitência é só cobrança; com ela, vira
-   registro — que é a diferença entre um app que julga e um que anota.
+     "a área do pacto é só um container, onde os pactos estarão
+      visíveis, é igual à aba das rotinas. Quando necessários eles vão
+      para o dashboard. Os pactos concluídos são visíveis no dashboard,
+      em cinza, NUNCA AQUI."
 
-   Duas metades, nesta ordem:
-     1. AS DÍVIDAS   o que o Sistema cobra agora
-     2. O CARDÁPIO   o que ele usa para cobrar
+   É a mesma separação que este app já faz e que o Extrato existe para
+   sustentar:
 
-   A ordem não é arbitrária: quem abre esta tela abre por causa da
-   dívida, não do cardápio.
+     ROTINA      é a REGRA        → vive na aba Rotinas
+     ExecucaoDia é a OCORRÊNCIA   → vive no Dashboard
+
+     PACTO       é a REGRA        → vive aqui
+     PENITÊNCIA  é a OCORRÊNCIA   → vive no Dashboard
+
+   Eu tinha posto ocorrência na página de regra — exatamente a confusão
+   que o cabeçalho de `extrato.py` documenta como o defeito original do
+   projeto. A lição não é sobre esta tela: é que quando uma página nova
+   se parece com uma que já existe, o certo é copiar a ESTRUTURA dela,
+   não só o visual.
    ============================================================ */
 
 const Pacto = {
   _itens: [],
-  _abertas: [],
-  _quitadas: [],
-  _resumo: {},
+  _pendentes: 0,
   _ligado: false,
 
   async carregar() {
     this._ligar();
     try {
-      const [pac, pen] = await Promise.all([
-        API.get('/pactos'),
-        API.get('/pactos/penitencias'),
-      ]);
-      this._itens    = pac?.itens || [];
-      this._abertas  = pen?.abertas || [];
-      this._quitadas = pen?.quitadas || [];
-      this._resumo   = pen?.resumo || {};
+      /* UMA leitura só. A contagem de dívidas vem junto do `/pactos`
+         porque ela alimenta o SELO DO MENU e o aviso — não uma lista.
+         Buscar as penitências aqui seria buscar dado que esta página
+         não tem o direito de mostrar. */
+      const pac = await API.get('/pactos');
+      this._itens     = pac?.itens || [];
+      this._pendentes = pac?.pendentes || 0;
     } catch (err) {
       SoloDialog?.toast?.(err.message || String(err), 'error');
       return;
     }
     this._pintar();
-    this.atualizarBadge(this._resumo.em_aberto || 0);
+    this.atualizarBadge(this._pendentes);
   },
 
   /* O selo no menu. Ele existe para a dívida ser lembrada mesmo com o
@@ -57,66 +61,31 @@ const Pacto = {
   },
 
   _pintar() {
-    this._pintarResumo();
-    this._pintarAbertas();
+    this._pintarAviso();
     this._pintarCardapio();
-    this._pintarQuitadas();
   },
 
-  /* ── O RESUMO ─────────────────────────────────────────────
-     Quatro números, e o último é de propósito uma boa notícia: uma
-     tela de punição que só sabe cobrar vira uma tela que ninguém abre. */
-  _pintarResumo() {
-    const el = document.getElementById('pacto-resumo');
-    if (!el) return;
-    const r = this._resumo;
-    const noTeto = (r.em_aberto || 0) >= (r.divida_teto || 4);
-    const bloco = (valor, rotulo, classe = '') =>
-      `<div class="pct-num ${classe}">
-         <b>${valor}</b><span>${rotulo}</span>
-       </div>`;
-    el.innerHTML =
-      bloco(r.em_aberto || 0, 'em aberto', (r.em_aberto ? 'devendo' : '')) +
-      bloco(r.quitadas || 0, 'quitadas') +
-      bloco(this._itens.length, 'no cardápio') +
-      bloco('+' + (r.xp_reparado || 0), 'XP recuperado', 'bom') +
-      (noTeto
-        ? `<div class="pct-teto">O Sistema parou de contar. Resolva o que já existe.</div>`
-        : '');
-  },
+  /* ── O AVISO ──────────────────────────────────────────────
 
-  _pintarAbertas() {
-    const el = document.getElementById('pacto-abertas');
-    const tit = document.getElementById('pct-titulo-abertas');
-    if (!el) return;
-    if (tit) tit.textContent = this._abertas.length
-      ? `Dívidas em aberto (${this._abertas.length})`
-      : 'Dívidas em aberto';
+     Um PONTEIRO, não uma lista. A aba Rotinas faz exatamente isto —
+     ela tem um botão "Ver missões de hoje →" e não desenha missão
+     nenhuma. A dívida mora no Dashboard; aqui ela só é lembrada.
 
-    if (!this._abertas.length) {
-      el.innerHTML = `<div class="pct-vazio pct-vazio-bom">
-        ${this._gl('concluida', 15)} Nada em aberto. O Sistema não tem o que cobrar.
+     Some quando não há dívida: um aviso permanente vira paisagem, e o
+     silêncio é a informação certa quando não se deve nada. */
+  _pintarAviso() {
+    const el = document.getElementById('pacto-aviso');
+    if (!el) return;
+    if (!this._pendentes) { el.innerHTML = ''; return; }
+    el.innerHTML = `
+      <div class="pct-aviso">
+        <span class="pct-aviso-n">${this._pendentes}</span>
+        <span class="pct-aviso-txt">
+          ${this._pendentes === 1 ? 'dívida em aberto' : 'dívidas em aberto'}
+          — o Sistema já cobrou.
+        </span>
+        <button class="btn btn-sm" id="btn-pacto-dash">Ver no Dashboard →</button>
       </div>`;
-      return;
-    }
-    /* O MESMO CARTÃO do Extrato. Um segundo desenho para a penitência
-       seria a mesma armadilha do `_repeticao`: duas telas que divergem
-       no primeiro ajuste. */
-    MissaoCard.cachear(this._abertas);
-    el.innerHTML = this._abertas.map(m => MissaoCard.html(m)).join('');
-    MissaoCard.montar(el, { onMudou: () => this.carregar() });
-  },
-
-  _pintarQuitadas() {
-    const el = document.getElementById('pacto-quitadas');
-    const sec = document.getElementById('pct-secao-quitadas');
-    if (!el) return;
-    if (sec) sec.classList.toggle('hidden', !this._quitadas.length);
-    if (!this._quitadas.length) return;
-
-    MissaoCard.cachear(this._quitadas);
-    el.innerHTML = this._quitadas.map(m => MissaoCard.html(m, { compacto: true })).join('');
-    MissaoCard.montar(el, {});
   },
 
   /* ── O CARDÁPIO ───────────────────────────────────────────
@@ -285,6 +254,12 @@ const Pacto = {
       ?.addEventListener('click', () => this.abrirCatalogo());
     document.getElementById('btn-pacto-novo')
       ?.addEventListener('click', () => this.novaPenitencia());
+    document.getElementById('pacto-aviso')?.addEventListener('click', ev => {
+      // `App.navigate`, e nao `navegarPara`. O optional-chaining teria
+      // engolido o nome errado em silencio — o botao simplesmente nao
+      // faria nada, e ninguem saberia por que.
+      if (ev.target.closest('#btn-pacto-dash')) App?.navigate?.('dashboard');
+    });
     document.getElementById('pacto-lista')?.addEventListener('click', ev => {
       const ed = ev.target.closest('[data-pct-editar]');
       if (ed) { this.novaPenitencia(this._itens.find(x => x.id === +ed.dataset.pctEditar)); return; }

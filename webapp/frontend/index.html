@@ -873,27 +873,28 @@
             </div>
           </div>
 
-          <div id="pacto-resumo" class="pct-resumo"></div>
+          <!-- SÓ O CARDÁPIO.
 
-          <section class="pct-secao">
-            <h2 class="pct-titulo" id="pct-titulo-abertas">Dívidas em aberto</h2>
-            <div id="pacto-abertas"></div>
-          </section>
+               A primeira versão listava aqui as dívidas em aberto e as
+               já quitadas. O Arquiteto cortou, e a correção é de
+               ARQUITETURA, não de layout:
 
-          <section class="pct-secao">
-            <h2 class="pct-titulo">O cardápio</h2>
-            <p class="pct-nota">
-              O Sistema sorteia daqui, sem repetir antes de percorrer todas.
-              Cada penitência <b>dobra</b> a cada vez que cai, e <b>recua</b>
-              a cada semana limpa.
-            </p>
-            <div id="pacto-lista" class="pct-lista"></div>
-          </section>
+                 "a área do pacto é só um container, onde os pactos
+                  estarão visíveis, é igual à aba das rotinas"
 
-          <section class="pct-secao" id="pct-secao-quitadas">
-            <h2 class="pct-titulo">Já quitadas</h2>
-            <div id="pacto-quitadas"></div>
-          </section>
+               É a mesma separação que o app já faz há muito tempo:
+               ROTINA é a REGRA e vive na aba Rotinas; a OCORRÊNCIA vive
+               no Dashboard. PACTO é a regra; a PENITÊNCIA cobrada é a
+               ocorrência. Eu tinha posto ocorrência na página de regra
+               — a mesma confusão que o Extrato existe para desfazer. -->
+          <div id="pacto-aviso"></div>
+
+          <p class="pct-nota">
+            O Sistema sorteia daqui quando você falha, sem repetir antes de
+            percorrer todas. Cada penitência <b>dobra</b> a cada vez que cai,
+            e <b>recua</b> a cada semana limpa.
+          </p>
+          <div id="pacto-lista" class="pct-lista"></div>
         </div>
         <div class="page hidden" id="page-dungeons">
           <div class="sys-plate">

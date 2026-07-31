@@ -89,49 +89,21 @@ def listar(db: Session = Depends(get_db),
     }
 
 
-@router.get("/penitencias")
-def penitencias(db: Session = Depends(get_db),
-                usuario: Usuario = Depends(get_usuario_atual)):
-    """
-    O QUE A PÁGINA MOSTRA: as dívidas em aberto, o histórico, e o peso.
-
-    O Arquiteto pediu um lugar reservado para a punição, "tal como as
-    rotinas já possuem". Faz sentido: hoje a penitência só existe no
-    topo do Extrato, misturada com tudo — e ali ela cumpre o papel de
-    INCOMODAR, não o de ser consultada.
-
-    Uma tela própria responde a pergunta que o Extrato não responde:
-    "quanto eu já paguei?". E essa pergunta importa — sem ela, a
-    penitência é só cobrança; com ela, vira registro.
-    """
-    from database import TarefaDia
-    from motors import penitencia as pen
-    from routers.extrato import _missao_geral
-    from motors import tempo as _t
-
-    hoje = _t.hoje()
-    todas = (db.query(TarefaDia)
-               .filter(TarefaDia.usuario_id == usuario.id,
-                       TarefaDia.natureza == "PUNICAO")
-               .order_by(TarefaDia.criado_em.desc()).all())
-
-    abertas = [t for t in todas if t.status not in ("CONCLUIDA", "CANCELADA")]
-    quitadas = [t for t in todas if t.status == "CONCLUIDA"]
-
-    return {
-        "abertas":  [_missao_geral(t, hoje) for t in abertas],
-        "quitadas": [_missao_geral(t, hoje) for t in quitadas[:50]],
-        "resumo": {
-            "em_aberto":     len(abertas),
-            "quitadas":      len(quitadas),
-            "total":         len(todas),
-            # O XP QUE VOLTOU. E o unico numero da tela que e uma boa
-            # noticia — sem ele a pagina so saberia cobrar.
-            "xp_reparado":   sum(int(t.xp_a_reparar or 0) for t in quitadas),
-            "xp_a_reparar":  sum(int(t.xp_a_reparar or 0) for t in abertas),
-            "divida_teto":   __import__("motors.economia", fromlist=["x"]).punicao_regras(db)["divida_teto"],
-        },
-    }
+# SEM `/pactos/penitencias`.
+#
+# Este endpoint existiu por um commit. Ele devolvia as dividas em
+# aberto e as quitadas para a pagina do Pacto listar — e a pagina nao
+# devia listar nem uma coisa nem outra.
+#
+# O Arquiteto corrigiu a arquitetura: PACTO e a REGRA e vive na aba;
+# PENITENCIA e a OCORRENCIA e vive no Dashboard, exatamente como
+# ROTINA x ExecucaoDia. Com a pagina enxuta, o endpoint ficou sem
+# consumidor.
+#
+# Removido em vez de mantido "por precisar depois": endpoint sem
+# chamador e superficie de API que ninguem testa e que envelhece
+# sozinha. O `/pactos` ja devolve `pendentes`, que e tudo o que a
+# pagina tem o direito de saber.
 
 
 @router.post("/adotar")

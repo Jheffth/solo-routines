@@ -13,53 +13,29 @@
    ══════════════════════════════════════════════════════════════ */
 #page-pacto { --pct-vermelho: #ff0a3c; --pct-azul: #0a4cff; }
 
-/* ── O RESUMO ──────────────────────────────────────────────
-   Quatro números, e o último é de propósito uma boa notícia. Uma tela
-   de punição que só sabe cobrar vira uma tela que ninguém abre. */
-.pct-resumo {
-  display: flex; flex-wrap: wrap; gap: 10px;
-  margin-bottom: 1.6rem;
-}
-.pct-num {
-  flex: 1 1 130px;
-  display: flex; flex-direction: column; gap: 2px;
-  padding: 12px 16px;
+/* ── O AVISO ───────────────────────────────────────────────
+   Um PONTEIRO, não uma lista. A aba Rotinas faz o mesmo: tem um botão
+   "Ver missões de hoje →" e não desenha missão nenhuma.
+
+   Ele leva a cor da punição porque É sobre a punição — mas não pisca:
+   quem está nesta tela veio olhar o cardápio, e um giroflex aqui
+   competiria com o que ele veio fazer. */
+.pct-aviso {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 12px 16px; margin-bottom: 1.4rem;
   border-radius: 12px;
-  background: rgba(255,255,255,.03);
-  border: 1px solid rgba(148,163,184,.16);
+  background: color-mix(in srgb, var(--pct-vermelho) 11%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pct-vermelho) 34%, transparent);
 }
-.pct-num b {
-  font-size: 1.6rem; line-height: 1; font-weight: 800;
-  font-variant-numeric: tabular-nums; color: #e2e8f0;
+.pct-aviso-n {
+  font-size: 1.5rem; font-weight: 800; line-height: 1;
+  font-variant-numeric: tabular-nums; color: #fff;
 }
-.pct-num span {
-  font-size: .64rem; letter-spacing: .12em; text-transform: uppercase;
-  color: #64748b;
-}
-/* Devendo: a única caixa que puxa a cor da punição. */
-.pct-num.devendo { border-color: color-mix(in srgb, var(--pct-vermelho) 45%, transparent);
-                   background: color-mix(in srgb, var(--pct-vermelho) 10%, transparent); }
-.pct-num.devendo b { color: #fff; }
-.pct-num.bom b { color: #86efac; }
+.pct-aviso-txt { flex: 1; font-size: .84rem; color: #fca5a5; }
+.pct-aviso .btn { white-space: nowrap; }
+.pct-aviso:empty, #pacto-aviso:empty { display: none; }
 
-.pct-teto {
-  flex: 1 1 100%;
-  padding: 10px 16px; border-radius: 10px;
-  font-size: .8rem;
-  color: #fca5a5;
-  background: color-mix(in srgb, var(--pct-vermelho) 9%, transparent);
-  border: 1px solid color-mix(in srgb, var(--pct-vermelho) 26%, transparent);
-}
-
-/* ── AS SEÇÕES ─────────────────────────────────────────── */
-.pct-secao { margin-bottom: 2rem; }
-.pct-secao.hidden { display: none; }
-.pct-titulo {
-  font-family: var(--font-section, system-ui, sans-serif);
-  font-size: .7rem; letter-spacing: .16em; text-transform: uppercase;
-  color: #94a3b8;
-  margin: 0 0 .8rem;
-}
+/* ── A NOTA ────────────────────────────────────────────── */
 .pct-nota {
   font-size: .78rem; line-height: 1.6; color: #64748b;
   margin: -.4rem 0 1rem;

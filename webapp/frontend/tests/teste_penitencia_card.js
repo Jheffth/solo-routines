@@ -294,35 +294,54 @@ const critica = frag(MC.html({ ...pen(), natureza: 'ATIVA', prioridade: 'CRITICA
 ok(!critica.classList.contains('mc-penitencia'),
    'e a CRÍTICA continua sendo crítica — é a alternância que separa as duas');
 
-/* ══ 9. O LUGAR RESERVADO ══ */
+/* ══ 9. O LUGAR RESERVADO — E O QUE ELE NÃO MOSTRA ══ */
 console.log('\n-- o lugar reservado --');
-/* "acredito que as punições mereçam um local reservado, tal como as
-   rotinas já possuem".
+/* "a área do pacto é só um container, onde os pactos estarão visíveis,
+   é igual à aba das rotinas. Quando necessários eles vão para o
+   dashboard. Os pactos concluídos são visíveis no dashboard, em cinza,
+   NUNCA AQUI."
 
-   A distinção que justifica a tela: no Extrato a penitência existe
-   para INCOMODAR; ali ela é topo de lista, giroflex e cronômetro. Numa
-   tela própria ela existe para ser CONSULTADA — e responde a pergunta
-   que o Extrato não responde: "quanto eu já paguei?" */
+   A primeira versão listava aqui as dívidas em aberto e as quitadas —
+   ocorrência dentro da página de REGRA. É exatamente a confusão que o
+   cabeçalho de `extrato.py` documenta como o defeito original do
+   projeto:
+
+     ROTINA é a REGRA · ExecucaoDia é a OCORRÊNCIA
+     PACTO  é a REGRA · PENITÊNCIA  é a OCORRÊNCIA
+
+   Estes asserts existem para a página não voltar a inchar. */
 const html = ler('index.html');
 ok(/data-page="pacto"/.test(html), 'há um item de menu para o Pacto');
 ok(/id="page-pacto"/.test(html), '  e a página existe');
 ok(/id="nav-pacto-badge"/.test(html),
-   'com um selo no menu — a dívida precisa ser lembrada de outra tela');
-ok(/id="pacto-abertas"/.test(html) && /id="pacto-lista"/.test(html),
-   'a tela tem as DUAS metades: as dívidas e o cardápio');
-ok(html.indexOf('id="pacto-abertas"') < html.indexOf('id="pacto-lista"'),
-   '  e a dívida vem PRIMEIRO — quem abre esta tela abre por causa dela');
-ok(/id="pacto-quitadas"/.test(html), 'e o histórico do que já foi pago');
+   'com um selo no menu — a dívida é lembrada de outra tela');
+
+const pagina = html.slice(html.indexOf('id="page-pacto"'),
+                          html.indexOf('id="page-dungeons"'));
+ok(/id="pacto-lista"/.test(pagina), 'a página tem o CARDÁPIO');
+ok(!/id="pacto-abertas"/.test(pagina),
+   'e NÃO lista as dívidas em aberto — elas são ocorrência, e vivem no Dashboard');
+ok(!/id="pacto-quitadas"/.test(pagina),
+   'nem as quitadas: "em cinza no dashboard, NUNCA AQUI"');
+ok(/id="pacto-aviso"/.test(pagina),
+   'só um PONTEIRO para o Dashboard — como a aba Rotinas faz com "Ver missões de hoje"');
 
 const app = ler('js', 'app.js');
 ok(/case 'pacto':/.test(app), 'o roteador conhece a página');
 const pj = ler('js', 'pages', 'pacto.js');
-ok(/MissaoCard\.html/.test(pj),
-   'e ela usa o MESMO cartão do Extrato — um segundo desenho divergiria no primeiro ajuste');
-ok(/xp_reparado/.test(pj),
-   'o resumo mostra o XP recuperado: uma tela que só sabe cobrar ninguém abre');
+ok(!/MissaoCard\.html/.test(pj),
+   'e a página NÃO desenha cartão de missão — se desenhasse, seria ocorrência de novo');
+ok(!/\/pactos\/penitencias/.test(pj),
+   '  nem busca as penitências: dado que ela não pode mostrar, ela não pede');
+ok(/App\?\.navigate\?\.\('dashboard'\)/.test(pj),
+   'o ponteiro usa `App.navigate` — o nome que existe de verdade');
 ok(/cardápio muda, a dívida não|dívida não/.test(pj),
    'e remover do pacto avisa que a dívida já cobrada CONTINUA');
+
+/* A REGRA E A OCORRÊNCIA usam nomes diferentes no código, e é isso que
+   impede a confusão de voltar. */
+ok(/PACTO\s+é a REGRA/.test(pj),
+   'o arquivo declara a separação regra × ocorrência no cabeçalho');
 
 console.log(`\n=== ${testes - falhas}/${testes} ===`);
 process.exit(falhas ? 1 : 0);
