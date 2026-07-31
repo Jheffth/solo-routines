@@ -160,6 +160,36 @@ def escalar(valor: int, tipo: str, teto: int, fator_balanca: float = None) -> in
     return int(min(teto, max(1, round(valor * f))))
 
 
+def fator_efetivo(tipo: str, fator_balanca: float = None) -> float:
+    """
+    O fator que `escalar` REALMENTE aplica — não o que a tabela declara.
+
+    DIVERGÊNCIA ENCONTRADA, e é preciso saber que ela existe:
+
+        ESCALA_DO_TIPO[RESTRITIVA] = None   # "não escala por reincidência"
+        escalar(12, RESTRITIVA, 48)  → 24   # dobra
+
+    O `None` da tabela quer dizer "esta cresce por CONFISSÃO, não por
+    reincidência". Mas `escalar` lê o mesmo `None` como "não há fator
+    próprio, use o padrão" e cai em `float(fator_balanca or 2)`. Duas
+    leituras do mesmo valor, e nenhuma das duas está escrita errado
+    sozinha — só juntas.
+
+    Esta função existe para que quem PERGUNTA o fator (o lançador, para
+    desenhar a escada) receba o comportamento observado, e não a
+    intenção declarada. Uma prévia que promete "não escala" enquanto o
+    Sistema dobra é pior que prévia nenhuma.
+
+    Quando o Arquiteto decidir qual das duas leituras vale, o conserto é
+    num lugar só: ou `ESCALA_DO_TIPO`, ou o `if f is None` de `escalar`.
+    Esta função continua dizendo a verdade nos dois casos, porque ela
+    MEDE em vez de declarar.
+    """
+    antes = 100
+    depois = escalar(antes, tipo, 10 ** 9, fator_balanca)
+    return round(depois / antes, 4)
+
+
 def decair(valor: int, base: int, tipo: str, degraus: int = 1,
            fator_balanca: float = None) -> int:
     """

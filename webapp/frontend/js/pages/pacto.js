@@ -182,52 +182,29 @@ const Pacto = {
     } catch (err) { SoloDialog?.toast?.(err.message, 'error'); }
   },
 
-  async novaPenitencia(existente) {
-    const p = existente || {};
-    const form = await this._modal(existente ? 'Editar penitência' : 'Nova penitência', `
-      <label class="pct-campo">
-        <span>O que você deve</span>
-        <input class="input" name="titulo" maxlength="160"
-               placeholder="Fazer {n} flexões"
-               value="${this._esc(p.titulo || '')}">
-        <small>Use <code>{n}</code> onde entra o número. Sem ele, a
-        penitência não escala.</small>
-      </label>
-      <label class="pct-campo">
-        <span>Como se cumpre</span>
-        <select class="input" name="tipo">
-          <option value="QUANTITATIVA" ${p.tipo === 'QUANTITATIVA' ? 'selected' : ''}>contar — aperto + a cada vez</option>
-          <option value="RESTRITIVA"   ${p.tipo === 'RESTRITIVA' ? 'selected' : ''}>aguentar — X horas sem algo</option>
-          <option value="TEMPORAL"     ${p.tipo === 'TEMPORAL' ? 'selected' : ''}>cronometrar — X minutos de algo</option>
-          <option value="TRIBUTO"      ${p.tipo === 'TRIBUTO' ? 'selected' : ''}>pagar — o Sistema cobra em Mana</option>
-        </select>
-      </label>
-      <div class="pct-dupla">
-        <label class="pct-campo">
-          <span>Começa em</span>
-          <input class="input" name="base" type="number" min="1" value="${p.base || 1}">
-        </label>
-        <label class="pct-campo">
-          <span>Teto</span>
-          <input class="input" name="teto" type="number" min="1" value="${p.teto || 32}">
-        </label>
-      </div>
-      <p class="pct-nota">Ela dobra a cada vez que cai, até o teto — e
-      recua um degrau a cada semana limpa.</p>`);
-    if (!form) return;
+  /* A CRIAÇÃO E A EDIÇÃO MORAM NA FORJA.
 
-    const dados = {
-      titulo: form.querySelector('[name=titulo]').value.trim(),
-      tipo:   form.querySelector('[name=tipo]').value,
-      base:   parseInt(form.querySelector('[name=base]').value, 10) || 1,
-      teto:   parseInt(form.querySelector('[name=teto]').value, 10) || 32,
-    };
-    if (!dados.titulo) { SoloDialog?.toast?.('Escreva o que você deve.', 'error'); return; }
-    try {
-      if (existente) await API.patch('/pactos/' + existente.id, dados);
-      else           await API.post('/pactos', dados);
-      await this.carregar();
-    } catch (err) { SoloDialog?.toast?.(err.message, 'error'); }
+     Havia aqui um formulário próprio, num modal improvisado sobre o
+     SoloDialog: quatro campos, sem prévia, sem a escada de escalação.
+     Ele existia porque a Forja ainda não conhecia o Pacto.
+
+     Agora conhece. Duas telas para criar a mesma coisa é a receita de
+     uma delas envelhecer sozinha — e seria a daqui, que ninguém mais
+     abriria depois de conhecer a outra. Este método virou uma porta
+     para lá.
+
+     O fallback existe porque a página do Pacto pode ser aberta antes do
+     forja-missao.js, e um botão que não faz nada é pior que um aviso. */
+  async editar(existente) {
+    if (!window.ForjaMissao?.abrir) {
+      SoloDialog?.toast?.('A Forja não está disponível nesta tela.', 'error');
+      return;
+    }
+    ForjaMissao.abrir({
+      tipo: 'PACTO',
+      edicao: existente || null,
+      aoSalvar: () => this.carregar(),
+    });
   },
 
   async remover(id) {
@@ -252,8 +229,10 @@ const Pacto = {
     this._ligado = true;
     document.getElementById('btn-pacto-catalogo')
       ?.addEventListener('click', () => this.abrirCatalogo());
-    document.getElementById('btn-pacto-novo')
-      ?.addEventListener('click', () => this.novaPenitencia());
+    /* SEM listener no #btn-pacto-novo.
+       Quem responde a esse botão agora é a ForjaMissao, por delegação
+       global (fim de js/forja-missao.js). Manter este aqui abriria as
+       DUAS telas no mesmo clique — o modal antigo por cima da Forja. */
     document.getElementById('pacto-aviso')?.addEventListener('click', ev => {
       // `App.navigate`, e nao `navegarPara`. O optional-chaining teria
       // engolido o nome errado em silencio — o botao simplesmente nao
@@ -262,7 +241,7 @@ const Pacto = {
     });
     document.getElementById('pacto-lista')?.addEventListener('click', ev => {
       const ed = ev.target.closest('[data-pct-editar]');
-      if (ed) { this.novaPenitencia(this._itens.find(x => x.id === +ed.dataset.pctEditar)); return; }
+      if (ed) { this.editar(this._itens.find(x => x.id === +ed.dataset.pctEditar)); return; }
       const rm = ev.target.closest('[data-pct-remover]');
       if (rm) this.remover(+rm.dataset.pctRemover);
     });

@@ -72,9 +72,36 @@ def ver_catalogo():
 
     Cresce sem código — cem itens são cem linhas de dados, e é por isso
     que as duas camadas foram separadas.
+
+    `tipos` era `list(cat.TIPOS)` — só os nomes. Virou uma lista de
+    dicionários porque o lançador precisa desenhar a ESCADA de escalação
+    ao vivo (1 → 2 → 4 → 8 … até o teto) enquanto o hunter escreve, e
+    para isso ele precisa do fator.
+
+    Copiar `ESCALA_DO_TIPO` para dentro do JavaScript teria sido mais
+    rápido e teria criado a segunda verdade que já custou caro neste
+    projeto: no dia em que a temporal deixasse de subir 1,5×, a prévia
+    continuaria prometendo a escada antiga. O fator viaja; o cliente
+    apenas desenha.
+
+    ESCREVI AQUI que ninguém consumia o `tipos` antigo, "verificado antes
+    de mudar". Estava errado: grepei o frontend e não os testes, e
+    `test_punicao.py` fazia `set(c["tipos"])` — que estourou com
+    `unhashable type: dict` no primeiro run. O teste foi atualizado.
+
+    Fica registrado porque o erro não foi a mudança, foi a verificação:
+    "ninguém usa" é uma afirmação sobre o repositório INTEIRO, e eu
+    tinha olhado uma pasta.
     """
-    return {"grupos": cat.grupos(), "itens": cat.catalogo(),
-            "tipos": list(cat.TIPOS)}
+    # `fator_efetivo` MEDE o que escalar() faz, em vez de ler o que a
+    # tabela declara — as duas divergem hoje na RESTRITIVA (ver o
+    # docstring da função). A escada desenhada no lançador precisa do
+    # comportamento real, senão ela promete o que o Sistema não cumpre.
+    tipos = [{"id": t,
+              "escala":   cat.fator_efetivo(t),
+              "declarada": cat.ESCALA_DO_TIPO.get(t),
+              "natureza": cat.NATUREZA_DO_TIPO.get(t)} for t in cat.TIPOS]
+    return {"grupos": cat.grupos(), "itens": cat.catalogo(), "tipos": tipos}
 
 
 @router.get("")

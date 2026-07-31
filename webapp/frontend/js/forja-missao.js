@@ -18,8 +18,40 @@ const ForjaMissao = {
 
   /* ── Catálogos (a cor vive aqui e propaga para tudo) ───── */
   TIPOS: [
-    { id: 'ROTINA', ico: 'rotina', txt: 'Rotina Recorrente', sub: 'repete no ciclo' },
-    { id: 'TAREFA', ico: 'avulsa', txt: 'Tarefa Avulsa',     sub: 'uma única vez'  },
+    { id: 'ROTINA', ico: 'rotina',  txt: 'Rotina Recorrente', sub: 'repete no ciclo' },
+    { id: 'TAREFA', ico: 'avulsa',  txt: 'Tarefa Avulsa',     sub: 'uma única vez'  },
+    /* O PACTO NÃO É UMA MISSÃO — é o preço de falhar numa. Ele mora
+       aqui porque é aqui que o hunter vem quando quer criar alguma
+       coisa, e mandá-lo a outra tela para escrever a própria punição
+       era o tipo de fricção que faz um recurso nunca ser usado.
+
+       O que ele cria é a REGRA. A ocorrência (a penitência com
+       giroflex) nasce sozinha quando o Sistema cobra, e vive no
+       Dashboard. Regra e ocorrência separadas, como Rotina e
+       ExecuçãoDia. */
+    { id: 'PACTO',  ico: 'caveira', txt: 'Pacto',             sub: 'o preço de falhar',
+      cor: '#ff0a3c' },
+  ],
+
+  /* Os quatro tipos de penitência. O texto aqui descreve o GESTO, não a
+     categoria: "contar", "aguentar", "cronometrar", "pagar" — porque na
+     hora de escrever o próprio castigo o hunter pensa no que vai fazer,
+     não na taxonomia.
+
+     `escala` e `natureza` nascem VAZIOS de propósito e são preenchidos
+     pelo servidor em _consultarPactos(). São dele: `ESCALA_DO_TIPO` vive
+     em motors/pactos.py, e uma cópia aqui viraria a segunda verdade no
+     dia em que o Arquiteto mudasse o fator. Os valores abaixo são só o
+     desenho inicial, para a tela não nascer muda. */
+  PACTO_TIPOS: [
+    { id: 'QUANTITATIVA', ico: 'repeticao',  txt: 'Contar',      sub: 'fazer {n} vezes',
+      cor: '#ff0a3c', escala: null, natureza: null },
+    { id: 'RESTRITIVA',   ico: 'passiva',    txt: 'Aguentar',    sub: '{n} horas sem algo',
+      cor: '#2b6bff', escala: null, natureza: null },
+    { id: 'TEMPORAL',     ico: 'ampulheta',  txt: 'Cronometrar', sub: '{n} minutos de algo',
+      cor: '#a855f7', escala: null, natureza: null },
+    { id: 'TRIBUTO',      ico: 'moeda',      txt: 'Pagar',       sub: 'o Sistema debita Mana',
+      cor: '#f59e0b', escala: null, natureza: null },
   ],
 
   /* NATUREZA — a inversão. Só aparece para quem tem permissão, e só na
@@ -92,6 +124,14 @@ const ForjaMissao = {
 
      Sem o módulo carregado devolvem vazio, nunca a chave crua:
      um campo sem ícone é feio; "dific_lendario" na tela é pior. */
+  /* Escapar existia duas vezes como `const esc` local, dentro de duas
+     funções diferentes. A terceira cópia teria sido a hora de virar
+     método — então virou agora, antes de haver a terceira. */
+  _esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g,
+      c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  },
+
   _ico(nome, tam = 30) {
     return (typeof Glifos !== 'undefined') ? Glifos.rico(nome, tam) : '';
   },
@@ -128,7 +168,7 @@ const ForjaMissao = {
 
     const hoje = this._dataLocal();
     this._estado = {
-      tipo: opts.tipo === 'TAREFA' ? 'TAREFA' : 'ROTINA',
+      tipo: ['TAREFA', 'PACTO'].includes(opts.tipo) ? opts.tipo : 'ROTINA',
       titulo: '', frequencia: 'DIARIA',
       prioridade: 'MEDIA', dificuldade: 'NORMAL', categoria: 'Pessoal',
       janela: false, hora_inicio: '', hora_fim: '',
@@ -139,6 +179,11 @@ const ForjaMissao = {
       xp: null, mc: null, pen: null, auto: true, descricao: '',
       rep_modo: 'META', alvo_repeticoes: '', contador_id: null,
       contador_novo: '',
+      /* O PACTO. `pct_base` é onde a penitência começa; `pct_teto` é
+         onde ela para de dobrar. O teto existe porque sem ele a oitava
+         reincidência pediria 256 flexões — e uma punição impossível
+         deixa de ser punição e vira motivo para fechar o app. */
+      pct_tipo: 'QUANTITATIVA', pct_base: 1, pct_teto: 32, pct_unidade: '',
     };
 
     if (ed) this._carregarEdicao(ed, opts.tipo);
@@ -146,6 +191,7 @@ const ForjaMissao = {
     this._servidor = null;
     this._render();
     this._consultarServidor();
+    this._consultarPactos();
     this._consultarEspeciais();
     document.getElementById('fm-backdrop').classList.add('on');
     setTimeout(() => document.getElementById('fm-titulo-input')?.focus(), 120);
@@ -212,6 +258,119 @@ const ForjaMissao = {
       } catch (_) { return null; }
     }
     return Number.isFinite(e.contador_id) ? e.contador_id : null;
+  },
+
+  /* ── O PACTO ──────────────────────────────────────────────
+
+     Pergunta ao servidor os fatores de escala. Mesmo motivo de
+     _consultarServidor: `ESCALA_DO_TIPO` vive em motors/pactos.py, e
+     desenhar a escada com uma cópia local significaria prometer uma
+     progressão que o Sistema não vai cumprir.
+
+     Falha em silêncio de propósito. Sem resposta a escada não aparece,
+     mas o formulário continua inteiro e salvável — quem valida de
+     verdade é o servidor no POST. Um pacto que não pode ser criado
+     porque um endpoint decorativo caiu seria pior que uma prévia
+     ausente. */
+  async _consultarPactos() {
+    try {
+      const r = await API.get('/pactos/catalogo');
+      const porId = {};
+      (r.tipos || []).forEach(t => { porId[t.id] = t; });
+      this.PACTO_TIPOS.forEach(t => {
+        if (!porId[t.id]) return;
+        t.escala   = porId[t.id].escala;
+        t.natureza = porId[t.id].natureza;
+      });
+      this._catalogoPacto = r;
+      if (this._estado?.tipo === 'PACTO') this._atualizar();
+    } catch (e) { /* a escada some; o formulário fica */ }
+  },
+
+  _pactoTipo() {
+    return this.PACTO_TIPOS.find(t => t.id === this._estado.pct_tipo)
+        || this.PACTO_TIPOS[0];
+  },
+
+  /* A ESCADA. É o coração desta tela: um pacto só assusta quando o
+     hunter VÊ para onde ele cresce. "Fazer 1 flexão" é inofensivo;
+     "1 → 2 → 4 → 8 → 16 → 32" é um contrato.
+
+     Três comportamentos distintos, e cada um precisa aparecer:
+
+       · escala 2.0   dobra        1 → 2 → 4 → 8 …
+       · escala 1.5   sobe devagar 20 → 30 → 45 …   (dobrar MINUTOS
+                                                     chega ao absurdo)
+       · escala null  não escala por reincidência — a restritiva cresce
+                      por CONFISSÃO, e dizer "×2" nela seria mentira. */
+  _escada(limite = 7) {
+    const t = this._pactoTipo();
+    const base = Math.max(1, parseInt(this._estado.pct_base, 10) || 1);
+    const teto = Math.max(base, parseInt(this._estado.pct_teto, 10) || base);
+    if (!t.escala || t.escala <= 1) return { degraus: [base], fixa: true, teto };
+    const degraus = [];
+    let v = base;
+    while (degraus.length < limite) {
+      degraus.push(v);
+      if (v >= teto) break;
+      const proximo = Math.round(v * t.escala);
+      v = Math.min(teto, proximo > v ? proximo : v + 1);
+    }
+    return { degraus, fixa: false, teto };
+  },
+
+  /* O título do pacto GUARDA o `{n}` — e é aqui que ele difere da
+     missão de repetição, que o resolve na hora de salvar.
+
+     A razão: a repetição nasce com um alvo fixo ("Fazer 20 flexões" é
+     sempre 20). O pacto MUDA de número a cada reincidência, e o
+     backend substitui o token pelo `valor_atual` toda vez que serve o
+     item. Resolver aqui congelaria a penitência no valor inicial e
+     mataria a escalação inteira em silêncio — o pacto continuaria
+     existindo, só nunca doeria mais. */
+  _previaPacto() {
+    const e = this._estado;
+    const t = this._pactoTipo();
+    const esc = this._escada();
+    const tem = /\{n\}/.test(e.titulo || '');
+    const amostra = txt => String(txt || '').replace(/\{n\}/g, esc.degraus[0]);
+
+    const alvo = document.getElementById('fm-pct-previa');
+    if (!alvo) return;
+
+    if (!(e.titulo || '').trim()) {
+      alvo.innerHTML = '<div class="fm-pct-vazio">Escreva o que você deve ao Sistema.</div>';
+      return;
+    }
+
+    const escadaHtml = esc.fixa
+      ? `<div class="fm-pct-nota-fixa">Esta não escala por reincidência —
+           ela cresce quando você <b>confessa</b>, e o relógio zera.</div>`
+      : `<div class="fm-pct-escada">
+           ${esc.degraus.map((d, i) => `
+             <span class="fm-pct-degrau ${d >= esc.teto ? 'teto' : ''}"
+                   title="${i === 0 ? 'primeira vez' : (i + 1) + 'ª reincidência'}">${d}</span>
+           `).join('<span class="fm-pct-seta">›</span>')}
+           ${esc.degraus[esc.degraus.length - 1] >= esc.teto
+              ? '<span class="fm-pct-teto-lbl">teto</span>' : '<span class="fm-pct-seta">…</span>'}
+         </div>`;
+
+    alvo.innerHTML = `
+      <div class="fm-pct-cartao" style="--pct-cor:${t.cor}">
+        <div class="fm-pct-selo">${this._ico('caveira', 22)}</div>
+        <div class="fm-pct-texto">${this._esc(amostra(e.titulo))}</div>
+      </div>
+      ${escadaHtml}
+      ${tem ? '' : `<div class="fm-pct-aviso">
+          Sem <code>{n}</code> no título, o número não aparece — a penitência
+          escala por dentro e o texto continua dizendo a mesma coisa.</div>`}
+      <div class="fm-pct-vira">
+        ${t.natureza
+          ? `Quando cair, vira um cartão <b>${{ REPETICAO: 'de Repetição',
+               PASSIVA: 'Passivo', ATIVA: 'comum' }[t.natureza] || t.natureza}</b>
+             no seu Dashboard, em vermelho e azul.`
+          : 'O Sistema debita a Mana sozinho — não vira cartão.'}
+      </div>`;
   },
 
   /* ── O TOKEN {n} ──────────────────────────────────────────
@@ -347,6 +506,33 @@ const ForjaMissao = {
 
   _carregarEdicao(ed, tipoForcado) {
     const e = this._estado;
+
+    /* O PACTO PRIMEIRO — e não por gosto de ordem.
+
+       COLISÃO DE NOMES, já paga: o campo `tipo` significa coisas
+       diferentes nos dois mundos. Numa rotina é a FREQUÊNCIA ("DIARIA");
+       num pacto é o MODO ("QUANTITATIVA"). A detecção abaixo lê `ed.tipo`
+       para decidir entre rotina e tarefa — então um pacto caía como
+       ROTINA com frequência "QUANTITATIVA", que não existe: o formulário
+       abria sem nenhuma frequência marcada e salvava uma rotina quebrada.
+
+       `origem_chave` e `valor_atual` só existem no pacto; qualquer um
+       deles serve de assinatura, e uso os dois porque um pacto escrito à
+       mão não tem origem_chave. */
+    const ehPacto = tipoForcado === 'PACTO'
+                 || ed.valor_atual !== undefined
+                 || (ed.base !== undefined && ed.teto !== undefined);
+    if (ehPacto) {
+      e.tipo        = 'PACTO';
+      e.titulo      = ed.titulo || '';
+      e.pct_tipo    = ed.tipo || 'QUANTITATIVA';
+      e.pct_base    = ed.base ?? 1;
+      e.pct_teto    = ed.teto ?? 32;
+      e.pct_unidade = ed.unidade || '';
+      e._pctTocado  = true;   // são os números DELE; trocar de modo não os apaga
+      return;
+    }
+
     // Tarefa se denuncia pelo campo `data_prevista`; rotina, pelo `tipo` de
     // frequência. O chamador pode forçar, mas não precisa.
     const ehTarefa = tipoForcado === 'TAREFA' || (!!ed.data_prevista && !ed.tipo);
@@ -457,7 +643,7 @@ const ForjaMissao = {
         <div class="fm-corpo">
           <!-- ── Formulário ── -->
           <div class="fm-form">
-            <div class="fm-bloco fm-full">${grupo('tipo', this.TIPOS, 2)}</div>
+            <div class="fm-bloco fm-full">${grupo('tipo', this.TIPOS, 3)}</div>
 
             <div class="fm-bloco fm-full">
               <div class="fm-rotulo">${gl("titulo")} Título da missão <span class="obrig">*</span></div>
@@ -465,7 +651,45 @@ const ForjaMissao = {
                      placeholder="O que precisa ser feito?" value="${e.titulo}">
             </div>
 
-            <div class="fm-bloco fm-full" id="fm-bloco-freq" ${e.tipo === 'TAREFA' ? 'style="display:none"' : ''}>
+            <!-- ── O PACTO ──────────────────────────────────────
+                 Só aparece quando o tipo é PACTO. Aqui não há prioridade,
+                 dificuldade, categoria nem recompensa: um pacto não paga
+                 XP, ele cobra. Deixar aqueles campos na tela faria o
+                 formulário prometer coisas que o POST /pactos ignora. -->
+            <div class="fm-bloco fm-full" id="fm-bloco-pacto"
+                 ${e.tipo === 'PACTO' ? '' : 'style="display:none"'}>
+              <div class="fm-rotulo">${gl("caveira", 14)} Como se cumpre</div>
+              ${grupo('pct_tipo', this.PACTO_TIPOS, 2)}
+
+              <div class="fm-pct-numeros" id="fm-pct-numeros">
+                <label class="fm-pct-campo">
+                  <span class="fm-pct-lbl">Começa em</span>
+                  <input type="number" min="1" max="9999" class="fm-input fm-input-mini"
+                         data-fm-pct-base value="${e.pct_base}">
+                </label>
+                <label class="fm-pct-campo">
+                  <span class="fm-pct-lbl">Teto</span>
+                  <input type="number" min="1" max="9999" class="fm-input fm-input-mini"
+                         data-fm-pct-teto value="${e.pct_teto}">
+                </label>
+                <label class="fm-pct-campo fm-pct-campo-larga">
+                  <span class="fm-pct-lbl">Unidade <span class="fm-pct-opc">(opcional)</span></span>
+                  <input type="text" maxlength="30" class="fm-input"
+                         data-fm-campo-txt="pct_unidade" value="${e.pct_unidade}"
+                         placeholder="flexões, horas, minutos...">
+                </label>
+              </div>
+
+              <!-- O CAMINHO CURTO. Escrever a própria punição do zero é
+                   trabalho; adotar do catálogo é um toque. Sem esta porta,
+                   quem nunca parou para inventar castigos nunca teria um
+                   pacto — e a punição inteira ficaria sem uso. -->
+              <button type="button" class="fm-pct-catalogo" data-fm-pct-catalogo>
+                ${gl("tudo", 12)} ou adote prontos do catálogo
+              </button>
+            </div>
+
+            <div class="fm-bloco fm-full" id="fm-bloco-freq\" ${e.tipo === 'TAREFA' ? 'style="display:none"' : ''}>
               <div class="fm-rotulo">${gl("rotina")} Frequência</div>
               ${grupo('frequencia', this.FREQUENCIAS, 4)}
 
@@ -567,22 +791,22 @@ const ForjaMissao = {
             </div>
 
             <!-- Prioridade e Dificuldade lado a lado -->
-            <div class="fm-bloco">
+            <div class="fm-bloco" id="fm-bloco-prior">
               <div class="fm-rotulo">${gl("prior_alta")} Prioridade</div>
               ${grupo('prioridade', this.PRIORIDADES, 2)}
             </div>
 
-            <div class="fm-bloco">
+            <div class="fm-bloco" id="fm-bloco-dific">
               <div class="fm-rotulo">${gl("dific_dificil")} Dificuldade</div>
               ${grupo('dificuldade', this.DIFICULDADES, 2)}
             </div>
 
-            <div class="fm-bloco fm-full">
+            <div class="fm-bloco fm-full" id="fm-bloco-categoria">
               <div class="fm-rotulo">${gl("etiqueta")} Categoria</div>
               ${grupo('categoria', this.CATEGORIAS, 6)}
             </div>
 
-            <div class="fm-bloco fm-full">
+            <div class="fm-bloco fm-full" id="fm-bloco-janela">
               <label class="fm-toggle">
                 <input type="checkbox" data-fm-janela ${e.janela ? 'checked' : ''}>
                 <span class="fm-toggle-corpo">
@@ -629,7 +853,7 @@ const ForjaMissao = {
                  9.999.999 XP e a missão nascia valendo 50.
                  Agora quem responde é o servidor (/economia/simular),
                  então o que está na tela é o que será concedido. -->
-            <div class="fm-caixa fm-caixa-premio">
+            <div class="fm-caixa fm-caixa-premio" id="fm-caixa-premio">
               <div class="fm-rotulo">${gl("xp")} Recompensa</div>
               <div class="fm-mini">
                 <div class="fm-mini-campo"><label>XP</label>
@@ -639,7 +863,7 @@ const ForjaMissao = {
               </div>
               <div class="fm-nota-calc">${gl("engrenagem", 11)} calculado pelo Sistema</div>
             </div>
-            <div class="fm-caixa fm-caixa-punicao">
+            <div class="fm-caixa fm-caixa-punicao" id="fm-caixa-punicao">
               <div class="fm-rotulo">${gl("dific_lendario")} Punição e prazo</div>
               <div class="fm-mini">
                 <div class="fm-mini-campo"><label>XP perdido</label>
@@ -649,7 +873,7 @@ const ForjaMissao = {
               </div>
             </div>
 
-            <div class="fm-bloco fm-full">
+            <div class="fm-bloco fm-full" id="fm-bloco-desc">
               <div class="fm-rotulo">${gl("avulsa")} Descrição (opcional)</div>
               <textarea class="fm-textarea" data-fm-campo-txt="descricao"
                 placeholder="Detalhes, critério de conclusão, lembretes...">${e.descricao}</textarea>
@@ -661,6 +885,11 @@ const ForjaMissao = {
             <div class="fm-previa-lbl">${gl("olho")} Prévia do cartão</div>
             <div class="fm-previa" id="fm-previa"></div>
             <div class="fm-resumo" id="fm-resumo"></div>
+            <!-- A prévia do pacto NÃO é um cartão de missão. Mostrar o
+                 cartão da penitência aqui confundiria de novo a REGRA com
+                 a OCORRÊNCIA — o erro que o Arquiteto já corrigiu uma vez.
+                 O que importa antes de firmar é para onde isto CRESCE. -->
+            <div class="fm-pct-previa" id="fm-pct-previa" style="display:none"></div>
             <div class="fm-previa-nota">
               A cor vem da <b>prioridade</b>; o selo de rank, da <b>dificuldade</b>.
               Deixe XP/Mana em branco para o Sistema calcular.
@@ -676,7 +905,10 @@ const ForjaMissao = {
       </div>`;
 
     this._bind(bd);
-    this._atualizar();
+    // _trocarTipo aplica o estado inicial dos blocos. Sem esta chamada,
+    // abrir JÁ em PACTO (pelo botão da aba) desenharia o bloco do pacto
+    // por cima do formulário de missão inteiro — os dois visíveis.
+    this._trocarTipo();
   },
 
   /* ── Eventos (delegação) ───────────────────────────────── */
@@ -708,14 +940,11 @@ const ForjaMissao = {
           if (el) el.style.display = on ? '' : 'none';
         };
         if (op.dataset.fmCampo === 'tipo') {
-          const t = this._estado.tipo === 'TAREFA';
-          mostra('fm-bloco-freq', !t);
-          mostra('fm-bloco-data', t);
-          mostra('fm-bloco-prazo', t);
-          // Protocolo que vale uma vez só não é protocolo: a natureza
-          // passiva não existe para tarefa avulsa.
-          // O bloco de natureza NAO some mais ao trocar para tarefa.
-          mostra('fm-bloco-repeticao', this._estado.natureza === 'REPETICAO');
+          // TRÊS estados agora, não dois. Enquanto eram ROTINA e TAREFA,
+          // `const t = tipo === 'TAREFA'` e `!t` bastavam. Com o PACTO no
+          // meio, `!t` passou a significar "rotina OU pacto" — e a
+          // frequência voltaria a aparecer no pacto.
+          this._trocarTipo();
         }
         if (op.dataset.fmCampo === 'natureza') {
           const rep = this._estado.natureza === 'REPETICAO';
@@ -727,6 +956,26 @@ const ForjaMissao = {
             if (this._contadores === null) this._consultarContadores();
             else this._pintarContadores();
           }
+        }
+        if (op.dataset.fmCampo === 'pct_tipo') {
+          /* Cada tipo tem números que fazem sentido. Trocar de "contar"
+             para "cronometrar" mantendo base 1 e teto 32 daria "1 minuto,
+             teto 32" — tecnicamente válido e obviamente errado. Os
+             padrões só entram se o hunter ainda não mexeu nos campos. */
+          if (!this._estado._pctTocado) {
+            const padrao = { QUANTITATIVA: [1, 32], RESTRITIVA: [12, 48],
+                             TEMPORAL: [20, 180], TRIBUTO: [50, 800] }[this._estado.pct_tipo];
+            if (padrao) {
+              this._estado.pct_base = padrao[0];
+              this._estado.pct_teto = padrao[1];
+              const b = document.querySelector('[data-fm-pct-base]');
+              const t = document.querySelector('[data-fm-pct-teto]');
+              if (b) b.value = padrao[0];
+              if (t) t.value = padrao[1];
+            }
+          }
+          this._atualizar();
+          return;
         }
         if (op.dataset.fmCampo === 'rep_modo') {
           mostra('fm-rep-meta',  this._estado.rep_modo === 'META');
@@ -774,6 +1023,21 @@ const ForjaMissao = {
         ev.target.closest('[data-fm-auto]').classList.toggle('on', this._estado.auto);
         if (this._estado.auto) this._estado.pen = null;
         this._atualizar(); return; }
+      if (ev.target.closest('[data-fm-pct-catalogo]')) {
+        /* DELEGA em vez de redesenhar. O catálogo já existe inteiro em
+           pages/pacto.js, com os grupos e a marcação do que já foi
+           adotado. Uma segunda cópia aqui seria a mesma lista em dois
+           lugares — e a que ninguém lembra de atualizar é sempre a
+           segunda. */
+        this.fechar();
+        if (window.Pacto?.abrirCatalogo) {
+          if (window.App?.currentPage !== 'pacto') window.App?.navigate?.('pacto');
+          setTimeout(() => Pacto.abrirCatalogo(), 120);
+        } else {
+          window.App?.navigate?.('pacto');
+        }
+        return;
+      }
       if (ev.target.closest('[data-fm-salvar]')) { this._salvar(); return; }
     });
 
@@ -807,6 +1071,7 @@ const ForjaMissao = {
       const t = ev.target;
       if (t.id === 'fm-titulo-input') {
         this._estado.titulo = t.value;
+        if (this._estado.tipo === 'PACTO') { this._atualizar(); return; }
         this._previaTitulo();
         // A sugestao de contador segue o titulo — mas so ate o hunter
         // escolher um. Depois disso, mexer no titulo nao pode remexer
@@ -818,6 +1083,16 @@ const ForjaMissao = {
         const v = parseInt(t.value, 10);
         this._estado.alvo_repeticoes = (Number.isFinite(v) && v > 0) ? v : '';
         this._previaTitulo();
+        this._atualizar(); return;
+      }
+      if (t.matches('[data-fm-pct-base]') || t.matches('[data-fm-pct-teto]')) {
+        // `_pctTocado` congela os padrões por tipo: depois que o hunter
+        // escolheu os próprios números, trocar de tipo não pode
+        // sobrescrevê-los.
+        this._estado._pctTocado = true;
+        const campo = t.matches('[data-fm-pct-base]') ? 'pct_base' : 'pct_teto';
+        const v = parseInt(t.value, 10);
+        this._estado[campo] = Number.isFinite(v) && v > 0 ? v : '';
         this._atualizar(); return;
       }
       if (t.matches('[data-fm-prazo-valor]')) {
@@ -842,6 +1117,57 @@ const ForjaMissao = {
         this.fechar();
       }
     });
+  },
+
+  /* Quem aparece em cada tipo. UMA função, e não condições espalhadas
+     pelos handlers: o pacto some/aparece em nove blocos, e nove `if`
+     soltos garantem que um dia um deles fique para trás. */
+  _trocarTipo() {
+    const e = this._estado;
+    const pacto  = e.tipo === 'PACTO';
+    const tarefa = e.tipo === 'TAREFA';
+    const mostra = (id, on) => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = on ? '' : 'none';
+    };
+
+    mostra('fm-bloco-pacto', pacto);
+
+    // Tudo que é de MISSÃO some no pacto. Um pacto não tem frequência
+    // (ele não acontece — ele espera), não tem prioridade nem
+    // dificuldade (quem escolhe é o Sistema, sorteando), e sobretudo
+    // não tem recompensa: ele cobra, não paga.
+    mostra('fm-bloco-freq',      !pacto && !tarefa);
+    mostra('fm-bloco-data',      !pacto && tarefa);
+    mostra('fm-bloco-prazo',     !pacto && tarefa);
+    mostra('fm-bloco-natureza',  !pacto && this._blocoNaturezaLiberado !== false);
+    mostra('fm-bloco-repeticao', !pacto && e.natureza === 'REPETICAO');
+    mostra('fm-bloco-prior',     !pacto);
+    mostra('fm-bloco-dific',     !pacto);
+    mostra('fm-bloco-categoria', !pacto);
+    mostra('fm-bloco-janela',    !pacto);
+    mostra('fm-bloco-desc',      !pacto);
+    mostra('fm-caixa-premio',    !pacto);
+    mostra('fm-caixa-punicao',   !pacto);
+
+    // O rótulo do botão. "Forjar Missão" num pacto seria o formulário
+    // dizendo que faz outra coisa do que faz.
+    const btn = document.querySelector('[data-fm-salvar]');
+    if (btn) {
+      btn.innerHTML = this._gl('bigorna') + ' ' + (
+        this._editId ? (pacto ? 'Selar pacto' : 'Selar alterações')
+                     : (pacto ? 'Firmar Pacto' : 'Forjar Missão'));
+    }
+    const tit = document.querySelector('.fm-titulo');
+    if (tit) tit.textContent = pacto
+      ? (this._editId ? 'Reescrever Pacto' : 'Firmar Pacto')
+      : (this._editId ? 'Reforjar Missão'  : 'Forjar Missão');
+
+    const inp = document.getElementById('fm-titulo-input');
+    if (inp) inp.placeholder = pacto ? 'Fazer {n} flexões'
+                                     : 'O que precisa ser feito?';
+
+    this._atualizar();
   },
 
   /* ── Atualiza cor do modal + prévia + resumo ───────────── */
@@ -971,6 +1297,36 @@ const ForjaMissao = {
 
   _atualizar() {
     const e = this._estado;
+
+    /* O PACTO SAI CEDO. O resto desta função desenha o cartão da missão,
+       pede preço ao servidor e escreve XP/Mana/punição na tela — nada
+       disso existe num pacto, e deixá-la seguir escreveria "+120 XP" ao
+       lado de uma penitência. */
+    if (e.tipo === 'PACTO') {
+      document.getElementById('fm-modal')
+        ?.style.setProperty('--fm-cor', this._pactoTipo().cor);
+      const ver = (id, on) => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = on ? '' : 'none';
+      };
+      ver('fm-previa', false); ver('fm-resumo', false);
+      ver('fm-pct-previa', true);
+      const nota = document.querySelector('.fm-previa-nota');
+      if (nota) nota.style.display = 'none';
+      // O TRIBUTO não tem unidade escrita pelo hunter: quem diz quanto
+      // custa é a Balança, e o campo aberto seria uma segunda opinião.
+      const num = document.getElementById('fm-pct-numeros');
+      if (num) num.classList.toggle('fm-pct-tributo', e.pct_tipo === 'TRIBUTO');
+      this._previaPacto();
+      return;
+    }
+    document.getElementById('fm-pct-previa')?.style.setProperty('display', 'none');
+    ['fm-previa', 'fm-resumo'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.style.display = '';
+    });
+    const notaP = document.querySelector('.fm-previa-nota');
+    if (notaP) notaP.style.display = '';
+
     const pri = this.PRIORIDADES.find(p => p.id === e.prioridade) || this.PRIORIDADES[2];
 
     // O servidor manda; o cálculo local é só o palpite enquanto ele não responde.
@@ -1100,6 +1456,12 @@ const ForjaMissao = {
   /* ── Salvar (API real) ─────────────────────────────────── */
   async _salvar() {
     const e = this._estado;
+
+    /* O PACTO SAI ANTES DE TUDO. Abaixo há validação de frequência, de
+       janela da passiva, de alvo da repetição — nenhuma se aplica, e
+       todas dariam mensagens sem sentido num pacto. */
+    if (e.tipo === 'PACTO') return this._salvarPacto();
+
     if (!e.titulo.trim()) { SoloDialog?.toast?.('Dê um nome à missão.', 'error'); return; }
     const calc = this._calcular(e);
 
@@ -1237,6 +1599,55 @@ const ForjaMissao = {
       if (btn) btn.disabled = false;
     }
   },
+
+  async _salvarPacto() {
+    const e = this._estado;
+    const titulo = (e.titulo || '').trim();
+    if (!titulo) {
+      SoloDialog?.toast?.('Escreva o que você deve ao Sistema.', 'error'); return;
+    }
+    if (this._demo) {
+      SoloDialog?.toast?.('Vitrine — nada foi salvo', 'info'); this.fechar(); return;
+    }
+
+    const base = Math.max(1, parseInt(e.pct_base, 10) || 1);
+    /* O TETO NUNCA FICA ABAIXO DA BASE. O servidor já corrige com
+       `max(base, teto)`, mas corrigir em silêncio faria o hunter sair
+       daqui achando que firmou teto 5 sobre base 20. Aqui ele é avisado. */
+    let teto = parseInt(e.pct_teto, 10) || base;
+    if (teto < base) {
+      teto = base;
+      SoloDialog?.toast?.('O teto não pode ser menor que o início — igualei aos dois.', 'info');
+    }
+
+    const payload = {
+      titulo,                       // com o {n} INTACTO — ver _previaPacto
+      tipo:     e.pct_tipo,
+      base,
+      teto,
+      unidade: (e.pct_unidade || '').trim() || null,
+    };
+
+    const btn = document.querySelector('[data-fm-salvar]');
+    if (btn) btn.disabled = true;
+    try {
+      const salvo = this._editId
+        ? await API.patch('/pactos/' + this._editId, payload)
+        : await API.post('/pactos', payload);
+      SoloDialog?.toast?.(this._editId ? 'Pacto reescrito.' : 'Pacto firmado.', 'success');
+      if (typeof SFX !== 'undefined') SFX.play('carimbo');
+      this.fechar();
+      if (this._aoSalvar) await this._aoSalvar(salvo);
+      /* O pacto NÃO aparece no Dashboard — só a penitência que ele gerar.
+         Recarregar o extrato aqui não mostraria nada de novo e daria a
+         impressão de que a criação falhou. Quem precisa saber é a aba
+         do Pacto, e só se o hunter estiver nela. */
+      if (window.App?.currentPage === 'pacto') await window.Pacto?.carregar?.();
+    } catch (err) {
+      SoloDialog?.toast?.(err.message || String(err), 'error');
+      if (btn) btn.disabled = false;
+    }
+  },
 };
 
 window.ForjaMissao = ForjaMissao;
@@ -1257,5 +1668,11 @@ document.addEventListener('click', (e) => {
   } else if (id === 'btn-nova-tarefa' || id === 'btn-add-tarefa') {
     e.preventDefault();
     ForjaMissao.abrir({ tipo: 'TAREFA' });
+  } else if (id === 'btn-pacto-novo') {
+    // A aba do Pacto tinha um formulário próprio, num modal improvisado
+    // sobre o SoloDialog. Duas telas de criação para a mesma coisa é o
+    // caminho mais curto para uma delas envelhecer sozinha.
+    e.preventDefault();
+    ForjaMissao.abrir({ tipo: 'PACTO', aoSalvar: () => window.Pacto?.carregar?.() });
   }
 });

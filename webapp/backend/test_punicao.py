@@ -82,8 +82,21 @@ def rodar():
     print("-- o catalogo --")
     c = cli.get("/api/pactos/catalogo").json()
     ok(len(c["itens"]) >= 15, f"o catalogo tem {len(c['itens'])} pactos prontos")
-    ok(set(c["tipos"]) == set(cat.TIPOS),
-       f"e os QUATRO tipos: {sorted(c['tipos'])}")
+    # `tipos` era list[str] e virou list[dict] quando o lancador passou a
+    # desenhar a escada de escalacao ao vivo — ele precisa do FATOR, nao
+    # so do nome. Este assert quebrou na mudanca, e foi ele que provou
+    # que a afirmacao "ninguem consumia o tipos antigo" estava errada.
+    ids = {t["id"] for t in c["tipos"]}
+    ok(ids == set(cat.TIPOS), f"e os QUATRO tipos: {sorted(ids)}")
+    ok(all("escala" in t and "natureza" in t for t in c["tipos"]),
+       "cada tipo viaja com escala e natureza — a escada do lancador depende disso")
+    # O fator e MEDIDO (fator_efetivo), nao lido da tabela: ESCALA_DO_TIPO
+    # declara None para a RESTRITIVA, mas escalar() dobra. Uma previa que
+    # promete "nao escala" e dobra e pior que previa nenhuma.
+    porid = {t["id"]: t for t in c["tipos"]}
+    ok(porid["RESTRITIVA"]["escala"] == cat.fator_efetivo("RESTRITIVA"),
+       f"o fator viaja MEDIDO: RESTRITIVA declara "
+       f"{cat.ESCALA_DO_TIPO['RESTRITIVA']} e faz {porid['RESTRITIVA']['escala']}")
     ok(all(i["exemplo"] and "{n}" not in i["exemplo"] for i in c["itens"]),
        "cada item ja vem com o exemplo resolvido — o cliente nao conhece o {n}")
 
