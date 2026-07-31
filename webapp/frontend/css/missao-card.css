@@ -1521,84 +1521,132 @@
 /* ══════════════════════════════════════════════════════════════
    A PENITÊNCIA — O GIROFLEX
 
-   A primeira versão era gélida: branco sobre azul quase preto. O
-   raciocínio parecia bom — vermelho neste app significa URGÊNCIA, e a
-   penitência é consequência, algo que já aconteceu.
+   TERCEIRA versão, e as duas primeiras erraram coisas diferentes.
 
-   O Arquiteto testou e derrubou em uma frase: "o user bateria o olho e
-   acharia que era só mais uma missão rotineira."
+   A primeira era GÉLIDA. O Arquiteto: "o user bateria o olho e acharia
+   que era só mais uma missão rotineira". Eu tinha otimizado para
+   semanticamente correto em vez de legível de relance.
 
-   Ele está certo, e o erro foi meu: eu otimizei para SEMANTICAMENTE
-   CORRETO em vez de LEGÍVEL DE RELANCE. Uma punição que não se anuncia
-   não é punição. Intenção de design não vale nada se o sinal não lê.
+   A segunda fazia o cartão INTEIRO trocar de vermelho para azul. Ele
+   cortou de novo, e a correção é precisa:
 
-   A saída dele é melhor que as duas que eu tinha: um GIROFLEX. O
-   vermelho e o azul ALTERNANDO, como viatura. Nenhum outro cartão do
-   app alterna cor — a crítica é vermelha e fica vermelha. A alternância
-   sozinha já é impossível de confundir, antes mesmo de o olho ler o
-   título.
+     "o efeito de giroflex dá a sensação imediata das DUAS cores,
+      ele tem que ficar pulsando nas duas"
 
-   FREQUÊNCIA: 2,4s por ciclo completo — cerca de 0,4 Hz. Isso é MUITO
-   abaixo do limiar de 3 flashes por segundo que dispara risco
-   fotossensível, e mesmo assim `prefers-reduced-motion` congela tudo
-   num vermelho fixo. Giroflex de verdade pisca mais rápido; aqui a
-   lentidão é deliberada — ela lê como "alerta permanente" e não como
-   "emergência agora", que é exatamente o que uma dívida é.
+   Ele está certo, e é assim que uma viatura funciona de verdade: as
+   duas lâmpadas estão lá o tempo todo, lado a lado. O que alterna é
+   QUAL ESTÁ ACESA. Um cartão que troca de cor inteiro não lê como
+   giroflex — lê como um cartão indeciso.
+
+   Então agora:
+
+     · a borda é PERMANENTEMENTE bicolor — vermelha à esquerda, azul à
+       direita. As duas cores existem mesmo com a animação parada;
+     · o halo alterna qual lado domina, em contrafase;
+     · e uma BARRA DE LUZ no topo, dividida ao meio, com as duas
+       metades pulsando alternadas — é a peça que mais parece viatura.
+
+   VELOCIDADE: 0,9s por ciclo (1,1 Hz), contra os 2,4s de antes. Ainda
+   bem abaixo do limiar de 3 Hz que dispara risco fotossensível, e
+   `prefers-reduced-motion` congela tudo com as duas cores acesas.
+
+   CORES VIVAS, como ele pediu: #ff0a3c e #0a4cff puros, não os tons
+   lavados da versão anterior.
    ══════════════════════════════════════════════════════════════ */
 .mc-penitencia {
-  --giro-vermelho: #ff2d4a;
-  --giro-azul:     #2b6bff;
+  --giro-vermelho: #ff0a3c;
+  --giro-azul:     #0a4cff;
+  --giro-ciclo:    .9s;
   --mc-cor: var(--giro-vermelho);
-  border-width: 1px;
-  border-style: solid;
-  animation: mc-giroflex-borda 2.4s ease-in-out infinite;
+  position: relative;
+  overflow: hidden;
+
+  /* AS DUAS CORES, SEMPRE. Bordas opostas em cores opostas — mesmo
+     com a animação congelada o cartão continua bicolor, e é isso que
+     faz a leitura ser "giroflex" e não "cartão vermelho". */
+  border: 1px solid transparent;
+  border-left-color:  var(--giro-vermelho);
+  border-right-color: var(--giro-azul);
+  border-top-color:    color-mix(in srgb, var(--giro-vermelho) 45%, var(--giro-azul));
+  border-bottom-color: color-mix(in srgb, var(--giro-azul) 45%, var(--giro-vermelho));
+  border-left-width: 3px;
+  border-right-width: 3px;
+
+  background:
+    radial-gradient(90% 130% at 0% 50%,
+      color-mix(in srgb, var(--giro-vermelho) 15%, transparent), transparent 62%),
+    radial-gradient(90% 130% at 100% 50%,
+      color-mix(in srgb, var(--giro-azul) 15%, transparent), transparent 62%),
+    linear-gradient(150deg, #10060b, #06040a);
+
+  animation: mc-giro-sopro var(--giro-ciclo) ease-in-out infinite;
 }
 .mc-penitencia .mc-fio { display: none; }
 
-/* O fundo alterna junto, mas MUITO mais sutil — o cartão precisa
-   continuar legível. É a borda e o halo que giram; o fundo só respira
-   a cor. */
-@keyframes mc-giroflex-borda {
+/* O SOPRO: os dois halos existem SIMULTANEAMENTE, e o que muda é qual
+   está forte. Nunca há um instante em que só uma cor esteja na tela. */
+@keyframes mc-giro-sopro {
   0%, 100% {
-    border-color: color-mix(in srgb, var(--giro-vermelho) 78%, transparent);
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--giro-vermelho) 30%, transparent),
-                0 0 26px color-mix(in srgb, var(--giro-vermelho) 42%, transparent),
-                inset 0 0 34px color-mix(in srgb, var(--giro-vermelho) 13%, transparent);
-    background:
-      radial-gradient(120% 140% at 0% 0%,
-        color-mix(in srgb, var(--giro-vermelho) 16%, transparent), transparent 60%),
-      linear-gradient(150deg, #14060a, #0a0509);
+    box-shadow:
+      -16px 0 34px -8px color-mix(in srgb, var(--giro-vermelho) 92%, transparent),
+       16px 0 34px -8px color-mix(in srgb, var(--giro-azul) 26%, transparent),
+      inset  22px 0 40px -26px var(--giro-vermelho);
   }
   50% {
-    border-color: color-mix(in srgb, var(--giro-azul) 78%, transparent);
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--giro-azul) 30%, transparent),
-                0 0 26px color-mix(in srgb, var(--giro-azul) 42%, transparent),
-                inset 0 0 34px color-mix(in srgb, var(--giro-azul) 13%, transparent);
-    background:
-      radial-gradient(120% 140% at 100% 0%,
-        color-mix(in srgb, var(--giro-azul) 16%, transparent), transparent 60%),
-      linear-gradient(150deg, #060a16, #05070d);
+    box-shadow:
+      -16px 0 34px -8px color-mix(in srgb, var(--giro-vermelho) 26%, transparent),
+       16px 0 34px -8px color-mix(in srgb, var(--giro-azul) 92%, transparent),
+      inset -22px 0 40px -26px var(--giro-azul);
   }
 }
-.mc-penitencia:hover { animation-duration: 1.2s; }   /* olhou: acelera */
 
-/* O TÍTULO gira junto, meio ciclo ATRASADO em relação à borda. Se
-   girassem em fase, o cartão inteiro piscaria como uma coisa só e
-   viraria estroboscópio. Defasados, o efeito é de LUZ VARRENDO — que
-   é o que um giroflex faz. */
+/* ── A BARRA DE LUZ ────────────────────────────────────────
+   Duas metades, lado a lado, pulsando em contrafase. É a peça que
+   mais parece viatura — e ela existe justamente porque a borda
+   sozinha não dava o "as duas ao mesmo tempo". */
+.mc-giroflex {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  display: flex;
+  z-index: 4;
+  pointer-events: none;
+}
+.mc-giroflex i { flex: 1; display: block; }
+.mc-giro-r {
+  background: var(--giro-vermelho);
+  box-shadow: 0 0 16px 2px var(--giro-vermelho);
+  animation: mc-giro-lampada var(--giro-ciclo) ease-in-out infinite;
+}
+.mc-giro-b {
+  background: var(--giro-azul);
+  box-shadow: 0 0 16px 2px var(--giro-azul);
+  /* METADE DO CICLO ATRASADO — é a contrafase que faz uma acender
+     enquanto a outra apaga. Em fase, as duas piscariam juntas e o
+     efeito viraria um flash branco. */
+  animation: mc-giro-lampada var(--giro-ciclo) ease-in-out infinite;
+  animation-delay: calc(var(--giro-ciclo) / -2);
+}
+/* A lâmpada nunca apaga de todo: 0.22 no mínimo. Uma viatura tem as
+   duas lentes visíveis mesmo quando escuras. */
+@keyframes mc-giro-lampada {
+  0%, 100% { opacity: 1;   filter: brightness(1.35); }
+  50%      { opacity: .22; filter: brightness(.7); }
+}
+
+/* O TÍTULO acompanha o sopro, na mesma fase da borda esquerda. */
 .mc-penitencia .mc-titulo {
-  animation: mc-giroflex-texto 2.4s ease-in-out infinite;
-  animation-delay: -1.2s;
   font-weight: 700;
+  color: #fff;
+  animation: mc-giro-texto var(--giro-ciclo) ease-in-out infinite;
 }
-@keyframes mc-giroflex-texto {
-  0%, 100% { color: #ffe4e6; text-shadow: 0 0 16px color-mix(in srgb, var(--giro-vermelho) 65%, transparent); }
-  50%      { color: #dbeafe; text-shadow: 0 0 16px color-mix(in srgb, var(--giro-azul) 65%, transparent); }
+@keyframes mc-giro-texto {
+  0%, 100% { text-shadow: -3px 0 14px var(--giro-vermelho),  3px 0 10px color-mix(in srgb, var(--giro-azul) 40%, transparent); }
+  50%      { text-shadow: -3px 0 10px color-mix(in srgb, var(--giro-vermelho) 40%, transparent),  3px 0 14px var(--giro-azul); }
 }
 
-/* O SELO DE PENITÊNCIA — a faixa que atravessa o topo. Ela existe
-   porque a animação sozinha não diz O QUE é: um cartão piscando pode
-   ser erro de rede. A palavra fecha a leitura. */
+/* O SELO. A animação sozinha pode ser erro de rede; a palavra fecha a
+   leitura. Ele também carrega as duas cores num gradiente que desliza. */
 .mc-penitencia .mc-corpo::before {
   content: 'PENITÊNCIA';
   position: absolute;
@@ -1610,35 +1658,45 @@
   font-weight: 800;
   letter-spacing: .2em;
   color: #fff;
-  animation: mc-giroflex-selo 2.4s ease-in-out infinite;
-  z-index: 3;
+  background: linear-gradient(90deg, var(--giro-vermelho), var(--giro-azul));
+  animation: mc-giro-selo var(--giro-ciclo) ease-in-out infinite;
+  z-index: 5;
   pointer-events: none;
 }
-@keyframes mc-giroflex-selo {
-  0%, 100% { background: var(--giro-vermelho); box-shadow: 0 0 18px color-mix(in srgb, var(--giro-vermelho) 70%, transparent); }
-  50%      { background: var(--giro-azul);     box-shadow: 0 0 18px color-mix(in srgb, var(--giro-azul) 70%, transparent); }
+@keyframes mc-giro-selo {
+  0%, 100% { box-shadow: 0 0 20px color-mix(in srgb, var(--giro-vermelho) 85%, transparent); }
+  50%      { box-shadow: 0 0 20px color-mix(in srgb, var(--giro-azul) 85%, transparent); }
 }
-/* O selo empurra o conteúdo, senão ele cobriria o título. */
-.mc-penitencia .mc-corpo { position: relative; padding-top: 1.7rem; }
+.mc-penitencia .mc-corpo { position: relative; padding-top: 1.75rem; }
+
+/* ── A CAVEIRA ─────────────────────────────────────────────
+   O losango é o desenho de TODO cartão. O que abre uma punição não
+   pode ser a mesma figura que abre uma missão qualquer. */
+.mc-sigilo-pen .mc-sigilo-caveira {
+  animation: mc-giro-caveira var(--giro-ciclo) ease-in-out infinite;
+}
+@keyframes mc-giro-caveira {
+  0%, 100% { filter: drop-shadow(0 0 7px var(--giro-vermelho)); }
+  50%      { filter: drop-shadow(0 0 7px var(--giro-azul)); }
+}
 
 /* ── O CRONÔMETRO DA DÍVIDA ────────────────────────────────
-   O único número do cartão que ANDA. Um chip estático se lê uma vez
-   e vira paisagem; um contador que corre enquanto você olha é
-   impossível de ignorar. */
+   O único número do cartão que ANDA. Um chip estático se lê uma vez e
+   vira paisagem; um contador que corre enquanto você olha é impossível
+   de ignorar. */
 .mc-chip-pen {
   color: #fff;
-  border-color: color-mix(in srgb, var(--giro-vermelho) 55%, transparent);
-  background: color-mix(in srgb, var(--giro-vermelho) 18%, transparent);
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   letter-spacing: .04em;
-  animation: mc-giroflex-chip 2.4s ease-in-out infinite;
+  border: 1px solid transparent;
+  animation: mc-giro-chip var(--giro-ciclo) ease-in-out infinite;
 }
-@keyframes mc-giroflex-chip {
-  0%, 100% { border-color: color-mix(in srgb, var(--giro-vermelho) 55%, transparent);
-             background:   color-mix(in srgb, var(--giro-vermelho) 18%, transparent); }
-  50%      { border-color: color-mix(in srgb, var(--giro-azul) 55%, transparent);
-             background:   color-mix(in srgb, var(--giro-azul) 18%, transparent); }
+@keyframes mc-giro-chip {
+  0%, 100% { border-color: var(--giro-vermelho);
+             background: color-mix(in srgb, var(--giro-vermelho) 26%, transparent); }
+  50%      { border-color: var(--giro-azul);
+             background: color-mix(in srgb, var(--giro-azul) 26%, transparent); }
 }
 
 .mc-pen { margin-top: 9px; display: flex; flex-direction: column; gap: 5px; }
@@ -1648,26 +1706,25 @@
 .mc-pen-origem {
   display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
   font-size: .74rem; line-height: 1.5;
-  color: rgba(255,228,230,.62);
+  color: rgba(255,255,255,.62);
 }
 .mc-pen-origem b { color: #fff; font-weight: 600; }
-.mc-pen-reparo { font-size: .72rem; color: rgba(134,239,172,.78); }
+.mc-pen-reparo { font-size: .72rem; color: rgba(134,239,172,.8); }
 .mc-pen-reparo b { color: #bbf7d0; }
 
 .mc-btn-quitar {
-  border-color: color-mix(in srgb, var(--giro-vermelho) 60%, transparent);
+  border-color: var(--giro-vermelho);
   color: #fff;
-  background: color-mix(in srgb, var(--giro-vermelho) 20%, transparent);
+  background: color-mix(in srgb, var(--giro-vermelho) 26%, transparent);
   font-weight: 700;
 }
 .mc-btn-quitar:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--giro-vermelho) 34%, transparent);
-  box-shadow: 0 0 20px color-mix(in srgb, var(--giro-vermelho) 45%, transparent);
+  background: color-mix(in srgb, var(--giro-vermelho) 42%, transparent);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--giro-vermelho) 55%, transparent);
 }
 
-/* A trilha da penitência quantitativa gira junto. */
 .mc-penitencia .mc-rep { --mc-vigilia: var(--giro-vermelho); }
-.mc-penitencia .mc-rep-lbl { color: rgba(255,228,230,.8); }
+.mc-penitencia .mc-rep-lbl { color: rgba(255,255,255,.82); }
 
 /* ── QUITADA: o giroflex DESLIGA ───────────────────────────
    É o prêmio de ter pago. Um cartão que continua piscando depois de
@@ -1676,12 +1733,16 @@
 .mc-penitencia.mc-cancelada {
   animation: none;
   border-color: rgba(134,239,172,.34);
+  border-left-color: #16a34a;
+  border-right-color: rgba(134,239,172,.34);
   background: linear-gradient(150deg, #08120c, #050806);
   box-shadow: none;
 }
+.mc-penitencia.mc-concluida .mc-giroflex { display: none; }
 .mc-penitencia.mc-concluida .mc-titulo,
 .mc-penitencia.mc-concluida .mc-corpo::before,
-.mc-penitencia.mc-concluida .mc-chip-pen { animation: none; }
+.mc-penitencia.mc-concluida .mc-chip-pen,
+.mc-penitencia.mc-concluida .mc-sigilo-caveira { animation: none; }
 .mc-penitencia.mc-concluida .mc-titulo { color: #bbf7d0; text-shadow: none; }
 .mc-penitencia.mc-concluida .mc-corpo::before {
   content: 'QUITADA'; background: #16a34a; box-shadow: none;
@@ -1693,29 +1754,33 @@
 }
 
 /* ── ACESSIBILIDADE ────────────────────────────────────────
-   0,4 Hz já está muito abaixo do limiar fotossensível de 3 Hz, mas
-   quem pediu para o sistema operacional não animar nada recebe um
-   VERMELHO FIXO — a cor mais alarmante das duas. O sinal continua
-   lendo como punição; só para de girar. */
+   1,1 Hz já está bem abaixo do limiar fotossensível de 3 Hz, mas quem
+   pediu ao sistema operacional para não animar nada recebe o cartão
+   com AS DUAS CORES ACESAS e paradas. O sinal continua sendo giroflex;
+   só para de girar. */
 @media (prefers-reduced-motion: reduce) {
   .mc-penitencia,
   .mc-penitencia .mc-titulo,
   .mc-penitencia .mc-corpo::before,
-  .mc-penitencia .mc-chip-pen { animation: none; }
+  .mc-penitencia .mc-chip-pen,
+  .mc-penitencia .mc-sigilo-caveira,
+  .mc-giro-r, .mc-giro-b { animation: none; }
   .mc-penitencia {
-    border-color: var(--giro-vermelho);
-    background: linear-gradient(150deg, #14060a, #0a0509);
-    box-shadow: 0 0 22px color-mix(in srgb, var(--giro-vermelho) 34%, transparent);
+    box-shadow: -16px 0 34px -8px color-mix(in srgb, var(--giro-vermelho) 70%, transparent),
+                 16px 0 34px -8px color-mix(in srgb, var(--giro-azul) 70%, transparent);
   }
-  .mc-penitencia .mc-titulo { color: #ffe4e6; }
-  .mc-penitencia .mc-corpo::before { background: var(--giro-vermelho); }
+  .mc-giro-r, .mc-giro-b { opacity: 1; }
+  .mc-penitencia .mc-titulo {
+    text-shadow: -3px 0 12px var(--giro-vermelho), 3px 0 12px var(--giro-azul);
+  }
   .mc-penitencia .mc-chip-pen {
-    border-color: color-mix(in srgb, var(--giro-vermelho) 55%, transparent);
-    background: color-mix(in srgb, var(--giro-vermelho) 18%, transparent);
+    border-color: var(--giro-vermelho);
+    background: color-mix(in srgb, var(--giro-vermelho) 26%, transparent);
   }
 }
 
 .mc-compacto .mc-pen { margin-top: 6px; }
 .mc-compacto .mc-pen-origem { font-size: .68rem; }
-.mc-compacto.mc-penitencia .mc-corpo { padding-top: 1.5rem; }
+.mc-compacto.mc-penitencia .mc-corpo { padding-top: 1.55rem; }
 .mc-compacto.mc-penitencia .mc-corpo::before { font-size: .52rem; padding: 2px 9px 3px; }
+.mc-compacto .mc-giroflex { height: 3px; }

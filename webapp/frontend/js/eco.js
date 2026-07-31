@@ -152,16 +152,26 @@ const Eco = {
       c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   },
 
-  /* O sigilo que abre o Eco. Um losango partido — o mesmo vocabulário
-     geométrico do resto do app, sem virar ícone de alerta genérico. */
+  /* A CAVEIRA que abre o Eco.
+
+     Era um losango partido, e o Arquiteto cortou: losango e o desenho
+     de TODO cartao deste app. O que abre uma punicao nao pode ser a
+     mesma figura que abre uma missao qualquer.
+
+     A caveira e o mesmo desenho do sigilo do cartao — a marca da
+     penitencia e uma so, no cartao e na voz. */
   _sigilo() {
-    return `<svg viewBox="0 0 48 48" width="46" height="46" aria-hidden="true">
-      <path d="M24 3 44 24 24 45 4 24Z" fill="none" stroke="currentColor"
-            stroke-width="1.2" opacity=".55"/>
-      <path d="M24 11 37 24 24 37 11 24Z" fill="none" stroke="currentColor"
-            stroke-width="1.6"/>
-      <path d="M24 17v9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      <circle cx="24" cy="30.5" r="1.4" fill="currentColor"/>
+    return `<svg viewBox="0 0 48 48" width="52" height="52" aria-hidden="true">
+      <g fill="none" stroke="currentColor" stroke-width="1.9"
+         stroke-linecap="round" stroke-linejoin="round"
+         transform="translate(24 23) scale(1.75) translate(-12 -12)">
+        <path d="M12 3.2c-4.2 0-7 2.9-7 6.9 0 2.3.9 4.1 2.4 5.4v2.5c0 .85.7 1.55 1.55 1.55h6.1c.85 0 1.55-.7 1.55-1.55v-2.5c1.5-1.3 2.4-3.1 2.4-5.4 0-4-2.8-6.9-7-6.9z"
+              fill="currentColor" fill-opacity=".12"/>
+        <ellipse cx="9.1" cy="10.3" rx="1.8" ry="2.1" fill="currentColor" stroke="none"/>
+        <ellipse cx="14.9" cy="10.3" rx="1.8" ry="2.1" fill="currentColor" stroke="none"/>
+        <path d="M12 13.5l-.9 2h1.8z" fill="currentColor" stroke="none"/>
+        <path d="M9.7 19.4v-1.7M12 19.4v-1.7M14.3 19.4v-1.7"/>
+      </g>
     </svg>`;
   },
 

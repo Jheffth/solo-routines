@@ -184,22 +184,41 @@ const MissaoCard = {
   },
 
   /* ── Sigilo (ícone cinético em SVG) ────────────────────── */
-  _sigilo(cor, categoria) {
+  _sigilo(cor, categoria, penitencia) {
+    /* O LOSANGO É DE TODO CARTÃO. Na penitência ele vira CAVEIRA — o
+       Arquiteto pediu, e ele tem razão: o sigilo é a primeira coisa
+       que o olho encontra, e um losango igual ao das outras missões
+       dizia "mais uma da lista" antes de qualquer cor entrar em cena.
+
+       Só a figura central muda. O anel e o arco continuam, senão o
+       cartão deixaria de pertencer à mesma família visual. */
+    const centro = penitencia
+      ? `<g class="mc-sigilo-caveira" fill="none" stroke="${cor}" stroke-opacity=".92"
+             stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"
+             transform="translate(50 48) scale(1.55) translate(-12 -12)">
+           <path d="M12 3.4c-4 0-6.8 2.8-6.8 6.7 0 2.2.9 4 2.3 5.2v2.4c0 .8.7 1.5 1.5 1.5h6c.8 0 1.5-.7 1.5-1.5v-2.4c1.4-1.2 2.3-3 2.3-5.2 0-3.9-2.8-6.7-6.8-6.7z"
+                 fill="${cor}" fill-opacity=".16"/>
+           <ellipse cx="9.2" cy="10.3" rx="1.7" ry="2" fill="${cor}" stroke="none"/>
+           <ellipse cx="14.8" cy="10.3" rx="1.7" ry="2" fill="${cor}" stroke="none"/>
+           <path d="M12 13.6l-.9 1.9h1.8z" fill="${cor}" stroke="none"/>
+           <path d="M9.8 19.2v-1.6M12 19.2v-1.6M14.2 19.2v-1.6"/>
+         </g>`
+      : `<polygon points="50,26 62,50 50,74 38,50" fill="${cor}" fill-opacity=".18"
+                   stroke="${cor}" stroke-opacity=".7" stroke-width="1.5"/>`;
     return `
-      <div class="mc-sigilo">
+      <div class="mc-sigilo${penitencia ? ' mc-sigilo-pen' : ''}">
         <svg viewBox="0 0 100 100" aria-hidden="true">
           <g class="mc-sigilo-anel">
             <circle cx="50" cy="50" r="34" fill="none" stroke="${cor}" stroke-opacity=".45"
                     stroke-width="2" stroke-dasharray="9 7"/>
           </g>
-          <polygon points="50,26 62,50 50,74 38,50" fill="${cor}" fill-opacity=".18"
-                   stroke="${cor}" stroke-opacity=".7" stroke-width="1.5"/>
+          ${centro}
           <g class="mc-sigilo-arco">
             <circle cx="50" cy="50" r="42" fill="none" stroke="${cor}" stroke-opacity=".85"
                     stroke-width="2" stroke-dasharray="22 242" stroke-linecap="round"/>
           </g>
         </svg>
-        <span class="mc-sigilo-ico">${this._glifoCat(categoria)}</span>
+        ${penitencia ? '' : `<span class="mc-sigilo-ico">${this._glifoCat(categoria)}</span>`}
       </div>`;
   },
 
@@ -1131,8 +1150,10 @@ const MissaoCard = {
          style="--mc-cor:${cor};--mc-cor-suave:${this._alpha(cor, .14)}">
       <div class="mc-fio"></div>
       ${repet ? this._contagem(m, chave) : (passiva ? this._vigilia(m, chave) : '')}
+      ${penit ? `<div class="mc-giroflex" aria-hidden="true">
+        <i class="mc-giro-r"></i><i class="mc-giro-b"></i></div>` : ''}
       ${this._corrente(status)}
-      ${this._sigilo(cor, m.categoria)}
+      ${this._sigilo(cor, m.categoria, !!penit)}
       <div class="mc-corpo">
         <div class="mc-topo">
           <div class="mc-titulo" title="${this._esc(m.titulo)}">${this._esc(m.titulo) || 'Missão'}</div>

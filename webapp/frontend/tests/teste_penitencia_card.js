@@ -87,46 +87,84 @@ ok(c.classList.contains('mc-penitencia'), 'o cartão se marca como penitência')
 ok(/PENITÊNCIA/.test(bloco(/\.mc-penitencia\s+\.mc-corpo::before\s*\{([^}]*)\}/)),
    'e carrega a PALAVRA no selo — animação sozinha pode ser erro de rede');
 
-/* ══ 2. O GIROFLEX ALTERNA ══ */
+/* ══ 2. O GIROFLEX: AS DUAS CORES AO MESMO TEMPO ══ */
 console.log('\n-- o giroflex --');
+/* A SEGUNDA versão fazia o cartão INTEIRO trocar de vermelho para
+   azul. O Arquiteto cortou: "o efeito de giroflex dá a sensação
+   imediata das DUAS cores".
+
+   Ele está certo, e é assim que uma viatura funciona: as duas lâmpadas
+   estão lá o tempo todo, lado a lado. O que alterna é QUAL ESTÁ ACESA.
+   Um cartão que troca de cor inteiro não lê como giroflex — lê como um
+   cartão indeciso.
+
+   Estes asserts existem para a terceira versão não voltar a ser a
+   segunda. */
 const kf = nome => {
   const m = new RegExp('@keyframes\\s+' + nome + '\\s*\\{([\\s\\S]*?)\\n\\}').exec(semCom);
   return m ? m[1] : '';
 };
-const borda = kf('mc-giroflex-borda');
-ok(borda.length > 0, 'existe o keyframe do giroflex');
-ok(/--giro-vermelho/.test(borda) && /--giro-azul/.test(borda),
-   'e ele usa AS DUAS cores — vermelho fixo passaria por crítica');
-ok(/0%,\s*100%/.test(borda) && /50%\s*\{/.test(borda),
-   '  alternando em 0/100% e 50%');
-
 const raiz = bloco(/\.mc-penitencia\s*\{([^}]*)\}/);
+
 ok(/--giro-vermelho:\s*#[0-9a-f]{6}/i.test(raiz) && /--giro-azul:\s*#[0-9a-f]{6}/i.test(raiz),
-   'as duas cores são declaradas na raiz do cartão');
-ok(/animation:\s*mc-giroflex-borda/.test(raiz), 'e a animação está ligada');
+   'as duas cores são declaradas na raiz');
 
-/* A FREQUÊNCIA. Acima de 3 Hz há risco fotossensível — este é o único
-   assert deste projeto que existe por segurança, não por estética. */
-const dur = parseFloat(/mc-giroflex-borda\s+([\d.]+)s/.exec(raiz)[1]);
-ok(dur >= 1.5,
-   `o ciclo é de ${dur}s (${(1 / dur).toFixed(2)} Hz) — muito abaixo dos 3 Hz do limiar fotossensível`);
+/* AS DUAS COEXISTEM NA BORDA — mesmo com tudo parado. É o assert que
+   separa "giroflex" de "cartão que troca de cor". */
+ok(/border-left-color:\s*var\(--giro-vermelho\)/.test(raiz),
+   'a borda ESQUERDA é vermelha, fixa');
+ok(/border-right-color:\s*var\(--giro-azul\)/.test(raiz),
+   'e a DIREITA é azul, fixa — as duas existem mesmo sem animação');
 
-/* AS QUATRO PEÇAS GIRAM. Se só a borda girasse, o cartão pareceria ter
-   um defeito em vez de um estado. */
-for (const [alvo, nome] of [
-  ['mc-giroflex-borda', 'a borda'],
-  ['mc-giroflex-texto', 'o título'],
-  ['mc-giroflex-selo',  'o selo'],
-  ['mc-giroflex-chip',  'o cronômetro'],
-]) {
-  const k = kf(alvo);
-  ok(k.includes('--giro-vermelho') && k.includes('--giro-azul'), `${nome} gira nas duas cores`);
-}
+/* O SOPRO alterna INTENSIDADE, não cor. Em cada quadro do keyframe as
+   duas cores têm que aparecer. */
+const sopro = kf('mc-giro-sopro');
+/* Os quadros são extraídos pelas CHAVES, não por `split('%')`. A
+   primeira versão partia em todo `%` — inclusive os de dentro do
+   `color-mix(... 92%, transparent)` — e comparava fragmentos que não
+   eram quadro nenhum. */
+const quadros = [...sopro.matchAll(/\{([^}]*)\}/g)].map(m => m[1]);
+ok(quadros.length >= 2, 'o halo tem dois quadros');
+ok(quadros.every(q => q.includes('--giro-vermelho') && q.includes('--giro-azul')),
+   'e em CADA UM deles as duas cores estão presentes — nunca há um '
+   + 'instante em que só uma esteja na tela');
 
-/* A DEFASAGEM. Em fase, o cartão inteiro piscaria como uma coisa só e
-   viraria estroboscópio. Defasado, lê como luz varrendo. */
-ok(/animation-delay:\s*-?[\d.]+s/.test(bloco(/\.mc-penitencia\s+\.mc-titulo\s*\{([^}]*)\}/)),
-   'e o título gira DEFASADO da borda — em fase seria estroboscópio');
+/* A BARRA DE LUZ — a peça que mais parece viatura. */
+ok(!!c.querySelector('.mc-giroflex'), 'há uma barra de luz no cartão');
+ok(!!c.querySelector('.mc-giro-r') && !!c.querySelector('.mc-giro-b'),
+   '  com as duas lâmpadas, lado a lado');
+const lamp = kf('mc-giro-lampada');
+ok(/opacity:\s*\.?[0-9]/.test(lamp), 'elas pulsam por opacidade');
+const minOp = Math.min(...[...lamp.matchAll(/opacity:\s*([\d.]+)/g)].map(m => parseFloat(m[1])));
+ok(minOp > 0,
+   `e nenhuma apaga de todo (mínimo ${minOp}) — viatura tem as duas lentes visíveis`);
+ok(/animation-delay:\s*calc\(var\(--giro-ciclo\)\s*\/\s*-2\)/.test(semCom),
+   'a azul vai meio ciclo atrasada: em fase, as duas dariam um flash branco');
+
+/* A VELOCIDADE. Ele pediu mais rápido — e o teto de segurança continua. */
+const ciclo = parseFloat(/--giro-ciclo:\s*([\d.]+)s/.exec(raiz)[1]);
+ok(ciclo <= 1.2,
+   `o ciclo é de ${ciclo}s (${(1 / ciclo).toFixed(2)} Hz) — mais rápido que os 2,4s de antes`);
+ok(ciclo >= 0.34,
+   `  e ainda abaixo de 3 Hz, o limiar fotossensível — este assert existe por `
+   + `segurança, não por estética`);
+
+/* CORES VIVAS, não os tons lavados da versão anterior. */
+const [rr, rg, rb] = /--giro-vermelho:\s*#(..)(..)(..)/.exec(raiz).slice(1).map(h => parseInt(h, 16));
+ok(rr > 220 && rg < 90,
+   `o vermelho é vivo (#${rr.toString(16)}${rg.toString(16)}${rb.toString(16)}), não lavado`);
+
+/* A CAVEIRA — o losango é de todo cartão. */
+console.log('\n-- a caveira --');
+ok(!!c.querySelector('.mc-sigilo-caveira'),
+   'o sigilo da penitência é uma CAVEIRA');
+ok(!c.querySelector('.mc-sigilo polygon'),
+   '  e o losango sumiu — ele é o desenho de toda missão, e dizia "mais uma da lista"');
+const comum0 = frag(MC.html({ ...pen(), natureza: 'ATIVA' }));
+ok(!!comum0.querySelector('.mc-sigilo polygon'),
+   'a missão comum MANTÉM o losango — só a punição troca');
+ok(!comum0.querySelector('.mc-sigilo-caveira'), '  e não ganha caveira');
+ok(w.Glifos.existe('caveira'), 'e a caveira existe no alfabeto, para quem mais precisar');
 
 /* ══ 3. Quitada, o giroflex desliga ══ */
 console.log('\n-- quitada --');
