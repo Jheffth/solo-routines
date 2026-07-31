@@ -120,23 +120,48 @@ def da_tarefa(tarefa) -> dict:
     """
     Vigência e vencimento de uma missão geral.
 
-    O prazo conta da INTENÇÃO. Duas nuances que o código precisa acertar:
+    O prazo conta da INTENÇÃO. Três regras, e a terceira nasceu de um bug.
 
-    • Missão criada para um dia futuro não pode nascer vencida. Por isso a
-      vigência é o mais TARDE entre "quando foi criada" e "00:00 do dia
-      previsto" — uma missão marcada para sexta começa a contar na sexta.
+    • Missão criada para um dia futuro não pode nascer vencida. A vigência
+      é o mais TARDE entre "quando foi criada" e a abertura do dia previsto.
 
     • Sem prazo declarado, ela vale o dia previsto inteiro. Missão sem prazo
       não é missão eterna; é missão de um dia.
+
+    • A ABERTURA DO DIA NÃO É MEIA-NOITE.
+
+      Era. E o Arquiteto encontrou o resultado: uma missão CRÍTICA marcada
+      para amanhã abria às 00:00 e morria às 00:30 — enquanto ele dormia.
+      Uma ALTA morria às 02:00. O `max(criada, meia-noite)` protegia contra
+      "nascer vencida" e criava um problema pior: nascer com a janela toda
+      gasta no sono.
+
+      O erro de raciocínio foi tratar "o dia" como um intervalo de
+      calendário. Para quem usa o app, o dia começa quando a pessoa acorda.
+
+      Agora:
+        · com `hora_inicio`, a contagem começa NAQUELE horário — foi o que
+          o Arquiteto propôs, e é a única resposta que não inventa nada;
+        · sem `hora_inicio`, uma missão para dia FUTURO vale o dia inteiro.
+          Se ele não disse a que horas, o Sistema não tem o que adivinhar,
+          e adivinhar errado é o bug que estamos consertando.
+
+      Missão para HOJE não muda: a contagem segue começando na criação,
+      que é o que "vou fazer agora" quer dizer.
     """
     dia = getattr(tarefa, "data_prevista", None) or tempo.hoje()
-    abertura_do_dia = datetime.combine(dia, time(0, 0))
+    hora = _hhmm(getattr(tarefa, "hora_inicio", None))
+    abertura_do_dia = datetime.combine(dia, hora or time(0, 0))
 
     criada = tempo.de_utc(getattr(tarefa, "criado_em", None))
     inicio = max(criada, abertura_do_dia) if criada else abertura_do_dia
 
+    # DIA FUTURO SEM HORA: o dia inteiro, e o `prazo_minutos` não se aplica.
+    # Aplicá-lo daria a janela de meia-noite que o Arquiteto reportou.
+    futura_sem_hora = hora is None and dia > tempo.hoje()
+
     minutos = getattr(tarefa, "prazo_minutos", None)
-    if minutos and minutos > 0:
+    if minutos and minutos > 0 and not futura_sem_hora:
         fim = inicio + timedelta(minutes=int(minutos))
     else:
         fim = datetime.combine(dia, _FIM_DO_DIA)

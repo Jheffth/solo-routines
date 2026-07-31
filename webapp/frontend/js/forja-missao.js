@@ -547,8 +547,23 @@ const ForjaMissao = {
 
             <div class="fm-bloco fm-full" id="fm-bloco-data" ${e.tipo === 'TAREFA' ? '' : 'style="display:none"'}>
               <div class="fm-rotulo">${gl("agendada", 12)} Para quando?</div>
-              <input type="date" class="fm-input fm-input-curto"
-                     data-fm-campo-txt="data_prevista" value="${e.data_prevista}">
+              <div class="fm-quando">
+                <input type="date" class="fm-input fm-input-curto"
+                       data-fm-campo-txt="data_prevista" value="${e.data_prevista}">
+                <!-- A HORA DE INÍCIO. Sem ela, uma missão crítica marcada
+                     para amanhã abria às 00:00 e morria às 00:30 — o
+                     Arquiteto reportou. O campo existia para a passiva; aqui
+                     ele ganha a segunda função. -->
+                <label class="fm-quando-hora">
+                  <span class="fm-quando-lbl">${gl("relogio", 11)} A partir das</span>
+                  <input type="time" class="fm-input fm-input-curto"
+                         data-fm-campo-txt="hora_inicio" value="${e.hora_inicio || ''}">
+                </label>
+              </div>
+              <!-- O EFEITO É DITO NA TELA, e muda conforme a escolha. O
+                   hunter não pode ter que descobrir amanhã de manhã que o
+                   prazo dele correu de madrugada. -->
+              <div class="fm-quando-nota" id="fm-quando-nota"></div>
             </div>
 
             <!-- Prioridade e Dificuldade lado a lado -->
@@ -1031,9 +1046,55 @@ const ForjaMissao = {
       nota.innerHTML = NOTAS[e.natureza] || NOTAS.ATIVA;
     }
 
+    this._notaQuando(e);
+
     // Botão só habilita com título
     const btn = document.querySelector('[data-fm-salvar]');
     if (btn) btn.disabled = !e.titulo.trim();
+  },
+
+  /* ── QUANDO O PRAZO COMEÇA A CORRER ───────────────────────
+
+     O Arquiteto marcou uma missão crítica para amanhã e ela ia morrer
+     às 00:30, dormindo. A causa estava no servidor e já foi corrigida;
+     esta nota existe para o defeito não voltar por outro caminho — o
+     de o hunter não saber o que vai acontecer.
+
+     Regra que a nota explica, em uma frase por caso:
+       hoje                    conta a partir de agora
+       futuro, sem hora        vale o dia inteiro
+       futuro, com hora        conta a partir daquela hora
+
+     O campo de hora some quando a JANELA está ligada: os dois editam o
+     mesmo `hora_inicio`, e dois controles para um estado é como se
+     perde a confiança num formulário. */
+  _notaQuando(e) {
+    const campo = document.querySelector('.fm-quando-hora');
+    if (campo) campo.style.display = e.janela ? 'none' : '';
+
+    const nota = document.getElementById('fm-quando-nota');
+    if (!nota || e.tipo !== 'TAREFA') { if (nota) nota.innerHTML = ''; return; }
+
+    const futura = (e.data_prevista || '') > this._dataLocal();
+    const hora = e.janela ? '' : (e.hora_inicio || '');
+    const gl = (n, t) => this._gl(n, t);
+
+    if (!futura) {
+      nota.className = 'fm-quando-nota';
+      nota.innerHTML = `${gl('relogio', 11)} O prazo começa a correr <b>agora</b>, ao criar.`;
+      return;
+    }
+    if (hora) {
+      nota.className = 'fm-quando-nota ok';
+      nota.innerHTML = `${gl('relogio', 11)} O prazo só começa a correr às
+        <b>${hora}</b> do dia marcado. Antes disso ela espera.`;
+      return;
+    }
+    // Sem hora: o Sistema não adivinha, e diz isso.
+    nota.className = 'fm-quando-nota aviso';
+    nota.innerHTML = `${gl('ampulheta', 11)} Sem horário, ela vale o
+      <b>dia inteiro</b>. Informe uma hora se quiser o prazo curto valendo
+      a partir dela.`;
   },
 
   /* ── Salvar (API real) ─────────────────────────────────── */
@@ -1136,7 +1197,11 @@ const ForjaMissao = {
           // um `hora_fim` novo aqui de proposito — duas colunas para o
           // mesmo horario seriam duas verdades.
           natureza: e.natureza || 'ATIVA',
-          hora_inicio: e.janela ? (e.hora_inicio || null) : null,
+          // A HORA VIAJA MESMO SEM JANELA. Ela tem duas funcoes na missao
+          // geral: abrir a janela da passiva, e dizer a partir de quando o
+          // prazo corre numa missao futura. Amarra-la ao `janela` deixaria
+          // o segundo caso sem jeito de existir.
+          hora_inicio: e.hora_inicio || null,
         };
 
         if (e.natureza === 'REPETICAO') {

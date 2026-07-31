@@ -35,6 +35,11 @@ router = APIRouter(prefix="/extrato", tags=["extrato"])
 # Teto de segurança: o extrato é uma tela, não um dump do banco.
 # Agora o limite cobre 1 ano pra trás e 1 ano pra frente (para missões gerais).
 JANELA_MAXIMA_DIAS = 800
+# Quanto do FUTURO o extrato alcanca por padrao. Nao e infinito de
+# proposito: uma missao marcada para daqui a um ano nao e "o que esta
+# acontecendo", e o extrato e uma tela de acompanhamento, nao um
+# calendario. Trinta dias cobrem o que se agenda na pratica.
+HORIZONTE_FUTURO_DIAS = 30
 LIMITE_PADRAO = 1000
 
 # CONFESSADA entra aqui: é desfecho, não pendência. Sem ela, a missão
@@ -231,8 +236,21 @@ def listar_extrato(
     precisa saber o que perdeu.
     """
     hoje = tempo.hoje()
-    fim = fim or hoje
-    inicio = inicio or (fim - timedelta(days=30))
+    # O HORIZONTE PASSOU A INCLUIR O FUTURO.
+    #
+    # `fim` era `hoje`, e o efeito o Arquiteto encontrou junto com o bug do
+    # prazo: uma missão agendada para amanhã não aparecia em lugar nenhum.
+    # Ele criava, ela sumia, e só voltava no dia — o que faz o app parecer
+    # que perdeu o registro.
+    #
+    # O cartão já sabia lidar com missão futura: `editavel` é false e
+    # `gerenciavel` é true, e ele desenha o selo "Agendada". A intenção
+    # existia; era a consulta que não ia buscar.
+    #
+    # Só as missões gerais aparecem à frente — rotina futura não tem
+    # `ExecucaoDia` para materializar, então a janela maior não a inventa.
+    fim = fim or (hoje + timedelta(days=HORIZONTE_FUTURO_DIAS))
+    inicio = inicio or (min(fim, hoje) - timedelta(days=30))
     if (fim - inicio).days > JANELA_MAXIMA_DIAS:
         inicio = fim - timedelta(days=JANELA_MAXIMA_DIAS)
 

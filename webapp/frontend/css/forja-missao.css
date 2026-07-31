@@ -650,3 +650,42 @@
   padding: 2px 7px; border-radius: 999px;
   background: rgba(148,163,184,.12); color: #64748b;
 }
+
+/* ── QUANDO O PRAZO COMEÇA A CORRER ────────────────────────
+   Uma missão crítica marcada para amanhã abria às 00:00 e morria às
+   00:30 — dormindo. O servidor já foi corrigido; estes estilos
+   existem para o hunter SABER o que vai acontecer antes de salvar,
+   que é a outra metade do mesmo defeito. */
+.fm-quando { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
+.fm-quando-hora { display: flex; flex-direction: column; gap: 5px; }
+.fm-quando-lbl {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: .68rem; letter-spacing: .08em; text-transform: uppercase;
+  color: #94a3b8;
+}
+.fm-quando-nota {
+  display: flex; align-items: center; gap: 7px;
+  margin-top: 9px; padding: 8px 12px;
+  border-radius: 9px; font-size: .78rem; line-height: 1.5;
+  background: rgba(148,163,184,.07);
+  border: 1px solid rgba(148,163,184,.16);
+  color: #94a3b8;
+}
+.fm-quando-nota:empty { display: none; }
+.fm-quando-nota b { color: #e2e8f0; }
+.fm-quando-nota svg { flex: none; }
+/* Com hora, a missão faz o que o hunter pediu. */
+.fm-quando-nota.ok {
+  background: color-mix(in srgb, #22c55e 9%, transparent);
+  border-color: color-mix(in srgb, #22c55e 26%, transparent);
+  color: #86efac;
+}
+.fm-quando-nota.ok b { color: #dcfce7; }
+/* Sem hora, ela vale o dia inteiro — não é erro, é uma escolha que
+   precisa ser consciente. Âmbar, não vermelho. */
+.fm-quando-nota.aviso {
+  background: color-mix(in srgb, #f59e0b 9%, transparent);
+  border-color: color-mix(in srgb, #f59e0b 26%, transparent);
+  color: #fcd34d;
+}
+.fm-quando-nota.aviso b { color: #fef3c7; }
