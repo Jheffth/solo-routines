@@ -1519,84 +1519,203 @@
 }
 
 /* ══════════════════════════════════════════════════════════════
-   A PENITÊNCIA — gélida, e sem pressa
+   A PENITÊNCIA — O GIROFLEX
 
-   A cor NÃO é vermelha. Crítica já é #e11d48, e vermelho neste app
-   significa URGÊNCIA: algo que ainda dá para salvar. A penitência
-   não é urgente — ela é consequência, e já aconteceu.
+   A primeira versão era gélida: branco sobre azul quase preto. O
+   raciocínio parecia bom — vermelho neste app significa URGÊNCIA, e a
+   penitência é consequência, algo que já aconteceu.
 
-   Branco gélido sobre azul quase preto lê como "o Sistema não está
-   com raiva; ele está registrando". É mais assustador que raiva. E
-   tem um ganho prático: uma penitência nunca vai ser confundida com
-   uma missão crítica na lista.
+   O Arquiteto testou e derrubou em uma frase: "o user bateria o olho e
+   acharia que era só mais uma missão rotineira."
 
-   E ELA NÃO ANIMA. A crítica pulsa porque o tempo corre. A
-   penitência não tem pressa — tem permanência. A ausência de
-   movimento é o que a torna pesada.
+   Ele está certo, e o erro foi meu: eu otimizei para SEMANTICAMENTE
+   CORRETO em vez de LEGÍVEL DE RELANCE. Uma punição que não se anuncia
+   não é punição. Intenção de design não vale nada se o sinal não lê.
+
+   A saída dele é melhor que as duas que eu tinha: um GIROFLEX. O
+   vermelho e o azul ALTERNANDO, como viatura. Nenhum outro cartão do
+   app alterna cor — a crítica é vermelha e fica vermelha. A alternância
+   sozinha já é impossível de confundir, antes mesmo de o olho ler o
+   título.
+
+   FREQUÊNCIA: 2,4s por ciclo completo — cerca de 0,4 Hz. Isso é MUITO
+   abaixo do limiar de 3 flashes por segundo que dispara risco
+   fotossensível, e mesmo assim `prefers-reduced-motion` congela tudo
+   num vermelho fixo. Giroflex de verdade pisca mais rápido; aqui a
+   lentidão é deliberada — ela lê como "alerta permanente" e não como
+   "emergência agora", que é exatamente o que uma dívida é.
    ══════════════════════════════════════════════════════════════ */
 .mc-penitencia {
-  --mc-cor: #93c5fd;
-  --mc-pen-luz: #dbeafe;
-  border-color: color-mix(in srgb, #93c5fd 26%, transparent);
-  border-left-color: #93c5fd;
-  background:
-    /* Sem trama animada, sem diagonal correndo. Um gradiente parado —
-       gelo não se move. */
-    linear-gradient(180deg,
-      color-mix(in srgb, #1e3a5f 22%, transparent), transparent 45%),
-    linear-gradient(150deg, #070b14, #04060c);
-  box-shadow: inset 0 1px 0 rgba(219,234,254,.06);
+  --giro-vermelho: #ff2d4a;
+  --giro-azul:     #2b6bff;
+  --mc-cor: var(--giro-vermelho);
+  border-width: 1px;
+  border-style: solid;
+  animation: mc-giroflex-borda 2.4s ease-in-out infinite;
 }
 .mc-penitencia .mc-fio { display: none; }
-.mc-penitencia:hover {
-  border-color: color-mix(in srgb, #93c5fd 45%, transparent);
-  box-shadow: 0 8px 26px rgba(0,0,0,.55),
-              0 0 22px color-mix(in srgb, #93c5fd 18%, transparent);
+
+/* O fundo alterna junto, mas MUITO mais sutil — o cartão precisa
+   continuar legível. É a borda e o halo que giram; o fundo só respira
+   a cor. */
+@keyframes mc-giroflex-borda {
+  0%, 100% {
+    border-color: color-mix(in srgb, var(--giro-vermelho) 78%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--giro-vermelho) 30%, transparent),
+                0 0 26px color-mix(in srgb, var(--giro-vermelho) 42%, transparent),
+                inset 0 0 34px color-mix(in srgb, var(--giro-vermelho) 13%, transparent);
+    background:
+      radial-gradient(120% 140% at 0% 0%,
+        color-mix(in srgb, var(--giro-vermelho) 16%, transparent), transparent 60%),
+      linear-gradient(150deg, #14060a, #0a0509);
+  }
+  50% {
+    border-color: color-mix(in srgb, var(--giro-azul) 78%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--giro-azul) 30%, transparent),
+                0 0 26px color-mix(in srgb, var(--giro-azul) 42%, transparent),
+                inset 0 0 34px color-mix(in srgb, var(--giro-azul) 13%, transparent);
+    background:
+      radial-gradient(120% 140% at 100% 0%,
+        color-mix(in srgb, var(--giro-azul) 16%, transparent), transparent 60%),
+      linear-gradient(150deg, #060a16, #05070d);
+  }
 }
+.mc-penitencia:hover { animation-duration: 1.2s; }   /* olhou: acelera */
+
+/* O TÍTULO gira junto, meio ciclo ATRASADO em relação à borda. Se
+   girassem em fase, o cartão inteiro piscaria como uma coisa só e
+   viraria estroboscópio. Defasados, o efeito é de LUZ VARRENDO — que
+   é o que um giroflex faz. */
 .mc-penitencia .mc-titulo {
-  color: var(--mc-pen-luz);
-  text-shadow: 0 0 14px rgba(147,197,253,.28);
+  animation: mc-giroflex-texto 2.4s ease-in-out infinite;
+  animation-delay: -1.2s;
+  font-weight: 700;
+}
+@keyframes mc-giroflex-texto {
+  0%, 100% { color: #ffe4e6; text-shadow: 0 0 16px color-mix(in srgb, var(--giro-vermelho) 65%, transparent); }
+  50%      { color: #dbeafe; text-shadow: 0 0 16px color-mix(in srgb, var(--giro-azul) 65%, transparent); }
 }
 
-/* O CHIP DA IDADE. É o único número que sobe, e sozinho ele já
-   incomoda — não precisa de cor de alarme para isso. */
+/* O SELO DE PENITÊNCIA — a faixa que atravessa o topo. Ela existe
+   porque a animação sozinha não diz O QUE é: um cartão piscando pode
+   ser erro de rede. A palavra fecha a leitura. */
+.mc-penitencia .mc-corpo::before {
+  content: 'PENITÊNCIA';
+  position: absolute;
+  top: 0; left: 0;
+  padding: 3px 12px 4px;
+  border-radius: 0 0 10px 0;
+  font-family: var(--font-section, system-ui, sans-serif);
+  font-size: .58rem;
+  font-weight: 800;
+  letter-spacing: .2em;
+  color: #fff;
+  animation: mc-giroflex-selo 2.4s ease-in-out infinite;
+  z-index: 3;
+  pointer-events: none;
+}
+@keyframes mc-giroflex-selo {
+  0%, 100% { background: var(--giro-vermelho); box-shadow: 0 0 18px color-mix(in srgb, var(--giro-vermelho) 70%, transparent); }
+  50%      { background: var(--giro-azul);     box-shadow: 0 0 18px color-mix(in srgb, var(--giro-azul) 70%, transparent); }
+}
+/* O selo empurra o conteúdo, senão ele cobriria o título. */
+.mc-penitencia .mc-corpo { position: relative; padding-top: 1.7rem; }
+
+/* ── O CRONÔMETRO DA DÍVIDA ────────────────────────────────
+   O único número do cartão que ANDA. Um chip estático se lê uma vez
+   e vira paisagem; um contador que corre enquanto você olha é
+   impossível de ignorar. */
 .mc-chip-pen {
-  color: #bfdbfe;
-  border-color: color-mix(in srgb, #93c5fd 34%, transparent);
-  background: color-mix(in srgb, #93c5fd 11%, transparent);
+  color: #fff;
+  border-color: color-mix(in srgb, var(--giro-vermelho) 55%, transparent);
+  background: color-mix(in srgb, var(--giro-vermelho) 18%, transparent);
   font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: .04em;
+  animation: mc-giroflex-chip 2.4s ease-in-out infinite;
+}
+@keyframes mc-giroflex-chip {
+  0%, 100% { border-color: color-mix(in srgb, var(--giro-vermelho) 55%, transparent);
+             background:   color-mix(in srgb, var(--giro-vermelho) 18%, transparent); }
+  50%      { border-color: color-mix(in srgb, var(--giro-azul) 55%, transparent);
+             background:   color-mix(in srgb, var(--giro-azul) 18%, transparent); }
 }
 
 .mc-pen { margin-top: 9px; display: flex; flex-direction: column; gap: 5px; }
 /* DE ONDE VEIO. Uma punição anônima é arbitrária; nomear a falha a
-   torna justa — e a distância entre as duas linhas (fio dental
-   cobrado em abdominais) é o que faz o Sistema parecer uma entidade. */
+   torna justa — e a distância entre as duas (fio dental cobrado em
+   abdominais) é o que faz o Sistema parecer uma entidade. */
 .mc-pen-origem {
   display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
   font-size: .74rem; line-height: 1.5;
-  color: rgba(191,219,254,.62);
+  color: rgba(255,228,230,.62);
 }
-.mc-pen-origem b { color: rgba(219,234,254,.92); font-weight: 600; }
-.mc-pen-reparo {
-  font-size: .72rem;
-  color: rgba(134,239,172,.72);
-}
+.mc-pen-origem b { color: #fff; font-weight: 600; }
+.mc-pen-reparo { font-size: .72rem; color: rgba(134,239,172,.78); }
 .mc-pen-reparo b { color: #bbf7d0; }
 
 .mc-btn-quitar {
-  border-color: color-mix(in srgb, #93c5fd 48%, transparent);
-  color: #eff6ff;
-  background: color-mix(in srgb, #93c5fd 14%, transparent);
-  font-weight: 600;
+  border-color: color-mix(in srgb, var(--giro-vermelho) 60%, transparent);
+  color: #fff;
+  background: color-mix(in srgb, var(--giro-vermelho) 20%, transparent);
+  font-weight: 700;
 }
 .mc-btn-quitar:hover:not(:disabled) {
-  background: color-mix(in srgb, #93c5fd 26%, transparent);
-  box-shadow: 0 0 18px color-mix(in srgb, #93c5fd 30%, transparent);
+  background: color-mix(in srgb, var(--giro-vermelho) 34%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--giro-vermelho) 45%, transparent);
 }
 
-/* A penitência quantitativa reusa a trilha da repetição — mesma
-   mecânica, mesma peça — só que na cor do gelo. */
-.mc-penitencia .mc-rep { --mc-vigilia: #93c5fd; }
+/* A trilha da penitência quantitativa gira junto. */
+.mc-penitencia .mc-rep { --mc-vigilia: var(--giro-vermelho); }
+.mc-penitencia .mc-rep-lbl { color: rgba(255,228,230,.8); }
+
+/* ── QUITADA: o giroflex DESLIGA ───────────────────────────
+   É o prêmio de ter pago. Um cartão que continua piscando depois de
+   cumprido puniria quem cumpriu. */
+.mc-penitencia.mc-concluida,
+.mc-penitencia.mc-cancelada {
+  animation: none;
+  border-color: rgba(134,239,172,.34);
+  background: linear-gradient(150deg, #08120c, #050806);
+  box-shadow: none;
+}
+.mc-penitencia.mc-concluida .mc-titulo,
+.mc-penitencia.mc-concluida .mc-corpo::before,
+.mc-penitencia.mc-concluida .mc-chip-pen { animation: none; }
+.mc-penitencia.mc-concluida .mc-titulo { color: #bbf7d0; text-shadow: none; }
+.mc-penitencia.mc-concluida .mc-corpo::before {
+  content: 'QUITADA'; background: #16a34a; box-shadow: none;
+}
+.mc-penitencia.mc-concluida .mc-chip-pen {
+  color: #86efac;
+  border-color: rgba(134,239,172,.34);
+  background: rgba(134,239,172,.1);
+}
+
+/* ── ACESSIBILIDADE ────────────────────────────────────────
+   0,4 Hz já está muito abaixo do limiar fotossensível de 3 Hz, mas
+   quem pediu para o sistema operacional não animar nada recebe um
+   VERMELHO FIXO — a cor mais alarmante das duas. O sinal continua
+   lendo como punição; só para de girar. */
+@media (prefers-reduced-motion: reduce) {
+  .mc-penitencia,
+  .mc-penitencia .mc-titulo,
+  .mc-penitencia .mc-corpo::before,
+  .mc-penitencia .mc-chip-pen { animation: none; }
+  .mc-penitencia {
+    border-color: var(--giro-vermelho);
+    background: linear-gradient(150deg, #14060a, #0a0509);
+    box-shadow: 0 0 22px color-mix(in srgb, var(--giro-vermelho) 34%, transparent);
+  }
+  .mc-penitencia .mc-titulo { color: #ffe4e6; }
+  .mc-penitencia .mc-corpo::before { background: var(--giro-vermelho); }
+  .mc-penitencia .mc-chip-pen {
+    border-color: color-mix(in srgb, var(--giro-vermelho) 55%, transparent);
+    background: color-mix(in srgb, var(--giro-vermelho) 18%, transparent);
+  }
+}
 
 .mc-compacto .mc-pen { margin-top: 6px; }
 .mc-compacto .mc-pen-origem { font-size: .68rem; }
+.mc-compacto.mc-penitencia .mc-corpo { padding-top: 1.5rem; }
+.mc-compacto.mc-penitencia .mc-corpo::before { font-size: .52rem; padding: 2px 9px 3px; }

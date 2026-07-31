@@ -362,16 +362,41 @@ const MissaoCard = {
     return (m?.natureza || 'ATIVA').toUpperCase() === 'PUNICAO';
   },
 
-  /* Há quantos dias esta dívida existe. É o ÚNICO número que sobe no
-     cartão, e sozinho ele já incomoda — foi assim que o Arquiteto
-     desenhou o desconforto: sem travar nada, sem sumir. */
-  _idadeDivida(m) {
-    const d = this._dataDe(m.origem_data || m.data);
-    if (!d) return '';
-    const dias = Math.floor((Date.now() - d.getTime()) / 86400000);
-    if (dias <= 0) return 'hoje';
-    if (dias === 1) return 'há 1 dia';
-    return `há ${dias} dias`;
+  /* ── O CRONÔMETRO DA DÍVIDA ───────────────────────────────
+
+     Um contador CRESCENTE desde o instante em que a penitência
+     nasceu. Ele não para, não zera e não tem teto.
+
+     A primeira versão era um chip estático ("há 2 dias"). O Arquiteto
+     pediu cronômetro, e a diferença não é cosmética: um número parado
+     se lê uma vez e vira paisagem. Um número que ANDA enquanto você
+     olha é impossível de ignorar — e é a única coisa no cartão que
+     você não controla.
+
+     Conta do INSTANTE, não da data: `penitencia_desde` é o `criado_em`
+     da penitência. Contar de meia-noite mentiria por até 24 horas. */
+  _segsDivida(m) {
+    const t = this._instante(m.penitencia_desde || m.origem_data || m.data);
+    if (!t) return null;
+    return Math.max(0, Math.floor((Date.now() - t) / 1000));
+  },
+
+  /* Formato próprio, porque `_dur` para nas horas: uma dívida de três
+     dias viraria "72h 15m 03s", que ninguém lê como três dias.
+
+     E os SEGUNDOS continuam correndo mesmo depois de dias. Num
+     cronômetro comum seriam ruído; aqui são o ponto — "isto está aqui
+     há três dias E AINDA está contando". */
+  _durDivida(seg) {
+    if (seg === null || seg === undefined || seg < 0) return '';
+    const dd = n => String(n).padStart(2, '0');
+    const d = Math.floor(seg / 86400);
+    const h = Math.floor((seg % 86400) / 3600);
+    const m = Math.floor((seg % 3600) / 60);
+    const s = seg % 60;
+    if (d > 0) return `${d}d ${dd(h)}:${dd(m)}:${dd(s)}`;
+    if (h > 0) return `${dd(h)}:${dd(m)}:${dd(s)}`;
+    return `${m}m ${dd(s)}s`;
   },
 
   /* ── O MIOLO DA PENITÊNCIA ────────────────────────────────
@@ -1120,8 +1145,10 @@ const MissaoCard = {
           <span class="mc-chip mc-chip-status">${this._g(st.gl)} ${st.rotulo}</span>
           ${m.categoria ? `<span class="mc-chip mc-chip-cat">${this._esc(m.categoria)}</span>` : ''}
           ${penit ? `<span class="mc-chip mc-chip-pen"
-              title="Esta dívida não sai da lista até ser cumprida"
-              >${this._g('ampulheta', 11)} ${this._idadeDivida(m)}</span>` : chipData}
+              title="Há quanto tempo esta dívida existe. Ela não para até ser cumprida."
+              >${this._g('ampulheta', 11)}
+              <span data-mc-pen-crono="${chave}">${this._durDivida(this._segsDivida(m))}</span>
+              </span>` : chipData}
           ${this._cronometro(m, chave)}
           ${prazo ? `<span class="mc-div"></span>
           <span class="mc-prazo ${prazo.classe}" data-mc-prazo="${chave}">
@@ -1131,6 +1158,12 @@ const MissaoCard = {
         </div>
 
         ${penit ? this._corpoPenitencia(m, chave) : ''}
+        ${/* A penitência QUANTITATIVA se cumpre CONTANDO, então ela usa a
+              MESMA barra segmentada da repetição — é a mesma mecânica, e
+              duplicar o desenho seria criar duas barras que divergem no
+              primeiro ajuste. Faltava: os botões contavam e não havia o
+              que encher. */
+          penit && this._alvoDe(m) !== null ? this._barraSegmentada(m, chave) : ''}
         ${repet
           ? (this._alvoDe(m) !== null
                ? this._barraSegmentada(m, chave)
@@ -1260,8 +1293,17 @@ const MissaoCard = {
     this._timer = setInterval(() => {
       const prazos = document.querySelectorAll('[data-mc-prazo]');
       const cronos = document.querySelectorAll('[data-mc-decorrido]');
+      /* O CRONÔMETRO DA DÍVIDA. Entra no MESMO tique dos outros — um
+         segundo intervalo só para ele custaria bateria e sairia de
+         sincronia com o resto da tela em qualquer soluço de quadro. */
+      const dividas = document.querySelectorAll('[data-mc-pen-crono]');
+      dividas.forEach(el => {
+        const m = this._cache?.[el.dataset.mcPenCrono];
+        if (!m) return;
+        el.textContent = this._durDivida(this._segsDivida(m));
+      });
       // Nada para mover: o intervalo se encerra sozinho em vez de girar à toa.
-      if (!prazos.length && !cronos.length) {
+      if (!prazos.length && !cronos.length && !dividas.length) {
         clearInterval(this._timer); this._timer = null; return;
       }
 

@@ -170,10 +170,23 @@ def _penitencia(fonte) -> dict:
     depois: emitir o conjunto INTEIRO de uma funcao unica.
     """
     d = getattr(fonte, "origem_data", None)
+    # DESDE QUANDO a divida existe — o INSTANTE, nao a data. O cartao
+    # roda um cronometro crescente a partir dele, e um cronometro que
+    # comeca a meia-noite mentiria por ate 24 horas.
+    #
+    # `de_utc` NAO E DECORACAO. `criado_em` tem `default=datetime.utcnow`
+    # — e o unico carimbo deste fluxo gravado em UTC, enquanto
+    # `tempo.agora()` grava no fuso do app. Sem a conversao, o
+    # cronometro nasceria tres horas adiantado no Brasil, e o cartao
+    # diria que a divida existe desde antes de ela existir.
+    #
+    # Achado por um assert que esperava 3600s e recebeu 0.
+    nasceu = tempo.de_utc(getattr(fonte, "criado_em", None))
     return {
         "origem_titulo": getattr(fonte, "origem_titulo", None),
         "origem_data":   d.isoformat() if d else None,
         "xp_a_reparar":  int(getattr(fonte, "xp_a_reparar", 0) or 0),
+        "penitencia_desde": nasceu.isoformat() if nasceu else None,
     }
 
 
