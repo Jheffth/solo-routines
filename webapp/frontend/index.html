@@ -31,6 +31,7 @@
   <link rel="stylesheet" href="css/badge-card.css">
   <link rel="stylesheet" href="css/sr-filtro.css">
   <link rel="stylesheet" href="css/eco.css">
+  <link rel="stylesheet" href="css/pacto.css">
   <link rel="stylesheet" href="css/modal-auras.css">
   <link rel="stylesheet" href="css/altar-reliquias.css">
   <link rel="stylesheet" href="css/buddylist.css">
@@ -308,6 +309,22 @@
             <span>Missões Gerais</span>
           </a>
 
+
+          <!-- O PACTO. Um lugar reservado para a punição, "tal como as
+               rotinas já possuem" — no Extrato ela cumpre o papel de
+               INCOMODAR; aqui, o de ser consultada. -->
+          <a class="nav-item" data-page="pacto" id="nav-pacto" href="#">
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3.2c-4.2 0-7 2.9-7 6.9 0 2.3.9 4.1 2.4 5.4v2.5c0 .85.7 1.55 1.55 1.55h6.1c.85 0 1.55-.7 1.55-1.55v-2.5c1.5-1.3 2.4-3.1 2.4-5.4 0-4-2.8-6.9-7-6.9z"/>
+                <ellipse cx="9.1" cy="10.3" rx="1.5" ry="1.8" fill="currentColor" stroke="none"/>
+                <ellipse cx="14.9" cy="10.3" rx="1.5" ry="1.8" fill="currentColor" stroke="none"/>
+                <path d="M9.7 19.4v-1.6M12 19.4v-1.6M14.3 19.4v-1.6"/>
+              </svg>
+            </span>
+            <span>O Pacto</span>
+            <span class="nav-badge hidden" id="nav-pacto-badge">0</span>
+          </a>
           <!-- Dungeons -->
           <a class="nav-item" data-page="dungeons" id="nav-dungeons" href="#">
             <span class="nav-icon">
@@ -821,6 +838,63 @@
         </div>
 
         <!-- PAGE: DUNGEONS -->
+
+        <!-- ══ O PACTO ══════════════════════════════════════════════
+             Duas metades: as DÍVIDAS (o que o Sistema cobra agora) e o
+             PACTO (o cardápio que ele usa para cobrar). Nesta ordem —
+             quem abre esta tela abre por causa da dívida, não do
+             cardápio. -->
+        <div class="page hidden" id="page-pacto">
+          <div class="sys-plate">
+            <div class="sys-plate-glyph">
+              <svg viewBox="0 0 48 48" width="34" height="34" aria-hidden="true">
+                <g fill="none" stroke="url(#sysGlyphGrad)" stroke-width="2.2"
+                   stroke-linecap="round" stroke-linejoin="round"
+                   transform="translate(24 24) scale(1.7) translate(-12 -12)">
+                  <path d="M12 3.2c-4.2 0-7 2.9-7 6.9 0 2.3.9 4.1 2.4 5.4v2.5c0 .85.7 1.55 1.55 1.55h6.1c.85 0 1.55-.7 1.55-1.55v-2.5c1.5-1.3 2.4-3.1 2.4-5.4 0-4-2.8-6.9-7-6.9z"/>
+                  <ellipse cx="9.1" cy="10.3" rx="1.6" ry="1.9" fill="url(#sysGlyphGrad)" stroke="none"/>
+                  <ellipse cx="14.9" cy="10.3" rx="1.6" ry="1.9" fill="url(#sysGlyphGrad)" stroke="none"/>
+                  <path d="M9.7 19.4v-1.6M12 19.4v-1.6M14.3 19.4v-1.6"/>
+                </g>
+              </svg>
+            </div>
+            <div class="sys-plate-texts">
+              <h1 class="sys-plate-title">O PACTO</h1>
+              <div class="sys-plate-sub">
+                <span>O que você deve ao Sistema quando falhar</span>
+                <span class="sys-plate-sep">·</span>
+                <span class="sys-plate-whisper">Ele escolhe qual cobrar. Você não.</span>
+              </div>
+              <div class="sys-plate-line"></div>
+            </div>
+            <div class="sys-plate-actions">
+              <button class="btn" id="btn-pacto-catalogo">Adotar do catálogo</button>
+              <button class="btn btn-primary" id="btn-pacto-novo">+ Nova penitência</button>
+            </div>
+          </div>
+
+          <div id="pacto-resumo" class="pct-resumo"></div>
+
+          <section class="pct-secao">
+            <h2 class="pct-titulo" id="pct-titulo-abertas">Dívidas em aberto</h2>
+            <div id="pacto-abertas"></div>
+          </section>
+
+          <section class="pct-secao">
+            <h2 class="pct-titulo">O cardápio</h2>
+            <p class="pct-nota">
+              O Sistema sorteia daqui, sem repetir antes de percorrer todas.
+              Cada penitência <b>dobra</b> a cada vez que cai, e <b>recua</b>
+              a cada semana limpa.
+            </p>
+            <div id="pacto-lista" class="pct-lista"></div>
+          </section>
+
+          <section class="pct-secao" id="pct-secao-quitadas">
+            <h2 class="pct-titulo">Já quitadas</h2>
+            <div id="pacto-quitadas"></div>
+          </section>
+        </div>
         <div class="page hidden" id="page-dungeons">
           <div class="sys-plate">
             <div class="sys-plate-glyph">
@@ -1328,6 +1402,7 @@
   <script src="js/pages/dashboard.js"></script>
   <script src="js/pages/rotinas.js"></script>
   <script src="js/pages/tarefas.js"></script>
+  <script src="js/pages/pacto.js"></script>
   <script src="js/pages/dungeons.js"></script>
   <script src="js/pages/dungeon-interior.js"></script>
   <script src="js/pages/dungeon-score.js"></script>

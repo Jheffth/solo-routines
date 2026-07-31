@@ -166,14 +166,36 @@ ok(!!comum0.querySelector('.mc-sigilo polygon'),
 ok(!comum0.querySelector('.mc-sigilo-caveira'), '  e não ganha caveira');
 ok(w.Glifos.existe('caveira'), 'e a caveira existe no alfabeto, para quem mais precisar');
 
-/* ══ 3. Quitada, o giroflex desliga ══ */
-console.log('\n-- quitada --');
+/* ══ 3. Quitada: A LÁPIDE ══ */
+console.log('\n-- quitada: a lápide --');
+/* O Arquiteto: "as penitências cumpridas apagariam o giroflex ficando
+   em cinza, e um cinza também cobriria todas as cores vivas do meio do
+   card, dando aquela sensação de coisa que foi VENCIDA."
+
+   A tentativa anterior desligava o giroflex e pintava as bordas de
+   verde — mas o MIOLO continuava vivo: a trilha vermelha, o chip azul,
+   o selo de XP. O cartão ficava metade morto e metade em festa. */
 const quit = bloco(/\.mc-penitencia\.mc-concluida,[\s\S]*?\{([^}]*)\}/);
 ok(/animation:\s*none/.test(quit),
    'cumprida, o giroflex PARA — continuar piscando puniria quem cumpriu');
-ok(/QUITADA/.test(semCom), 'e o selo troca para QUITADA');
-ok(/#16a34a|134,239,172|bbf7d0/.test(quit + semCom.slice(semCom.indexOf('mc-penitencia.mc-concluida'))),
-   '  em verde: o desfecho bom tem cor de desfecho bom');
+
+/* O CINZA QUE COBRE TUDO. `grayscale` é melhor que apagar cor por cor
+   porque alcança o que EU NÃO SEI que está lá — a trilha, o chip, o
+   selo de XP, e o que um cartão de penitência ganhe no futuro. */
+ok(/filter:\s*grayscale\(1\)/.test(quit),
+   'e um CINZA cobre o cartão inteiro — inclusive as cores do miolo');
+ok(/opacity:\s*\.[0-9]/.test(quit),
+   '  com opacidade reduzida: lápide, não cartão apagado');
+ok(/transition:\s*filter/.test(quit),
+   '  e a transição existe, senão quitar seria um corte seco');
+ok(/QUITADA/.test(semCom), 'o selo troca para QUITADA');
+ok(!/#16a34a/.test(quit),
+   'e o verde saiu: "vencida" não é a mesma coisa que "vitória"');
+
+/* A trilha para de pulsar. `grayscale` tira a cor, mas o MOVIMENTO
+   continuaria — e movimento numa coisa encerrada é ruído. */
+ok(/\.mc-penitencia\.mc-concluida\s+\.mc-rep-seg\.meio::after[\s\S]{0,120}animation:\s*none/.test(semCom),
+   'a trilha cumprida para de pulsar');
 
 /* ══ 4. O CRONÔMETRO CRESCE ══ */
 console.log('\n-- o cronômetro --');
@@ -247,6 +269,36 @@ ok(!comum.querySelector('[data-mc-pen-crono]'), '  e não tem cronômetro de dí
 const critica = frag(MC.html({ ...pen(), natureza: 'ATIVA', prioridade: 'CRITICA' }));
 ok(!critica.classList.contains('mc-penitencia'),
    'e a CRÍTICA continua sendo crítica — é a alternância que separa as duas');
+
+/* ══ 9. O LUGAR RESERVADO ══ */
+console.log('\n-- o lugar reservado --');
+/* "acredito que as punições mereçam um local reservado, tal como as
+   rotinas já possuem".
+
+   A distinção que justifica a tela: no Extrato a penitência existe
+   para INCOMODAR; ali ela é topo de lista, giroflex e cronômetro. Numa
+   tela própria ela existe para ser CONSULTADA — e responde a pergunta
+   que o Extrato não responde: "quanto eu já paguei?" */
+const html = ler('index.html');
+ok(/data-page="pacto"/.test(html), 'há um item de menu para o Pacto');
+ok(/id="page-pacto"/.test(html), '  e a página existe');
+ok(/id="nav-pacto-badge"/.test(html),
+   'com um selo no menu — a dívida precisa ser lembrada de outra tela');
+ok(/id="pacto-abertas"/.test(html) && /id="pacto-lista"/.test(html),
+   'a tela tem as DUAS metades: as dívidas e o cardápio');
+ok(html.indexOf('id="pacto-abertas"') < html.indexOf('id="pacto-lista"'),
+   '  e a dívida vem PRIMEIRO — quem abre esta tela abre por causa dela');
+ok(/id="pacto-quitadas"/.test(html), 'e o histórico do que já foi pago');
+
+const app = ler('js', 'app.js');
+ok(/case 'pacto':/.test(app), 'o roteador conhece a página');
+const pj = ler('js', 'pages', 'pacto.js');
+ok(/MissaoCard\.html/.test(pj),
+   'e ela usa o MESMO cartão do Extrato — um segundo desenho divergiria no primeiro ajuste');
+ok(/xp_reparado/.test(pj),
+   'o resumo mostra o XP recuperado: uma tela que só sabe cobrar ninguém abre');
+ok(/cardápio muda, a dívida não|dívida não/.test(pj),
+   'e remover do pacto avisa que a dívida já cobrada CONTINUA');
 
 console.log(`\n=== ${testes - falhas}/${testes} ===`);
 process.exit(falhas ? 1 : 0);

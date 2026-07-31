@@ -1726,31 +1726,82 @@
 .mc-penitencia .mc-rep { --mc-vigilia: var(--giro-vermelho); }
 .mc-penitencia .mc-rep-lbl { color: rgba(255,255,255,.82); }
 
-/* ── QUITADA: o giroflex DESLIGA ───────────────────────────
-   É o prêmio de ter pago. Um cartão que continua piscando depois de
-   cumprido puniria quem cumpriu. */
+/* ── QUITADA: A LÁPIDE ─────────────────────────────────────
+
+   O Arquiteto: "as penitências cumpridas apagariam o giroflex ficando
+   em cinza, e um cinza também cobriria todas as cores vivas do meio do
+   card, dando aquela sensação de coisa que foi VENCIDA."
+
+   A primeira tentativa desligava o giroflex e pintava as bordas de
+   verde — mas o MIOLO continuava vivo: a trilha vermelha, o chip azul,
+   o selo de XP. O cartão ficava metade morto e metade em festa.
+
+   `filter: grayscale(1)` resolve o problema inteiro numa linha, e é
+   melhor que apagar cor por cor: ele alcança o que EU NÃO SEI que está
+   lá. A trilha, o chip, o selo de XP, o glifo da categoria e qualquer
+   coisa que um cartão de penitência ganhe no futuro — tudo cinza, sem
+   eu precisar lembrar de cada peça.
+
+   Com `opacity` e `brightness` por cima, o cartão vira lápide: ainda
+   legível, claramente encerrado, e sem competir com as dívidas que
+   ainda piscam ao lado. */
 .mc-penitencia.mc-concluida,
-.mc-penitencia.mc-cancelada {
+.mc-penitencia.mc-cancelada,
+.mc-penitencia.mc-confessada {
   animation: none;
-  border-color: rgba(134,239,172,.34);
-  border-left-color: #16a34a;
-  border-right-color: rgba(134,239,172,.34);
-  background: linear-gradient(150deg, #08120c, #050806);
+  filter: grayscale(1) brightness(.72) contrast(.92);
+  opacity: .62;
+  border-color: rgba(148,163,184,.28);
+  border-left-color: rgba(148,163,184,.5);
+  border-right-color: rgba(148,163,184,.28);
+  border-left-width: 3px;
+  border-right-width: 1px;
+  background: linear-gradient(150deg, #0c0d10, #08090b);
   box-shadow: none;
+  transition: filter .8s ease, opacity .8s ease;
 }
-.mc-penitencia.mc-concluida .mc-giroflex { display: none; }
+/* Ao passar o olho, ela recobra um pouco de nitidez — o registro
+   continua legível para quem quiser conferir o que pagou. */
+.mc-penitencia.mc-concluida:hover { opacity: .88; filter: grayscale(.8) brightness(.85); }
+
+.mc-penitencia.mc-concluida .mc-giroflex,
+.mc-penitencia.mc-cancelada .mc-giroflex { display: none; }
+
 .mc-penitencia.mc-concluida .mc-titulo,
 .mc-penitencia.mc-concluida .mc-corpo::before,
 .mc-penitencia.mc-concluida .mc-chip-pen,
-.mc-penitencia.mc-concluida .mc-sigilo-caveira { animation: none; }
-.mc-penitencia.mc-concluida .mc-titulo { color: #bbf7d0; text-shadow: none; }
+.mc-penitencia.mc-concluida .mc-sigilo-caveira,
+.mc-penitencia.mc-cancelada .mc-titulo,
+.mc-penitencia.mc-cancelada .mc-corpo::before,
+.mc-penitencia.mc-cancelada .mc-chip-pen { animation: none; }
+
+/* O TÍTULO RISCADO. A missão comum já risca o título ao concluir; a
+   penitência herda isso e o cinza completa a leitura — feito, e
+   encerrado. */
+.mc-penitencia.mc-concluida .mc-titulo {
+  color: #94a3b8;
+  text-shadow: none;
+}
 .mc-penitencia.mc-concluida .mc-corpo::before {
-  content: 'QUITADA'; background: #16a34a; box-shadow: none;
+  content: 'QUITADA';
+  background: #475569;
+  box-shadow: none;
+  letter-spacing: .22em;
 }
 .mc-penitencia.mc-concluida .mc-chip-pen {
-  color: #86efac;
-  border-color: rgba(134,239,172,.34);
-  background: rgba(134,239,172,.1);
+  color: #94a3b8;
+  border-color: rgba(148,163,184,.28);
+  background: rgba(148,163,184,.08);
+}
+/* A trilha cumprida para de pulsar: o `grayscale` tira a cor, mas o
+   movimento continuaria — e movimento numa coisa encerrada é ruído. */
+.mc-penitencia.mc-concluida .mc-rep-seg.meio::after,
+.mc-penitencia.mc-concluida .mc-rep-pleno .mc-rep-trilha { animation: none; }
+.mc-penitencia.mc-concluida .mc-btn-quitar,
+.mc-penitencia.mc-concluida .mc-selo-ok {
+  border-color: rgba(148,163,184,.3);
+  background: rgba(148,163,184,.08);
+  color: #94a3b8;
 }
 
 /* ── ACESSIBILIDADE ────────────────────────────────────────
