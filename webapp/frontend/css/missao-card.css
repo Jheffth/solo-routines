@@ -1728,6 +1728,21 @@
 
 /* ── QUITADA: A LÁPIDE ─────────────────────────────────────
 
+   O PREFIXO É `st-`, NÃO `mc-`.
+
+   A primeira versão desta regra mirava `.mc-penitencia.mc-concluida`,
+   e essa classe NÃO EXISTE: o estado do cartão vem de `STATUS[x].classe`
+   em missao-card.js, que usa `st-concluida`. Nada ficava cinza, e o
+   Arquiteto viu na tela.
+
+   O que torna o erro interessante é que O TESTE PASSOU. Ele lia o
+   arquivo CSS, achava a regra escrita, e dava OK — provou que a REGRA
+   EXISTE, nunca que ela CASA com algum cartão. Um teste que lê dois
+   arquivos separados não percebe que eles não se falam.
+
+   O assert certo renderiza o cartão e pergunta `el.matches(seletor)`,
+   com o seletor EXTRAÍDO do CSS. É o que está no teste agora.
+
    O Arquiteto: "as penitências cumpridas apagariam o giroflex ficando
    em cinza, e um cinza também cobriria todas as cores vivas do meio do
    card, dando aquela sensação de coisa que foi VENCIDA."
@@ -1745,9 +1760,9 @@
    Com `opacity` e `brightness` por cima, o cartão vira lápide: ainda
    legível, claramente encerrado, e sem competir com as dívidas que
    ainda piscam ao lado. */
-.mc-penitencia.mc-concluida,
-.mc-penitencia.mc-cancelada,
-.mc-penitencia.mc-confessada {
+.mc-penitencia.st-concluida,
+.mc-penitencia.st-cancelada,
+.mc-penitencia.st-confessada {
   animation: none;
   filter: grayscale(1) brightness(.72) contrast(.92);
   opacity: .62;
@@ -1762,43 +1777,43 @@
 }
 /* Ao passar o olho, ela recobra um pouco de nitidez — o registro
    continua legível para quem quiser conferir o que pagou. */
-.mc-penitencia.mc-concluida:hover { opacity: .88; filter: grayscale(.8) brightness(.85); }
+.mc-penitencia.st-concluida:hover { opacity: .88; filter: grayscale(.8) brightness(.85); }
 
-.mc-penitencia.mc-concluida .mc-giroflex,
-.mc-penitencia.mc-cancelada .mc-giroflex { display: none; }
+.mc-penitencia.st-concluida .mc-giroflex,
+.mc-penitencia.st-cancelada .mc-giroflex { display: none; }
 
-.mc-penitencia.mc-concluida .mc-titulo,
-.mc-penitencia.mc-concluida .mc-corpo::before,
-.mc-penitencia.mc-concluida .mc-chip-pen,
-.mc-penitencia.mc-concluida .mc-sigilo-caveira,
-.mc-penitencia.mc-cancelada .mc-titulo,
-.mc-penitencia.mc-cancelada .mc-corpo::before,
-.mc-penitencia.mc-cancelada .mc-chip-pen { animation: none; }
+.mc-penitencia.st-concluida .mc-titulo,
+.mc-penitencia.st-concluida .mc-corpo::before,
+.mc-penitencia.st-concluida .mc-chip-pen,
+.mc-penitencia.st-concluida .mc-sigilo-caveira,
+.mc-penitencia.st-cancelada .mc-titulo,
+.mc-penitencia.st-cancelada .mc-corpo::before,
+.mc-penitencia.st-cancelada .mc-chip-pen { animation: none; }
 
 /* O TÍTULO RISCADO. A missão comum já risca o título ao concluir; a
    penitência herda isso e o cinza completa a leitura — feito, e
    encerrado. */
-.mc-penitencia.mc-concluida .mc-titulo {
+.mc-penitencia.st-concluida .mc-titulo {
   color: #94a3b8;
   text-shadow: none;
 }
-.mc-penitencia.mc-concluida .mc-corpo::before {
+.mc-penitencia.st-concluida .mc-corpo::before {
   content: 'QUITADA';
   background: #475569;
   box-shadow: none;
   letter-spacing: .22em;
 }
-.mc-penitencia.mc-concluida .mc-chip-pen {
+.mc-penitencia.st-concluida .mc-chip-pen {
   color: #94a3b8;
   border-color: rgba(148,163,184,.28);
   background: rgba(148,163,184,.08);
 }
 /* A trilha cumprida para de pulsar: o `grayscale` tira a cor, mas o
    movimento continuaria — e movimento numa coisa encerrada é ruído. */
-.mc-penitencia.mc-concluida .mc-rep-seg.meio::after,
-.mc-penitencia.mc-concluida .mc-rep-pleno .mc-rep-trilha { animation: none; }
-.mc-penitencia.mc-concluida .mc-btn-quitar,
-.mc-penitencia.mc-concluida .mc-selo-ok {
+.mc-penitencia.st-concluida .mc-rep-seg.meio::after,
+.mc-penitencia.st-concluida .mc-rep-pleno .mc-rep-trilha { animation: none; }
+.mc-penitencia.st-concluida .mc-btn-quitar,
+.mc-penitencia.st-concluida .mc-selo-ok {
   border-color: rgba(148,163,184,.3);
   background: rgba(148,163,184,.08);
   color: #94a3b8;

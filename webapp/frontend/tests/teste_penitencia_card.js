@@ -168,33 +168,57 @@ ok(w.Glifos.existe('caveira'), 'e a caveira existe no alfabeto, para quem mais p
 
 /* ══ 3. Quitada: A LÁPIDE ══ */
 console.log('\n-- quitada: a lápide --');
-/* O Arquiteto: "as penitências cumpridas apagariam o giroflex ficando
-   em cinza, e um cinza também cobriria todas as cores vivas do meio do
-   card, dando aquela sensação de coisa que foi VENCIDA."
+/* O Arquiteto: "a dívida quitada está verde e não cinza... precisa ter
+   o cinza por cima, a borda tem que parar de piscar e virar cinza
+   também."
 
-   A tentativa anterior desligava o giroflex e pintava as bordas de
-   verde — mas o MIOLO continuava vivo: a trilha vermelha, o chip azul,
-   o selo de XP. O cartão ficava metade morto e metade em festa. */
-const quit = bloco(/\.mc-penitencia\.mc-concluida,[\s\S]*?\{([^}]*)\}/);
+   O QUE ACONTECEU, e é a lição mais útil deste arquivo:
+
+   A regra existia e mirava `.mc-penitencia.mc-concluida`. Essa classe
+   NÃO EXISTE — o estado vem de `STATUS[x].classe`, que usa `st-`. Nada
+   ficava cinza.
+
+   E O TESTE PASSOU. Ele lia o CSS, achava a regra escrita, e dava OK.
+   Provou que a REGRA EXISTE; nunca que ela CASA com um cartão. Um
+   teste que lê dois arquivos separados não percebe que eles não se
+   falam.
+
+   Os asserts abaixo CRUZAM os dois: extraem o seletor do CSS e
+   perguntam ao cartão renderizado `el.matches(seletor)`. */
+const quitado = frag(MC.html(pen({
+  status: 'CONCLUIDA', alvo_repeticoes: 30, repeticoes: 30, xp_ganho: 22,
+})));
+
+/* O CRUZAMENTO. Este é o assert que teria pego o bug. */
+const seletorLapide = /(\.mc-penitencia\.[a-z-]+),/.exec(semCom)?.[1] || '';
+ok(!!seletorLapide, `o CSS tem uma regra de lápide (${seletorLapide})`);
+ok(quitado.matches(seletorLapide),
+   `e o cartão quitado CASA com ela — classes reais: "${[...quitado.classList].join(' ')}"`);
+ok(!quitado.matches('.mc-penitencia.mc-concluida'),
+   '  (e NÃO com `mc-concluida`, que era o seletor errado da versão anterior)');
+
+const quit = bloco(new RegExp(seletorLapide.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                              + '[\\s\\S]*?\\{([^}]*)\\}'));
 ok(/animation:\s*none/.test(quit),
    'cumprida, o giroflex PARA — continuar piscando puniria quem cumpriu');
-
-/* O CINZA QUE COBRE TUDO. `grayscale` é melhor que apagar cor por cor
-   porque alcança o que EU NÃO SEI que está lá — a trilha, o chip, o
-   selo de XP, e o que um cartão de penitência ganhe no futuro. */
 ok(/filter:\s*grayscale\(1\)/.test(quit),
-   'e um CINZA cobre o cartão inteiro — inclusive as cores do miolo');
-ok(/opacity:\s*\.[0-9]/.test(quit),
-   '  com opacidade reduzida: lápide, não cartão apagado');
-ok(/transition:\s*filter/.test(quit),
-   '  e a transição existe, senão quitar seria um corte seco');
-ok(/QUITADA/.test(semCom), 'o selo troca para QUITADA');
-ok(!/#16a34a/.test(quit),
-   'e o verde saiu: "vencida" não é a mesma coisa que "vitória"');
+   'e um CINZA cobre o cartão inteiro — inclusive a barra vermelha e os chips');
+ok(/opacity:\s*\.[0-9]/.test(quit), '  com opacidade reduzida: lápide');
+ok(/border-color:\s*rgba\(148,163,184/.test(quit),
+   'a BORDA vira cinza — o Arquiteto pediu que ela parasse de piscar E mudasse de cor');
+ok(!/#16a34a/.test(quit), 'e o verde saiu: "vencida" não é "vitória"');
 
-/* A trilha para de pulsar. `grayscale` tira a cor, mas o MOVIMENTO
-   continuaria — e movimento numa coisa encerrada é ruído. */
-ok(/\.mc-penitencia\.mc-concluida\s+\.mc-rep-seg\.meio::after[\s\S]{0,120}animation:\s*none/.test(semCom),
+/* A BARRA DE LUZ some. Ela é `position:absolute` e o `grayscale` a
+   deixaria cinza mas presente — e uma barra cinza no topo pareceria
+   defeito. */
+const barra = semCom.match(new RegExp(seletorLapide.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+              + '[\\s\\S]{0,400}?\\.mc-giroflex[^}]*\\{([^}]*)\\}'));
+ok(barra && /display:\s*none/.test(barra[1]),
+   'a barra de luz some de vez — cinza no topo pareceria defeito');
+
+/* E a trilha para de pulsar: o cinza tira a cor, mas o MOVIMENTO
+   continuaria, e movimento numa coisa encerrada é ruído. */
+ok(/\.st-concluida\s+\.mc-rep-seg\.meio::after[\s\S]{0,140}animation:\s*none/.test(semCom),
    'a trilha cumprida para de pulsar');
 
 /* ══ 4. O CRONÔMETRO CRESCE ══ */
