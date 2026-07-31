@@ -139,6 +139,11 @@ def fechar_vencidas(db: Session, usuario: Usuario, ate: date | None = None) -> d
     rotinas_fechadas = 0
     gerais_fechadas = 0
     xp_perdido_total = 0
+    # As falhas do dia, coletadas para a penitencia decidir DEPOIS. Ela
+    # nao pode decidir no meio do laco: o gatilho olha o dia inteiro
+    # ("todas as diarias falharam"), e no meio do laco o dia ainda nao
+    # acabou de ser lido.
+    falhas_do_dia = []
     # As passivas cumpridas são separadas e pagas DEPOIS do laço: creditar XP
     # no meio de uma varredura de instâncias misturaria a subtração das
     # derrotas com a soma das vitórias, e o nível do hunter subiria e desceria
@@ -192,6 +197,11 @@ def fechar_vencidas(db: Session, usuario: Usuario, ate: date | None = None) -> d
             ed.xp_perdido = pen
             xp_perdido_total += pen
             rotinas_fechadas += 1
+            falhas_do_dia.append({
+                "titulo": r.titulo, "data": ed.data,
+                "xp": pen, "critica": (r.prioridade or "").upper() == "CRITICA",
+                "diaria": (r.tipo or "").upper() == "DIARIA",
+            })
 
     # ── Missões gerais (avulsas) ──────────────────────────────────────
     # Só as de dias já passados. A de hoje que estourou o prazo continua
@@ -203,9 +213,20 @@ def fechar_vencidas(db: Session, usuario: Usuario, ate: date | None = None) -> d
         TarefaDia.status.in_(("PENDENTE", "ATIVA", "PAUSADA")),
     ).all()
     for t in tarefas:
+        # UMA PENITENCIA NAO GERA OUTRA. Sem esta linha, um dia ruim
+        # vira espiral infinita — a penitencia nao cumprida simplesmente
+        # NAO SAI DA LISTA, e ficar ja e a punicao.
+        if especiais.normalizar(getattr(t, "natureza", None)) == especiais.PUNICAO:
+            continue
         t.status = "FRACASSADA"
         xp_perdido_total += (t.penalidade_xp or 0)
         gerais_fechadas += 1
+        falhas_do_dia.append({
+            "titulo": t.titulo, "data": t.data_prevista,
+            "xp": t.penalidade_xp or 0,
+            "critica": (t.prioridade or "").upper() == "CRITICA",
+            "diaria": False,
+        })
 
     # Uma subtração só, no fim: XP nunca fica negativo.
     if xp_perdido_total:
@@ -235,12 +256,96 @@ def fechar_vencidas(db: Session, usuario: Usuario, ate: date | None = None) -> d
             print(f"[FECHAMENTO] ⚠ passiva {r.titulo}: {e}")
         passivas += 1
 
+    # ── A PENITENCIA ──────────────────────────────────────────────────
+    # Depois de tudo fechado, e so agora: o gatilho olha o dia inteiro.
+    punicao = _talvez_punir(db, usuario, falhas_do_dia, hoje)
+
     return {
         "rotinas": rotinas_fechadas,
         "gerais": gerais_fechadas,
         "passivas": passivas,
         "xp_perdido": xp_perdido_total,
+        "punicao": punicao,
     }
+
+
+def _talvez_punir(db: Session, usuario: Usuario, falhas: list, hoje) -> dict | None:
+    """
+    O GATILHO. Nao e qualquer falha.
+
+    Punicao frequente vira paisagem, e paisagem nao assusta — a obra
+    ensina isso: o Jinwoo entra na zona de punicao UMA VEZ, e o que
+    move a historia depois e o medo dela.
+
+    Dispara em tres casos, e nenhum deles e "perdeu uma missao":
+
+      · uma missao CRITICA falhou       -> cobra dobrado
+      · TODAS as diarias do dia falharam -> cobra
+      · reincidencia de N dias seguidos  -> cobra
+
+    Nunca derruba o fechamento: se a punicao explodir, o dia ainda
+    fecha. Uma divida perdida e melhor que um app travado.
+    """
+    if not falhas:
+        return None
+    try:
+        from motors import penitencia, economia as _eco
+        regras = _eco.punicao_regras(db)
+
+        criticas = [f for f in falhas if f["critica"]]
+        diarias  = [f for f in falhas if f["diaria"]]
+        todas_diarias = bool(diarias) and len(diarias) == _diarias_do_dia(db, usuario, hoje)
+
+        gatilho, dobrar = None, False
+        if criticas:
+            gatilho, dobrar = "critica", True
+        elif todas_diarias:
+            gatilho = "dia_perdido"
+        elif _dias_seguidos_com_falha(db, usuario, hoje) >= regras["dias_seguidos"]:
+            gatilho = "reincidencia"
+
+        if not gatilho:
+            return None
+
+        alvo = (criticas or falhas)[0]
+        r = penitencia.cobrar(db, usuario, alvo["titulo"], alvo["data"],
+                              xp_perdido=alvo["xp"], dobrar=dobrar)
+        r["gatilho"] = gatilho
+        return r
+    except Exception as e:
+        print(f"[FECHAMENTO] penitencia adiada: {e}")
+        return None
+
+
+def _diarias_do_dia(db: Session, usuario: Usuario, dia) -> int:
+    """Quantas diarias existiam no dia — para saber se TODAS falharam."""
+    return (db.query(ExecucaoDia)
+              .join(Rotina, Rotina.id == ExecucaoDia.rotina_id)
+              .filter(ExecucaoDia.usuario_id == usuario.id,
+                      ExecucaoDia.data == dia,
+                      Rotina.tipo == "DIARIA").count())
+
+
+def _dias_seguidos_com_falha(db: Session, usuario: Usuario, hoje) -> int:
+    """
+    Quantos dias seguidos, contando de ontem para tras, tiveram falha.
+
+    Para em quanto a Balanca pede; contar o historico inteiro seria
+    varrer anos para responder "chegou a tres?".
+    """
+    from motors import economia as _eco
+    limite = _eco.punicao_regras(db)["dias_seguidos"] + 1
+    n = 0
+    for i in range(1, limite + 1):
+        d = hoje - timedelta(days=i)
+        houve = (db.query(ExecucaoDia)
+                   .filter(ExecucaoDia.usuario_id == usuario.id,
+                           ExecucaoDia.data == d,
+                           ExecucaoDia.status == "FRACASSADA").count())
+        if not houve:
+            break
+        n += 1
+    return n
 
 
 def reparar_fechamento_indevido(db: Session, usuario: Usuario,

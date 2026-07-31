@@ -179,6 +179,17 @@ def reerguer(
     ed.mana_gasta   = custo
     ed.fracassada_em = None
     ed.iniciada_em   = None      # PENDENTE não tem cronômetro correndo
+
+    # REERGUER DESFEZ O FRACASSO — então a penitência dele deixa de
+    # existir. Pagar Mana para reabrir a missão E ainda carregar a
+    # dívida seria cobrar duas vezes pela mesma falha.
+    revogadas = 0
+    try:
+        from motors import penitencia
+        revogadas = penitencia.revogar(db, usuario.id, rotina.titulo, ed.data)
+    except Exception as e:
+        print(f"[REERGUER] revogacao adiada: {e}")
+
     db.commit()
 
     return {
@@ -187,6 +198,7 @@ def reerguer(
         "mana_gasta": custo,
         "mana_restante": usuario.moedas,
         "vale_ate": prazos.da_execucao(ed, rotina)["fim"].isoformat(),
+        "penitencias_revogadas": revogadas,
         "mensagem": f"Missão reerguida por {custo} de Mana. "
                     "Vale até as 23:59 e não paga recompensa.",
     }
@@ -205,6 +217,11 @@ def confessar(
 ):
     """
     "Eu quebrei o protocolo."
+
+    CONFESSAR NÃO GERA PENITÊNCIA. Este app já premia honestidade com
+    metade da punição, e punir quem admitiu ensinaria a não admitir. O
+    fechamento nunca vê esta missão como falha, então a regra se
+    sustenta sozinha — mas está escrita aqui para não virar implícita.
 
     A missão passiva se conclui sozinha ao fim da janela — "sem cafeína após
     as 16h" vence às 05:00 sem o hunter fazer nada. Este endpoint é o único

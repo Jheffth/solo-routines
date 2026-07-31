@@ -126,6 +126,24 @@ SEMENTE = [
     # esforco em lugar nenhum do app, e nao podia decidir aqui.
     ("xp_por_repeticao",     "PADRAO",  1, "XP que cada repetição paga", 1),
     ("xp_repeticao_teto_dia", "PADRAO", 30, "Teto de XP por dia, por contador", 2),
+
+    # ── PUNICAO — a penitencia ────────────────────────────────────────
+    #
+    # A obra ensina a calibragem: o Jinwoo entra na zona de punicao UMA
+    # VEZ, e o que move a historia depois e o medo dela. Punicao
+    # frequente vira paisagem, e paisagem nao assusta. Entao o gatilho
+    # e raro de proposito.
+    #
+    # `divida_teto` e o que impede a bola de neve: a partir dele o
+    # Sistema PARA DE CRIAR e diz "parou de contar". Parar de contar e
+    # mais ameacador que continuar, e protege quem esta num dia ruim de
+    # acordar com quarenta cartoes.
+    ("punicao", "dias_seguidos",   3, "Dias seguidos com falha que disparam", 1),
+    ("punicao", "divida_teto",     4, "Pendencias ate o Sistema parar de criar", 2),
+    ("punicao", "escala_fator",    2, "Multiplicador a cada reincidencia", 3),
+    ("punicao", "decaimento_dias", 7, "Dias limpos para recuar um degrau", 4),
+    ("punicao", "reparacao_pct",  50, "% do XP perdido devolvido ao quitar", 5),
+    ("punicao", "tributo_base",   50, "Mana do tributo, antes da escala", 6),
 ]
 
 # Rótulos amigáveis dos grupos, para a tela do Arquiteto.
@@ -142,6 +160,7 @@ GRUPOS = {
     "custo_reerguer":   "Reerguer missão fechada (custo em Mana)",
     "xp_por_repeticao":      "Repetição — XP por clique",
     "xp_repeticao_teto_dia": "Repetição — teto de XP por dia (por contador)",
+    "punicao":               "Punição — a penitência",
 }
 
 # Teto duro. Nenhuma combinação legítima chega perto; existe como última
@@ -408,3 +427,22 @@ def aplicar(alvo, valores: dict) -> None:
     alvo.penalidade_xp     = valores["penalidade_xp"]
     if hasattr(alvo, "prazo_minutos") and not getattr(alvo, "prazo_personalizado", False):
         alvo.prazo_minutos = valores["prazo_minutos"]
+
+
+def punicao_regras(db=None) -> dict:
+    """
+    As regras da penitência, num lugar só.
+
+    Elas moram na Balança e não no código porque calibrar severidade é
+    exatamente o tipo de coisa que se acerta usando, não projetando — e
+    errar para mais, aqui, faz a pessoa desinstalar em vez de cumprir.
+    """
+    t = tabelas(db)
+    return {
+        "dias_seguidos":   max(1, int(_v(t, "punicao", "dias_seguidos", 3))),
+        "divida_teto":     max(1, int(_v(t, "punicao", "divida_teto", 4))),
+        "escala_fator":    max(1, int(_v(t, "punicao", "escala_fator", 2))),
+        "decaimento_dias": max(1, int(_v(t, "punicao", "decaimento_dias", 7))),
+        "reparacao_pct":   max(0, min(100, int(_v(t, "punicao", "reparacao_pct", 50)))),
+        "tributo_base":    max(0, int(_v(t, "punicao", "tributo_base", 50))),
+    }

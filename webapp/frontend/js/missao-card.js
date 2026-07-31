@@ -358,6 +358,44 @@ const MissaoCard = {
     return (m?.natureza || 'ATIVA').toUpperCase() === 'REPETICAO';
   },
 
+  _ehPenitencia(m) {
+    return (m?.natureza || 'ATIVA').toUpperCase() === 'PUNICAO';
+  },
+
+  /* Há quantos dias esta dívida existe. É o ÚNICO número que sobe no
+     cartão, e sozinho ele já incomoda — foi assim que o Arquiteto
+     desenhou o desconforto: sem travar nada, sem sumir. */
+  _idadeDivida(m) {
+    const d = this._dataDe(m.origem_data || m.data);
+    if (!d) return '';
+    const dias = Math.floor((Date.now() - d.getTime()) / 86400000);
+    if (dias <= 0) return 'hoje';
+    if (dias === 1) return 'há 1 dia';
+    return `há ${dias} dias`;
+  },
+
+  /* ── O MIOLO DA PENITÊNCIA ────────────────────────────────
+     Diz AS DUAS COISAS: o que o Sistema sorteou, e por qual falha.
+     Sem a segunda linha a penitência parece arbitrária; sem a
+     primeira, ela não é executável. E a distância entre as duas —
+     fio dental cobrado em abdominais — é o que faz o Sistema parecer
+     uma entidade, e não uma planilha. */
+  _corpoPenitencia(m, chave) {
+    const origem = this._esc(m.origem_titulo || '');
+    const quando = m.origem_data ? this._ddmm(this._dataDe(m.origem_data)) : '';
+    const reparo = parseInt(m.xp_a_reparar, 10) || 0;
+    return `
+      <div class="mc-pen" data-mc-pen="${chave}">
+        ${origem ? `<div class="mc-pen-origem">
+          ${this._g('ampulheta', 11)} o Sistema cobrou por
+          <b>${origem}</b>${quando ? `, ${quando}` : ''}
+        </div>` : ''}
+        ${reparo > 0 ? `<div class="mc-pen-reparo">
+          quitar devolve <b>+${reparo} XP</b> do que a falha tomou
+        </div>` : ''}
+      </div>`;
+  },
+
   /* META tem alvo; BÔNUS não tem. É a única diferença, e ela muda
      tudo: com alvo existe "cumprir", sem alvo existe só "registrar". */
   _alvoDe(m) {
@@ -762,6 +800,25 @@ const MissaoCard = {
       return `<span class="mc-selo mc-selo-neutro">${this._g('agendada', 13)} Agendada</span>` + gerir + extinguir;
     }
 
+    // ── PENITÊNCIA: não se cancela, não se adia ─────────────
+    // Sem Pausar, sem Cancelar, sem Excluir. A dívida não negocia — a
+    // única saída é cumprir. E como ela nunca fracassa (uma penitência
+    // não gera outra), também não há Reerguer.
+    if (this._ehPenitencia(m)) {
+      if (status === 'CONCLUIDA') {
+        return `<span class="mc-selo mc-selo-ok">${this._g('concluida', 13)} Dívida quitada</span>`;
+      }
+      const alvo = this._alvoDe(m);
+      // Uma penitência quantitativa se cumpre CONTANDO — e aí ela usa
+      // os mesmos botões da repetição, porque é a mesma mecânica.
+      if (alvo !== null && this._feitas(m) < alvo) {
+        return this._acoesRepeticao(m, chave, '', extinguir);
+      }
+      return b('concluir', 'mc-btn-quitar',
+               this._g('concluida', 13) + ' Cumprir a penitência',
+               'title="Quitar esta dívida com o Sistema"') + extinguir;
+    }
+
     // ── ROTINA DE REPETIÇÕES: não se conclui, se acumula ────
     // Não tem Iniciar (não há o que começar), não tem Pausar, e o
     // Concluir foi substituído pelo próprio ato de contar: no META a
@@ -1037,12 +1094,14 @@ const MissaoCard = {
     // vigília é reaproveitada — no META ela acompanha o progresso, e é
     // o mesmo SVG com outro número.
     const repet = this._ehRepeticao(m) ? ' mc-repeticao' : '';
+    // PENITÊNCIA na raiz: não é estado passageiro, é o que a missão É.
+    const penit = this._ehPenitencia(m) ? ' mc-penitencia' : '';
     const modoRep = repet
       ? (this._alvoDe(m) !== null ? ' mc-rep-modo-meta' : ' mc-rep-modo-bonus')
       : '';
 
     return `
-    <div class="mc ${st.classe}${compacto}${selado}${passiva}${repet}${modoRep}" data-mc-card="${chave}"
+    <div class="mc ${st.classe}${compacto}${selado}${passiva}${repet}${modoRep}${penit}" data-mc-card="${chave}"
          data-mc-sig="${this.assinatura(m, opts)}"
          style="--mc-cor:${cor};--mc-cor-suave:${this._alpha(cor, .14)}">
       <div class="mc-fio"></div>
@@ -1060,7 +1119,9 @@ const MissaoCard = {
           <span class="mc-chip mc-chip-rank" title="Dificuldade ${(m.dificuldade || 'NORMAL').toLowerCase()} — XP ${rank.mult}">${this._g('prior_alta', 11)} ${rank.letra}-Rank</span>
           <span class="mc-chip mc-chip-status">${this._g(st.gl)} ${st.rotulo}</span>
           ${m.categoria ? `<span class="mc-chip mc-chip-cat">${this._esc(m.categoria)}</span>` : ''}
-          ${chipData}
+          ${penit ? `<span class="mc-chip mc-chip-pen"
+              title="Esta dívida não sai da lista até ser cumprida"
+              >${this._g('ampulheta', 11)} ${this._idadeDivida(m)}</span>` : chipData}
           ${this._cronometro(m, chave)}
           ${prazo ? `<span class="mc-div"></span>
           <span class="mc-prazo ${prazo.classe}" data-mc-prazo="${chave}">
@@ -1069,6 +1130,7 @@ const MissaoCard = {
           ${compacto ? recompensa : ''}
         </div>
 
+        ${penit ? this._corpoPenitencia(m, chave) : ''}
         ${repet
           ? (this._alvoDe(m) !== null
                ? this._barraSegmentada(m, chave)

@@ -95,6 +95,12 @@ COLUNAS = [
     ("tarefas_dia",  "repeticoes",         "INTEGER NOT NULL DEFAULT 0",  "INTEGER NOT NULL DEFAULT 0"),
     ("tarefas_dia",  "xp_repeticao_pago",  "INTEGER NOT NULL DEFAULT 0",  "INTEGER NOT NULL DEFAULT 0"),
     ("tarefas_dia",  "ultima_repeticao_em","DATETIME",                    "TIMESTAMP"),
+    # PENITENCIA. `pactos` nao entra aqui: tabela nova e criada pelo
+    # create_all; COLUNAS so serve a coluna em tabela que ja existe.
+    ("tarefas_dia",  "pacto_id",           "INTEGER",                     "INTEGER"),
+    ("tarefas_dia",  "origem_titulo",      "VARCHAR(200)",                "VARCHAR(200)"),
+    ("tarefas_dia",  "origem_data",        "DATE",                        "DATE"),
+    ("tarefas_dia",  "xp_a_reparar",       "INTEGER NOT NULL DEFAULT 0",  "INTEGER NOT NULL DEFAULT 0"),
 
     # REPETICAO — a missao que conta em vez de concluir.
     #

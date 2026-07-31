@@ -102,6 +102,11 @@ def _tarefa_to_dict(t: TarefaDia) -> dict:
         "alvo_repeticoes":   getattr(t, "alvo_repeticoes", None),
         "contador_id":       getattr(t, "contador_id", None),
         "repeticoes":        (getattr(t, "repeticoes", 0) or 0),
+        # PENITENCIA — o cartao precisa dizer por qual falha ela veio.
+        # Uma punicao anonima e arbitraria; nomear a falha a torna justa.
+        "origem_titulo":     getattr(t, "origem_titulo", None),
+        "origem_data":       t.origem_data.isoformat() if getattr(t, "origem_data", None) else None,
+        "xp_a_reparar":      getattr(t, "xp_a_reparar", 0) or 0,
     }
 
 
@@ -309,6 +314,20 @@ def concluir_tarefa(
     t = _get_ou_404(tarefa_id, usuario, db)
     if t.status == "CONCLUIDA":
         raise HTTPException(400, "Tarefa já foi concluída")
+
+    # ── QUITAR UMA PENITÊNCIA ─────────────────────────────────────────
+    # Não passa pela liquidação normal, e é de propósito: cumprir a
+    # penitência QUITA a dívida, não é uma nova fonte de progresso. Se
+    # pagasse XP cheio, falhar de propósito viraria estratégia.
+    #
+    # O que ela devolve é uma FRAÇÃO do que a falha tomou — reparação
+    # parcial, nunca lucro. Devolver mais que o perdido seria pagar por
+    # ter falhado.
+    if especiais.normalizar(getattr(t, "natureza", None)) == especiais.PUNICAO:
+        from motors import penitencia
+        r = penitencia.quitar(db, usuario, t)
+        db.commit()
+        return anexar({"tarefa": _tarefa_to_dict(t), **r}, None)
 
     # O prazo da missão geral conta desde a INTENÇÃO (quando foi criada), não
     # desde o play. Quem cria uma missão de 30 minutos às 14:00 tem até 14:30,

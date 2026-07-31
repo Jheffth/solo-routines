@@ -308,6 +308,16 @@ class TarefaDia(Base):
     ultima_repeticao_em = Column(DateTime, nullable=True)
     confessada_em       = Column(DateTime, nullable=True)    # "quebrei o protocolo"
 
+    # ══ PENITENCIA ══════════════════════════════════════════════════
+    # Nasce do fechamento do dia, nao do lancador. `pacto_id` diz de
+    # qual penitencia do pacto ela veio; `origem_titulo` guarda o texto
+    # da missao que falhou — COPIA, nao referencia, porque a missao
+    # original pode ser apagada e a divida nao pode sumir com ela.
+    pacto_id            = Column(Integer, ForeignKey("pactos.id"), nullable=True, index=True)
+    origem_titulo       = Column(String(200), nullable=True)
+    origem_data         = Column(Date, nullable=True)
+    xp_a_reparar        = Column(Integer, nullable=False, default=0, server_default="0")
+
     usuario          = relationship("Usuario", back_populates="tarefas")
     execucoes        = relationship("Execucao", back_populates="tarefa", lazy="dynamic")
 
@@ -696,6 +706,41 @@ class Contador(Base):
 # Por que existe: revogar cargo, badge ou acesso apaga um estado do Sistema.
 # Sem registro, ninguém — nem o próprio Arquiteto meses depois — saberia o que
 # foi tirado de quem, quando e por quê. Poder sem rastro é poder que se perde.
+class Pacto(Base):
+    """
+    Uma penitencia que o hunter deve ao Sistema quando falhar.
+
+    E um CARDAPIO, nao uma divida: o hunter escreve com calma, e o
+    Sistema escolhe qual servir. A assimetria e o ponto — ele decide o
+    que pode custar num momento lucido, e e cobrado num momento em que
+    nao escreveria nada.
+
+    `valor_atual` sobe a cada vez que esta penitencia cai (escalonamento)
+    e recua a cada semana limpa (decaimento). `base` e `teto` sao os
+    limites desse movimento.
+
+    `ultima_queda` alimenta as duas contas: o decaimento mede a distancia
+    ate hoje, e o sorteio sem reposicao usa `ciclo` para nao repetir
+    antes de percorrer o pacto inteiro.
+    """
+    __tablename__ = "pactos"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    usuario_id    = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    titulo        = Column(String(160), nullable=False)
+    tipo          = Column(String(20), nullable=False, default="QUANTITATIVA")
+    unidade       = Column(String(30), nullable=True)
+    base          = Column(Integer, nullable=False, default=1)
+    teto          = Column(Integer, nullable=False, default=32)
+    valor_atual   = Column(Integer, nullable=False, default=1)
+    origem_chave  = Column(String(40), nullable=True)   # veio do catalogo?
+    ativo         = Column(Boolean, default=True)
+    ultima_queda  = Column(Date, nullable=True)
+    vezes_caiu    = Column(Integer, nullable=False, default=0, server_default="0")
+    ciclo         = Column(Integer, nullable=False, default=0, server_default="0")
+    criado_em     = Column(DateTime, default=datetime.utcnow)
+
+
 class RegistroPoder(Base):
     __tablename__ = "registro_poderes"
 

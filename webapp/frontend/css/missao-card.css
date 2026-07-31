@@ -1517,3 +1517,86 @@
   .mc-rep-pleno .mc-rep-trilha { animation: none; }
   .mc-rep-seg::after, .mc-rep-continua i { transition: none; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   A PENITÊNCIA — gélida, e sem pressa
+
+   A cor NÃO é vermelha. Crítica já é #e11d48, e vermelho neste app
+   significa URGÊNCIA: algo que ainda dá para salvar. A penitência
+   não é urgente — ela é consequência, e já aconteceu.
+
+   Branco gélido sobre azul quase preto lê como "o Sistema não está
+   com raiva; ele está registrando". É mais assustador que raiva. E
+   tem um ganho prático: uma penitência nunca vai ser confundida com
+   uma missão crítica na lista.
+
+   E ELA NÃO ANIMA. A crítica pulsa porque o tempo corre. A
+   penitência não tem pressa — tem permanência. A ausência de
+   movimento é o que a torna pesada.
+   ══════════════════════════════════════════════════════════════ */
+.mc-penitencia {
+  --mc-cor: #93c5fd;
+  --mc-pen-luz: #dbeafe;
+  border-color: color-mix(in srgb, #93c5fd 26%, transparent);
+  border-left-color: #93c5fd;
+  background:
+    /* Sem trama animada, sem diagonal correndo. Um gradiente parado —
+       gelo não se move. */
+    linear-gradient(180deg,
+      color-mix(in srgb, #1e3a5f 22%, transparent), transparent 45%),
+    linear-gradient(150deg, #070b14, #04060c);
+  box-shadow: inset 0 1px 0 rgba(219,234,254,.06);
+}
+.mc-penitencia .mc-fio { display: none; }
+.mc-penitencia:hover {
+  border-color: color-mix(in srgb, #93c5fd 45%, transparent);
+  box-shadow: 0 8px 26px rgba(0,0,0,.55),
+              0 0 22px color-mix(in srgb, #93c5fd 18%, transparent);
+}
+.mc-penitencia .mc-titulo {
+  color: var(--mc-pen-luz);
+  text-shadow: 0 0 14px rgba(147,197,253,.28);
+}
+
+/* O CHIP DA IDADE. É o único número que sobe, e sozinho ele já
+   incomoda — não precisa de cor de alarme para isso. */
+.mc-chip-pen {
+  color: #bfdbfe;
+  border-color: color-mix(in srgb, #93c5fd 34%, transparent);
+  background: color-mix(in srgb, #93c5fd 11%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+
+.mc-pen { margin-top: 9px; display: flex; flex-direction: column; gap: 5px; }
+/* DE ONDE VEIO. Uma punição anônima é arbitrária; nomear a falha a
+   torna justa — e a distância entre as duas linhas (fio dental
+   cobrado em abdominais) é o que faz o Sistema parecer uma entidade. */
+.mc-pen-origem {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  font-size: .74rem; line-height: 1.5;
+  color: rgba(191,219,254,.62);
+}
+.mc-pen-origem b { color: rgba(219,234,254,.92); font-weight: 600; }
+.mc-pen-reparo {
+  font-size: .72rem;
+  color: rgba(134,239,172,.72);
+}
+.mc-pen-reparo b { color: #bbf7d0; }
+
+.mc-btn-quitar {
+  border-color: color-mix(in srgb, #93c5fd 48%, transparent);
+  color: #eff6ff;
+  background: color-mix(in srgb, #93c5fd 14%, transparent);
+  font-weight: 600;
+}
+.mc-btn-quitar:hover:not(:disabled) {
+  background: color-mix(in srgb, #93c5fd 26%, transparent);
+  box-shadow: 0 0 18px color-mix(in srgb, #93c5fd 30%, transparent);
+}
+
+/* A penitência quantitativa reusa a trilha da repetição — mesma
+   mecânica, mesma peça — só que na cor do gelo. */
+.mc-penitencia .mc-rep { --mc-vigilia: #93c5fd; }
+
+.mc-compacto .mc-pen { margin-top: 6px; }
+.mc-compacto .mc-pen-origem { font-size: .68rem; }

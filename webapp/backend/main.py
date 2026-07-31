@@ -15,6 +15,7 @@ from routers.rotinas import router as rotinas_router
 from routers.tarefas import router as tarefas_router
 from routers.execucoes import router as execucoes_router
 from routers.contadores import router as contadores_router
+from routers.pactos import router as pactos_router
 from routers.dashboard import router as dashboard_router
 from routers.perfil import router as perfil_router
 from routers.recompensas import router as recompensas_router
@@ -79,6 +80,7 @@ app.include_router(rotinas_router,       prefix="/api")
 app.include_router(tarefas_router,       prefix="/api")
 app.include_router(execucoes_router,     prefix="/api")
 app.include_router(contadores_router,    prefix="/api")
+app.include_router(pactos_router,        prefix="/api")
 app.include_router(dashboard_router,     prefix="/api")
 app.include_router(perfil_router,        prefix="/api")
 app.include_router(recompensas_router,   prefix="/api")

@@ -122,6 +122,9 @@ def _missao_de_rotina(ed: ExecucaoDia, r: Rotina, hoje: date) -> dict:
         # ROTINA DE REPETICOES. A contagem e do DIA, entao vem da
         # instancia diaria — nao da rotina, que so guarda o alvo.
         **_repeticao(r, getattr(ed, "repeticoes", 0)),
+        # Sempre nulos aqui — penitencia so nasce como missao geral —
+        # mas PRESENTES, para as duas origens terem a mesma forma.
+        **_penitencia(ed),
 
         # Duas permissões diferentes, e confundi-las custa caro:
         #   editavel    → EXECUTAR (iniciar/concluir). Só faz sentido hoje:
@@ -149,6 +152,28 @@ def _repeticao(fonte, repeticoes) -> dict:
         "alvo_repeticoes": getattr(fonte, "alvo_repeticoes", None),
         "contador_id":     getattr(fonte, "contador_id", None),
         "repeticoes":      int(repeticoes or 0),
+    }
+
+
+def _penitencia(fonte) -> dict:
+    """
+    Os campos da penitencia — nas DUAS origens, sempre.
+
+    Uma penitencia so nasce como TarefaDia, entao seria tentador emitir
+    estes campos so la. O teste do extrato pegou o erro na hora: as
+    duas origens precisam ter a MESMA FORMA, porque um cartao so
+    desenha as duas. Chave ausente num dos lados vira `undefined` no
+    cliente, e `undefined` se comporta diferente de `null` em
+    comparacao — o tipo de divergencia que aparece meses depois.
+
+    E a mesma licao do `_repeticao`, aprendida de novo dois dias
+    depois: emitir o conjunto INTEIRO de uma funcao unica.
+    """
+    d = getattr(fonte, "origem_data", None)
+    return {
+        "origem_titulo": getattr(fonte, "origem_titulo", None),
+        "origem_data":   d.isoformat() if d else None,
+        "xp_a_reparar":  int(getattr(fonte, "xp_a_reparar", 0) or 0),
     }
 
 
@@ -209,6 +234,7 @@ def _missao_geral(t: TarefaDia, hoje: date) -> dict:
         "confessada_em": t.confessada_em.isoformat()
                          if getattr(t, "confessada_em", None) else None,
         **_repeticao(t, getattr(t, "repeticoes", 0)),
+        **_penitencia(t),
 
         "editavel":    t.data_prevista == hoje,
         "gerenciavel": t.data_prevista >= hoje if t.data_prevista else False,
@@ -255,9 +281,21 @@ def listar_extrato(
         inicio = fim - timedelta(days=JANELA_MAXIMA_DIAS)
 
     # Põe a casa em dia (idempotente). Nunca derruba a leitura.
+    #
+    # E é AQUI que o Eco nasce: o fechamento é quem descobre a falha, e
+    # esta é a primeira leitura depois dela. Mandar o Eco junto com o
+    # extrato faz a frase aparecer exatamente quando o hunter abre o
+    # app e vê o cartão fracassado atrás dela — que é o momento.
+    eco_pendente = None
     try:
-        fechamento.processar_usuario(db, usuario)
+        r = fechamento.processar_usuario(db, usuario)
         db.commit()
+        pun = (r or {}).get("punicao") or {}
+        if pun.get("eco"):
+            eco_pendente = {**pun["eco"],
+                            "gatilho": pun.get("gatilho"),
+                            "criadas": len(pun.get("criadas") or []),
+                            "no_teto": bool(pun.get("no_teto"))}
     except Exception as e:
         db.rollback()
         print(f"[EXTRATO] ⚠ fechamento adiado: {e}")
@@ -316,10 +354,21 @@ def listar_extrato(
     # Mais recentes primeiro; dentro do dia, o que ainda pede ação no topo.
     ORDEM_STATUS = {"ATIVA": 0, "PENDENTE": 1, "PAUSADA": 2,
                     "CONCLUIDA": 3, "FRACASSADA": 4, "CANCELADA": 5}
+
+    # A PENITENCIA NAO ROLA PARA FORA DA TELA. Ela vem antes de
+    # qualquer ordenacao — foi assim que o Arquiteto desenhou o
+    # incomodo: sem travar nada, mas sem sumir.
+    def _penitencia_primeiro(m):
+        aberta = (m.get("natureza") == "PUNICAO"
+                  and m["status"] not in ("CONCLUIDA", "CANCELADA"))
+        return 0 if aberta else 1
     missoes.sort(key=lambda m: (
         m["data"] or "",
         -ORDEM_STATUS.get(m["status"], 9),
     ), reverse=True)
+    # E SO ENTAO a penitencia sobe. Ordenar antes seria perder o
+    # criterio de data dentro do grupo dela.
+    missoes.sort(key=_penitencia_primeiro)
 
     total = len(missoes)
     missoes = missoes[:limite]
@@ -330,6 +379,10 @@ def listar_extrato(
         "total":  total,
         "exibidas": len(missoes),
         "missoes": missoes,
+        # O ECO da falha que o fechamento acabou de descobrir. `null` na
+        # esmagadora maioria das leituras — e e essa raridade que o faz
+        # significar alguma coisa quando aparece.
+        "eco": eco_pendente,
     }
 
 

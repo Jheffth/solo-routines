@@ -423,6 +423,12 @@ const Dashboard = {
       if (statusFil) q.set('status', statusFil);
 
       const resp  = await API.get('/extrato/?' + q.toString());
+
+      /* O ECO. Chega junto com o extrato porque o fechamento e quem
+         descobre a falha, e esta e a primeira leitura depois dela — a
+         frase aparece com o cartao fracassado visivel atras, que e o
+         momento. Vem `null` na esmagadora maioria das leituras. */
+      if (resp?.eco && typeof Eco !== 'undefined') Eco.mostrar(resp.eco);
       const lista = (resp && resp.missoes) || [];
       this._extratoLista = lista;
 

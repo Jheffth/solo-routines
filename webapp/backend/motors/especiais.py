@@ -52,7 +52,11 @@ from auth.router import NIVEIS_ADMIN
 ATIVA = "ATIVA"
 PASSIVA = "PASSIVA"
 REPETICAO = "REPETICAO"
-NATUREZAS = (ATIVA, PASSIVA, REPETICAO)
+# PUNICAO nao e criada pelo hunter: nasce do fechamento do dia. Por isso
+# ela esta em NATUREZAS (o cartao precisa reconhece-la) e NAO no
+# lancador — `pode_criar` a recusa de proposito, ver abaixo.
+PUNICAO = "PUNICAO"
+NATUREZAS = (ATIVA, PASSIVA, REPETICAO, PUNICAO)
 
 # Naturezas que exigem permissão para serem criadas. ATIVA é de todos.
 PREMIUM = (PASSIVA,)
@@ -74,7 +78,19 @@ def eh_premium(natureza) -> bool:
 
 
 def pode_criar(usuario, natureza) -> bool:
-    """A pergunta que os routers fazem. Uma linha, um lugar."""
+    """
+    A pergunta que os routers fazem. Uma linha, um lugar.
+
+    PUNICAO nao e forjavel por ninguem — nem pelo Arquiteto. Ela nasce
+    do fechamento do dia, e so de la.
+
+    Sem esta recusa, um `POST /tarefas/` com `natureza: PUNICAO` criaria
+    uma penitencia a mao: um cartao que se anuncia como divida sem que
+    divida nenhuma exista. Pior que o exploit e a mentira — o unico
+    valor da penitencia e ela ser CONSEQUENCIA de algo.
+    """
+    if natureza == PUNICAO:
+        return False
     if not eh_premium(natureza):
         return True
     return (getattr(usuario, "nivel_acesso", "") or "") in FORJADORES_ESPECIAIS

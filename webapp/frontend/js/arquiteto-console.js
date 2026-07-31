@@ -625,6 +625,58 @@ const ArquitetoConsole = {
         xp_recompensa: 160, moedas_recompensa: 14, status_hoje: 'PENDENTE',
         alvo_repeticoes: 100, repeticoes: 68 },
 
+      /* ── AS PENITÊNCIAS ────────────────────────────────────
+         Os quatro tipos de card da CAMADA 1, e o que cada amostra
+         existe para julgar:
+
+           9301  quantitativa em curso — a trilha na cor do gelo
+           9302  restritiva            — janela e Confessar
+           9303  temporal              — o cronômetro
+           9304  quitada               — o desfecho
+           9305  antiga                — "há 9 dias", o número que sobe
+
+         Repare no que NÃO tem: sem pulsar, sem borda correndo, sem
+         cor de alarme. A crítica pulsa porque o tempo corre; a
+         penitência tem permanência, e a quietude é o peso dela. */
+      { id: 9301, titulo: 'Fazer 8 flexões', categoria: 'Combate',
+        prioridade: 'ALTA', dificuldade: 'NORMAL', natureza: 'PUNICAO',
+        status_hoje: 'PENDENTE', alvo_repeticoes: 8, repeticoes: 3,
+        origem_titulo: 'Passar fio dental',
+        origem_data: new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10),
+        xp_a_reparar: 30 },
+
+      { id: 9302, titulo: '12 horas sem redes sociais', categoria: 'Combate',
+        prioridade: 'ALTA', dificuldade: 'NORMAL', natureza: 'PUNICAO',
+        status_hoje: 'PENDENTE',
+        origem_titulo: 'Estudar 1 hora',
+        origem_data: new Date(Date.now() - 86400000).toISOString().slice(0, 10),
+        xp_a_reparar: 45,
+        prazo_ate_abrir: -3600, prazo_minutos: 720,
+        prazo_restante: Math.round(720 * 60 * 0.42) },
+
+      { id: 9303, titulo: '30 minutos de leitura em pé', categoria: 'Combate',
+        prioridade: 'MEDIA', dificuldade: 'NORMAL', natureza: 'PUNICAO',
+        status_hoje: 'ATIVA',
+        origem_titulo: 'Ler 5 páginas',
+        origem_data: new Date().toISOString().slice(0, 10),
+        xp_a_reparar: 18,
+        iniciada_em: new Date(Date.now() - 11 * 60000).toISOString().slice(0, 19),
+        prazo_minutos: 30, prazo_restante: 19 * 60 },
+
+      { id: 9304, titulo: 'Fazer 30 abdominais', categoria: 'Combate',
+        prioridade: 'ALTA', dificuldade: 'NORMAL', natureza: 'PUNICAO',
+        status_hoje: 'CONCLUIDA', alvo_repeticoes: 30, repeticoes: 30,
+        origem_titulo: 'Beber 2L de água',
+        origem_data: new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10),
+        xp_ganho: 22 },
+
+      { id: 9305, titulo: 'Escrever três linhas sobre a falha', categoria: 'Combate',
+        prioridade: 'MEDIA', dificuldade: 'NORMAL', natureza: 'PUNICAO',
+        status_hoje: 'PENDENTE',
+        origem_titulo: 'Dormir antes da meia-noite',
+        origem_data: new Date(Date.now() - 9 * 86400000).toISOString().slice(0, 10),
+        xp_a_reparar: 12 },
+
       { id: 9205, titulo: 'Questões avulsas', categoria: 'Estudo',
         prioridade: 'MEDIA', dificuldade: 'NORMAL', natureza: 'REPETICAO',
         status_hoje: 'PENDENTE',
@@ -659,7 +711,11 @@ const ArquitetoConsole = {
           As <b>repetições</b> (9201–9205): barra segmentada em 0/5, 3/5 e cumprida;
           os <b>cem pulinhos</b> em dez blocos de dezena, não cem fatias de 1px;
           e o <b>contador livre</b> — só o número, sem barra nenhuma.
-          <b>Os botões + e − funcionam</b> aqui, sem tocar na API.
+          <b>Os botões + e − funcionam</b> aqui, sem tocar na API.<br>
+          As <b>penitências</b> (9301–9305): gélidas, <b>sem animação nenhuma</b> —
+          a crítica pulsa porque o tempo corre; esta tem permanência.
+          Cada uma diz <b>por qual falha</b> veio, e "há N dias" é o único
+          número que sobe.
         </div>
       </div>`;
     el.addEventListener('click', e => { if (e.target === el) el.remove(); });

@@ -262,6 +262,18 @@ const ForjaTestes = {
       { id: 'sincronizar', rotulo: 'Sincronizar meu nível', desc: 'reparo real — altera seus dados' },
     ],
     efeitos: [
+      // O ECO. É a primeira coisa deste projeto cuja qualidade NÃO é
+      // mensurável por teste — posso provar que aparece, enfileira e
+      // fecha no Esc; não posso provar que dá o arrepio certo. Por
+      // isso ele vem para a Forja antes de qualquer missão poder
+      // falhar de verdade.
+      { id: 'eco_seca',      rotulo: 'Eco — primeira falha',   desc: 'constatação seca, sem julgamento' },
+      { id: 'eco_encarando', rotulo: 'Eco — reincidência',     desc: 'o Sistema te encara' },
+      { id: 'eco_fria',      rotulo: 'Eco — acúmulo',          desc: 'frio total, parou de perguntar' },
+      { id: 'eco_vazio',     rotulo: 'Eco — sem pacto',        desc: 'ameaça e convite' },
+      { id: 'eco_quitado',   rotulo: 'Eco — dívida quitada',   desc: 'a única voz que não pune' },
+      { id: 'eco_fila',      rotulo: 'Eco — três em fila',     desc: 'testa o enfileiramento' },
+      { id: 'eco_mudo',      rotulo: 'Eco — sem som',          desc: 'como fica se o áudio for recusado' },
       { id: 'explosao', rotulo: 'Explosão de partículas', desc: 'três ondas em sequência' },
       { id: 'xpfloat',  rotulo: 'Sparks + XP flutuante',  desc: 'ganho sem cerimônia' },
       { id: 'som_conquista', rotulo: 'Som: conquista',    desc: '' },
@@ -369,6 +381,28 @@ const ForjaTestes = {
       levelup:     () => A?.levelup(),
       multipla:    () => A?.ascensaoMultipla(),
       sincronizar: () => A?.sincronizarNivel(),
+      /* Frases de amostra por intensidade. As de verdade vêm do
+         servidor (motors/ecos.py) — aqui elas são fixas de propósito,
+         para julgar SEMPRE a mesma frase e enxergar só o desenho. */
+      eco_seca:      () => Eco?.mostrar({ intensidade: 'SECA',
+                       texto: 'Passar fio dental. O Sistema anotou.' }),
+      eco_encarando: () => Eco?.mostrar({ intensidade: 'ENCARANDO',
+                       texto: 'Você acha que o Sistema brinca, Jogador?' }),
+      eco_fria:      () => Eco?.mostrar({ intensidade: 'FRIA',
+                       texto: 'O Sistema parou de contar. Resolva o que já existe.' }),
+      eco_vazio:     () => Eco?.mostrar({ intensidade: 'VAZIO',
+                       texto: 'O Sistema não tem com que cobrar. Ainda.' }),
+      eco_quitado:   () => Eco?.mostrar({ intensidade: 'QUITADO',
+                       texto: 'Dívida quitada. O Sistema registra também isto.' }),
+      eco_fila:      () => {
+        // Três de uma vez. Se eles se sobrepusessem viraria ruído — o
+        // enfileiramento é a regra que impede isso, e é aqui que se vê.
+        Eco?.mostrar({ intensidade: 'SECA',      texto: 'O Sistema registra.' });
+        Eco?.mostrar({ intensidade: 'ENCARANDO', texto: 'Duas. E o dia ainda não acabou.' });
+        Eco?.mostrar({ intensidade: 'FRIA',      texto: 'Continue. O Sistema tem mais tempo que você.' });
+      },
+      eco_mudo:      () => Eco?.mostrar({ intensidade: 'ENCARANDO', som: false,
+                       texto: 'Não confunda paciência com permissão.' }),
       explosao:    () => A?.explosao(),
       xpfloat:     () => A?.xpfloat(),
       som_conquista: () => SFX?.play('conquista'),
@@ -392,7 +426,10 @@ const ForjaTestes = {
     const painel = ['convites', 'comemorativas', 'enviarAura',
                     'cardMissao', 'forjaMissao', 'banner', 'bannerPremium',
                     'estandarte'].includes(arg);
-    const som = arg.startsWith('som_');
+    // O Eco toma a tela inteira: fechar a Forja antes seria o certo,
+    // mas ele já cobre tudo — e voltar para a Forja depois é o que o
+    // Arquiteto vai querer, para disparar o próximo.
+    const som = arg.startsWith('som_') || arg.startsWith('eco_');
     if (painel || som) {
       try { fn(); }
       catch (err) { SoloDialog?.toast?.('Este teste falhou: ' + (err?.message || err), 'error'); }
