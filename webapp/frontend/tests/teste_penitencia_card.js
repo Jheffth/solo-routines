@@ -465,6 +465,13 @@ console.log('\n-- a ALTURA: o cartao nao pode engordar de novo --');
      'e o padding original (3px 12px 4px)');
   ok(seloCss && /letter-spacing: \.2em/.test(seloCss[1]),
      'e o espacamento original (.2em)');
+  /* A FORMA e o que o Arquiteto viu de errado por ultimo: eu tinha dado
+     `border-radius: 7px` nos quatro cantos e virou um retangulo
+     arredondado generico. O original era `0 0 10px 0` — cantos retos,
+     so o inferior-direito arredondado, o que faz o rotulo ler como ABA
+     ENCAIXADA no canto do bloco em vez de etiqueta flutuando. */
+  ok(seloCss && /border-radius: 0 0 10px 0/.test(seloCss[1]),
+     'e a FORMA original: aba com um canto so (0 0 10px 0), nao pilula');
 
   /* O titulo NAO pode descer para outra linha — foi para isso que a
      linha extra foi eliminada. */

@@ -1887,12 +1887,24 @@
 .mc-penitencia .mc-corpo,
 .mc-compacto.mc-penitencia .mc-corpo { padding-top: 0; }
 
-/* O RÓTULO — medidas idênticas às do original, agora em linha. */
+/* O RÓTULO — a ABA, não uma pílula.
+
+   Eu tinha dado `border-radius: 7px` nos quatro cantos e virou um
+   retângulo arredondado genérico. O original era `0 0 10px 0`: cantos
+   retos, só o inferior-direito arredondado. Isso o faz ler como uma ABA
+   ENCAIXADA no canto do bloco, e não como uma etiqueta flutuando — é a
+   diferença que o Arquiteto viu comparando os dois prints.
+
+   `align-self: flex-start` com o topo negativo encosta a aba na borda
+   superior do corpo, que é onde ela ficava quando era absoluta. A
+   diferença é que agora ela divide a linha com o título em vez de
+   empurrá-lo para baixo. */
 .mc-selo-pen {
   flex-shrink: 0;
-  align-self: center;
+  align-self: flex-start;
+  margin-top: -1px;
   padding: 3px 12px 4px;
-  border-radius: 7px;
+  border-radius: 0 0 10px 0;
   font-family: var(--font-section, system-ui, sans-serif);
   font-size: .58rem;
   font-weight: 800;
@@ -1911,9 +1923,14 @@
    extra que este trabalho inteiro existe para eliminar. */
 .mc-penitencia .mc-topo {
   flex-wrap: nowrap;
-  align-items: center;
+  /* `flex-start`, não `center`: a aba encosta no topo e o título
+     alinha com ela. Com `center` a aba descia e deixava um respiro
+     acima que era justamente o que estávamos eliminando. */
+  align-items: flex-start;
   gap: .55rem;
 }
+/* O título desce o suficiente para a base dele alinhar com a da aba. */
+.mc-penitencia .mc-titulo { margin-top: 1px; }
 .mc-penitencia .mc-titulo {
   flex: 1 1 auto;
   min-width: 0;
