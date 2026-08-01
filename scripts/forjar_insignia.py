@@ -22,9 +22,10 @@ import sys
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.join(RAIZ, "webapp", "backend"))
 
-from motors.forja.compositor import ForjaErro          # noqa: E402
-from motors.forja import saida                          # noqa: E402
+from motors.forja.tela import ForjaErro                 # noqa: E402
+from motors.forja import entrega                        # noqa: E402
 from motors.forja.pecas import pena_punidor             # noqa: E402
+from motors.forja.pecas import fenix_v3                 # noqa: E402
 
 FRONT = os.path.join(RAIZ, "webapp", "frontend")
 
@@ -49,7 +50,24 @@ PECAS = {
             "titulo": "Pena do Punidor",
         },
     },
-
+    "fenix_v3": {
+        "modulo": fenix_v3,
+        "badge": {
+            "destino": os.path.join(FRONT, "js", "badges", "fenix-v3.js"),
+            "ns": "FenixV3FX",
+            "codigo": "fenix_v3",
+            "titulo": "Ascensão da Fênix V3",
+            "descricao": "Forjada no calor de uma Supernova. A entidade de fogo geométrico absoluto.",
+            "icone": "🔥",
+            "cor": "#fb8500",
+            "xp": 9999,
+            "moedas": 999,
+        },
+        "aura": {
+            "id": "fenix-v3",
+            "titulo": "Fênix V3 (Supernova)",
+        },
+    }
 }
 
 
@@ -59,22 +77,19 @@ def forjar(chave: str) -> None:
     fonte = f"motors/forja/pecas/{mod.__name__.rsplit('.', 1)[-1]}.py"
     print(f"\n── {p['badge']['titulo']} ──")
 
-    saida.escrever_badge(mod.insignia(300), p["badge"]["destino"],
-                         ns=p["badge"]["ns"], codigo=p["badge"]["codigo"],
-                         titulo=p["badge"]["titulo"],
-                         descricao=p["badge"]["descricao"],
-                         icone=p["badge"]["icone"], cor=p["badge"]["cor"],
-                         xp=p["badge"]["xp"], moedas=p["badge"]["moedas"],
-                         fonte=fonte)
+    svg = mod.insignia(300).montar(classe_raiz="conquista-svg")
+    entrega.escrever_insignia(svg, p["badge"]["destino"], fonte=fonte,
+                              **{k: v for k, v in p["badge"].items()
+                                 if k != "destino"})
 
     mod_aura = p.get("modulo_aura", mod)
     if hasattr(mod_aura, "aura"):
         fonte_a = f"motors/forja/pecas/{mod_aura.__name__.rsplit('.', 1)[-1]}.py"
-        bloco = saida._AURA.format(
-            aura_id=p["aura"]["id"], titulo=p["aura"]["titulo"], fonte=fonte_a,
-            corpo=saida._js_template_literal(mod_aura.aura(300).montar(classe_raiz="aura-svg")))
-        saida.substituir_aura_em(os.path.join(FRONT, "js", "auras.js"),
-                                 p["aura"]["id"], bloco)
+        svg_a = mod_aura.aura(300).montar(classe_raiz="aura-svg")
+        bloco = entrega.bloco_aura(svg_a, aura_id=p["aura"]["id"],
+                                   titulo=p["aura"]["titulo"], fonte=fonte_a)
+        entrega.encaixar_aura(os.path.join(FRONT, "js", "auras.js"),
+                              p["aura"]["id"], bloco)
 
 
 def amostras(destino: str = "/tmp") -> None:
@@ -86,11 +101,6 @@ def amostras(destino: str = "/tmp") -> None:
     reprovadas pelo Arquiteto assim que ele OLHOU. Assert nenhum
     responde "está bonito?".
     """
-    try:
-        import cairosvg
-    except ImportError:
-        print("  cairosvg não instalado: pip install cairosvg")
-        return
     for chave, p in PECAS.items():
         mod = p["modulo"]
         ma = p.get("modulo_aura", mod)
@@ -98,12 +108,11 @@ def amostras(destino: str = "/tmp") -> None:
                          ("aura", getattr(ma, "aura", None))):
             if not fn:
                 continue
-            svg = fn(300).montar().replace("{U}", "x").replace("{TAM}", "520")
-            png = os.path.join(destino, f"{chave}_{nome}.png")
-            cairosvg.svg2png(bytestring=svg.encode(), write_to=png,
-                             output_width=520, output_height=520,
-                             background_color="#0a0714")
-            print(f"  amostra: {png}")
+            svg = fn(300).montar()
+            png = entrega.amostra_png(
+                svg, os.path.join(destino, f"{chave}_{nome}.png"))
+            if png:
+                print(f"  amostra: {png}")
 
 
 if __name__ == "__main__":

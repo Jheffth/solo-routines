@@ -17,9 +17,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from motors.forja import geometria as G          # noqa: E402
 from motors.forja import pincel as P             # noqa: E402
-from motors.forja.compositor import (            # noqa: E402
-    Composicao, ForjaErro, gradiente_radial)
-from motors.forja import saida                   # noqa: E402
+from motors.forja.tela import Tela, ForjaErro    # noqa: E402
+from motors.forja import entrega                 # noqa: E402
 from motors.forja.pecas import pena_punidor      # noqa: E402
 
 falhas = testes = 0
@@ -109,26 +108,27 @@ ok(all(k in b for k in ("corpo", "fenda", "respiro", "ponta")),
 print("\n-- o compositor recusa em vez de entregar --")
 
 def _orfa():
-    c = Composicao("t", 300)
+    c = Tela("t", 300)
     c.camada("x").add('<circle cx="10" cy="10" r="5" fill="url(#nao-existe)"/>')
     return c.montar()
 explode(_orfa, "órf", "referência url(#x) sem o #x definido")
 
 def _id_cru():
-    c = Composicao("t", 300)
-    c.defs('<radialGradient id="shadow"><stop offset="0"/></radialGradient>')
-    c.camada("x").add('<circle cx="10" cy="10" r="5" fill="url(#shadow)"/>')
+    c = Tela("t", 300)
+    c.camada("x").add('<defs><radialGradient id="shadow"><stop offset="0"/>'
+                      '</radialGradient></defs>'
+                      '<circle cx="10" cy="10" r="5" fill="url(#shadow)"/>')
     return c.montar()
-explode(_id_cru, "namespace", "id global (colide na vitrine de 3 tamanhos)")
+explode(_id_cru, "ids fixos", "id global (colide na vitrine de 3 tamanhos)")
 
 def _fora():
-    c = Composicao("t", 300)
+    c = Tela("t", 300)
     c.camada("x").add('<path d="M 10 10 L 10 -25 L 40 40 Z" fill="#fff"/>')
     return c.montar()
 explode(_fora, "viewbox", "coordenada fora do viewBox (era y=-25 no motor antigo)")
 
 def _sem_a11y():
-    c = Composicao("t", 300)
+    c = Tela("t", 300)
     c.css("@keyframes gira { to { opacity: 0 } }")
     c.camada("x").add('<circle cx="10" cy="10" r="5"/>')
     return c.montar()
@@ -137,10 +137,9 @@ explode(_sem_a11y, "reduced-motion", "animação sem saída para reduced-motion"
 # E o caminho feliz precisa passar, senão os asserts acima só provam
 # que a função sabe explodir.
 def _boa():
-    c = Composicao("t", 300)
-    g = c.id("g")
-    c.defs(gradiente_radial(g, [(0, "#f00", 1), (1, "#000", 0)]))
-    c.camada("x").add(f'<circle cx="150" cy="150" r="40" fill="url(#{g})"/>')
+    c = Tela("t", 300)
+    g = c.radial("g", [(0, "#f00", 1), (1, "#000", 0)])
+    c.camada("x").add(f'<circle cx="150" cy="150" r="40" fill="{g}"/>')
     c.css("@keyframes p { to { opacity:.5 } }"
           "@media (prefers-reduced-motion: reduce) { * { animation: none } }")
     return c.montar()
@@ -157,12 +156,12 @@ print("\n-- a exportação valida antes de dizer 'sucesso' --")
 # O defeito original: crase escapada no template gerava JS que não
 # compilava, e a função imprimia "gerada com sucesso".
 try:
-    saida._js_template_literal("<svg>`</svg>")
+    entrega._literal("<svg>`</svg>")
     ok(False, "crase no SVG passou batido")
 except ForjaErro as e:
     ok("crase" in str(e).lower(), "crase no SVG é recusada na hora")
 
-lit = saida._js_template_literal('<svg width="{TAM}"><g id="a-{U}"/></svg>')
+lit = entrega._literal('<svg width="{TAM}"><g id="a-{U}"/></svg>')
 ok(lit.startswith("`") and lit.endswith("`"), "vira template literal")
 ok("${u}" in lit and "${tam}" in lit, "os buracos {U}/{TAM} viram interpolação")
 
@@ -174,18 +173,18 @@ import shutil as _sh
 _orig_which = _sh.which
 try:
     _sh.which = lambda _n: None
-    ok(saida._validar_js("/tmp/qualquer.js") == "SEM_NODE",
+    ok(entrega._node_confere("/tmp/qualquer.js") == "SEM_NODE",
        "sem node, a saída DEVOLVE 'SEM_NODE' (não finge que validou)")
 finally:
     _sh.which = _orig_which
 
 _quebrado = "/tmp/forja_quebrado.js"
 open(_quebrado, "w").write("const x = `nao fecha;")
-ok(saida._validar_js(_quebrado) not in ("", "SEM_NODE"),
+ok(entrega._node_confere(_quebrado) not in ("", "SEM_NODE"),
    "e com node presente, JS inválido é REPROVADO (era o defeito original)")
 _bom = "/tmp/forja_bom.js"
 open(_bom, "w").write("const x = 1;\n")
-ok(saida._validar_js(_bom) == "", "JS válido passa")
+ok(entrega._node_confere(_bom) == "", "JS válido passa")
 
 
 # ══ 5. A PEÇA REAL ══════════════════════════════════════════════════

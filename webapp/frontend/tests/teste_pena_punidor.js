@@ -40,7 +40,8 @@ const semComentarios = txt => txt
 console.log('\n-- os arquivos gerados carregam --');
 const badge = ler('js', 'badges', 'pena-do-punidor.js');
 const auras = ler('js', 'auras.js');
-ok(/GERADO POR motors\/forja/.test(badge), 'a insígnia é gerada pelo motor');
+ok(/GERADO por motors\/forja com drawsvg \+ Jinja2/.test(badge),
+   'a insígnia é gerada pelo motor, sobre drawsvg + Jinja2');
 ok(/FORJA:INICIO pena-punidor/.test(auras), 'a aura foi inserida pelo motor');
 ok(/FORJA:FIM pena-punidor/.test(auras), 'com marcador de fim — o resto de auras.js é preservado');
 
@@ -53,7 +54,10 @@ ok(med.trim().startsWith('<svg') && med.trim().endsWith('</svg>'), 'SVG bem form
 ok(med.includes('class="conquista-svg"'), 'usa a classe das insígnias');
 
 console.log('\n-- ids únicos: a vitrine mostra TRÊS tamanhos juntos --');
-const idDe = s => (s.match(/id="([a-z]+-[a-z0-9]+-i\d+)"/) || [])[1];
+/* O formato do id mudou com o motor novo: o drawsvg gera o def e o
+   sufixo de instância vem do contador em runtime. O que importa não é o
+   formato — é que DUAS chamadas não colidam. */
+const idDe = s => (s.match(/ id="([^"]+)"/) || [])[1];
 ok(idDe(FX._svg(140)) !== idDe(FX._svg(92)),
    'duas chamadas geram ids diferentes (com id fixo, o primeiro SVG vence)');
 
@@ -93,8 +97,26 @@ ok(/\("pena_do_punidor",[\s\S]{0,300}?"#ff0a3c", 7777, 777\)/.test(seed),
    'cor, xp e moedas no seed');
 ok(badge.includes('xp_bonus: 7777') && badge.includes('moedas_bonus: 777'),
    'e os mesmos números no frontend');
-ok(!seed.split('TRANSFERIVEIS = {')[1].split('}')[0].includes('pena_do_punidor'),
-   'não é transferível — coerente com a aura, que não é enviável');
+/* O ARQUITETO MUDOU ESTA REGRA e o assert seguia a antiga.
+   `pena_do_punidor` foi adicionado a TRANSFERIVEIS depois que eu escrevi
+   "não é transferível, coerente com a aura". Decisão dele vence a minha
+   inferência, então o teste passa a registrar o estado REAL — e a
+   divergência que sobrou, para ficar visível:
+
+       badge pena_do_punidor  transferivel = True   (circula)
+       aura  pena-punidor     enviavel     = False  (não circula)
+
+   Pode ser proposital (o emblema circula, a aura não) ou esquecimento.
+   O teste não decide; ele só impede que a diferença passe despercebida. */
+const transferiveis = seed.split('TRANSFERIVEIS = {')[1].split('}')[0];
+const cos = fs.readFileSync(path.join(RAIZ, '..', 'backend', 'motors',
+                                      'cosmeticos.py'), 'utf8');
+const auraEnviavel = /"pena-punidor":[\s\S]*?"enviavel":\s*True/.test(cos);
+ok(transferiveis.includes('pena_do_punidor'),
+   'o badge circula (TRANSFERIVEIS) — regra atual do Arquiteto');
+ok(!auraEnviavel,
+   'e a aura NÃO circula (enviavel: False) — a divergência está registrada, ' +
+   'não corrigida por conta própria');
 
 console.log(`\n=== ${testes - falhas}/${testes} ===`);
 process.exit(falhas ? 1 : 0);

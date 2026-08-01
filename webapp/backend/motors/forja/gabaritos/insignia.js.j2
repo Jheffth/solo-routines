@@ -1,0 +1,39 @@
+/* ══════════════════════════════════════════════════════════════
+   {{ titulo }} — insígnia
+   GERADO por motors/forja com drawsvg + Jinja2.
+   Não edite à mão: o próximo build sobrescreve.
+   Fonte: {{ fonte }}
+   ══════════════════════════════════════════════════════════════ */
+
+const {{ ns }} = {
+  _seq: 0,
+
+  /* Cada chamada ganha um sufixo próprio para os ids internos.
+
+     A Forja mostra a MESMA insígnia em três tamanhos no mesmo
+     documento. Com ids fixos, os três SVGs declaram o mesmo id, o
+     primeiro vence e os outros herdam o filtro errado — em silêncio.
+     O `id_prefix` do drawsvg resolve na GERAÇÃO; este contador resolve
+     em RUNTIME, que é onde o problema existe. */
+  _svg(tam) {
+    const u = 'i{{ ns|lower }}' + (++this._seq);
+    return {{ corpo }};
+  },
+
+  /* A cerimônia delega ao renderizador único do projeto. */
+  celebrar() {
+    if (typeof ConquistaFX === 'undefined') return;
+    ConquistaFX.show({
+      codigo: '{{ codigo }}', titulo: '{{ titulo }}',
+      descricao: '{{ descricao }}',
+      icone: '{{ icone }}', cor: '{{ cor }}',
+      xp_bonus: {{ xp }}, moedas_bonus: {{ moedas }},
+    });
+  },
+};
+
+window.{{ ns }} = {{ ns }};
+
+/* Optional chaining nos DOIS pontos: este arquivo pode carregar antes
+   do conquista-fx.js, e um erro aqui derrubaria o resto do script. */
+window.ConquistaFX?.registrarInsignia?.('{{ codigo }}', tam => {{ ns }}._svg(tam));

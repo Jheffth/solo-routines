@@ -1,0 +1,9 @@
+/* ══════════════════════════════════════════════════════════════
+   {{ titulo }} — aura
+   GERADO por motors/forja com drawsvg + Jinja2. Não edite à mão.
+   Fonte: {{ fonte }}
+   ══════════════════════════════════════════════════════════════ */
+Auras.registrar('{{ aura_id }}', function (tam) {
+  const u = 'a{{ aura_id|replace("-","") }}' + (++Auras._seq);
+  return {{ corpo }};
+});

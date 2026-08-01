@@ -26,8 +26,7 @@ import math
 
 from .. import geometria as G
 from .. import pincel as P
-from ..compositor import (Composicao, gradiente_linear, gradiente_radial,
-                          metal, sombra_interna, brilho)
+from ..tela import Tela
 
 CARMESIM = "#ff0a3c"
 AZUL = "#2b6bff"
@@ -47,37 +46,29 @@ def _eixo_pena(vb: int):
 
 
 def insignia(vb: int = 300) -> Composicao:
-    c = Composicao("pena-punidor-insignia", vb)
+    c = Tela("pena-punidor-insignia", vb)
     sem = P.Semente(20260731)
     cx, cy = c.centro
     k = vb / 300.0
     eixo = _eixo_pena(vb)
 
     # ── materiais ────────────────────────────────────────────────────
-    g_aco = c.id("aco")
-    g_barba = c.id("barba")
-    g_tinta = c.id("tinta")
-    g_fundo = c.id("fundo")
-    f_sombra = c.id("sombra")
-    f_brilho = c.id("brilho")
-    c.defs(
-        metal(g_aco, "#2a2f3e", "#8d97ad", "#f2f5fb", angulo=118),
-        gradiente_linear(g_barba, [
-            (0.00, "#5b6274", 1), (0.34, "#aab3c6", 1),
-            (0.62, "#e9edf6", 1), (1.00, "#7d8698", 1)], 0, 1, 1, 0),
-        gradiente_linear(g_tinta, [
-            (0.00, CARMESIM, 1), (0.55, "#a2185a", 1), (1.00, AZUL, 1)], 0, 0, 1, 1),
-        gradiente_radial(g_fundo, [
-            (0.00, CARMESIM, .28), (0.55, "#5c0f28", .16), (1.00, AZUL, 0)]),
-        sombra_interna(f_sombra, 0, 3 * k, 3.2 * k, "#000", .8),
-        brilho(f_brilho, 2.4 * k, 1.15),
-    )
+    g_aco   = c.metal("aco", "#2a2f3e", "#8d97ad", "#f2f5fb", angulo=118)
+    g_barba = c.linear("barba", [
+        (0.00, "#5b6274", 1), (0.34, "#aab3c6", 1),
+        (0.62, "#e9edf6", 1), (1.00, "#7d8698", 1)], 0, 1, 1, 0)
+    g_tinta = c.linear("tinta", [
+        (0.00, CARMESIM, 1), (0.55, "#a2185a", 1), (1.00, AZUL, 1)], 0, 0, 1, 1)
+    g_fundo = c.radial("fundo", [
+        (0.00, CARMESIM, .28), (0.55, "#5c0f28", .16), (1.00, AZUL, 0)])
+    f_sombra = c.sombra("sombra", 0, 3 * k, 3.2 * k, "#000", .8)
+    f_brilho = c.brilho("brilho", 2.4 * k, 1.15)
 
     # ── o véu, bem ao fundo e desfocado ──────────────────────────────
     # Camada com z baixo e desfoque: é o que cria AR entre o objeto e o
     # nada. Sem isso a pena flutua colada no fundo.
     c.camada("veu", z=0, desfoque=1.2 * k).add(
-        f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{138*k:.1f}" fill="url(#{g_fundo})"/>')
+        f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{138*k:.1f}" fill="{g_fundo}"/>')
 
     # ── a moldura: selo discreto, NUNCA o assunto ────────────────────
     # O SELO É MOLDURA, NÃO ASSUNTO. A 0.5 ele competia com a pena;
@@ -104,9 +95,9 @@ def insignia(vb: int = 300) -> Composicao:
                      largura_barba=3.2 * k, lado=-1, curvatura=0.34,
                      comprimento=lambda t: math.sin(math.pi * (t ** 0.86)) ** 0.9 * 0.62)
     for d in inf:
-        plumas.add(f'<path d="{d}" fill="url(#{g_barba})" opacity=".72"/>')
+        plumas.add(f'<path d="{d}" fill="{g_barba}" opacity=".72"/>')
     for d in sup:
-        plumas.add(f'<path d="{d}" fill="url(#{g_barba})" opacity=".95"/>')
+        plumas.add(f'<path d="{d}" fill="{g_barba}" opacity=".95"/>')
 
     # ── veios carmesim: poucos, e só onde a barba é longa ────────────
     veios = c.camada("veios", z=3, opacidade=.55)
@@ -120,13 +111,13 @@ def insignia(vb: int = 300) -> Composicao:
                   f'fill="{CARMESIM}"/>')
 
     # ── a ráquis, por cima das barbas ────────────────────────────────
-    c.camada("raquis", z=4, atributos=f'filter="url(#{f_sombra})"').add(
-        f'<path d="{P.raquis(eixo, 8.4*k)}" fill="url(#{g_aco})"/>')
+    c.camada("raquis", z=4, atributos=f'filter="{f_sombra}"').add(
+        f'<path d="{P.raquis(eixo, 8.4*k)}" fill="{g_aco}"/>')
 
     # ── o bico ───────────────────────────────────────────────────────
     b = P.bico(eixo, 30 * k)
-    c.camada("bico", z=5, atributos=f'filter="url(#{f_sombra})"').add(
-        f'<path d="{b["corpo"]}" fill="url(#{g_aco})"/>',
+    c.camada("bico", z=5, atributos=f'filter="{f_sombra}"').add(
+        f'<path d="{b["corpo"]}" fill="{g_aco}"/>',
         f'<path d="{b["fenda"]}" stroke="#05060a" stroke-width="{1.5*k:.2f}" '
         f'fill="none" stroke-linecap="round"/>',
         f'<circle cx="{b["respiro"][0]:.2f}" cy="{b["respiro"][1]:.2f}" '
@@ -136,8 +127,8 @@ def insignia(vb: int = 300) -> Composicao:
     pts = [(74 * k, 246 * k), (110 * k, 268 * k), (168 * k, 262 * k),
            (206 * k, 240 * k)]
     c.camada("assinatura", z=6, classe="fp-assina",
-             atributos=f'filter="url(#{f_brilho})"').add(
-        f'<path d="{P.floreio(pts, 5.2*k)}" fill="url(#{g_tinta})"/>')
+             atributos=f'filter="{f_brilho}"').add(
+        f'<path d="{P.floreio(pts, 5.2*k)}" fill="{g_tinta}"/>')
 
     # ── gotas de tinta, DENTRO da tela ───────────────────────────────
     gotas = c.camada("gotas", z=7, classe="fp-gotas")
@@ -195,36 +186,28 @@ def aura(vb: int = 300) -> Composicao:
         o carimbo BATE      cunhas que golpeiam para dentro
         a assinatura ESCREVE o mesmo floreio da insígnia
     """
-    c = Composicao("pena-punidor-aura", vb)
+    c = Tela("pena-punidor-aura", vb)
     sem = P.Semente(31072026)
     cx, cy = c.centro
     k = vb / 300.0
 
-    g_veu = c.id("veu")
-    g_cunha = c.id("cunha")
-    g_tinta = c.id("tinta")
-    f_glow = c.id("glow")
-    corte = c.id("corte")
-    c.defs(
-        gradiente_radial(g_veu, [
-            (0.00, CARMESIM, .30), (0.55, "#7a0f2e", .16), (1.00, AZUL, 0)]),
-        gradiente_linear(g_cunha, [
-            (0.00, CARMESIM, 0), (0.55, CARMESIM, .9), (1.00, "#fff", .95)], 0, 1, 0, 0),
-        gradiente_linear(g_tinta, [
-            (0.00, CARMESIM, 1), (0.5, "#a2185a", 1), (1.00, AZUL, 1)], 0, 0, 1, 0),
-        brilho(f_glow, 2.4 * k, 1.1),
-        # A chuva é recortada ao círculo: sem isto ela escorre para fora
-        # da aura e vira listra na tela.
-        f'<clipPath id="{corte}"><circle cx="{cx:.1f}" cy="{cy:.1f}" '
-        f'r="{142*k:.1f}"/></clipPath>',
-    )
+    g_veu = c.radial("veu", [
+        (0.00, CARMESIM, .30), (0.55, "#7a0f2e", .16), (1.00, AZUL, 0)])
+    g_cunha = c.linear("cunha", [
+        (0.00, CARMESIM, 0), (0.55, CARMESIM, .9), (1.00, "#fff", .95)], 0, 1, 0, 0)
+    g_tinta = c.linear("tinta", [
+        (0.00, CARMESIM, 1), (0.5, "#a2185a", 1), (1.00, AZUL, 1)], 0, 0, 1, 0)
+    f_glow = c.brilho("glow", 2.4 * k, 1.1)
+    # A chuva e recortada ao circulo: sem isto ela escorre para fora da
+    # aura e vira listra na tela.
+    corte = c.recorte_circular("corte", cx, cy, 142 * k)
 
     c.camada("veu", z=0, classe="fa-veu").add(
-        f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{142*k:.1f}" fill="url(#{g_veu})"/>')
+        f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{142*k:.1f}" fill="{g_veu}"/>')
 
     # ── a tinta que cai ──────────────────────────────────────────────
     chuva = c.camada("chuva", z=1, classe="fa-chuva",
-                     atributos=f'clip-path="url(#{corte})"')
+                     atributos=f'clip-path="{corte}"')
     for i in range(18):
         x = (26 + (i * 16.4) % 248) * k
         comp = (14 + (i * 7) % 34) * k
@@ -240,7 +223,7 @@ def aura(vb: int = 300) -> Composicao:
             f'animation-delay:{((i*29)%31)/10:.2f}s"/>')
 
     # ── o selo que fecha ─────────────────────────────────────────────
-    selo = c.camada("selo", z=2, atributos=f'filter="url(#{f_glow})"')
+    selo = c.camada("selo", z=2, atributos=f'filter="{f_glow}"')
     for j, (r, w, dash, cor, op, atraso) in enumerate([
             (132, 1.6, f"{2*k:.1f} {10*k:.1f}", CARMESIM, .60, 0.0),
             (116, 1.1, f"{1*k:.1f} {14*k:.1f}", AZUL, .45, 0.35),
@@ -252,7 +235,7 @@ def aura(vb: int = 300) -> Composicao:
             f'style="animation-delay:{atraso}s"/>')
 
     # ── o carimbo que bate ───────────────────────────────────────────
-    carimbo = c.camada("carimbo", z=3, atributos=f'filter="url(#{f_glow})"')
+    carimbo = c.camada("carimbo", z=3, atributos=f'filter="{f_glow}"')
     for j, ang in enumerate((0, 90, 180, 270)):
         base = (cx, cy - 122 * k)
         p3 = (cx, cy - 88 * k)
@@ -260,14 +243,14 @@ def aura(vb: int = 300) -> Composicao:
         p2 = (cx, cy - 99 * k)
         d = G.contorno([base, p1, p2, p3], 26 * k, G.perfil_gota, passos=10)
         carimbo.add(
-            f'<path class="fa-cunha" d="{d}" fill="url(#{g_cunha})" opacity=".85" '
+            f'<path class="fa-cunha" d="{d}" fill="{g_cunha}" opacity=".85" '
             f'transform="rotate({ang} {cx:.1f} {cy:.1f})" '
             f'style="animation-delay:{j*.18:.2f}s"/>')
 
     # ── a assinatura, a mesma da insígnia ────────────────────────────
     pts = [(64 * k, 236 * k), (108 * k, 262 * k), (176 * k, 254 * k), (232 * k, 226 * k)]
     c.camada("assinatura", z=4, classe="fa-assina").add(
-        f'<path d="{P.floreio(pts, 6.4*k)}" fill="url(#{g_tinta})" opacity=".9"/>')
+        f'<path d="{P.floreio(pts, 6.4*k)}" fill="{g_tinta}" opacity=".9"/>')
 
     c.css(f"""
     /* NENHUM aura-girar. E esse keyframe GLOBAL que todas as outras

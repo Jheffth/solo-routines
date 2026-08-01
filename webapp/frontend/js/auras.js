@@ -1130,24 +1130,14 @@ Auras.registrar('fenix-pioneira', function (tam) {
 /* FORJA:INICIO pena-punidor */
 /* ══════════════════════════════════════════════════════════════
    Pena do Punidor — aura
-   GERADO POR motors/forja. Não edite à mão.
+   GERADO por motors/forja com drawsvg + Jinja2. Não edite à mão.
    Fonte: motors/forja/pecas/pena_punidor.py
    ══════════════════════════════════════════════════════════════ */
 Auras.registrar('pena-punidor', function (tam) {
-  const u = 'a' + (++Auras._seq);
-  return `<svg viewBox="0 0 300 300" width="${tam}" height="${tam}"
-     xmlns="http://www.w3.org/2000/svg" class="aura-svg"
-     aria-hidden="true" focusable="false"
-     style="display:block;overflow:hidden;width:${tam}px;height:${tam}px">
-  <defs>
-<radialGradient id="fzwcg-veu-${u}" cx="0.5" cy="0.5" r="0.5"><stop offset="0.0" stop-color="#ff0a3c" stop-opacity="0.3"/><stop offset="0.55" stop-color="#7a0f2e" stop-opacity="0.16"/><stop offset="1.0" stop-color="#2b6bff" stop-opacity="0"/></radialGradient>
-<linearGradient id="fzwcg-cunha-${u}" x1="0" y1="1" x2="0" y2="0"><stop offset="0.0" stop-color="#ff0a3c" stop-opacity="0"/><stop offset="0.55" stop-color="#ff0a3c" stop-opacity="0.9"/><stop offset="1.0" stop-color="#fff" stop-opacity="0.95"/></linearGradient>
-<linearGradient id="fzwcg-tinta-${u}" x1="0" y1="0" x2="1" y2="0"><stop offset="0.0" stop-color="#ff0a3c" stop-opacity="1"/><stop offset="0.5" stop-color="#a2185a" stop-opacity="1"/><stop offset="1.0" stop-color="#2b6bff" stop-opacity="1"/></linearGradient>
-<filter id="fzwcg-glow-${u}" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="2.4" result="b"/><feComponentTransfer in="b" result="bb"><feFuncA type="linear" slope="1.1"/></feComponentTransfer><feMerge><feMergeNode in="bb"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-<clipPath id="fzwcg-corte-${u}"><circle cx="150.0" cy="150.0" r="142.0"/></clipPath>
-  </defs>
-  <style>
-
+  const u = 'apenapunidor' + (++Auras._seq);
+  return `<svg class="aura-svg" aria-hidden="true" focusable="false" style="display:block;overflow:hidden;width:${tam}px;height:${tam}px" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="${tam}" height="${tam}" viewBox="0 0 300 300">
+<style>/*<![CDATA[*/
     /* NENHUM aura-girar. E esse keyframe GLOBAL que todas as outras
        auras usam, e foi por herda-lo que a primeira versao desta ficou
        identica a Fenix.
@@ -1200,14 +1190,34 @@ Auras.registrar('pena-punidor', function (tam) {
         { animation: none; }
       .fa-chuva path { opacity: .5; }
     }
-    
-  </style>
-<!-- veu -->
+    /*]]>*/</style>
+<defs>
+<radialGradient cx="150.0" cy="150.0" r="150.0" gradientUnits="userSpaceOnUse" id="${u}_veu">
+<stop offset="0.0" stop-color="#ff0a3c" stop-opacity="0.3" />
+<stop offset="0.55" stop-color="#7a0f2e" stop-opacity="0.16" />
+<stop offset="1.0" stop-color="#2b6bff" stop-opacity="0" />
+</radialGradient>
+<linearGradient x1="0" y1="300" x2="0" y2="0" gradientUnits="userSpaceOnUse" id="${u}_cunha">
+<stop offset="0.0" stop-color="#ff0a3c" stop-opacity="0" />
+<stop offset="0.55" stop-color="#ff0a3c" stop-opacity="0.9" />
+<stop offset="1.0" stop-color="#fff" stop-opacity="0.95" />
+</linearGradient>
+<linearGradient x1="0" y1="0" x2="300" y2="0" gradientUnits="userSpaceOnUse" id="${u}_tinta">
+<stop offset="0.0" stop-color="#ff0a3c" stop-opacity="1" />
+<stop offset="0.5" stop-color="#a2185a" stop-opacity="1" />
+<stop offset="1.0" stop-color="#2b6bff" stop-opacity="1" />
+</linearGradient>
+<filter x="-40%" y="-40%" width="180%" height="180%" id="${u}_glow">
+<feGaussianBlur stdDeviation="2.4" result="b"/><feComponentTransfer in="b" result="bb"><feFuncA type="linear" slope="1.1"/></feComponentTransfer><feMerge><feMergeNode in="bb"/><feMergeNode in="SourceGraphic"/></feMerge>
+</filter>
+<clipPath id="${u}_corte">
+<circle cx="150.0" cy="150.0" r="142.0" />
+</clipPath>
+</defs>
 <g class="fa-veu">
-<circle cx="150.0" cy="150.0" r="142.0" fill="url(#fzwcg-veu-${u})"/>
+<circle cx="150.0" cy="150.0" r="142.0" fill="url(#${u}_veu)"/>
 </g>
-<!-- chuva -->
-<g class="fa-chuva" clip-path="url(#fzwcg-corte-${u})">
+<g class="fa-chuva">
 <path d="M 26.00 8.00 L 25.51 9.73 L 25.18 11.47 L 24.97 13.20 L 24.90 14.95 L 24.97 16.70 L 25.18 18.45 L 25.51 20.22 L 26.00 22.00 L 26.00 22.00 L 26.49 20.22 L 26.82 18.45 L 27.03 16.70 L 27.10 14.95 L 27.03 13.20 L 26.82 11.47 L 26.49 9.73 L 26.00 8.00 Z" fill="#2b6bff" opacity="0" style="animation-duration:2.10s;animation-delay:0.00s"/>
 <path d="M 42.40 8.00 L 42.09 10.60 L 41.88 13.20 L 41.75 15.81 L 41.70 18.42 L 41.75 21.05 L 41.88 23.68 L 42.09 26.33 L 42.40 29.00 L 42.40 29.00 L 42.71 26.33 L 42.92 23.68 L 43.05 21.05 L 43.10 18.42 L 43.05 15.81 L 42.92 13.20 L 42.71 10.60 L 42.40 8.00 Z" fill="#ff0a3c" opacity="0" style="animation-duration:3.40s;animation-delay:2.90s"/>
 <path d="M 58.80 8.00 L 58.49 11.47 L 58.28 14.93 L 58.15 18.41 L 58.10 21.89 L 58.15 25.39 L 58.28 28.91 L 58.49 32.44 L 58.80 36.00 L 58.80 36.00 L 59.11 32.44 L 59.32 28.91 L 59.45 25.39 L 59.50 21.89 L 59.45 18.41 L 59.32 14.93 L 59.11 11.47 L 58.80 8.00 Z" fill="#ff0a3c" opacity="0" style="animation-duration:3.00s;animation-delay:2.70s"/>
@@ -1227,28 +1237,144 @@ Auras.registrar('pena-punidor', function (tam) {
 <path d="M 40.40 8.00 L 39.91 10.97 L 39.58 13.94 L 39.37 16.92 L 39.30 19.91 L 39.37 22.91 L 39.58 25.92 L 39.91 28.95 L 40.40 32.00 L 40.40 32.00 L 40.89 28.95 L 41.22 25.92 L 41.43 22.91 L 41.50 19.91 L 41.43 16.92 L 41.22 13.94 L 40.89 10.97 L 40.40 8.00 Z" fill="#ff0a3c" opacity="0" style="animation-duration:2.50s;animation-delay:3.00s"/>
 <path d="M 56.80 8.00 L 56.49 11.84 L 56.28 15.68 L 56.15 19.53 L 56.10 23.38 L 56.15 27.26 L 56.28 31.15 L 56.49 35.06 L 56.80 39.00 L 56.80 39.00 L 57.11 35.06 L 57.32 31.15 L 57.45 27.26 L 57.50 23.38 L 57.45 19.53 L 57.32 15.68 L 57.11 11.84 L 56.80 8.00 Z" fill="#ff0a3c" opacity="0" style="animation-duration:2.10s;animation-delay:2.80s"/>
 </g>
-<!-- selo -->
-<g filter="url(#fzwcg-glow-${u})">
+<g>
 <circle class="fa-selo" cx="150.0" cy="150.0" r="132.0" fill="none" stroke="#ff0a3c" stroke-width="1.60" stroke-dasharray="2.0 10.0" stroke-linecap="round" opacity="0.6" style="animation-delay:0.0s"/>
 <circle class="fa-selo" cx="150.0" cy="150.0" r="116.0" fill="none" stroke="#2b6bff" stroke-width="1.10" stroke-dasharray="1.0 14.0" stroke-linecap="round" opacity="0.45" style="animation-delay:0.35s"/>
 <circle class="fa-selo" cx="150.0" cy="150.0" r="100.0" fill="none" stroke="#ff0a3c" stroke-width="2.20" stroke-dasharray="26.0 220.0" stroke-linecap="round" opacity="0.75" style="animation-delay:0.7s"/>
 </g>
-<!-- carimbo -->
-<g filter="url(#fzwcg-glow-${u})">
-<path class="fa-cunha" d="M 150.00 28.00 L 146.78 31.33 L 145.20 34.70 L 143.97 38.12 L 142.95 41.55 L 142.07 45.00 L 141.29 48.45 L 140.61 51.88 L 139.99 55.30 L 139.44 58.67 L 138.95 62.00 L 161.05 62.00 L 160.56 58.67 L 160.01 55.30 L 159.39 51.88 L 158.71 48.45 L 157.93 45.00 L 157.05 41.55 L 156.03 38.12 L 154.80 34.70 L 153.22 31.33 L 150.00 28.00 Z" fill="url(#fzwcg-cunha-${u})" opacity=".85" transform="rotate(0 150.0 150.0)" style="animation-delay:0.00s"/>
-<path class="fa-cunha" d="M 150.00 28.00 L 146.78 31.33 L 145.20 34.70 L 143.97 38.12 L 142.95 41.55 L 142.07 45.00 L 141.29 48.45 L 140.61 51.88 L 139.99 55.30 L 139.44 58.67 L 138.95 62.00 L 161.05 62.00 L 160.56 58.67 L 160.01 55.30 L 159.39 51.88 L 158.71 48.45 L 157.93 45.00 L 157.05 41.55 L 156.03 38.12 L 154.80 34.70 L 153.22 31.33 L 150.00 28.00 Z" fill="url(#fzwcg-cunha-${u})" opacity=".85" transform="rotate(90 150.0 150.0)" style="animation-delay:0.18s"/>
-<path class="fa-cunha" d="M 150.00 28.00 L 146.78 31.33 L 145.20 34.70 L 143.97 38.12 L 142.95 41.55 L 142.07 45.00 L 141.29 48.45 L 140.61 51.88 L 139.99 55.30 L 139.44 58.67 L 138.95 62.00 L 161.05 62.00 L 160.56 58.67 L 160.01 55.30 L 159.39 51.88 L 158.71 48.45 L 157.93 45.00 L 157.05 41.55 L 156.03 38.12 L 154.80 34.70 L 153.22 31.33 L 150.00 28.00 Z" fill="url(#fzwcg-cunha-${u})" opacity=".85" transform="rotate(180 150.0 150.0)" style="animation-delay:0.36s"/>
-<path class="fa-cunha" d="M 150.00 28.00 L 146.78 31.33 L 145.20 34.70 L 143.97 38.12 L 142.95 41.55 L 142.07 45.00 L 141.29 48.45 L 140.61 51.88 L 139.99 55.30 L 139.44 58.67 L 138.95 62.00 L 161.05 62.00 L 160.56 58.67 L 160.01 55.30 L 159.39 51.88 L 158.71 48.45 L 157.93 45.00 L 157.05 41.55 L 156.03 38.12 L 154.80 34.70 L 153.22 31.33 L 150.00 28.00 Z" fill="url(#fzwcg-cunha-${u})" opacity=".85" transform="rotate(270 150.0 150.0)" style="animation-delay:0.54s"/>
+<g>
+<path class="fa-cunha" d="M 150.00 28.00 L 146.78 31.33 L 145.20 34.70 L 143.97 38.12 L 142.95 41.55 L 142.07 45.00 L 141.29 48.45 L 140.61 51.88 L 139.99 55.30 L 139.44 58.67 L 138.95 62.00 L 161.05 62.00 L 160.56 58.67 L 160.01 55.30 L 159.39 51.88 L 158.71 48.45 L 157.93 45.00 L 157.05 41.55 L 156.03 38.12 L 154.80 34.70 L 153.22 31.33 L 150.00 28.00 Z" fill="url(#${u}_cunha)" opacity=".85" transform="rotate(0 150.0 150.0)" style="animation-delay:0.00s"/>
+<path class="fa-cunha" d="M 150.00 28.00 L 146.78 31.33 L 145.20 34.70 L 143.97 38.12 L 142.95 41.55 L 142.07 45.00 L 141.29 48.45 L 140.61 51.88 L 139.99 55.30 L 139.44 58.67 L 138.95 62.00 L 161.05 62.00 L 160.56 58.67 L 160.01 55.30 L 159.39 51.88 L 158.71 48.45 L 157.93 45.00 L 157.05 41.55 L 156.03 38.12 L 154.80 34.70 L 153.22 31.33 L 150.00 28.00 Z" fill="url(#${u}_cunha)" opacity=".85" transform="rotate(90 150.0 150.0)" style="animation-delay:0.18s"/>
+<path class="fa-cunha" d="M 150.00 28.00 L 146.78 31.33 L 145.20 34.70 L 143.97 38.12 L 142.95 41.55 L 142.07 45.00 L 141.29 48.45 L 140.61 51.88 L 139.99 55.30 L 139.44 58.67 L 138.95 62.00 L 161.05 62.00 L 160.56 58.67 L 160.01 55.30 L 159.39 51.88 L 158.71 48.45 L 157.93 45.00 L 157.05 41.55 L 156.03 38.12 L 154.80 34.70 L 153.22 31.33 L 150.00 28.00 Z" fill="url(#${u}_cunha)" opacity=".85" transform="rotate(180 150.0 150.0)" style="animation-delay:0.36s"/>
+<path class="fa-cunha" d="M 150.00 28.00 L 146.78 31.33 L 145.20 34.70 L 143.97 38.12 L 142.95 41.55 L 142.07 45.00 L 141.29 48.45 L 140.61 51.88 L 139.99 55.30 L 139.44 58.67 L 138.95 62.00 L 161.05 62.00 L 160.56 58.67 L 160.01 55.30 L 159.39 51.88 L 158.71 48.45 L 157.93 45.00 L 157.05 41.55 L 156.03 38.12 L 154.80 34.70 L 153.22 31.33 L 150.00 28.00 Z" fill="url(#${u}_cunha)" opacity=".85" transform="rotate(270 150.0 150.0)" style="animation-delay:0.54s"/>
 </g>
-<!-- assinatura -->
 <g class="fa-assina">
-<path d="M 64.00 236.00 L 66.68 239.12 L 69.89 241.46 L 73.29 243.54 L 76.84 245.41 L 80.51 247.11 L 84.28 248.63 L 88.15 249.99 L 92.11 251.19 L 96.14 252.24 L 100.24 253.14 L 104.40 253.90 L 108.62 254.52 L 112.89 255.01 L 117.20 255.36 L 121.56 255.57 L 125.95 255.67 L 130.37 255.63 L 134.81 255.48 L 139.28 255.20 L 143.77 254.81 L 148.28 254.31 L 152.79 253.69 L 157.31 252.97 L 161.84 252.14 L 166.37 251.20 L 170.89 250.17 L 175.41 249.03 L 179.92 247.80 L 184.41 246.47 L 188.89 245.04 L 193.35 243.53 L 197.78 241.92 L 202.19 240.23 L 206.57 238.45 L 210.92 236.59 L 215.23 234.64 L 219.49 232.61 L 223.72 230.50 L 227.89 228.30 L 232.00 226.00 L 232.00 226.00 L 227.71 227.92 L 223.39 229.77 L 219.04 231.56 L 214.66 233.26 L 210.26 234.89 L 205.83 236.44 L 201.38 237.90 L 196.92 239.29 L 192.44 240.59 L 187.96 241.80 L 183.47 242.93 L 178.97 243.97 L 174.48 244.92 L 169.99 245.78 L 165.51 246.56 L 161.04 247.24 L 156.58 247.84 L 152.15 248.34 L 147.73 248.75 L 143.33 249.07 L 138.97 249.29 L 134.63 249.42 L 130.33 249.45 L 126.06 249.39 L 121.83 249.24 L 117.64 248.98 L 113.50 248.64 L 109.41 248.19 L 105.36 247.65 L 101.37 247.01 L 97.42 246.28 L 93.53 245.45 L 89.70 244.53 L 85.92 243.51 L 82.20 242.39 L 78.52 241.19 L 74.90 239.90 L 71.32 238.54 L 67.75 237.13 L 64.00 236.00 Z" fill="url(#fzwcg-tinta-${u})" opacity=".9"/>
+<path d="M 64.00 236.00 L 66.68 239.12 L 69.89 241.46 L 73.29 243.54 L 76.84 245.41 L 80.51 247.11 L 84.28 248.63 L 88.15 249.99 L 92.11 251.19 L 96.14 252.24 L 100.24 253.14 L 104.40 253.90 L 108.62 254.52 L 112.89 255.01 L 117.20 255.36 L 121.56 255.57 L 125.95 255.67 L 130.37 255.63 L 134.81 255.48 L 139.28 255.20 L 143.77 254.81 L 148.28 254.31 L 152.79 253.69 L 157.31 252.97 L 161.84 252.14 L 166.37 251.20 L 170.89 250.17 L 175.41 249.03 L 179.92 247.80 L 184.41 246.47 L 188.89 245.04 L 193.35 243.53 L 197.78 241.92 L 202.19 240.23 L 206.57 238.45 L 210.92 236.59 L 215.23 234.64 L 219.49 232.61 L 223.72 230.50 L 227.89 228.30 L 232.00 226.00 L 232.00 226.00 L 227.71 227.92 L 223.39 229.77 L 219.04 231.56 L 214.66 233.26 L 210.26 234.89 L 205.83 236.44 L 201.38 237.90 L 196.92 239.29 L 192.44 240.59 L 187.96 241.80 L 183.47 242.93 L 178.97 243.97 L 174.48 244.92 L 169.99 245.78 L 165.51 246.56 L 161.04 247.24 L 156.58 247.84 L 152.15 248.34 L 147.73 248.75 L 143.33 249.07 L 138.97 249.29 L 134.63 249.42 L 130.33 249.45 L 126.06 249.39 L 121.83 249.24 L 117.64 248.98 L 113.50 248.64 L 109.41 248.19 L 105.36 247.65 L 101.37 247.01 L 97.42 246.28 L 93.53 245.45 L 89.70 244.53 L 85.92 243.51 L 82.20 242.39 L 78.52 241.19 L 74.90 239.90 L 71.32 238.54 L 67.75 237.13 L 64.00 236.00 Z" fill="url(#${u}_tinta)" opacity=".9"/>
 </g>
-
 </svg>`;
 });
 
 /* FORJA:FIM pena-punidor */
+
+/* FORJA:INICIO fenix-v3 */
+/* ══════════════════════════════════════════════════════════════
+   Fênix V3 (Supernova) — aura
+   GERADO por motors/forja com drawsvg + Jinja2. Não edite à mão.
+   Fonte: motors/forja/pecas/fenix_v3.py
+   ══════════════════════════════════════════════════════════════ */
+Auras.registrar('fenix-v3', function (tam) {
+  const u = 'afenixv3' + (++Auras._seq);
+  return `<svg class="aura-svg" aria-hidden="true" focusable="false" style="display:block;overflow:hidden;width:${tam}px;height:${tam}px" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="${tam}" height="${tam}" viewBox="0 0 300 300">
+<style>/*<![CDATA[*/
+    .fa3-veu { animation: fa3-respirar 4s ease-in-out infinite; transform-origin: 150.0px 150.0px; }
+    @keyframes fa3-respirar {
+        0%, 100% { opacity: .6; transform: scale(1); }
+        50% { opacity: 1; transform: scale(1.03); }
+    }
+    
+    .fa3-onda {
+        transform-origin: 150.0px 150.0px;
+        animation: fa3-expandir 2.4s cubic-bezier(.1,.6,.3,1) infinite;
+    }
+    @keyframes fa3-expandir {
+        0% { transform: scale(0); opacity: 1; }
+        100% { transform: scale(1.1); opacity: 0; }
+    }
+    
+    .fa3-girar-fogo {
+        transform-origin: 150.0px 150.0px;
+        animation: fa3-spin 30s linear infinite;
+    }
+    @keyframes fa3-spin { 100% { transform: rotate(360deg); } }
+    
+    .fa3-erupcao { animation: fa3-explode 2s ease-in-out infinite alternate; }
+    @keyframes fa3-explode {
+        0% { opacity: 0.2; transform: scaleY(0.8); }
+        100% { opacity: 0.8; transform: scaleY(1.2); }
+    }
+    
+    .fa3-brasas circle {
+        animation-name: fa3-flutuar;
+        animation-timing-function: cubic-bezier(.4,0,.2,1);
+        animation-iteration-count: infinite;
+    }
+    @keyframes fa3-flutuar {
+        0%   { transform: scale(0.1) translateY(0); opacity: 0; }
+        20%  { opacity: 1; }
+        100% { transform: scale(1.5) translateY(-60px); opacity: 0; }
+    }
+    
+    @media (prefers-reduced-motion: reduce) {
+        .fa3-veu, .fa3-onda, .fa3-girar-fogo, .fa3-erupcao, .fa3-brasas circle { animation: none; }
+    }
+    /*]]>*/</style>
+<defs>
+<radialGradient cx="150.0" cy="150.0" r="150.0" gradientUnits="userSpaceOnUse" id="${u}_fogo">
+<stop offset="0.0" stop-color="#ffb703" stop-opacity="0.35" />
+<stop offset="0.4" stop-color="#fb8500" stop-opacity="0.15" />
+<stop offset="1.0" stop-color="#6a040f" stop-opacity="0" />
+</radialGradient>
+<filter x="-40%" y="-40%" width="180%" height="180%" id="${u}_glow">
+<feGaussianBlur stdDeviation="4.0" result="b"/><feComponentTransfer in="b" result="bb"><feFuncA type="linear" slope="1.2"/></feComponentTransfer><feMerge><feMergeNode in="bb"/><feMergeNode in="SourceGraphic"/></feMerge>
+</filter>
+<clipPath id="${u}_corte">
+<circle cx="150.0" cy="150.0" r="145.0" />
+</clipPath>
+</defs>
+<g class="fa3-veu">
+<circle cx="150.0" cy="150.0" r="145.0" fill="url(#${u}_fogo)"/>
+</g>
+<g>
+<circle class="fa3-onda" cx="150.0" cy="150.0" r="140.0" fill="none" stroke="#ffb703" stroke-width="2.50" stroke-dasharray="5.0 10.0" stroke-linecap="round" opacity="0.8" style="animation-delay:0.0s"/>
+<circle class="fa3-onda" cx="150.0" cy="150.0" r="140.0" fill="none" stroke="#fb8500" stroke-width="1.50" stroke-dasharray="10.0 20.0" stroke-linecap="round" opacity="0.6" style="animation-delay:0.8s"/>
+<circle class="fa3-onda" cx="150.0" cy="150.0" r="140.0" fill="none" stroke="#d00000" stroke-width="3.00" stroke-dasharray="none" stroke-linecap="round" opacity="0.4" style="animation-delay:1.6s"/>
+</g>
+<g class="fa3-girar-fogo">
+<path class="fa3-erupcao" d="M 193.68 150.32 L 194.84 146.04 L 196.32 141.77 L 198.08 137.49 L 200.10 133.20 L 202.38 128.87 L 204.89 124.54 L 207.61 120.19 L 210.54 115.85 L 213.65 111.53 L 216.92 107.26 L 220.34 103.05 L 223.88 98.93 L 227.53 94.92 L 231.28 91.05 L 235.08 87.34 L 238.94 83.82 L 242.82 80.51 L 246.70 77.45 L 250.56 74.67 L 254.37 72.18 L 258.12 70.02 L 261.78 68.21 L 265.31 66.79 L 268.69 65.79 L 271.89 65.23 L 274.85 65.15 L 274.85 65.15 L 271.88 65.11 L 268.62 65.38 L 265.08 65.96 L 261.28 66.84 L 257.26 68.02 L 253.04 69.50 L 248.65 71.28 L 244.14 73.34 L 239.54 75.69 L 234.88 78.31 L 230.20 81.20 L 225.55 84.36 L 220.96 87.78 L 216.46 91.44 L 212.11 95.35 L 207.93 99.49 L 203.98 103.84 L 200.29 108.41 L 196.91 113.16 L 193.88 118.09 L 191.25 123.17 L 189.05 128.37 L 187.34 133.66 L 186.16 139.00 L 185.54 144.34 L 185.54 149.61 Z" fill="#fb8500" opacity="0.5" transform="rotate(90.0 190.0 150.0)" style="animation-delay:0.00s"/>
+<path class="fa3-erupcao" d="M 188.40 169.78 L 189.00 165.54 L 190.00 161.36 L 191.36 157.18 L 193.06 152.98 L 195.08 148.76 L 197.41 144.50 L 200.01 140.22 L 202.89 135.93 L 206.01 131.65 L 209.34 127.39 L 212.87 123.20 L 216.57 119.08 L 220.41 115.06 L 224.37 111.18 L 228.41 107.45 L 232.50 103.91 L 236.62 100.59 L 240.73 97.52 L 244.81 94.71 L 248.82 92.21 L 252.72 90.04 L 256.50 88.23 L 260.10 86.80 L 263.50 85.79 L 266.64 85.23 L 269.49 85.15 L 269.49 85.15 L 266.64 85.11 L 263.42 85.38 L 259.87 85.96 L 256.01 86.85 L 251.88 88.03 L 247.52 89.52 L 242.97 91.29 L 238.27 93.35 L 233.46 95.69 L 228.59 98.31 L 223.69 101.19 L 218.82 104.34 L 214.02 107.76 L 209.33 111.42 L 204.80 115.33 L 200.48 119.48 L 196.41 123.86 L 192.66 128.47 L 189.26 133.27 L 186.28 138.26 L 183.77 143.42 L 181.78 148.72 L 180.38 154.11 L 179.63 159.55 L 179.57 164.96 L 180.24 170.26 Z" fill="#fb8500" opacity="0.5" transform="rotate(120.0 184.6 170.0)" style="animation-delay:0.20s"/>
+<path class="fa3-erupcao" d="M 174.49 184.11 L 175.00 180.01 L 175.92 175.99 L 177.22 172.00 L 178.88 167.98 L 180.87 163.90 L 183.19 159.77 L 185.81 155.58 L 188.73 151.35 L 191.90 147.11 L 195.32 142.86 L 198.94 138.65 L 202.73 134.50 L 206.68 130.44 L 210.73 126.50 L 214.86 122.71 L 219.03 119.10 L 223.21 115.71 L 227.36 112.55 L 231.44 109.67 L 235.42 107.10 L 239.26 104.87 L 242.91 102.99 L 246.34 101.52 L 249.51 100.47 L 252.37 99.88 L 254.85 99.79 L 254.85 99.79 L 252.36 99.76 L 249.43 100.06 L 246.10 100.68 L 242.41 101.62 L 238.40 102.86 L 234.12 104.41 L 229.62 106.24 L 224.93 108.37 L 220.11 110.77 L 215.19 113.44 L 210.24 116.38 L 205.30 119.57 L 200.42 123.02 L 195.64 126.70 L 191.02 130.63 L 186.61 134.78 L 182.46 139.14 L 178.62 143.72 L 175.16 148.49 L 172.12 153.44 L 169.57 158.55 L 167.57 163.79 L 166.19 169.12 L 165.50 174.49 L 165.54 179.84 L 166.37 185.07 Z" fill="#fb8500" opacity="0.5" transform="rotate(150.0 170.0 184.6)" style="animation-delay:0.40s"/>
+<path class="fa3-erupcao" d="M 153.96 189.82 L 154.61 185.55 L 155.60 181.32 L 156.90 177.12 L 158.48 172.91 L 160.34 168.68 L 162.45 164.43 L 164.82 160.17 L 167.42 155.90 L 170.24 151.64 L 173.27 147.42 L 176.49 143.25 L 179.89 139.15 L 183.45 135.15 L 187.15 131.28 L 190.98 127.56 L 194.90 124.03 L 198.91 120.71 L 202.99 117.62 L 207.10 114.81 L 211.23 112.29 L 215.36 110.10 L 219.45 108.27 L 223.48 106.83 L 227.41 105.80 L 231.22 105.23 L 234.85 105.15 L 234.85 105.15 L 231.21 105.12 L 227.35 105.39 L 223.27 105.98 L 219.00 106.87 L 214.56 108.07 L 209.98 109.57 L 205.30 111.36 L 200.54 113.45 L 195.74 115.82 L 190.93 118.46 L 186.16 121.39 L 181.45 124.57 L 176.86 128.02 L 172.41 131.73 L 168.14 135.67 L 164.11 139.85 L 160.34 144.26 L 156.88 148.87 L 153.78 153.67 L 151.08 158.65 L 148.83 163.78 L 147.07 169.01 L 145.84 174.33 L 145.20 179.67 L 145.18 184.98 L 145.80 190.20 Z" fill="#fb8500" opacity="0.5" transform="rotate(180.0 150.0 190.0)" style="animation-delay:0.60s"/>
+<path class="fa3-erupcao" d="M 134.50 184.21 L 135.05 180.04 L 135.98 175.94 L 137.22 171.86 L 138.78 167.78 L 140.62 163.67 L 142.74 159.51 L 145.13 155.32 L 147.78 151.11 L 150.66 146.88 L 153.77 142.67 L 157.08 138.49 L 160.57 134.37 L 164.22 130.34 L 168.02 126.42 L 171.93 122.66 L 175.93 119.07 L 180.00 115.69 L 184.11 112.55 L 188.23 109.68 L 192.33 107.11 L 196.39 104.87 L 200.38 103.00 L 204.26 101.52 L 207.99 100.47 L 211.54 99.88 L 214.85 99.79 L 214.85 99.79 L 211.53 99.76 L 207.92 100.06 L 204.04 100.68 L 199.92 101.61 L 195.59 102.85 L 191.08 104.40 L 186.43 106.24 L 181.68 108.36 L 176.86 110.77 L 172.02 113.46 L 167.20 116.41 L 162.43 119.63 L 157.76 123.09 L 153.23 126.81 L 148.87 130.75 L 144.75 134.93 L 140.90 139.32 L 137.36 143.91 L 134.19 148.69 L 131.43 153.64 L 129.13 158.73 L 127.35 163.94 L 126.14 169.22 L 125.54 174.54 L 125.60 179.82 L 126.36 184.99 Z" fill="#fb8500" opacity="0.5" transform="rotate(210.0 130.0 184.6)" style="animation-delay:0.80s"/>
+<path class="fa3-erupcao" d="M 119.63 169.48 L 120.05 165.26 L 120.84 161.12 L 121.96 157.01 L 123.39 152.90 L 125.12 148.76 L 127.13 144.60 L 129.42 140.41 L 131.96 136.19 L 134.76 131.97 L 137.78 127.77 L 141.02 123.60 L 144.46 119.50 L 148.08 115.49 L 151.85 111.60 L 155.75 107.86 L 159.77 104.29 L 163.87 100.93 L 168.04 97.81 L 172.24 94.96 L 176.45 92.41 L 180.65 90.19 L 184.80 88.33 L 188.86 86.86 L 192.82 85.82 L 196.62 85.24 L 200.21 85.15 L 200.21 85.15 L 196.61 85.12 L 192.75 85.41 L 188.66 86.01 L 184.35 86.93 L 179.86 88.15 L 175.22 89.68 L 170.47 91.50 L 165.63 93.61 L 160.75 96.00 L 155.87 98.67 L 151.01 101.61 L 146.24 104.82 L 141.57 108.28 L 137.06 112.00 L 132.75 115.95 L 128.67 120.14 L 124.89 124.55 L 121.43 129.16 L 118.35 133.97 L 115.70 138.95 L 113.52 144.08 L 111.88 149.33 L 110.81 154.65 L 110.37 159.99 L 110.60 165.29 L 111.52 170.46 Z" fill="#fb8500" opacity="0.5" transform="rotate(240.0 115.4 170.0)" style="animation-delay:1.00s"/>
+<path class="fa3-erupcao" d="M 114.46 149.53 L 114.97 145.33 L 115.83 141.21 L 117.02 137.12 L 118.50 133.02 L 120.26 128.90 L 122.30 124.75 L 124.60 120.56 L 127.15 116.35 L 129.94 112.14 L 132.95 107.94 L 136.18 103.77 L 139.59 99.66 L 143.17 95.64 L 146.91 91.74 L 150.78 87.99 L 154.75 84.41 L 158.82 81.03 L 162.94 77.90 L 167.10 75.03 L 171.28 72.47 L 175.43 70.23 L 179.54 68.36 L 183.58 66.88 L 187.51 65.83 L 191.28 65.24 L 194.85 65.15 L 194.85 65.15 L 191.27 65.12 L 187.44 65.42 L 183.37 66.03 L 179.10 66.96 L 174.64 68.20 L 170.04 69.74 L 165.32 71.58 L 160.53 73.70 L 155.69 76.11 L 150.84 78.80 L 146.03 81.76 L 141.29 84.97 L 136.66 88.45 L 132.18 92.16 L 127.90 96.12 L 123.85 100.31 L 120.08 104.71 L 116.63 109.31 L 113.55 114.10 L 110.89 119.06 L 108.69 124.16 L 107.01 129.37 L 105.89 134.65 L 105.38 139.96 L 105.52 145.23 L 106.33 150.39 Z" fill="#fb8500" opacity="0.5" transform="rotate(270.0 110.0 150.0)" style="animation-delay:1.20s"/>
+<path class="fa3-erupcao" d="M 119.67 130.06 L 120.65 125.93 L 122.00 121.83 L 123.69 117.73 L 125.70 113.59 L 128.00 109.40 L 130.58 105.16 L 133.43 100.89 L 136.52 96.60 L 139.82 92.30 L 143.31 88.02 L 146.96 83.79 L 150.74 79.64 L 154.63 75.58 L 158.60 71.64 L 162.61 67.87 L 166.63 64.28 L 170.63 60.91 L 174.58 57.78 L 178.45 54.92 L 182.20 52.38 L 185.80 50.16 L 189.21 48.31 L 192.40 46.85 L 195.32 45.82 L 197.95 45.24 L 200.21 45.15 L 200.21 45.15 L 197.93 45.12 L 195.23 45.41 L 192.14 46.02 L 188.68 46.95 L 184.90 48.18 L 180.84 49.71 L 176.55 51.54 L 172.06 53.65 L 167.43 56.03 L 162.69 58.69 L 157.89 61.61 L 153.07 64.79 L 148.29 68.22 L 143.59 71.89 L 139.01 75.80 L 134.61 79.92 L 130.43 84.27 L 126.53 88.81 L 122.94 93.55 L 119.73 98.46 L 116.96 103.53 L 114.66 108.72 L 112.92 114.01 L 111.77 119.35 L 111.28 124.69 L 111.50 129.95 Z" fill="#fb8500" opacity="0.5" transform="rotate(300.0 115.4 130.0)" style="animation-delay:1.40s"/>
+<path class="fa3-erupcao" d="M 133.46 114.99 L 133.82 110.71 L 134.61 106.49 L 135.80 102.28 L 137.35 98.07 L 139.24 93.83 L 141.46 89.56 L 143.99 85.28 L 146.81 80.99 L 149.89 76.71 L 153.21 72.46 L 156.75 68.28 L 160.47 64.17 L 164.35 60.17 L 168.36 56.30 L 172.47 52.60 L 176.64 49.09 L 180.85 45.79 L 185.07 42.74 L 189.26 39.96 L 193.39 37.48 L 197.42 35.33 L 201.32 33.54 L 205.05 32.13 L 208.58 31.14 L 211.87 30.58 L 214.85 30.51 L 214.85 30.51 L 211.86 30.47 L 208.51 30.73 L 204.83 31.29 L 200.84 32.16 L 196.59 33.32 L 192.12 34.77 L 187.45 36.52 L 182.64 38.55 L 177.73 40.86 L 172.77 43.45 L 167.79 46.32 L 162.84 49.45 L 157.97 52.85 L 153.23 56.51 L 148.66 60.42 L 144.32 64.58 L 140.25 68.98 L 136.51 73.61 L 133.16 78.46 L 130.24 83.51 L 127.82 88.73 L 125.96 94.10 L 124.73 99.56 L 124.18 105.06 L 124.37 110.53 L 125.33 115.86 Z" fill="#fb8500" opacity="0.5" transform="rotate(330.0 130.0 115.4)" style="animation-delay:1.60s"/>
+<path class="fa3-erupcao" d="M 153.59 110.48 L 154.92 106.15 L 156.51 101.83 L 158.33 97.49 L 160.38 93.14 L 162.64 88.77 L 165.08 84.40 L 167.72 80.03 L 170.52 75.68 L 173.48 71.36 L 176.59 67.09 L 179.83 62.89 L 183.19 58.79 L 186.66 54.79 L 190.23 50.94 L 193.87 47.25 L 197.59 43.74 L 201.36 40.46 L 205.17 37.41 L 209.01 34.64 L 212.85 32.16 L 216.67 30.00 L 220.47 28.20 L 224.22 26.79 L 227.88 25.78 L 231.44 25.23 L 234.85 25.15 L 234.85 25.15 L 231.43 25.11 L 227.81 25.38 L 224.00 25.95 L 219.99 26.82 L 215.83 28.00 L 211.52 29.48 L 207.10 31.25 L 202.60 33.31 L 198.04 35.66 L 193.46 38.29 L 188.89 41.20 L 184.37 44.37 L 179.92 47.80 L 175.59 51.48 L 171.41 55.40 L 167.41 59.54 L 163.63 63.91 L 160.11 68.47 L 156.88 73.22 L 153.98 78.13 L 151.45 83.19 L 149.31 88.35 L 147.62 93.60 L 146.40 98.88 L 145.68 104.17 L 145.49 109.40 Z" fill="#fb8500" opacity="0.5" transform="rotate(360.0 150.0 110.0)" style="animation-delay:1.80s"/>
+<path class="fa3-erupcao" d="M 174.23 115.50 L 175.27 111.32 L 176.64 107.17 L 178.32 103.01 L 180.29 98.83 L 182.52 94.60 L 185.01 90.35 L 187.74 86.06 L 190.68 81.77 L 193.83 77.47 L 197.16 73.21 L 200.64 68.99 L 204.26 64.85 L 207.99 60.81 L 211.81 56.90 L 215.70 53.14 L 219.62 49.57 L 223.56 46.21 L 227.48 43.10 L 231.36 40.26 L 235.17 37.72 L 238.89 35.51 L 242.47 33.66 L 245.90 32.21 L 249.13 31.17 L 252.13 30.59 L 254.85 30.51 L 254.85 30.51 L 252.12 30.48 L 249.05 30.77 L 245.66 31.37 L 241.97 32.29 L 238.01 33.51 L 233.84 35.04 L 229.47 36.86 L 224.95 38.97 L 220.33 41.35 L 215.63 44.02 L 210.91 46.94 L 206.19 50.13 L 201.53 53.56 L 196.96 57.24 L 192.53 61.16 L 188.29 65.30 L 184.27 69.65 L 180.52 74.21 L 177.09 78.95 L 174.03 83.86 L 171.38 88.92 L 169.19 94.10 L 167.52 99.37 L 166.41 104.68 L 165.91 109.99 L 166.07 115.23 Z" fill="#fb8500" opacity="0.5" transform="rotate(390.0 170.0 115.4)" style="animation-delay:2.00s"/>
+<path class="fa3-erupcao" d="M 188.86 130.25 L 189.97 125.97 L 191.32 121.72 L 192.90 117.47 L 194.70 113.21 L 196.71 108.93 L 198.91 104.65 L 201.29 100.36 L 203.86 96.07 L 206.59 91.80 L 209.49 87.57 L 212.55 83.40 L 215.75 79.30 L 219.09 75.30 L 222.56 71.43 L 226.15 67.71 L 229.84 64.17 L 233.63 60.83 L 237.51 57.74 L 241.45 54.91 L 245.46 52.37 L 249.50 50.16 L 253.56 48.31 L 257.62 46.85 L 261.65 45.82 L 265.62 45.23 L 269.49 45.15 L 269.49 45.15 L 265.61 45.12 L 261.58 45.41 L 257.41 46.01 L 253.11 46.92 L 248.69 48.14 L 244.19 49.66 L 239.61 51.49 L 235.00 53.60 L 230.37 56.00 L 225.76 58.69 L 221.19 61.64 L 216.70 64.86 L 212.33 68.33 L 208.09 72.05 L 204.03 76.01 L 200.19 80.19 L 196.58 84.57 L 193.25 89.15 L 190.24 93.90 L 187.57 98.81 L 185.28 103.84 L 183.41 108.98 L 181.99 114.18 L 181.04 119.41 L 180.61 124.62 L 180.71 129.77 Z" fill="#fb8500" opacity="0.5" transform="rotate(420.0 184.6 130.0)" style="animation-delay:2.20s"/>
+</g>
+<g class="fa3-brasas">
+<circle cx="125.5" cy="40.2" r="2.4" fill="#ffb703" opacity="0.68" style="animation-delay:0.57s;animation-duration:2.71s"/>
+<circle cx="75.9" cy="86.6" r="2.2" fill="#ffb703" opacity="0.92" style="animation-delay:1.58s;animation-duration:4.95s"/>
+<circle cx="167.4" cy="223.1" r="3.8" fill="#ffb703" opacity="0.66" style="animation-delay:0.24s;animation-duration:3.36s"/>
+<circle cx="122.9" cy="112.8" r="2.9" fill="#ffb703" opacity="0.93" style="animation-delay:0.95s;animation-duration:4.38s"/>
+<circle cx="197.6" cy="234.9" r="2.8" fill="#ffb703" opacity="0.51" style="animation-delay:3.55s;animation-duration:4.5s"/>
+<circle cx="109.0" cy="255.6" r="3.0" fill="#ffb703" opacity="0.94" style="animation-delay:1.55s;animation-duration:3.14s"/>
+<circle cx="99.7" cy="110.1" r="1.6" fill="#ffb703" opacity="0.82" style="animation-delay:3.87s;animation-duration:3.62s"/>
+<circle cx="188.4" cy="203.6" r="4.0" fill="#ffb703" opacity="0.86" style="animation-delay:3.95s;animation-duration:4.03s"/>
+<circle cx="52.8" cy="153.7" r="2.7" fill="#ffb703" opacity="0.55" style="animation-delay:3.4s;animation-duration:3.76s"/>
+<circle cx="121.9" cy="110.9" r="3.8" fill="#ffb703" opacity="0.39" style="animation-delay:2.83s;animation-duration:4.78s"/>
+<circle cx="92.8" cy="70.5" r="2.2" fill="#ffb703" opacity="0.93" style="animation-delay:3.89s;animation-duration:4.83s"/>
+<circle cx="102.9" cy="212.1" r="2.3" fill="#ffb703" opacity="0.91" style="animation-delay:1.09s;animation-duration:4.5s"/>
+<circle cx="133.0" cy="122.8" r="1.9" fill="#ffb703" opacity="0.42" style="animation-delay:3.98s;animation-duration:4.58s"/>
+<circle cx="158.5" cy="266.5" r="3.5" fill="#ffb703" opacity="0.5" style="animation-delay:1.78s;animation-duration:3.09s"/>
+<circle cx="198.7" cy="218.9" r="3.1" fill="#ffb703" opacity="0.66" style="animation-delay:3.61s;animation-duration:2.98s"/>
+<circle cx="127.7" cy="265.9" r="3.9" fill="#ffb703" opacity="0.48" style="animation-delay:1.79s;animation-duration:4.56s"/>
+<circle cx="112.6" cy="209.8" r="1.6" fill="#ffb703" opacity="0.78" style="animation-delay:2.01s;animation-duration:5.04s"/>
+<circle cx="67.0" cy="143.1" r="2.3" fill="#ffb703" opacity="0.48" style="animation-delay:0.91s;animation-duration:3.82s"/>
+<circle cx="52.3" cy="93.0" r="3.4" fill="#ffb703" opacity="0.93" style="animation-delay:2.78s;animation-duration:3.54s"/>
+<circle cx="224.0" cy="68.0" r="3.0" fill="#ffb703" opacity="0.79" style="animation-delay:3.67s;animation-duration:4.51s"/>
+<circle cx="204.5" cy="58.6" r="3.2" fill="#ffb703" opacity="0.7" style="animation-delay:2.78s;animation-duration:3.71s"/>
+<circle cx="135.8" cy="43.6" r="3.2" fill="#ffb703" opacity="0.4" style="animation-delay:1.95s;animation-duration:2.69s"/>
+<circle cx="169.5" cy="201.4" r="2.9" fill="#ffb703" opacity="0.49" style="animation-delay:1.65s;animation-duration:3.43s"/>
+<circle cx="152.3" cy="69.9" r="2.9" fill="#ffb703" opacity="0.46" style="animation-delay:1.9s;animation-duration:3.41s"/>
+<circle cx="61.4" cy="81.5" r="1.8" fill="#ffb703" opacity="0.6" style="animation-delay:0.35s;animation-duration:3.95s"/>
+</g>
+</svg>`;
+});
+
+/* FORJA:FIM fenix-v3 */
 
 window.Auras = Auras;
 
