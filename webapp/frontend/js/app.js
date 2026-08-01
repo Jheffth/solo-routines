@@ -196,7 +196,7 @@ const App = {
         case 'perfil':    await Perfil.carregar();    break;
         case 'rotinas':   await Rotinas.carregar();   break;
         case 'tarefas':   await Tarefas.carregar();   break;
-      case 'pacto':     await Pacto.carregar();     break;
+        case 'pacto':     await Pacto.carregar();     break;
         case 'dungeons':  await Dungeons.carregar();  break;
         case 'loja':      await Loja.carregar();      break;
         case 'materiais': await Materiais.carregar(); break;
@@ -259,6 +259,18 @@ const App = {
       case 'dashboard': await Dashboard.carregar(); break;
       case 'rotinas':   await Rotinas.carregar();   break;
       case 'tarefas':   await Tarefas.carregar();   break;
+      // O PACTO FALTAVA AQUI, e so aqui.
+      //
+      // Ele estava em `atualizarPaginaAtual()` — a funcao de REFRESH — e
+      // nao neste switch, que e o de NAVEGACAO. O efeito: clicar na aba
+      // mostrava a pagina e nunca pedia os dados. O pacto era criado,
+      // salvo e devolvido pelo `GET /pactos` sem que ninguem perguntasse,
+      // entao a tela ficava vazia e parecia que a criacao tinha falhado.
+      //
+      // Sao dois switches sobre a mesma lista de paginas, e por isso o
+      // teste `teste_navegacao_paginas.js` passou a compara-los: uma
+      // pagina nova entra num e esquece o outro sem quebrar nada.
+      case 'pacto':     await Pacto.carregar();     break;
       case 'dungeons':  await Dungeons.carregar();  break;
       case 'loja':      await Loja.carregar();      break;
       case 'perfil':    await Perfil.carregar();    break;
