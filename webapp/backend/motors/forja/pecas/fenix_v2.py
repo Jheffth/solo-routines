@@ -101,29 +101,36 @@ def insignia(vb: int = 300) -> Composicao:
     # ERGUIDAS. -142 e -38 graus apontam para cima e para fora; a
     # horizontal (-180/0) dava planador.
     asas = c.camada("asas", z=2)
-    # AS ASAS DESCEM PARA O OMBRO. Ancoradas onde `corpo_ave` as devolve,
-    # elas nasciam na altura do pescoco e cobriam a cabeca — a ave ficava
-    # sem rosto. O deslocamento para baixo abre o espaco que a referencia
-    # tem: cabeca livre acima da linha das asas.
-    ombro = 22 * k
-    # O V DA REFERENCIA. -148/-32 pareciam bem verticais no codigo e
-    # renderizaram quase horizontais: `abertura` nao e a pegada real do
-    # leque — 40 graus pedidos viram ~80 na tela (esta no docstring de
-    # `asa`). Entao a direcao precisa ser MAIS vertical do que a
-    # intuicao pede, e a abertura menor.
-    for ancora0, direcao, sinal in ((corpo["ancora_asa_esq"], -126, -1),
-                                    (corpo["ancora_asa_dir"], -54, +1)):
-        ancora = (ancora0[0], ancora0[1] + ombro)
-        # cobertas: curtas, por baixo, dando espessura ao ombro
-        for d in PL.asa(ancora, direcao, 66 * k, sem, n=14,
-                        abertura=sinal * 40.0, curvatura=0.50,
-                        escalonamento=0.26, largura_pena=9.0 * k):
-            asas.add(f'<path d="{d}" fill="url(#{g_pena_i})" opacity=".85"/>')
-        # rêmiges: longas, por cima
-        for d in PL.asa(ancora, direcao, 124 * k, sem, n=24,
-                        abertura=sinal * 30.0, curvatura=0.70,
-                        escalonamento=0.30, largura_pena=11.5 * k):
-            asas.add(f'<path d="{d}" fill="url(#{g_pena})"/>')
+    # ESPELHO EXATO, e nao duas asas geradas.
+    #
+    # A primeira versao chamava `PL.asa` duas vezes com a MESMA Semente.
+    # Como o RNG avanca a cada chamada, a segunda asa recebia numeros
+    # diferentes: 97 elementos de um lado, 94 do outro, formas distintas.
+    # Numa ilustracao isso passa por naturalidade; num EMBLEMA le como
+    # defeito, e foi a primeira coisa que o Arquiteto viu.
+    #
+    # Agora a asa e desenhada UMA vez e o outro lado e a mesma geometria
+    # refletida por transform. Simetria perfeita por construcao, nao por
+    # ajuste — e metade do ruido visual, porque os dois lados repetem o
+    # mesmo desenho em vez de brigarem.
+    ancora_e = (corpo["ancora_asa_esq"][0], corpo["ancora_asa_esq"][1] + 22 * k)
+    cobertas = PL.asa(ancora_e, -126, 66 * k, sem, n=14,
+                      abertura=-40.0, curvatura=0.50,
+                      escalonamento=0.26, largura_pena=9.0 * k)
+    remiges = PL.asa(ancora_e, -126, 124 * k, sem, n=24,
+                     abertura=-30.0, curvatura=0.70,
+                     escalonamento=0.30, largura_pena=11.5 * k)
+
+    def _asa_svg(gid_int, gid_ext):
+        partes = [f'<path d="{d}" fill="url(#{gid_int})" opacity=".85"/>'
+                  for d in cobertas]
+        partes += [f'<path d="{d}" fill="url(#{gid_ext})"/>' for d in remiges]
+        return "\n".join(partes)
+
+    corpo_asa = _asa_svg(g_pena_i, g_pena)
+    asas.add(f'<g>{corpo_asa}</g>')
+    # O reflexo: espelha em x e recoloca sobre o eixo do selo.
+    asas.add(f'<g transform="translate({vb} 0) scale(-1 1)">{corpo_asa}</g>')
 
     # ── a cauda, escorrendo ──────────────────────────────────────────
     cauda = c.camada("cauda", z=3, opacidade=.9)
