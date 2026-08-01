@@ -1174,7 +1174,9 @@ const MissaoCard = {
       <div class="mc-fio"></div>
       ${repet ? this._contagem(m, chave) : (passiva ? this._vigilia(m, chave) : '')}
       ${penit ? `<div class="mc-giroflex" aria-hidden="true">
-        <i class="mc-giro-r"></i><i class="mc-giro-b"></i></div>` : ''}
+        <i class="mc-giro-r"></i><i class="mc-giro-b"></i></div>
+        ${['CONCLUIDA', 'CANCELADA', 'CONFESSADA'].includes(status) ? ''
+          : '<div class="mc-giro-varredura" aria-hidden="true"></div>'}` : ''}
       ${this._corrente(status)}
       ${this._sigilo(cor, m.categoria, !!penit)}
       <div class="mc-corpo">

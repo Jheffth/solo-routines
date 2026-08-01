@@ -487,7 +487,12 @@ console.log('\n-- a ALTURA: o cartao nao pode engordar de novo --');
   const seletores = [...regrasNovas.matchAll(/^(\.[a-z][\w .:>-]*),?\s*\{?\s*$/gm)]
     .map(m => m[1].trim())
     .concat([...regrasNovas.matchAll(/^(\.[a-z][\w .:>-]*)\s*\{/gm)].map(m => m[1].trim()));
-  const proprios = ['.mc-selo-pen', '.mc-pen-conta'];
+  /* Classes que sao da penitencia PELO NOME e so ela emite. Seguem a
+     familia que ja existia — `.mc-giroflex`, `.mc-giro-r`, `.mc-giro-b`
+     tambem sao globais no CSS e exclusivas da penitencia no JS. O que
+     este assert protege e regra que alcance MISSAO COMUM por descuido,
+     nao prefixo. */
+  const proprios = ['.mc-selo-pen', '.mc-pen-conta', '.mc-giro-varredura'];
   const forasteiros = seletores.filter(sel =>
     !sel.includes('.mc-penitencia') && !proprios.some(p => sel.startsWith(p)));
   ok(forasteiros.length === 0,
@@ -503,6 +508,71 @@ console.log('\n-- a ALTURA: o cartao nao pode engordar de novo --');
      'a repeticao NAO ganhou o contador ao lado do botao');
   ok(!!dRep.querySelector('.mc-rep-conta'),
      'ela mantem o contador na linha do topo, como estava aprovado');
+}
+
+console.log('\n-- o giroflex tambem VARRE o interior --');
+/* O Arquiteto: "o giroflex so esta sendo executado nas bordas; dentro
+   do card tambem precisa ter um efeito enquanto ele estiver ativo."
+
+   A causa era estrutural: `.mc-corrente` — a trama que da corpo as
+   missoes em curso — so e emitida quando `status === 'ATIVA'`, e uma
+   penitencia e PENDENTE ate ser quitada. Ela nunca recebeu fundo
+   nenhum: por dentro era um gradiente parado. */
+{
+  const cartao = (st) => {
+    const d = doc.createElement('div');
+    d.innerHTML = MC.html(pen({ status: st, alvo_repeticoes: 5, repeticoes: 0 }));
+    return d.firstElementChild;
+  };
+  const cssB = ler('css', 'missao-card.css');
+
+  ok(!!cartao('PENDENTE').querySelector('.mc-giro-varredura'),
+     'a divida em aberto tem luz varrendo o interior');
+  ok(!!cartao('ATIVA').querySelector('.mc-giro-varredura'),
+     'e quando ativa tambem');
+
+  /* A LAPIDE nao tem luz: divida quitada e coisa vencida. */
+  for (const st of ['CONCLUIDA', 'CANCELADA', 'CONFESSADA']) {
+    ok(!cartao(st).querySelector('.mc-giro-varredura'),
+       `a varredura some em ${st} (a lapide nao pisca)`);
+  }
+
+  /* UMA TRAMA SO. Com status ATIVA a penitencia recebe tambem a
+     `.mc-corrente`; duas tramas em ritmos diferentes no mesmo fundo
+     brigam e o cartao vira ruido. */
+  ok(/\.mc-penitencia \.mc-corrente \{ display: none/.test(cssB),
+     'a corrente de chevrons e suprimida na penitencia (uma trama so)');
+
+  /* UMA ANIMACAO POR ELEMENTO — o comentario da `.mc-corrente` avisa
+     que duas no mesmo elemento se cancelam nesta base de codigo. */
+  const regra = /\.mc-giro-varredura \{([\s\S]*?)\}/.exec(cssB);
+  ok(regra && (regra[1].match(/animation:/g) || []).length === 1,
+     'a varredura tem UMA animacao so');
+  ok(regra && /background-position/.test(
+       /@keyframes mc-giro-varrer \{([\s\S]*?)\}\s*\}/.exec(cssB)?.[1] || ''),
+     'e ela desliza por background-position, como a corrente ja fazia');
+
+  /* O ciclo e o DOBRO do da borda: uma passada mostra vermelho e depois
+     azul, o que corresponde a dois piscares. 1:1 viraria estroboscopio. */
+  ok(regra && /calc\(var\(--giro-ciclo\) \* 2\)/.test(regra[1]),
+     'o ciclo e o dobro do da borda (evita estroboscopio)');
+
+  /* O texto nao pode sumir sob a luz. */
+  ok(/\.mc-penitencia \.mc-corpo,[\s\S]{0,60}z-index: 1/.test(cssB),
+     'o conteudo fica ACIMA da varredura');
+
+  ok(/@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\.mc-giro-varredura \{[\s\S]*?animation: none/.test(cssB),
+     'e quem pediu menos movimento recebe o banho de luz parado');
+
+  /* A missao COMUM nao pode ganhar a varredura — ela ja tem a corrente. */
+  const dn = doc.createElement('div');
+  dn.innerHTML = MC.html({ id: 93, titulo: 'Banho', prioridade: 'BAIXA',
+    dificuldade: 'FACIL', categoria: 'Saude', status: 'ATIVA',
+    xp_recompensa: 5 });
+  ok(!dn.querySelector('.mc-giro-varredura'),
+     'a missao comum NAO ganha a varredura');
+  ok(!!dn.querySelector('.mc-corrente'),
+     'e mantem a sua corrente de chevrons');
 }
 
 console.log(`\n=== ${testes - falhas}/${testes} ===`);

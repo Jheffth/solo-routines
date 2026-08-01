@@ -1983,3 +1983,92 @@
   .mc-penitencia .mc-topo { flex-wrap: wrap; }
   .mc-penitencia .mc-titulo { white-space: normal; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   O GIROFLEX ENTRA NO CARTÃO
+
+   O Arquiteto: "o da penitência tem um excelente efeito de giroflex que
+   só está sendo executado nas bordas. Dentro do card também precisa ter
+   um efeito enquanto ele estiver ativo."
+
+   Ele está certo, e a razão é estrutural: `.mc-corrente` — a trama de
+   chevrons que dá corpo às missões em curso — só é emitida quando
+   `status === 'ATIVA'`. Uma penitência é PENDENTE até ser quitada, então
+   ela nunca recebeu fundo nenhum. Por dentro o cartão era um gradiente
+   parado; toda a vida dele estava na borda.
+
+   O EFEITO É O PRÓPRIO GIROFLEX, não um segundo efeito. Um giroflex de
+   verdade não pisca só na lâmpada: o feixe VARRE as superfícies em
+   volta. Então o que atravessa o cartão é a luz que a borda emite —
+   vermelha, depois azul, no mesmo ritmo.
+
+   UM ELEMENTO, UMA ANIMAÇÃO. O comentário da `.mc-corrente` avisa que
+   duas animações no mesmo elemento se cancelam nesta base de código e
+   que isso já custou uma tarde. Por isso a varredura é UM gradiente
+   largo deslizando por `background-position`, e não duas camadas
+   alternando opacidade.
+
+   O CICLO É O DOBRO do da borda de propósito: uma passada mostra a
+   faixa vermelha e depois a azul, o que corresponde a dois piscares.
+   Sincronizar 1:1 faria a luz atravessar o cartão duas vezes por
+   piscada e viraria estroboscópio.
+   ══════════════════════════════════════════════════════════════ */
+.mc-giro-varredura {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: .55;
+
+  /* Duas faixas de luz separadas por vazio: a vermelha entra, sai, e a
+     azul entra atrás. Larga e macia — feixe difuso numa parede, não
+     listra de scanner. */
+  background-image: linear-gradient(105deg,
+    transparent 0%,
+    color-mix(in srgb, var(--giro-vermelho) 20%, transparent) 12%,
+    color-mix(in srgb, var(--giro-vermelho) 26%, transparent) 18%,
+    transparent 30%,
+    transparent 52%,
+    color-mix(in srgb, var(--giro-azul) 20%, transparent) 64%,
+    color-mix(in srgb, var(--giro-azul) 26%, transparent) 70%,
+    transparent 84%);
+  background-size: 220% 100%;
+  background-repeat: repeat-x;
+  animation: mc-giro-varrer calc(var(--giro-ciclo) * 2) linear infinite;
+}
+@keyframes mc-giro-varrer {
+  from { background-position: 220% 0; }
+  to   { background-position: -220% 0; }
+}
+
+/* UMA TRAMA SÓ NO FUNDO.
+
+   Se a penitência ficar ATIVA ela recebe as DUAS: a `.mc-corrente`
+   (chevrons, emitida para todo status ATIVA) e a varredura. Duas tramas
+   deslizando em ritmos diferentes no mesmo fundo brigam entre si e o
+   cartão vira ruído. A passiva já resolvia isso do mesmo jeito, logo
+   acima neste arquivo — copiei a estrutura, não inventei outra. */
+.mc-penitencia .mc-corrente { display: none; }
+
+/* O conteúdo fica ACIMA da varredura. Sem isto o texto some sob a luz
+   nos instantes em que a faixa passa por cima dele. */
+.mc-penitencia .mc-corpo,
+.mc-penitencia .mc-sigilo { position: relative; z-index: 1; }
+
+/* A LÁPIDE NÃO TEM LUZ. Dívida quitada é coisa vencida — se a
+   varredura continuasse, o cinza pareceria um cartão ainda vivo com o
+   brilho quebrado. */
+.mc-penitencia.st-concluida .mc-giro-varredura,
+.mc-penitencia.st-cancelada .mc-giro-varredura,
+.mc-penitencia.st-confessada .mc-giro-varredura { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  /* Fica o banho de luz parado: o cartão continua bicolor por dentro,
+     sem nada se movendo. */
+  .mc-giro-varredura {
+    animation: none;
+    background-position: 50% 0;
+    opacity: .4;
+  }
+}
