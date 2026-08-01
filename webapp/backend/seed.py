@@ -79,6 +79,8 @@ CONQUISTAS_PRESENTE = [
      "cada traço desta pena é uma sentença inapelável", "✒", "#ff0a3c", 7777, 777),
     ("fenix_v3", "Fênix V3 (Coroa Solar)",
      "Ascensão Absoluta — A entidade paramétrica de fogo geométrico.", "🔥", "#fb8500", 9999, 999),
+    ("lobo_sombrio", "Monarca Lobo Sombrio",
+     "Extraído da Escuridão — Vetorizado pela Forja com perfeição absoluta.", "🐺", "#7c3aed", 8000, 800),
 ]
 
 
@@ -93,6 +95,7 @@ TRANSFERIVEIS = {
     "solo", "jh3ffth", "dominio_forja",
     "diana", "pioneiro", "aliado", "mono_evelynn",
     "nexus-social", "isabella", "fenix_pioneira", "pena_do_punidor", "fenix_v3",
+    "lobo_sombrio",
 }
 
 

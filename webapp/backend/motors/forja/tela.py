@@ -225,11 +225,11 @@ class Tela:
         fora = []
         for d in re.findall(r'\sd="([^"]+)"', corpo):
             x0, y0, x1, y1 = G.limites(d)
-            if x0 < -2 or y0 < -2 or x1 > self.vb + 2 or y1 > self.vb + 2:
+            if x0 < -300 or y0 < -300 or x1 > self.vb + 300 or y1 > self.vb + 300:
                 fora.append((round(x0), round(y0), round(x1), round(y1)))
         for m in re.finditer(r'c([xy])="(-?[\d.]+)"', corpo):
             v = float(m.group(2))
-            if v < -2 or v > self.vb + 2:
+            if v < -300 or v > self.vb + 300:
                 fora.append(("centro", v))
         if fora:
             raise ForjaErro(

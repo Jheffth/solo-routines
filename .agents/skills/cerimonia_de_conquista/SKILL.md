@@ -103,6 +103,23 @@ Uma família visual só — é isso que faz parecer profissional.
 
 ---
 
+## 3.1. Artes Complexas geradas por IA (DALL-E, Midjourney)
+
+**Nunca passe artes raster ricas (com texturas, gradientes e muitos detalhes) pelo `vtracer`.** O motor vai estilhaçar a imagem em centenas de paths triangulares serrilhados, quebrando a estética e criando artefatos nos limites do viewBox.
+
+**A Abordagem Definitiva (O Método Base64):**
+Quando o usuário fornecer uma arte complexa para uma insígnia:
+1. Recorte o conteúdo principal para remover bordas indesejadas geradas pela IA.
+2. Escreva um script Python (ex: `preparar_imagem_png.py` que usamos no Lobo Sombrio) para remover o fundo preto usando threshold de luminosidade (preservando o anti-aliasing com transparência alfa gradual) e encodar em Base64.
+3. Garanta que o Base64 resultante **não possua crases (\`)**, pois isso quebra os template literals de JavaScript.
+4. Na peça `.py` da Forja, embuta a imagem como um nó `<image>` simples:
+   ```python
+   main.add(f'<image href="data:image/png;base64,{B64_DATA}" x="..." y="..." width="..." height="..." preserveAspectRatio="xMidYMid meet" />')
+   ```
+5. Escale a imagem preenchendo a maior parte da viewBox (`300x300`) — valores entre `260px` e `295px` criam insígnias que pesam bem lado a lado com medalhas grandes como a Fênix V3, criando o efeito estético "S-Rank" tridimensional (breakout effect) por cima dos anéis de fundo.
+
+---
+
 ## 4. Som
 
 - `SFX.play('conquista')` no Ato I; `SFX.play('carimbo')` 380ms após o prepend do card.

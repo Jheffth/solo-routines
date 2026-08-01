@@ -26,6 +26,7 @@ from motors.forja.tela import ForjaErro                 # noqa: E402
 from motors.forja import entrega                        # noqa: E402
 from motors.forja.pecas import pena_punidor             # noqa: E402
 from motors.forja.pecas import fenix_v3                 # noqa: E402
+from motors.forja.pecas import lobo_sombrio             # noqa: E402
 
 FRONT = os.path.join(RAIZ, "webapp", "frontend")
 
@@ -66,6 +67,24 @@ PECAS = {
         "aura": {
             "id": "fenix-v3",
             "titulo": "Fênix V3 (Supernova)",
+        },
+    },
+    "lobo_sombrio": {
+        "modulo": lobo_sombrio,
+        "badge": {
+            "destino": os.path.join(FRONT, "js", "badges", "lobo-sombrio.js"),
+            "ns": "LoboSombrioFX",
+            "codigo": "lobo_sombrio",
+            "titulo": "Monarca Lobo Sombrio",
+            "descricao": "Extraído da Escuridão — Vetorizado pela Forja com perfeição absoluta.",
+            "icone": "🐺",
+            "cor": "#7c3aed",
+            "xp": 8000,
+            "moedas": 800,
+        },
+        "aura": {
+            "id": "lobo-sombrio",
+            "titulo": "Lobo Sombrio (Abissal)",
         },
     }
 }

@@ -1138,11 +1138,7 @@ Auras.registrar('pena-punidor', function (tam) {
   return `<svg class="aura-svg" aria-hidden="true" focusable="false" style="display:block;overflow:hidden;width:${tam}px;height:${tam}px" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
      width="${tam}" height="${tam}" viewBox="0 0 300 300">
 <style>/*<![CDATA[*/
-    /* NENHUM aura-girar. E esse keyframe GLOBAL que todas as outras
-       auras usam, e foi por herda-lo que a primeira versao desta ficou
-       identica a Fenix.
-       (Sem crase aqui: este CSS vira template literal de JS, e uma crase
-        o fecharia no meio — o motor recusa a arte se encontrar uma.) */
+    /* NENHUM aura-girar. (Sem crase aqui). */
     .fa-selo {
       transform-origin: 150.0px 150.0px;
       animation: fa-fechar 3.2s cubic-bezier(.16,.9,.3,1) infinite;
@@ -1211,11 +1207,11 @@ Auras.registrar('pena-punidor', function (tam) {
 <feGaussianBlur stdDeviation="2.4" result="b"/><feComponentTransfer in="b" result="bb"><feFuncA type="linear" slope="1.1"/></feComponentTransfer><feMerge><feMergeNode in="bb"/><feMergeNode in="SourceGraphic"/></feMerge>
 </filter>
 <clipPath id="${u}_corte">
-<circle cx="150.0" cy="150.0" r="142.0" />
+<circle cx="150.0" cy="150.0" r="148.0" />
 </clipPath>
 </defs>
 <g class="fa-veu">
-<circle cx="150.0" cy="150.0" r="142.0" fill="url(#${u}_veu)"/>
+<circle cx="150.0" cy="150.0" r="148.0" fill="url(#${u}_veu)"/>
 </g>
 <g class="fa-chuva">
 <path d="M 26.00 8.00 L 25.51 9.73 L 25.18 11.47 L 24.97 13.20 L 24.90 14.95 L 24.97 16.70 L 25.18 18.45 L 25.51 20.22 L 26.00 22.00 L 26.00 22.00 L 26.49 20.22 L 26.82 18.45 L 27.03 16.70 L 27.10 14.95 L 27.03 13.20 L 26.82 11.47 L 26.49 9.73 L 26.00 8.00 Z" fill="#2b6bff" opacity="0" style="animation-duration:2.10s;animation-delay:0.00s"/>
@@ -1238,18 +1234,18 @@ Auras.registrar('pena-punidor', function (tam) {
 <path d="M 56.80 8.00 L 56.49 11.84 L 56.28 15.68 L 56.15 19.53 L 56.10 23.38 L 56.15 27.26 L 56.28 31.15 L 56.49 35.06 L 56.80 39.00 L 56.80 39.00 L 57.11 35.06 L 57.32 31.15 L 57.45 27.26 L 57.50 23.38 L 57.45 19.53 L 57.32 15.68 L 57.11 11.84 L 56.80 8.00 Z" fill="#ff0a3c" opacity="0" style="animation-duration:2.10s;animation-delay:2.80s"/>
 </g>
 <g>
-<circle class="fa-selo" cx="150.0" cy="150.0" r="132.0" fill="none" stroke="#ff0a3c" stroke-width="1.60" stroke-dasharray="2.0 10.0" stroke-linecap="round" opacity="0.6" style="animation-delay:0.0s"/>
-<circle class="fa-selo" cx="150.0" cy="150.0" r="116.0" fill="none" stroke="#2b6bff" stroke-width="1.10" stroke-dasharray="1.0 14.0" stroke-linecap="round" opacity="0.45" style="animation-delay:0.35s"/>
-<circle class="fa-selo" cx="150.0" cy="150.0" r="100.0" fill="none" stroke="#ff0a3c" stroke-width="2.20" stroke-dasharray="26.0 220.0" stroke-linecap="round" opacity="0.75" style="animation-delay:0.7s"/>
+<circle class="fa-selo" cx="150.0" cy="150.0" r="140.0" fill="none" stroke="#ff0a3c" stroke-width="1.60" stroke-dasharray="2.0 10.0" stroke-linecap="round" opacity="0.6" style="animation-delay:0.0s"/>
+<circle class="fa-selo" cx="150.0" cy="150.0" r="124.0" fill="none" stroke="#2b6bff" stroke-width="1.10" stroke-dasharray="1.0 14.0" stroke-linecap="round" opacity="0.45" style="animation-delay:0.35s"/>
+<circle class="fa-selo" cx="150.0" cy="150.0" r="108.0" fill="none" stroke="#ff0a3c" stroke-width="2.20" stroke-dasharray="26.0 220.0" stroke-linecap="round" opacity="0.75" style="animation-delay:0.7s"/>
 </g>
 <g>
-<path class="fa-cunha" d="M 150.00 28.00 L 146.78 31.33 L 145.20 34.70 L 143.97 38.12 L 142.95 41.55 L 142.07 45.00 L 141.29 48.45 L 140.61 51.88 L 139.99 55.30 L 139.44 58.67 L 138.95 62.00 L 161.05 62.00 L 160.56 58.67 L 160.01 55.30 L 159.39 51.88 L 158.71 48.45 L 157.93 45.00 L 157.05 41.55 L 156.03 38.12 L 154.80 34.70 L 153.22 31.33 L 150.00 28.00 Z" fill="url(#${u}_cunha)" opacity=".85" transform="rotate(0 150.0 150.0)" style="animation-delay:0.00s"/>
-<path class="fa-cunha" d="M 150.00 28.00 L 146.78 31.33 L 145.20 34.70 L 143.97 38.12 L 142.95 41.55 L 142.07 45.00 L 141.29 48.45 L 140.61 51.88 L 139.99 55.30 L 139.44 58.67 L 138.95 62.00 L 161.05 62.00 L 160.56 58.67 L 160.01 55.30 L 159.39 51.88 L 158.71 48.45 L 157.93 45.00 L 157.05 41.55 L 156.03 38.12 L 154.80 34.70 L 153.22 31.33 L 150.00 28.00 Z" fill="url(#${u}_cunha)" opacity=".85" transform="rotate(90 150.0 150.0)" style="animation-delay:0.18s"/>
-<path class="fa-cunha" d="M 150.00 28.00 L 146.78 31.33 L 145.20 34.70 L 143.97 38.12 L 142.95 41.55 L 142.07 45.00 L 141.29 48.45 L 140.61 51.88 L 139.99 55.30 L 139.44 58.67 L 138.95 62.00 L 161.05 62.00 L 160.56 58.67 L 160.01 55.30 L 159.39 51.88 L 158.71 48.45 L 157.93 45.00 L 157.05 41.55 L 156.03 38.12 L 154.80 34.70 L 153.22 31.33 L 150.00 28.00 Z" fill="url(#${u}_cunha)" opacity=".85" transform="rotate(180 150.0 150.0)" style="animation-delay:0.36s"/>
-<path class="fa-cunha" d="M 150.00 28.00 L 146.78 31.33 L 145.20 34.70 L 143.97 38.12 L 142.95 41.55 L 142.07 45.00 L 141.29 48.45 L 140.61 51.88 L 139.99 55.30 L 139.44 58.67 L 138.95 62.00 L 161.05 62.00 L 160.56 58.67 L 160.01 55.30 L 159.39 51.88 L 158.71 48.45 L 157.93 45.00 L 157.05 41.55 L 156.03 38.12 L 154.80 34.70 L 153.22 31.33 L 150.00 28.00 Z" fill="url(#${u}_cunha)" opacity=".85" transform="rotate(270 150.0 150.0)" style="animation-delay:0.54s"/>
+<path class="fa-cunha" d="M 150.00 20.00 L 146.78 23.33 L 145.20 26.70 L 143.97 30.12 L 142.95 33.55 L 142.07 37.00 L 141.29 40.45 L 140.61 43.88 L 139.99 47.30 L 139.44 50.67 L 138.95 54.00 L 161.05 54.00 L 160.56 50.67 L 160.01 47.30 L 159.39 43.88 L 158.71 40.45 L 157.93 37.00 L 157.05 33.55 L 156.03 30.12 L 154.80 26.70 L 153.22 23.33 L 150.00 20.00 Z" fill="url(#${u}_cunha)" opacity=".85" transform="rotate(0 150.0 150.0)" style="animation-delay:0.00s"/>
+<path class="fa-cunha" d="M 150.00 20.00 L 146.78 23.33 L 145.20 26.70 L 143.97 30.12 L 142.95 33.55 L 142.07 37.00 L 141.29 40.45 L 140.61 43.88 L 139.99 47.30 L 139.44 50.67 L 138.95 54.00 L 161.05 54.00 L 160.56 50.67 L 160.01 47.30 L 159.39 43.88 L 158.71 40.45 L 157.93 37.00 L 157.05 33.55 L 156.03 30.12 L 154.80 26.70 L 153.22 23.33 L 150.00 20.00 Z" fill="url(#${u}_cunha)" opacity=".85" transform="rotate(90 150.0 150.0)" style="animation-delay:0.18s"/>
+<path class="fa-cunha" d="M 150.00 20.00 L 146.78 23.33 L 145.20 26.70 L 143.97 30.12 L 142.95 33.55 L 142.07 37.00 L 141.29 40.45 L 140.61 43.88 L 139.99 47.30 L 139.44 50.67 L 138.95 54.00 L 161.05 54.00 L 160.56 50.67 L 160.01 47.30 L 159.39 43.88 L 158.71 40.45 L 157.93 37.00 L 157.05 33.55 L 156.03 30.12 L 154.80 26.70 L 153.22 23.33 L 150.00 20.00 Z" fill="url(#${u}_cunha)" opacity=".85" transform="rotate(180 150.0 150.0)" style="animation-delay:0.36s"/>
+<path class="fa-cunha" d="M 150.00 20.00 L 146.78 23.33 L 145.20 26.70 L 143.97 30.12 L 142.95 33.55 L 142.07 37.00 L 141.29 40.45 L 140.61 43.88 L 139.99 47.30 L 139.44 50.67 L 138.95 54.00 L 161.05 54.00 L 160.56 50.67 L 160.01 47.30 L 159.39 43.88 L 158.71 40.45 L 157.93 37.00 L 157.05 33.55 L 156.03 30.12 L 154.80 26.70 L 153.22 23.33 L 150.00 20.00 Z" fill="url(#${u}_cunha)" opacity=".85" transform="rotate(270 150.0 150.0)" style="animation-delay:0.54s"/>
 </g>
 <g class="fa-assina">
-<path d="M 64.00 236.00 L 66.68 239.12 L 69.89 241.46 L 73.29 243.54 L 76.84 245.41 L 80.51 247.11 L 84.28 248.63 L 88.15 249.99 L 92.11 251.19 L 96.14 252.24 L 100.24 253.14 L 104.40 253.90 L 108.62 254.52 L 112.89 255.01 L 117.20 255.36 L 121.56 255.57 L 125.95 255.67 L 130.37 255.63 L 134.81 255.48 L 139.28 255.20 L 143.77 254.81 L 148.28 254.31 L 152.79 253.69 L 157.31 252.97 L 161.84 252.14 L 166.37 251.20 L 170.89 250.17 L 175.41 249.03 L 179.92 247.80 L 184.41 246.47 L 188.89 245.04 L 193.35 243.53 L 197.78 241.92 L 202.19 240.23 L 206.57 238.45 L 210.92 236.59 L 215.23 234.64 L 219.49 232.61 L 223.72 230.50 L 227.89 228.30 L 232.00 226.00 L 232.00 226.00 L 227.71 227.92 L 223.39 229.77 L 219.04 231.56 L 214.66 233.26 L 210.26 234.89 L 205.83 236.44 L 201.38 237.90 L 196.92 239.29 L 192.44 240.59 L 187.96 241.80 L 183.47 242.93 L 178.97 243.97 L 174.48 244.92 L 169.99 245.78 L 165.51 246.56 L 161.04 247.24 L 156.58 247.84 L 152.15 248.34 L 147.73 248.75 L 143.33 249.07 L 138.97 249.29 L 134.63 249.42 L 130.33 249.45 L 126.06 249.39 L 121.83 249.24 L 117.64 248.98 L 113.50 248.64 L 109.41 248.19 L 105.36 247.65 L 101.37 247.01 L 97.42 246.28 L 93.53 245.45 L 89.70 244.53 L 85.92 243.51 L 82.20 242.39 L 78.52 241.19 L 74.90 239.90 L 71.32 238.54 L 67.75 237.13 L 64.00 236.00 Z" fill="url(#${u}_tinta)" opacity=".9"/>
+<path d="M 64.00 246.00 L 66.68 249.12 L 69.89 251.46 L 73.29 253.54 L 76.84 255.41 L 80.51 257.11 L 84.28 258.63 L 88.15 259.99 L 92.11 261.19 L 96.14 262.24 L 100.24 263.14 L 104.40 263.90 L 108.62 264.52 L 112.89 265.01 L 117.20 265.36 L 121.56 265.57 L 125.95 265.67 L 130.37 265.63 L 134.81 265.48 L 139.28 265.20 L 143.77 264.81 L 148.28 264.31 L 152.79 263.69 L 157.31 262.97 L 161.84 262.14 L 166.37 261.20 L 170.89 260.17 L 175.41 259.03 L 179.92 257.80 L 184.41 256.47 L 188.89 255.04 L 193.35 253.53 L 197.78 251.92 L 202.19 250.23 L 206.57 248.45 L 210.92 246.59 L 215.23 244.64 L 219.49 242.61 L 223.72 240.50 L 227.89 238.30 L 232.00 236.00 L 232.00 236.00 L 227.71 237.92 L 223.39 239.77 L 219.04 241.56 L 214.66 243.26 L 210.26 244.89 L 205.83 246.44 L 201.38 247.90 L 196.92 249.29 L 192.44 250.59 L 187.96 251.80 L 183.47 252.93 L 178.97 253.97 L 174.48 254.92 L 169.99 255.78 L 165.51 256.56 L 161.04 257.24 L 156.58 257.84 L 152.15 258.34 L 147.73 258.75 L 143.33 259.07 L 138.97 259.29 L 134.63 259.42 L 130.33 259.45 L 126.06 259.39 L 121.83 259.24 L 117.64 258.98 L 113.50 258.64 L 109.41 258.19 L 105.36 257.65 L 101.37 257.01 L 97.42 256.28 L 93.53 255.45 L 89.70 254.53 L 85.92 253.51 L 82.20 252.39 L 78.52 251.19 L 74.90 249.90 L 71.32 248.54 L 67.75 247.13 L 64.00 246.00 Z" fill="url(#${u}_tinta)" opacity=".9"/>
 </g>
 </svg>`;
 });
@@ -1378,6 +1374,58 @@ Auras.registrar('fenix-v3', function (tam) {
 });
 
 /* FORJA:FIM fenix-v3 */
+
+/* FORJA:INICIO lobo-sombrio */
+/* ══════════════════════════════════════════════════════════════
+   Lobo Sombrio (Abissal) — aura
+   GERADO por motors/forja com drawsvg + Jinja2. Não edite à mão.
+   Fonte: motors/forja/pecas/lobo_sombrio.py
+   ══════════════════════════════════════════════════════════════ */
+Auras.registrar('lobo-sombrio', function (tam) {
+  const u = 'alobosombrio' + (++Auras._seq);
+  return `<svg class="aura-svg" aria-hidden="true" focusable="false" style="display:block;overflow:hidden;width:${tam}px;height:${tam}px" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="${tam}" height="${tam}" viewBox="0 0 300 300">
+<style>/*<![CDATA[*/
+    .ls-aura-pulso {
+        animation: ls-p 4s ease-in-out infinite alternate;
+        transform-origin: 150px 150px;
+    }
+    @keyframes ls-p {
+        0% { transform: scale(0.95); opacity: 0.6; }
+        100% { transform: scale(1.05); opacity: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .ls-aura-pulso { animation: none !important; }
+    }
+    /*]]>*/</style>
+<defs>
+<radialGradient cx="150.0" cy="150.0" r="150.0" gradientUnits="userSpaceOnUse" id="${u}_radial">
+<stop offset="0" stop-color="transparent" stop-opacity="1.0" />
+<stop offset="70" stop-color="#4c1d95" stop-opacity="1.0" />
+<stop offset="100" stop-color="#000000" stop-opacity="1.0" />
+</radialGradient>
+</defs>
+<g>
+<circle cx="150" cy="150" r="150" fill="url(#${u}_radial)" class="ls-aura-pulso"/>
+</g>
+<g>
+<polygon points="150,10 160,50 150,70 140,50" fill="#5b21b6" transform="rotate(0.0 150 150)"/>
+<polygon points="150,10 160,50 150,70 140,50" fill="#5b21b6" transform="rotate(30.0 150 150)"/>
+<polygon points="150,10 160,50 150,70 140,50" fill="#5b21b6" transform="rotate(60.0 150 150)"/>
+<polygon points="150,10 160,50 150,70 140,50" fill="#5b21b6" transform="rotate(90.0 150 150)"/>
+<polygon points="150,10 160,50 150,70 140,50" fill="#5b21b6" transform="rotate(120.0 150 150)"/>
+<polygon points="150,10 160,50 150,70 140,50" fill="#5b21b6" transform="rotate(150.0 150 150)"/>
+<polygon points="150,10 160,50 150,70 140,50" fill="#5b21b6" transform="rotate(180.0 150 150)"/>
+<polygon points="150,10 160,50 150,70 140,50" fill="#5b21b6" transform="rotate(210.0 150 150)"/>
+<polygon points="150,10 160,50 150,70 140,50" fill="#5b21b6" transform="rotate(240.0 150 150)"/>
+<polygon points="150,10 160,50 150,70 140,50" fill="#5b21b6" transform="rotate(270.0 150 150)"/>
+<polygon points="150,10 160,50 150,70 140,50" fill="#5b21b6" transform="rotate(300.0 150 150)"/>
+<polygon points="150,10 160,50 150,70 140,50" fill="#5b21b6" transform="rotate(330.0 150 150)"/>
+</g>
+</svg>`;
+});
+
+/* FORJA:FIM lobo-sombrio */
 
 window.Auras = Auras;
 

@@ -2,24 +2,9 @@
 """
 A PENA DO PUNIDOR — insígnia e aura, construídas pelo motor.
 
-A DIFERENÇA PARA AS DUAS TENTATIVAS ANTERIORES
-
-  · a do antigravity era um sol de espinhos: 53 clones rotacionados em
-    volta de uma agulha escura. A "pena" não tinha uma única barba —
-    era um polígono de cinco pontos. Gramática da Fênix, que o
-    Arquiteto já havia rejeitado.
-
-  · a minha lia como pena, mas as barbas eram LINHAS de espessura
-    constante. Dava um ancinho, e os dois lados se sobrepunham tanto
-    que viravam um só. Silhueta de folha de palmeira.
-
-Aqui as barbas são traços com corpo (`perfil_lamina`): saem grossas da
-ráquis e morrem finas. E os dois lados têm eixos, contagens e
-comprimentos DIFERENTES — pena real não é espelho.
-
-O ASSUNTO É DESENHADO PELO MOTOR. No motor antigo a pena era uma string
-crua no script de exportação; aqui não há uma única coordenada escrita à
-mão que não passe por `pincel`/`geometria`.
+Esta versão utiliza a "Abordagem Definitiva (O Método Base64)" com uma arte premium
+gerada por Inteligência Artificial (fundo removido), envelopada em efeitos de
+luz, sombra e partículas 100% SVG.
 """
 from __future__ import annotations
 import math
@@ -32,120 +17,78 @@ CARMESIM = "#ff0a3c"
 AZUL = "#2b6bff"
 NANQUIM = "#12101c"
 
-
-def _eixo_pena(vb: int):
-    """
-    A ráquis. Nasce no bico (embaixo à esquerda) e sobe curvando.
-
-    A curva é o que dá vida: uma pena reta parece uma flecha. O S suave
-    — abre para a direita, volta no fim — é o que o olho reconhece.
-    """
-    k = vb / 300.0
-    return [(104 * k, 232 * k), (112 * k, 158 * k),
-            (150 * k, 104 * k), (214 * k, 62 * k)]
-
-
-def insignia(vb: int = 300) -> Composicao:
+def insignia(vb: int = 300) -> Tela:
     c = Tela("pena-punidor-insignia", vb)
     sem = P.Semente(20260731)
     cx, cy = c.centro
     k = vb / 300.0
-    eixo = _eixo_pena(vb)
+
+    from .pena_punidor_b64 import PENA_PNG_B64
 
     # ── materiais ────────────────────────────────────────────────────
-    g_aco   = c.metal("aco", "#2a2f3e", "#8d97ad", "#f2f5fb", angulo=118)
-    g_barba = c.linear("barba", [
-        (0.00, "#5b6274", 1), (0.34, "#aab3c6", 1),
-        (0.62, "#e9edf6", 1), (1.00, "#7d8698", 1)], 0, 1, 1, 0)
     g_tinta = c.linear("tinta", [
         (0.00, CARMESIM, 1), (0.55, "#a2185a", 1), (1.00, AZUL, 1)], 0, 0, 1, 1)
     g_fundo = c.radial("fundo", [
-        (0.00, CARMESIM, .28), (0.55, "#5c0f28", .16), (1.00, AZUL, 0)])
-    f_sombra = c.sombra("sombra", 0, 3 * k, 3.2 * k, "#000", .8)
+        (0.00, CARMESIM, .35), (0.55, "#5c0f28", .20), (1.00, AZUL, 0)])
+    
+    # Efeito de "Aura no Contorno": uma sombra/brilho forte que vaza da imagem
+    f_glow_contorno = c.sombra("sombra_contorno", 0, 0, 8.0 * k, CARMESIM, .9)
     f_brilho = c.brilho("brilho", 2.4 * k, 1.15)
 
     # ── o véu, bem ao fundo e desfocado ──────────────────────────────
-    # Camada com z baixo e desfoque: é o que cria AR entre o objeto e o
-    # nada. Sem isso a pena flutua colada no fundo.
     c.camada("veu", z=0, desfoque=1.2 * k).add(
-        f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{138*k:.1f}" fill="{g_fundo}"/>')
+        f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{148*k:.1f}" fill="{g_fundo}"/>')
 
-    # ── a moldura: selo discreto, NUNCA o assunto ────────────────────
-    # O SELO É MOLDURA, NÃO ASSUNTO. A 0.5 ele competia com a pena;
-    # a 0.28 ele ancora sem disputar. Foi por não fazer esta conta
-    # que a versão do antigravity virou um sol de espinhos com uma
-    # agulha no meio.
-    moldura = c.camada("selo", z=1, opacidade=.28)
-    for m in P.anel_tracejado((cx, cy), 134 * k, 84, 3.4 * k, 1.1 * k):
+    # ── a moldura: selo discreto ─────────────────────────────────────
+    moldura = c.camada("selo", z=1, opacidade=.45)
+    for m in P.anel_tracejado((cx, cy), 142 * k, 84, 3.4 * k, 1.1 * k):
         moldura.add(f'<path d="{m}" fill="{CARMESIM}"/>')
     moldura.add(
-        f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{118*k:.1f}" fill="none" '
-        f'stroke="{AZUL}" stroke-width="{0.9*k:.2f}" stroke-opacity=".5" '
+        f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{128*k:.1f}" fill="none" '
+        f'stroke="{AZUL}" stroke-width="{1.2*k:.2f}" stroke-opacity=".6" '
         f'stroke-dasharray="{1.5*k:.1f} {13*k:.1f}"/>')
 
-    # ── as barbas: dois lados DIFERENTES ─────────────────────────────
-    # O lado de cima é mais longo e mais denso — a pena pega luz de um
-    # lado só. Espelhar os dois é o que fez a versão anterior parecer
-    # um pente.
-    plumas = c.camada("plumagem", z=2)
-    sup = P.plumagem(eixo, sem, n=52, escala=74 * k, inclinacao=0.60,
-                     largura_barba=3.9 * k, lado=+1, curvatura=0.46,
-                     comprimento=lambda t: math.sin(math.pi * (t ** 0.74)) ** 0.68)
-    inf = P.plumagem(eixo, sem, n=40, escala=52 * k, inclinacao=0.66,
-                     largura_barba=3.2 * k, lado=-1, curvatura=0.34,
-                     comprimento=lambda t: math.sin(math.pi * (t ** 0.86)) ** 0.9 * 0.62)
-    for d in inf:
-        plumas.add(f'<path d="{d}" fill="{g_barba}" opacity=".72"/>')
-    for d in sup:
-        plumas.add(f'<path d="{d}" fill="{g_barba}" opacity=".95"/>')
-
-    # ── veios carmesim: poucos, e só onde a barba é longa ────────────
-    veios = c.camada("veios", z=3, opacidade=.55)
-    for t in (0.26, 0.42, 0.58, 0.72):
-        base = G.sobre(eixo, t)
-        ang = math.radians(G.angulo_em(eixo, t))
-        L = 44 * k
-        fim = (base[0] + math.cos(ang + math.pi / 2 * .60) * L,
-               base[1] + math.sin(ang + math.pi / 2 * .60) * L)
-        veios.add(f'<path d="{P.gavinha(base, fim, sem, 1.7*k, .5)}" '
-                  f'fill="{CARMESIM}"/>')
-
-    # ── a ráquis, por cima das barbas ────────────────────────────────
-    c.camada("raquis", z=4, atributos=f'filter="{f_sombra}"').add(
-        f'<path d="{P.raquis(eixo, 8.4*k)}" fill="{g_aco}"/>')
-
-    # ── o bico ───────────────────────────────────────────────────────
-    b = P.bico(eixo, 30 * k)
-    c.camada("bico", z=5, atributos=f'filter="{f_sombra}"').add(
-        f'<path d="{b["corpo"]}" fill="{g_aco}"/>',
-        f'<path d="{b["fenda"]}" stroke="#05060a" stroke-width="{1.5*k:.2f}" '
-        f'fill="none" stroke-linecap="round"/>',
-        f'<circle cx="{b["respiro"][0]:.2f}" cy="{b["respiro"][1]:.2f}" '
-        f'r="{2.4*k:.2f}" fill="#05060a"/>')
+    # ── A ARTE PRINCIPAL (PNG Base64) ────────────────────────────────
+    # A imagem tem 726x804 (quase quadrada, levemente mais alta).
+    # O usuário pediu escala épica (S-Rank), um pouco maior que o Lobo (295px).
+    # Vamos usar img_h = 315. Como o Forja só dá overflow se > vb+300, 315 é seguro.
+    img_h = 315 * k
+    img_w = round(726 / 804 * img_h, 1)
+    img_x = round(cx - img_w / 2, 1)
+    img_y = round(cy - img_h / 2, 1)
+    
+    main = c.camada("main", z=2, atributos=f'filter="{f_glow_contorno}"')
+    main.add(
+        f'<image href="data:image/png;base64,{PENA_PNG_B64}" '
+        f'x="{img_x}" y="{img_y}" width="{img_w}" height="{img_h}" '
+        f'preserveAspectRatio="xMidYMid meet" />'
+    )
 
     # ── a assinatura: o gesto que prova que houve uma mão ────────────
-    pts = [(74 * k, 246 * k), (110 * k, 268 * k), (168 * k, 262 * k),
-           (206 * k, 240 * k)]
+    pts = [(74 * k, 260 * k), (110 * k, 282 * k), (168 * k, 276 * k),
+           (206 * k, 254 * k)]
     c.camada("assinatura", z=6, classe="fp-assina",
              atributos=f'filter="{f_brilho}"').add(
         f'<path d="{P.floreio(pts, 5.2*k)}" fill="{g_tinta}"/>')
 
-    # ── gotas de tinta, DENTRO da tela ───────────────────────────────
-    gotas = c.camada("gotas", z=7, classe="fp-gotas")
-    # O RAIO É CONTIDO DE PROPÓSITO. A primeira tentativa espalhava as
-    # gotas até 26k abaixo do bico e o compositor RECUSOU a arte: elas
-    # chegavam a y=307 num viewBox de 300. Era o mesmo defeito que o
-    # motor antigo entregava calado (gotas em y=-25).
-    for g in P.particulas((b["ponta"][0], b["ponta"][1] + 10 * k),
-                          4 * k, 16 * k, 5, sem, 1.6 * k, 3.2 * k):
+    # ── gotas de tinta e energia (partículas em torno do contorno) ───
+    gotas = c.camada("gotas", z=7, classe="fp-gotas", atributos=f'filter="{f_glow_contorno}"')
+    # O centro inferior para sair a energia (bico virtual da pena)
+    for g in P.particulas((cx, cy + 120 * k), 10 * k, 35 * k, 12, sem, 1.6 * k, 4.2 * k):
         gotas.add(
             f'<circle cx="{g["x"]:.1f}" cy="{g["y"]:.1f}" r="{g["r"]:.1f}" '
             f'fill="{CARMESIM}" opacity="{g["op"]}" '
             f'style="animation-delay:{g["atraso"]}s;animation-duration:{g["dur"]}s"/>')
+            
+    # Mais algumas partículas roxas para simular a energia subindo
+    for g in P.particulas((cx, cy + 60 * k), 25 * k, 60 * k, 8, sem, 1.2 * k, 2.5 * k):
+        gotas.add(
+            f'<circle cx="{g["x"]:.1f}" cy="{g["y"]:.1f}" r="{g["r"]:.1f}" '
+            f'fill="{AZUL}" opacity="{g["op"]}" '
+            f'style="animation-delay:{g["atraso"]}s;animation-duration:{g["dur"]}s"/>')
 
     c.css(f"""
-    /* NADA GIRA. A rotação é a assinatura da Fênix (aura-girar), e
-       repetir isso aqui foi o erro das duas versões anteriores. */
+    /* NADA GIRA. A rotação é a assinatura da Fênix. */
     .fp-assina path {{ animation: fp-escrever 6s ease-in-out infinite; }}
     @keyframes fp-escrever {{
       0%, 8%   {{ opacity: 0; }}
@@ -158,9 +101,9 @@ def insignia(vb: int = 300) -> Composicao:
       animation-iteration-count: infinite;
     }}
     @keyframes fp-pingar {{
-      0%   {{ opacity: 0; transform: translateY(-6px); }}
-      20%  {{ opacity: .9; }}
-      100% {{ opacity: 0; transform: translateY(14px); }}
+      0%   {{ opacity: 0; transform: translateY(10px) scale(0.8); }}
+      30%  {{ opacity: .9; transform: translateY(0px) scale(1.2); }}
+      100% {{ opacity: 0; transform: translateY(-30px) scale(0.5); }}
     }}
     @media (prefers-reduced-motion: reduce) {{
       .fp-assina path, .fp-gotas circle {{ animation: none; opacity: .85; }}
@@ -169,22 +112,9 @@ def insignia(vb: int = 300) -> Composicao:
     return c
 
 
-def aura(vb: int = 300) -> Composicao:
+def aura(vb: int = 300) -> Tela:
     """
-    A AURA — e ela não pode falar a língua das outras.
-
-    A gramática universal deste app é um keyframe GLOBAL, `aura-girar`,
-    usado por arquiteto (4×), admin (4×), pink-spirit (3×) e fênix (4×).
-    Todas orbitam. A primeira aura do Punidor era a Fênix renomeada:
-    `pnp-r1..r4`, `pnp-halo`, `pnp-pulse` espelhando `fnx-*`.
-
-    Aqui nada gira. Quatro atos, e todos com movimento VERTICAL ou de
-    CONTRAÇÃO — os dois gestos que nenhuma outra aura do app tem:
-
-        o selo FECHA        três anéis que contraem até travar
-        a tinta CAI         traços descendo, com gravidade
-        o carimbo BATE      cunhas que golpeiam para dentro
-        a assinatura ESCREVE o mesmo floreio da insígnia
+    A AURA — Quatro atos verticais/contração.
     """
     c = Tela("pena-punidor-aura", vb)
     sem = P.Semente(31072026)
@@ -198,12 +128,10 @@ def aura(vb: int = 300) -> Composicao:
     g_tinta = c.linear("tinta", [
         (0.00, CARMESIM, 1), (0.5, "#a2185a", 1), (1.00, AZUL, 1)], 0, 0, 1, 0)
     f_glow = c.brilho("glow", 2.4 * k, 1.1)
-    # A chuva e recortada ao circulo: sem isto ela escorre para fora da
-    # aura e vira listra na tela.
-    corte = c.recorte_circular("corte", cx, cy, 142 * k)
+    corte = c.recorte_circular("corte", cx, cy, 148 * k)
 
     c.camada("veu", z=0, classe="fa-veu").add(
-        f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{142*k:.1f}" fill="{g_veu}"/>')
+        f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{148*k:.1f}" fill="{g_veu}"/>')
 
     # ── a tinta que cai ──────────────────────────────────────────────
     chuva = c.camada("chuva", z=1, classe="fa-chuva",
@@ -225,9 +153,9 @@ def aura(vb: int = 300) -> Composicao:
     # ── o selo que fecha ─────────────────────────────────────────────
     selo = c.camada("selo", z=2, atributos=f'filter="{f_glow}"')
     for j, (r, w, dash, cor, op, atraso) in enumerate([
-            (132, 1.6, f"{2*k:.1f} {10*k:.1f}", CARMESIM, .60, 0.0),
-            (116, 1.1, f"{1*k:.1f} {14*k:.1f}", AZUL, .45, 0.35),
-            (100, 2.2, f"{26*k:.1f} {220*k:.1f}", CARMESIM, .75, 0.7)]):
+            (140, 1.6, f"{2*k:.1f} {10*k:.1f}", CARMESIM, .60, 0.0),
+            (124, 1.1, f"{1*k:.1f} {14*k:.1f}", AZUL, .45, 0.35),
+            (108, 2.2, f"{26*k:.1f} {220*k:.1f}", CARMESIM, .75, 0.7)]):
         selo.add(
             f'<circle class="fa-selo" cx="{cx:.1f}" cy="{cy:.1f}" r="{r*k:.1f}" '
             f'fill="none" stroke="{cor}" stroke-width="{w*k:.2f}" '
@@ -237,10 +165,10 @@ def aura(vb: int = 300) -> Composicao:
     # ── o carimbo que bate ───────────────────────────────────────────
     carimbo = c.camada("carimbo", z=3, atributos=f'filter="{f_glow}"')
     for j, ang in enumerate((0, 90, 180, 270)):
-        base = (cx, cy - 122 * k)
-        p3 = (cx, cy - 88 * k)
-        p1 = (cx, cy - 111 * k)
-        p2 = (cx, cy - 99 * k)
+        base = (cx, cy - 130 * k)
+        p3 = (cx, cy - 96 * k)
+        p1 = (cx, cy - 119 * k)
+        p2 = (cx, cy - 107 * k)
         d = G.contorno([base, p1, p2, p3], 26 * k, G.perfil_gota, passos=10)
         carimbo.add(
             f'<path class="fa-cunha" d="{d}" fill="{g_cunha}" opacity=".85" '
@@ -248,16 +176,12 @@ def aura(vb: int = 300) -> Composicao:
             f'style="animation-delay:{j*.18:.2f}s"/>')
 
     # ── a assinatura, a mesma da insígnia ────────────────────────────
-    pts = [(64 * k, 236 * k), (108 * k, 262 * k), (176 * k, 254 * k), (232 * k, 226 * k)]
+    pts = [(64 * k, 246 * k), (108 * k, 272 * k), (176 * k, 264 * k), (232 * k, 236 * k)]
     c.camada("assinatura", z=4, classe="fa-assina").add(
         f'<path d="{P.floreio(pts, 6.4*k)}" fill="{g_tinta}" opacity=".9"/>')
 
     c.css(f"""
-    /* NENHUM aura-girar. E esse keyframe GLOBAL que todas as outras
-       auras usam, e foi por herda-lo que a primeira versao desta ficou
-       identica a Fenix.
-       (Sem crase aqui: este CSS vira template literal de JS, e uma crase
-        o fecharia no meio — o motor recusa a arte se encontrar uma.) */
+    /* NENHUM aura-girar. (Sem crase aqui). */
     .fa-selo {{
       transform-origin: {cx:.1f}px {cy:.1f}px;
       animation: fa-fechar 3.2s cubic-bezier(.16,.9,.3,1) infinite;
