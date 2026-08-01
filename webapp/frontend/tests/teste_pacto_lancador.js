@@ -223,6 +223,32 @@ ok(!/getElementById\('btn-pacto-novo'\)\s*\n?\s*\?\.addEventListener/.test(pacto
 ok(/id === 'btn-pacto-novo'/.test(fonte), 'a Forja assume o botão');
 ok(/abrirCatalogo/.test(pacto), 'o catálogo continua vivo em um lugar só');
 
+console.log('\n-- o rodape nunca pode ficar fora de alcance --');
+/* O Arquiteto reportou "o botao firmar o pacto nao ficou acessivel".
+   O clique funciona (provado acima) e o botao nao nasce disabled — o
+   suspeito era ALTURA: um modal mais alto que a janela transborda dos
+   dois lados com `align-items:center`, e o rodape sai por baixo SEM
+   barra de rolagem. A tela fica completa e inutil.
+
+   Nao tenho navegador para medir layout, entao estes asserts guardam as
+   duas condicoes que tornam o sintoma impossivel, em vez de fingir que
+   mediram pixel. */
+const css = ler('css', 'forja-missao.css');
+const backdrop = fatia(css, '.fm-backdrop {', '}');
+ok(/overflow-y:\s*auto/.test(backdrop),
+   'o backdrop rola — sem isso o que passa da janela fica inalcancavel');
+ok(/\.fm-backdrop\.on\s*>\s*\.fm-modal\s*\{\s*margin:\s*auto/.test(css),
+   'e o modal centraliza por margin:auto (align-items:center corta o topo no overflow)');
+ok(/\.fm-modal[\s\S]{0,400}?max-height/.test(css),
+   'o modal tem teto de altura');
+
+/* A causa que EU introduzi: quatro modos em 2x2 somavam ~110px de
+   altura num modo em que a coluna da previa fica quase vazia. */
+ok(/\.fm-pct-modos\s*\{\s*grid-template-columns:\s*repeat\(4/.test(css),
+   'os quatro modos cabem em UMA linha');
+ok(/max-width:\s*720px\)[\s\S]{0,120}?\.fm-pct-modos/.test(css),
+   'e voltam a duas colunas quando a tela estreita');
+
 console.log('\n-- o backend manda os fatores --');
 const rt = fs.readFileSync(path.join(RAIZ, '..', 'backend', 'routers', 'pactos.py'), 'utf8');
 ok(/"escala":\s*cat\.fator_efetivo/.test(rt),

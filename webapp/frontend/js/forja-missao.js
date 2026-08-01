@@ -602,8 +602,8 @@ const ForjaMissao = {
     const ico = (n, t) => this._ico(n, t);
     const gl  = (n, t) => this._gl(n, t);
 
-    const grupo = (campo, itens, cols) => `
-      <div class="fm-opcoes c${cols}">
+    const grupo = (campo, itens, cols, extra = '') => `
+      <div class="fm-opcoes c${cols}${extra ? ' ' + extra : ''}">
         ${itens.map(o => `
           <div class="fm-op ${e[campo] === o.id ? 'sel' : ''}"
                style="--op-cor:${o.cor || 'var(--purple-glow)'}"
@@ -659,7 +659,7 @@ const ForjaMissao = {
             <div class="fm-bloco fm-full" id="fm-bloco-pacto"
                  ${e.tipo === 'PACTO' ? '' : 'style="display:none"'}>
               <div class="fm-rotulo">${gl("caveira", 14)} Como se cumpre</div>
-              ${grupo('pct_tipo', this.PACTO_TIPOS, 2)}
+              ${grupo('pct_tipo', this.PACTO_TIPOS, 4, 'fm-pct-modos')}
 
               <div class="fm-pct-numeros" id="fm-pct-numeros">
                 <label class="fm-pct-campo">

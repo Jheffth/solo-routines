@@ -12,8 +12,24 @@
   padding: 1.2rem;
   background: rgba(3,3,8,.88);
   backdrop-filter: blur(7px);
+
+  /* O RODAPE NUNCA PODE FICAR FORA DE ALCANCE.
+
+     Sem `overflow-y`, um modal mais alto que a janela transborda para
+     os dois lados (align-items: center) e o rodape — onde vive o botao
+     que conclui a acao — some abaixo da borda SEM barra de rolagem.
+     A tela fica bonita, completa e inutil.
+
+     `align-items: center` sozinho nao sobrevive ao overflow: quando o
+     filho e maior que o container flex, a margem de cima fica negativa
+     e o topo tambem some. `margin: auto` no filho centraliza sem
+     cortar — e e por isso que a regra abaixo existe em vez de so
+     trocar para flex-start. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .fm-backdrop.on { display: flex; animation: fm-fade .25s ease; }
+.fm-backdrop.on > .fm-modal { margin: auto; }
 @keyframes fm-fade { from { opacity: 0; } }
 
 .fm-modal {
@@ -835,6 +851,18 @@
   color: #fef3c7;
 }
 .fm-pct-vira b { color: color-mix(in srgb, var(--fm-cor) 80%, #fff); }
+
+/* OS QUATRO MODOS EM UMA LINHA.
+
+   Nasceram em 2x2, e isso somava ~110px de altura ao formulario num
+   modo em que a coluna da previa fica quase vazia — o modal ficava
+   alto sem precisar, e num monitor baixo era o rodape que pagava.
+   Em quatro colunas cabem na mesma linha; abaixo de 720px voltam a
+   duas, que e onde o texto do subtitulo comecaria a quebrar feio. */
+.fm-bloco .fm-opcoes.fm-pct-modos { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 720px) {
+  .fm-bloco .fm-opcoes.fm-pct-modos { grid-template-columns: repeat(2, 1fr); }
+}
 
 @media (max-width: 640px) {
   .fm-pct-numeros { gap: .5rem; }
