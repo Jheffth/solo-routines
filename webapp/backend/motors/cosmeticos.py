@@ -45,15 +45,6 @@ AURAS = {
         "cor":       "#ff6d00",
         "enviavel":  True,
     },
-    "fenix-v2": {
-        "id":        "fenix-v2",
-        "nome":      "Fenix do Gelo",
-        "descricao": "A chama que congela. Labaredas azuis que sobem e "
-                     "sublimam, cristais que se formam e derretem, e uma "
-                     "frente fria que atravessa o disco. Nada orbita.",
-        "cor":       "#7fd4ff",
-        "enviavel":  True,
-    },
     "pena-punidor": {
         "id":        "pena-punidor",
         "nome":      "Pena do Punidor — A Sentença Viva",

@@ -25,8 +25,6 @@ sys.path.insert(0, os.path.join(RAIZ, "webapp", "backend"))
 from motors.forja.compositor import ForjaErro          # noqa: E402
 from motors.forja import saida                          # noqa: E402
 from motors.forja.pecas import pena_punidor             # noqa: E402
-from motors.forja.pecas import fenix_v2                 # noqa: E402
-from motors.forja.pecas import fenix_v2_aura            # noqa: E402
 
 FRONT = os.path.join(RAIZ, "webapp", "frontend")
 
@@ -52,29 +50,6 @@ PECAS = {
         },
     },
 
-    # A FENIX V2 NAO SUBSTITUI A ORIGINAL. `fenix-pioneira` (badge e
-    # aura) continua exatamente como estava — o Arquiteto pediu as duas
-    # lado a lado para comparar. Ids, arquivos e namespaces diferentes.
-    "fenix2": {
-        "modulo": fenix_v2,
-        "modulo_aura": fenix_v2_aura,
-        "badge": {
-            "destino": os.path.join(FRONT, "js", "badges", "fenix-v2.js"),
-            "ns": "FenixV2FX",
-            "codigo": "fenix_v2",
-            "titulo": "Fenix do Gelo",
-            "descricao": ("A chama que congela — segunda forja da Fenix, "
-                          "em azul gelo e branco"),
-            "icone": "\u2744",
-            "cor": "#7fd4ff",
-            "xp": 5000,
-            "moedas": 1000,
-        },
-        "aura": {
-            "id": "fenix-v2",
-            "titulo": "Fenix do Gelo",
-        },
-    },
 }
 
 
