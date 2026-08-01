@@ -77,6 +77,8 @@ CONQUISTAS_PRESENTE = [
     ("pena_do_punidor", "Pena do Punidor",
      "Forjada pelo Arquiteto que escreveu as leis de ferro do Sistema — "
      "cada traço desta pena é uma sentença inapelável", "✒", "#ff0a3c", 7777, 777),
+    ("fenix_v3", "Fênix V3 (Coroa Solar)",
+     "Ascensão Absoluta — A entidade paramétrica de fogo geométrico.", "🔥", "#fb8500", 9999, 999),
 ]
 
 
@@ -90,7 +92,7 @@ CONQUISTAS_PRESENTE = [
 TRANSFERIVEIS = {
     "solo", "jh3ffth", "dominio_forja",
     "diana", "pioneiro", "aliado", "mono_evelynn",
-    "nexus-social", "isabella", "fenix_pioneira",
+    "nexus-social", "isabella", "fenix_pioneira", "pena_do_punidor", "fenix_v3",
 }
 
 
