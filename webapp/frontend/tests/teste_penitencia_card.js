@@ -406,20 +406,86 @@ console.log('\n-- a ALTURA: o cartao nao pode engordar de novo --');
   ok(blocoPen && [...blocoPen.children].every(e => e.tagName === 'SPAN'),
      'as duas frases sao spans em linha, nao divs empilhados');
 
-  /* O padding fantasma tem de continuar desligado. */
-  ok(/\.mc-penitencia \.mc-corpo::before \{ content: none/.test(cssBruto),
-     'a etiqueta absoluta continua desligada');
-  ok(/\.mc-penitencia \.mc-corpo \{ padding-top: 0/.test(cssBruto),
-     'e o padding-top de 1.75rem que ela exigia tambem');
+  /* O PADDING FANTASMA, e a licao de ESPECIFICIDADE que ele deu.
+
+     Eu escrevi `.mc-penitencia .mc-corpo { padding-top: 0 }` (1 classe)
+     sem ver que ja existia, mais acima, `.mc-compacto.mc-penitencia
+     .mc-corpo { 1.55rem }` (2 classes). Duas classes vencem uma, e o
+     Extrato usa exatamente `mc-compacto` — entao os ~25px continuaram
+     la e eu relatei duas vezes que os tinha removido.
+
+     Este assert nao procura texto: ele simula a CASCATA. Para cada
+     variante do cartao, junta as regras que casam, ordena por
+     especificidade e depois por posicao no arquivo, e olha quem venceu.
+     Procurar a string so provaria que eu escrevi a regra — nao que ela
+     ganha. */
+  {
+    const semCom2 = cssBruto.replace(/\/\*[\s\S]*?\*\//g, '');
+    const regras = [...semCom2.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+      .flatMap((m, ordem) => m[1].split(',').map(sel => ({
+        sel: sel.trim(), corpo: m[2], ordem,
+      })));
+
+    const venceu = (classesDoCartao, alvo, prop) => {
+      const cands = regras.filter(r => {
+        if (!r.sel.endsWith(alvo)) return false;
+        const pre = r.sel.slice(0, -alvo.length);
+        const cls = [...pre.matchAll(/\.([\w-]+)/g)].map(x => x[1]);
+        return cls.every(c => classesDoCartao.includes(c));
+      }).filter(r => new RegExp('(^|;)\\s*' + prop + '\\s*:').test(r.corpo));
+      if (!cands.length) return null;
+      const peso = r => (r.sel.match(/\./g) || []).length;
+      cands.sort((a, b) => peso(a) - peso(b) || a.ordem - b.ordem);
+      const v = cands[cands.length - 1].corpo
+        .split(';').map(x => x.trim())
+        .filter(x => x.startsWith(prop + ':') || x.startsWith(prop + ' :'))
+        .pop();
+      return (v || '').split(':')[1].trim();
+    };
+
+    for (const variante of [['mc', 'mc-penitencia'],
+                            ['mc', 'mc-compacto', 'mc-penitencia']]) {
+      const v = venceu(variante, '.mc-corpo', 'padding-top');
+      ok(v === '0',
+         `padding-top vencedor em .${variante.join('.')} = ${v} ` +
+         `(tem de ser 0 — a variante compacto e a que o Extrato usa)`);
+    }
+    const c = venceu(['mc', 'mc-compacto', 'mc-penitencia'],
+                     '.mc-corpo::before', 'content');
+    ok(c === 'none', `a etiqueta absoluta vencedora = ${c} (tem de ser none)`);
+  }
+
+  /* O ROTULO voltou ao TAMANHO original — ao move-lo para inline eu o
+     encolhi de .58rem/12px para .56rem/10px sem motivo, e ele perdeu
+     presenca. Os valores abaixo sao os do pseudo-elemento original. */
+  const seloCss = /\.mc-selo-pen \{([\s\S]*?)\}/.exec(cssBruto);
+  ok(seloCss && /font-size: \.58rem/.test(seloCss[1]),
+     'o rotulo tem o tamanho de fonte original (.58rem)');
+  ok(seloCss && /padding: 3px 12px 4px/.test(seloCss[1]),
+     'e o padding original (3px 12px 4px)');
+  ok(seloCss && /letter-spacing: \.2em/.test(seloCss[1]),
+     'e o espacamento original (.2em)');
+
+  /* O titulo NAO pode descer para outra linha — foi para isso que a
+     linha extra foi eliminada. */
+  ok(/\.mc-penitencia \.mc-topo \{[\s\S]*?flex-wrap: nowrap/.test(cssBruto),
+     'rotulo e titulo dividem a MESMA linha (nowrap)');
 
   /* O cartao de REPETICAO usa o mesmo .mc-rep e ja estava aprovado. */
+  /* ARMADILHA JA PAGA: a primeira versao exigia que o seletor COMECASSE
+     com `.mc-penitencia`, e reprovou `.mc-compacto.mc-penitencia` — que
+     e ainda MAIS restrito, nao menos. O que importa e que a penitencia
+     apareca no seletor, em qualquer posicao. */
   const regrasNovas = cssBruto.slice(cssBruto.lastIndexOf('A PENITÊNCIA MAIS FINA'));
-  const seletores = [...regrasNovas.matchAll(/^(\.[a-z][\w .:>-]*)\s*\{/gm)]
-    .map(m => m[1].trim());
-  ok(seletores.every(sel => sel.startsWith('.mc-penitencia') ||
-                            sel.startsWith('.mc-selo-pen') ||
-                            sel.startsWith('.mc-pen-conta')),
-     `as ${seletores.length} regras novas so alcancam a penitencia`);
+  const seletores = [...regrasNovas.matchAll(/^(\.[a-z][\w .:>-]*),?\s*\{?\s*$/gm)]
+    .map(m => m[1].trim())
+    .concat([...regrasNovas.matchAll(/^(\.[a-z][\w .:>-]*)\s*\{/gm)].map(m => m[1].trim()));
+  const proprios = ['.mc-selo-pen', '.mc-pen-conta'];
+  const forasteiros = seletores.filter(sel =>
+    !sel.includes('.mc-penitencia') && !proprios.some(p => sel.startsWith(p)));
+  ok(forasteiros.length === 0,
+     `as ${seletores.length} regras novas so alcancam a penitencia` +
+     (forasteiros.length ? ` — escaparam: ${forasteiros.join(', ')}` : ''));
 
   /* E o contador NAO invade a repeticao, que ja estava aprovada. */
   const dRep = doc.createElement('div');

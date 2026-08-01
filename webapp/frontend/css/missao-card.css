@@ -1852,62 +1852,80 @@
 .mc-compacto .mc-giroflex { height: 3px; }
 
 /* ══════════════════════════════════════════════════════════════
-   A PENITÊNCIA MAIS FINA — segunda passada
+   A PENITÊNCIA MAIS FINA — terceira passada
 
-   Na primeira eu troquei o rótulo "PENITÊNCIA" por um chip e o
-   Arquiteto reprovou: o rótulo antigo funcionava melhor. Ele estava
-   certo. O gradiente vermelho-azul pulsando no ritmo do giroflex diz
-   "penitência" muito mais alto que um chip cinza no meio de outros
-   quatro — e ainda é a única animação DENTRO do cartão, o que ele
-   também notou faltando.
+   O ESPAÇO ACIMA DO TÍTULO SOBREVIVEU A DUAS CORREÇÕES, e o motivo é
+   especificidade. Eu escrevi:
 
-   O problema nunca foi o rótulo: era ele ser ABSOLUTO no canto,
-   obrigando o corpo a reservar 1.75rem de padding para não passar por
-   baixo. Inline antes do título ele custa ZERO altura, porque divide a
-   linha que o título já ocupava.
+       .mc-penitencia .mc-corpo { padding-top: 0 }        1 classe
 
-   As três linhas que sobravam viraram zero:
-     · o rótulo          → divide a linha do título
-     · as duas frases    → uma linha só, com ponto médio
-     · o contador 0/5    → ao lado do botão "Fiz uma"
+   mas já existia, mais acima no arquivo:
+
+       .mc-compacto.mc-penitencia .mc-corpo { 1.55rem }   2 classes
+
+   Duas classes vencem uma, e o Extrato usa exatamente `mc-compacto`.
+   Ou seja: os ~25px de espaço morto continuaram lá, e eu relatei duas
+   vezes que os tinha removido. Estavam removidos só na variante que o
+   Dashboard não usa.
+
+   Lição: sobrescrever regra existente exige LER a regra existente. Eu
+   procurei `.mc-penitencia .mc-corpo` e parei no primeiro resultado.
+
+   O RÓTULO VOLTA AO TAMANHO ORIGINAL. Ao movê-lo para inline eu o
+   encolhi de .58rem para .56rem e de 12px de padding para 10px, sem
+   motivo — e ele perdeu presença. As medidas abaixo são as mesmas do
+   pseudo-elemento original, conferidas no git.
 
    Nada aqui alcança o cartão de REPETIÇÃO: ele usa o mesmo `.mc-rep`,
-   já estava aprovado, e todo seletor abaixo começa em
-   `.mc-penitencia`.
+   já estava aprovado, e todo seletor começa em `.mc-penitencia`.
    ══════════════════════════════════════════════════════════════ */
 
-/* A etiqueta absoluta continua desligada — quem a substitui é o selo
-   inline abaixo, com o mesmo visual e sem custar linha. */
-.mc-penitencia .mc-corpo::before { content: none; }
-.mc-penitencia .mc-corpo { padding-top: 0; }
+/* AS DUAS VARIANTES, porque as duas existiam. A segunda é a que o
+   Extrato usa e a que eu tinha deixado passar. */
+.mc-penitencia .mc-corpo::before,
+.mc-compacto.mc-penitencia .mc-corpo::before { content: none; }
+.mc-penitencia .mc-corpo,
+.mc-compacto.mc-penitencia .mc-corpo { padding-top: 0; }
 
-/* O RÓTULO, agora na frente do título. */
+/* O RÓTULO — medidas idênticas às do original, agora em linha. */
 .mc-selo-pen {
   flex-shrink: 0;
   align-self: center;
-  padding: 3px 10px 4px;
-  border-radius: 6px;
+  padding: 3px 12px 4px;
+  border-radius: 7px;
   font-family: var(--font-section, system-ui, sans-serif);
-  font-size: .56rem;
+  font-size: .58rem;
   font-weight: 800;
-  letter-spacing: .18em;
+  letter-spacing: .2em;
   text-transform: uppercase;
   color: #fff;
   background: linear-gradient(90deg, var(--giro-vermelho), var(--giro-azul));
-  /* A MESMA animação do giroflex. É ela que faz o rótulo pertencer ao
-     cartão em vez de parecer colado — e é a única coisa que se move
-     dentro dele. */
+  /* A MESMA animação do giroflex — é ela que faz o rótulo pertencer ao
+     cartão, e é a única coisa que se move dentro dele. */
   animation: mc-giro-selo var(--giro-ciclo) ease-in-out infinite;
   white-space: nowrap;
 }
-/* O título e o selo dividem a linha. */
-.mc-penitencia .mc-topo { flex-wrap: wrap; gap: .5rem .7rem; }
-.mc-penitencia .mc-titulo { flex: 1 1 auto; min-width: 0; }
+
+/* O título e o rótulo dividem a MESMA linha. `nowrap` porque com
+   `wrap` o título descia sozinho em tela média e devolvia a linha
+   extra que este trabalho inteiro existe para eliminar. */
+.mc-penitencia .mc-topo {
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: .55rem;
+}
+.mc-penitencia .mc-titulo {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* O CONTADOR ao lado do botão. */
 .mc-pen-conta {
   display: inline-flex; align-items: baseline; gap: 1px;
-  margin-right: .35rem;
+  margin-right: .4rem;
   font-family: var(--font-title, system-ui, sans-serif);
   font-size: .95rem;
   color: rgba(255,255,255,.5);
@@ -1921,11 +1939,11 @@
 
 /* As duas frases lado a lado, separadas por ponto médio. */
 .mc-penitencia .mc-pen {
-  margin-top: 4px;
+  margin-top: 3px;
   flex-direction: row;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 3px 10px;
+  gap: 2px 10px;
 }
 .mc-penitencia .mc-pen-origem,
 .mc-penitencia .mc-pen-reparo { font-size: .71rem; line-height: 1.3; }
@@ -1935,12 +1953,16 @@
   color: rgba(255,255,255,.3);
 }
 
-/* A barra SOBE: sem a linha do topo, ela é o único conteúdo do bloco. */
-.mc-penitencia .mc-rep { margin-top: 5px; }
+/* A barra sobe: sem a linha do topo, ela é o único conteúdo do bloco. */
+.mc-penitencia .mc-rep { margin-top: 4px; }
 .mc-penitencia .mc-rep-topo { display: none; }
 .mc-penitencia .mc-rep-seg,
 .mc-penitencia .mc-rep-continua { height: 5px; }
 
 @media (max-width: 640px) {
   .mc-penitencia .mc-pen-reparo::before { content: none; }
+  /* Em tela estreita o título pode quebrar: aqui a linha extra custa
+     menos que um título ilegível. */
+  .mc-penitencia .mc-topo { flex-wrap: wrap; }
+  .mc-penitencia .mc-titulo { white-space: normal; }
 }
