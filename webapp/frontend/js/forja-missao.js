@@ -1318,6 +1318,7 @@ const ForjaMissao = {
       const num = document.getElementById('fm-pct-numeros');
       if (num) num.classList.toggle('fm-pct-tributo', e.pct_tipo === 'TRIBUTO');
       this._previaPacto();
+      this._travarSalvar();
       return;
     }
     document.getElementById('fm-pct-previa')?.style.setProperty('display', 'none');
@@ -1404,9 +1405,28 @@ const ForjaMissao = {
 
     this._notaQuando(e);
 
-    // Botão só habilita com título
+    this._travarSalvar();
+  },
+
+  /* O BOTAO SO HABILITA COM TITULO — e esta regra precisa valer nos DOIS
+     caminhos de _atualizar().
+
+     BUG QUE ISTO CONSERTA, e vale saber como ele nasceu: a linha morava
+     solta no FIM de _atualizar(). Quando o PACTO ganhou um early return
+     no comeco da funcao, ela deixou de ser alcancada no modo pacto —
+     silenciosamente, porque nada quebra quando um `disabled` nao muda.
+
+     O caminho do sintoma: a Forja abre em ROTINA com titulo vazio, e a
+     linha desabilita o botao. O hunter clica em Pacto, escreve o
+     titulo, ve a previa atualizar — e o botao continua morto, porque a
+     unica linha que o reabilitaria estava depois do return.
+
+     Meu teste nao pegou porque abria DIRETO em {tipo:'PACTO'}, onde o
+     botao nunca chegou a ser desabilitado. O bug morava na TRANSICAO,
+     e transicao e o que teste de estado inicial nao ve. */
+  _travarSalvar() {
     const btn = document.querySelector('[data-fm-salvar]');
-    if (btn) btn.disabled = !e.titulo.trim();
+    if (btn) btn.disabled = !(this._estado?.titulo || '').trim();
   },
 
   /* ── QUANDO O PRAZO COMEÇA A CORRER ───────────────────────

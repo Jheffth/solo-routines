@@ -15,6 +15,7 @@
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+const { JSDOM } = require('jsdom');
 
 const RAIZ = path.join(__dirname, '..');
 const ler = (...p) => fs.readFileSync(path.join(RAIZ, ...p), 'utf8');
@@ -222,6 +223,60 @@ ok(!/getElementById\('btn-pacto-novo'\)\s*\n?\s*\?\.addEventListener/.test(pacto
    'sem listener duplicado no #btn-pacto-novo (abriria as DUAS telas)');
 ok(/id === 'btn-pacto-novo'/.test(fonte), 'a Forja assume o botão');
 ok(/abrirCatalogo/.test(pacto), 'o catálogo continua vivo em um lugar só');
+
+console.log('\n-- a TRANSICAO Rotina -> Pacto (onde o bug morava) --');
+/* O Arquiteto reportou "o botao continua com o simbolo de proibido" —
+   cursor:not-allowed, ou seja, `disabled`.
+
+   CAUSA: `_atualizar()` terminava com `btn.disabled = !titulo.trim()`,
+   uma linha solta no fim da funcao. Quando o PACTO ganhou um early
+   return no comeco, ela deixou de ser alcancada no modo pacto. O
+   caminho do sintoma: a Forja abre em ROTINA com titulo vazio e trava o
+   botao; o hunter clica em Pacto, escreve o titulo, ve a previa
+   atualizar — e o botao continua morto.
+
+   POR QUE MEUS ASSERTS NAO PEGARAM: eu abria direto em {tipo:'PACTO'},
+   um render limpo onde o botao nunca chegou a ser desabilitado. O bug
+   morava na TRANSICAO, e transicao e justamente o que teste de estado
+   inicial nao ve. Por isso este bloco usa DOM de verdade e percorre o
+   caminho do usuario, em vez de montar o estado final na mao. */
+{
+  const dom = new JSDOM('<body></body>',
+    { pretendToBeVisual: true, runScripts: 'outside-only', url: 'http://localhost/' });
+  const w = dom.window;
+  w.API = { get: async () => ({ tipos: [{ id: 'QUANTITATIVA', escala: 2, natureza: 'REPETICAO' }] }),
+            post: async () => ({ id: 1 }), patch: async () => ({}) };
+  w.Glifos = { rico: () => '<svg></svg>', linha: () => '<svg></svg>' };
+  w.SoloDialog = { toast() {} };
+  w.MissaoCard = { cachear() {}, html: () => '<div/>' };
+  vm.runInContext(ler('js', 'forja-missao.js'), vm.createContext(w));
+
+  const FJ = w.ForjaMissao, D = w.document;
+  const botao = () => D.querySelector('[data-fm-salvar]');
+  const clicarTipo = v => D.querySelector(`[data-fm-campo="tipo"][data-fm-valor="${v}"]`)
+                           .dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+  const digitar = txt => {
+    const i = D.getElementById('fm-titulo-input');
+    i.value = txt;
+    i.dispatchEvent(new w.InputEvent('input', { bubbles: true }));
+  };
+
+  FJ.abrir();                                   // como o app abre de verdade
+  ok(botao().disabled === true, 'abre em Rotina sem título ⇒ botão travado');
+  clicarTipo('PACTO');
+  ok(FJ._estado.tipo === 'PACTO', 'clicar em Pacto troca o tipo');
+  ok(botao().disabled === true, 'segue travado — o título ainda está vazio');
+  digitar('Fazer {n} Polichinelos');
+  ok(botao().disabled === false,
+     'ESCREVER O TÍTULO DESTRAVA — era exatamente isto que falhava');
+  digitar('');
+  ok(botao().disabled === true, 'apagar o título trava de novo');
+  digitar('Fazer {n} flexões');
+  clicarTipo('ROTINA');
+  ok(botao().disabled === false, 'Pacto → Rotina com título: segue destravado');
+  clicarTipo('PACTO');
+  ok(botao().disabled === false, 'Rotina → Pacto com título: segue destravado');
+}
 
 console.log('\n-- o rodape nunca pode ficar fora de alcance --');
 /* O Arquiteto reportou "o botao firmar o pacto nao ficou acessivel".
