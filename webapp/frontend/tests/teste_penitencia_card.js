@@ -344,56 +344,92 @@ ok(/PACTO\s+é a REGRA/.test(pj),
    'o arquivo declara a separação regra × ocorrência no cabeçalho');
 
 console.log('\n-- a ALTURA: o cartao nao pode engordar de novo --');
-/* O Arquiteto reportou que o cartao da penitencia estava "muito grosso"
-   e quebrava o desenho do Extrato. A causa maior era invisivel:
-   `.mc-corpo` reservava 1.75rem de padding-top para a etiqueta
-   "PENITENCIA", que flutuava absoluta no canto. Uma linha inteira de
-   espaco morto, e nada era desenhado nela.
+/* O Arquiteto reportou o cartao "muito grosso", e a primeira correcao
+   trocou o rotulo PENITENCIA por um chip — ele reprovou de novo, com
+   razao: o rotulo antigo funcionava melhor.
 
-   Nao consigo medir pixels sem navegador. Entao estes asserts travam as
-   CAUSAS de altura, que sao contaveis: quantos blocos empilham no
-   corpo, e se o padding fantasma voltou. */
+   O problema nunca foi o rotulo. Era ele ser ABSOLUTO no canto,
+   obrigando `.mc-corpo` a reservar 1.75rem de padding para nao passar
+   por baixo. Inline antes do titulo ele custa ZERO altura.
+
+   As tres linhas desperdicadas viraram zero:
+     rotulo       -> divide a linha do titulo
+     duas frases  -> uma linha so
+     contador 0/5 -> ao lado do botao "Fiz uma"
+
+   Nao meco pixels sem navegador. Estes asserts travam as CAUSAS, que
+   sao contaveis. */
 {
   const corpoDe = (m) => {
     const d = doc.createElement('div');
     d.innerHTML = MC.html(m);
     return d.querySelector('.mc-corpo');
   };
+  const cartaoPen = (() => {
+    const d = doc.createElement('div');
+    d.innerHTML = MC.html(pen({ alvo_repeticoes: 5, repeticoes: 0 }));
+    return d.firstElementChild;
+  })();
+
   const normal = corpoDe({ id: 91, titulo: 'Missao comum', prioridade: 'BAIXA',
     dificuldade: 'FACIL', categoria: 'Saude', status: 'PENDENTE',
     xp_recompensa: 5, moedas_recompensa: 1 });
-  const penit = corpoDe(pen({ alvo_repeticoes: 5, repeticoes: 0 }));
-
   ok(normal.children.length === 3,
      `cartao comum: ${normal.children.length} blocos no corpo`);
-  ok(penit.children.length <= 5,
-     `penitencia: ${penit.children.length} blocos (era 5 com as duas ` +
-     `frases empilhadas; nao pode passar disso)`);
 
-  /* As duas frases numa linha so. Se voltarem a empilhar, `.mc-pen` volta
-     a ter dois FILHOS DE BLOCO em vez de dois spans em linha. */
-  const blocoPen = penit.querySelector('.mc-pen');
+  /* O ROTULO VOLTOU, e no lugar que o Arquiteto pediu: na frente do
+     titulo, dividindo a mesma linha. */
+  const topo = cartaoPen.querySelector('.mc-topo');
+  const selo = topo.querySelector(':scope > .mc-selo-pen');
+  ok(!!selo, 'o rotulo PENITENCIA voltou');
+  ok([...topo.children].indexOf(selo) === 0,
+     'e vem ANTES do titulo, dividindo a linha com ele');
+  ok(!cartaoPen.querySelector('.mc-chip-natureza-pen'),
+     'o chip que o substituia foi removido');
+
+  /* E ele e a unica coisa que se move dentro do cartao — o Arquiteto
+     notou que a execucao visual estava pobre sem animacao interna. */
+  const cssBruto = ler('css', 'missao-card.css');
+  ok(/\.mc-selo-pen \{[\s\S]*?animation: mc-giro-selo/.test(cssBruto),
+     'o rotulo pulsa no ritmo do giroflex (a animacao DENTRO do cartao)');
+
+  /* O CONTADOR saiu da linha propria e foi para junto do botao. */
+  ok(!!cartaoPen.querySelector('.mc-acoes .mc-pen-conta'),
+     'o 0/5 fica ao lado do botao "Fiz uma"');
+  ok(/\.mc-penitencia \.mc-rep-topo \{ display: none/.test(cssBruto),
+     'e a linha que ele ocupava foi desligada — a barra sobe');
+  ok(!!cartaoPen.querySelector('.mc-rep-trilha'),
+     'a barra de execucoes continua la');
+
+  /* As duas frases numa linha so. */
+  const blocoPen = cartaoPen.querySelector('.mc-pen');
   ok(blocoPen && [...blocoPen.children].every(e => e.tagName === 'SPAN'),
      'as duas frases sao spans em linha, nao divs empilhados');
 
-  /* A etiqueta virou chip; o padding fantasma tem de estar desligado. */
-  ok(!!penit.parentElement.querySelector('.mc-chip-natureza-pen'),
-     'a etiqueta PENITENCIA e um chip na fileira que ja existia');
-  ok(/\.mc-penitencia \.mc-corpo::before \{\s*content: none/.test(css),
-     'a etiqueta absoluta foi desligada');
-  ok(/\.mc-penitencia \.mc-corpo \{ padding-top: 0/.test(css),
-     'e o padding-top reservado para ela tambem');
+  /* O padding fantasma tem de continuar desligado. */
+  ok(/\.mc-penitencia \.mc-corpo::before \{ content: none/.test(cssBruto),
+     'a etiqueta absoluta continua desligada');
+  ok(/\.mc-penitencia \.mc-corpo \{ padding-top: 0/.test(cssBruto),
+     'e o padding-top de 1.75rem que ela exigia tambem');
 
-  /* O cartao de REPETICAO usa o mesmo .mc-rep e ja estava aprovado.
-     Nenhuma regra nova pode alcanca-lo. */
-  const regrasNovas = css.slice(css.indexOf('A PENITENCIA MAIS FINA') >= 0
-    ? css.indexOf('A PENITENCIA MAIS FINA') : css.indexOf('A PENITÊNCIA MAIS FINA'));
-  const seletores = [...regrasNovas.matchAll(/^(\.[a-z][\w .-]*)\s*\{/gm)]
+  /* O cartao de REPETICAO usa o mesmo .mc-rep e ja estava aprovado. */
+  const regrasNovas = cssBruto.slice(cssBruto.lastIndexOf('A PENITÊNCIA MAIS FINA'));
+  const seletores = [...regrasNovas.matchAll(/^(\.[a-z][\w .:>-]*)\s*\{/gm)]
     .map(m => m[1].trim());
   ok(seletores.every(sel => sel.startsWith('.mc-penitencia') ||
-                            sel.startsWith('.mc-chip-natureza-pen')),
-     `as ${seletores.length} regras novas so alcancam a penitencia ` +
-     `(a repeticao usa o mesmo .mc-rep e ja estava aprovada)`);
+                            sel.startsWith('.mc-selo-pen') ||
+                            sel.startsWith('.mc-pen-conta')),
+     `as ${seletores.length} regras novas so alcancam a penitencia`);
+
+  /* E o contador NAO invade a repeticao, que ja estava aprovada. */
+  const dRep = doc.createElement('div');
+  dRep.innerHTML = MC.html({ id: 92, titulo: 'Beber agua', natureza: 'REPETICAO',
+    alvo_repeticoes: 8, repeticoes: 2, prioridade: 'MEDIA',
+    dificuldade: 'NORMAL', categoria: 'Saude', status: 'PENDENTE' });
+  ok(!dRep.querySelector('.mc-pen-conta'),
+     'a repeticao NAO ganhou o contador ao lado do botao');
+  ok(!!dRep.querySelector('.mc-rep-conta'),
+     'ela mantem o contador na linha do topo, como estava aprovado');
 }
 
 console.log(`\n=== ${testes - falhas}/${testes} ===`);

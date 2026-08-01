@@ -625,7 +625,21 @@ const MissaoCard = {
            + gerir + extinguir;
     }
 
-    return (feitas > 0
+    /* O CONTADOR AO LADO DO BOTAO — e so na penitencia.
+
+       Ele morava numa linha propria acima da barra, e essa linha era
+       inteira para dois digitos. O Arquiteto propos mover para junto do
+       "Fiz uma", e a barra sobe para o lugar que sobrou.
+
+       Na REPETICAO ele continua onde estava: aquele cartao ja estava
+       aprovado, e o contador ali tem companhia (o rotulo "Progresso"),
+       entao a linha nao e desperdicio. */
+    const contaAqui = this._ehPenitencia(m) && alvo !== null
+      ? `<span class="mc-pen-conta" data-mc-rep-conta><b>${feitas}</b>/${alvo}</span>`
+      : '';
+
+    return contaAqui
+         + (feitas > 0
               ? b('desfazer-rep', 'mc-btn-menos', this._g('menos', 13),
                   'title="Desfazer uma repetição"')
               : '')
@@ -1165,24 +1179,25 @@ const MissaoCard = {
       ${this._sigilo(cor, m.categoria, !!penit)}
       <div class="mc-corpo">
         <div class="mc-topo">
+          <!-- O ROTULO VOLTA, E FICA NA FRENTE DO TITULO.
+
+               Eu o tinha trocado por um chip na fileira de baixo, e o
+               Arquiteto reprovou: o rotulo antigo funcionava melhor.
+               Ele estava certo — o gradiente vermelho-azul com a
+               animacao do giroflex diz "penitencia" muito mais alto que
+               um chip cinza no meio de outros quatro.
+
+               O problema nunca foi o rotulo: era ele ser ABSOLUTO no
+               canto, obrigando o corpo a reservar 1.75rem de padding
+               para nao passar por baixo. Inline antes do titulo ele
+               custa ZERO altura, porque divide a linha que o titulo ja
+               ocupava. -->
+          ${penit ? `<span class="mc-selo-pen">${'Penitência'}</span>` : ''}
           <div class="mc-titulo" title="${this._esc(m.titulo)}">${this._esc(m.titulo) || 'Missão'}</div>
           ${compacto ? '' : recompensa}
         </div>
 
         <div class="mc-chips">
-          <!-- A ETIQUETA "PENITENCIA" VIRA CHIP.
-
-               Ela era um pseudo-elemento absoluto no canto do cartao, e
-               o corpo reservava 1.75rem de padding-top para nao ficar
-               por baixo dela. Uma linha inteira de espaco morto para uma
-               palavra que cabe na fileira que ja existe — e invisivel,
-               porque nada era desenhado naquela linha.
-
-               (Sem crase neste comentario: ele mora dentro de um
-                template literal, e uma crase o fecharia no meio. Ja
-                quebrou este projeto quatro vezes.) -->
-          ${penit ? `<span class="mc-chip mc-chip-natureza-pen">
-            ${this._g('caveira', 11)} Penitência</span>` : ''}
           <span class="mc-chip mc-chip-prior">${this._g('prior_media', 11)} ${prior.rotulo}</span>
           <span class="mc-chip mc-chip-rank" title="Dificuldade ${(m.dificuldade || 'NORMAL').toLowerCase()} — XP ${rank.mult}">${this._g('prior_alta', 11)} ${rank.letra}-Rank</span>
           <span class="mc-chip mc-chip-status">${this._g(st.gl)} ${st.rotulo}</span>

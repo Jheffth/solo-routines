@@ -1852,64 +1852,95 @@
 .mc-compacto .mc-giroflex { height: 3px; }
 
 /* ══════════════════════════════════════════════════════════════
-   A PENITÊNCIA MAIS FINA
+   A PENITÊNCIA MAIS FINA — segunda passada
 
-   O cartão ficou alto demais e quebrou o ritmo do Extrato — cinco
-   blocos empilhados no corpo contra três dos cartões normais.
+   Na primeira eu troquei o rótulo "PENITÊNCIA" por um chip e o
+   Arquiteto reprovou: o rótulo antigo funcionava melhor. Ele estava
+   certo. O gradiente vermelho-azul pulsando no ritmo do giroflex diz
+   "penitência" muito mais alto que um chip cinza no meio de outros
+   quatro — e ainda é a única animação DENTRO do cartão, o que ele
+   também notou faltando.
 
-   O maior custo era INVISÍVEL: `.mc-corpo` reservava 1.75rem de
-   padding-top para a etiqueta "PENITÊNCIA", que flutuava absoluta no
-   canto. Uma linha inteira de espaço morto, e nada era desenhado nela.
-   A etiqueta virou chip na fileira que já existia.
+   O problema nunca foi o rótulo: era ele ser ABSOLUTO no canto,
+   obrigando o corpo a reservar 1.75rem de padding para não passar por
+   baixo. Inline antes do título ele custa ZERO altura, porque divide a
+   linha que o título já ocupava.
 
-   Nada aqui toca no cartão de REPETIÇÃO. Ele usa o mesmo `.mc-rep` e
-   já estava aprovado; por isso todo seletor abaixo começa em
+   As três linhas que sobravam viraram zero:
+     · o rótulo          → divide a linha do título
+     · as duas frases    → uma linha só, com ponto médio
+     · o contador 0/5    → ao lado do botão "Fiz uma"
+
+   Nada aqui alcança o cartão de REPETIÇÃO: ele usa o mesmo `.mc-rep`,
+   já estava aprovado, e todo seletor abaixo começa em
    `.mc-penitencia`.
    ══════════════════════════════════════════════════════════════ */
 
-/* A etiqueta absoluta sai de cena — quem diz "penitência" agora é o
-   chip, mais a caveira, mais o giroflex, mais a borda bicolor. Já eram
-   quatro sinais para a mesma informação. */
+/* A etiqueta absoluta continua desligada — quem a substitui é o selo
+   inline abaixo, com o mesmo visual e sem custar linha. */
 .mc-penitencia .mc-corpo::before { content: none; }
 .mc-penitencia .mc-corpo { padding-top: 0; }
 
-.mc-chip-natureza-pen {
-  background: linear-gradient(90deg,
-    color-mix(in srgb, var(--giro-vermelho) 26%, transparent),
-    color-mix(in srgb, var(--giro-azul) 26%, transparent));
-  border-color: color-mix(in srgb, var(--giro-vermelho) 55%, transparent);
+/* O RÓTULO, agora na frente do título. */
+.mc-selo-pen {
+  flex-shrink: 0;
+  align-self: center;
+  padding: 3px 10px 4px;
+  border-radius: 6px;
+  font-family: var(--font-section, system-ui, sans-serif);
+  font-size: .56rem;
+  font-weight: 800;
+  letter-spacing: .18em;
+  text-transform: uppercase;
   color: #fff;
-  font-weight: 700;
-  letter-spacing: .08em;
+  background: linear-gradient(90deg, var(--giro-vermelho), var(--giro-azul));
+  /* A MESMA animação do giroflex. É ela que faz o rótulo pertencer ao
+     cartão em vez de parecer colado — e é a única coisa que se move
+     dentro dele. */
+  animation: mc-giro-selo var(--giro-ciclo) ease-in-out infinite;
+  white-space: nowrap;
 }
+/* O título e o selo dividem a linha. */
+.mc-penitencia .mc-topo { flex-wrap: wrap; gap: .5rem .7rem; }
+.mc-penitencia .mc-titulo { flex: 1 1 auto; min-width: 0; }
+
+/* O CONTADOR ao lado do botão. */
+.mc-pen-conta {
+  display: inline-flex; align-items: baseline; gap: 1px;
+  margin-right: .35rem;
+  font-family: var(--font-title, system-ui, sans-serif);
+  font-size: .95rem;
+  color: rgba(255,255,255,.5);
+}
+.mc-pen-conta b {
+  font-size: 1.25rem;
+  color: var(--giro-vermelho);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--giro-vermelho) 55%, transparent);
+}
+.mc-penitencia .mc-acoes { align-items: center; }
 
 /* As duas frases lado a lado, separadas por ponto médio. */
 .mc-penitencia .mc-pen {
-  margin-top: 5px;
+  margin-top: 4px;
   flex-direction: row;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 4px 10px;
+  gap: 3px 10px;
 }
 .mc-penitencia .mc-pen-origem,
-.mc-penitencia .mc-pen-reparo { font-size: .71rem; line-height: 1.35; }
+.mc-penitencia .mc-pen-reparo { font-size: .71rem; line-height: 1.3; }
 .mc-penitencia .mc-pen-reparo::before {
   content: '·';
   margin-right: 8px;
   color: rgba(255,255,255,.3);
 }
 
-/* O progresso encolhe: sem rótulo em linha própria, barra mais baixa.
-   O número `0/5` já diz o que a palavra "Progresso" dizia. */
-.mc-penitencia .mc-rep { margin-top: 6px; }
-.mc-penitencia .mc-rep-topo { margin-bottom: 3px; }
-.mc-penitencia .mc-rep-lbl { display: none; }
-.mc-penitencia .mc-rep-topo { justify-content: flex-end; }
+/* A barra SOBE: sem a linha do topo, ela é o único conteúdo do bloco. */
+.mc-penitencia .mc-rep { margin-top: 5px; }
+.mc-penitencia .mc-rep-topo { display: none; }
 .mc-penitencia .mc-rep-seg,
 .mc-penitencia .mc-rep-continua { height: 5px; }
 
 @media (max-width: 640px) {
-  /* Em tela estreita a segunda frase desce sozinha, e o ponto médio
-     deixaria de fazer sentido pendurado no começo da linha. */
   .mc-penitencia .mc-pen-reparo::before { content: none; }
 }
