@@ -25,6 +25,8 @@ sys.path.insert(0, os.path.join(RAIZ, "webapp", "backend"))
 from motors.forja.compositor import ForjaErro          # noqa: E402
 from motors.forja import saida                          # noqa: E402
 from motors.forja.pecas import pena_punidor             # noqa: E402
+from motors.forja.pecas import fenix_v2                 # noqa: E402
+from motors.forja.pecas import fenix_v2_aura            # noqa: E402
 
 FRONT = os.path.join(RAIZ, "webapp", "frontend")
 
@@ -49,6 +51,30 @@ PECAS = {
             "titulo": "Pena do Punidor",
         },
     },
+
+    # A FENIX V2 NAO SUBSTITUI A ORIGINAL. `fenix-pioneira` (badge e
+    # aura) continua exatamente como estava — o Arquiteto pediu as duas
+    # lado a lado para comparar. Ids, arquivos e namespaces diferentes.
+    "fenix2": {
+        "modulo": fenix_v2,
+        "modulo_aura": fenix_v2_aura,
+        "badge": {
+            "destino": os.path.join(FRONT, "js", "badges", "fenix-v2.js"),
+            "ns": "FenixV2FX",
+            "codigo": "fenix_v2",
+            "titulo": "Fenix do Gelo",
+            "descricao": ("A chama que congela — segunda forja da Fenix, "
+                          "em azul gelo e branco"),
+            "icone": "\u2744",
+            "cor": "#7fd4ff",
+            "xp": 5000,
+            "moedas": 1000,
+        },
+        "aura": {
+            "id": "fenix-v2",
+            "titulo": "Fenix do Gelo",
+        },
+    },
 }
 
 
@@ -66,10 +92,12 @@ def forjar(chave: str) -> None:
                          xp=p["badge"]["xp"], moedas=p["badge"]["moedas"],
                          fonte=fonte)
 
-    if hasattr(mod, "aura"):
+    mod_aura = p.get("modulo_aura", mod)
+    if hasattr(mod_aura, "aura"):
+        fonte_a = f"motors/forja/pecas/{mod_aura.__name__.rsplit('.', 1)[-1]}.py"
         bloco = saida._AURA.format(
-            aura_id=p["aura"]["id"], titulo=p["aura"]["titulo"], fonte=fonte,
-            corpo=saida._js_template_literal(mod.aura(300).montar(classe_raiz="aura-svg")))
+            aura_id=p["aura"]["id"], titulo=p["aura"]["titulo"], fonte=fonte_a,
+            corpo=saida._js_template_literal(mod_aura.aura(300).montar(classe_raiz="aura-svg")))
         saida.substituir_aura_em(os.path.join(FRONT, "js", "auras.js"),
                                  p["aura"]["id"], bloco)
 
@@ -90,8 +118,9 @@ def amostras(destino: str = "/tmp") -> None:
         return
     for chave, p in PECAS.items():
         mod = p["modulo"]
+        ma = p.get("modulo_aura", mod)
         for nome, fn in (("insignia", getattr(mod, "insignia", None)),
-                         ("aura", getattr(mod, "aura", None))):
+                         ("aura", getattr(ma, "aura", None))):
             if not fn:
                 continue
             svg = fn(300).montar().replace("{U}", "x").replace("{TAM}", "520")

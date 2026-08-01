@@ -203,11 +203,27 @@ def substituir_aura_em(arquivo_auras: str, aura_id: str, bloco: str) -> None:
         alvo = re.search(
             r"Auras\.registrar\(\s*'" + re.escape(aura_id) + r"'[\s\S]*?\n\}\);",
             txt)
-        if not alvo:
-            raise ForjaErro(
-                f"não achei onde encaixar a aura '{aura_id}' em {arquivo_auras}. "
-                f"Nada foi alterado.")
-        txt = txt[:alvo.start()] + novo + txt[alvo.end():]
+        if alvo:
+            txt = txt[:alvo.start()] + novo + txt[alvo.end():]
+        else:
+            # AURA NOVA — não substitui ninguém.
+            #
+            # A primeira versão desta função só sabia TROCAR: sem
+            # marcadores e sem um registro manual do mesmo id, ela
+            # levantava erro. Isso bastava enquanto a Forja só regerava a
+            # Pena, e travou na primeira peça realmente nova (a Fênix V2).
+            #
+            # O ponto de inserção é ANTES de `window.Auras = Auras`, que é
+            # a última linha do arquivo e a única âncora estável. Anexar no
+            # fim colocaria o registro DEPOIS da exportação — funcionaria
+            # por acidente, e quebraria no dia em que alguém lesse
+            # `window.Auras` no meio do carregamento.
+            ancora = "window.Auras = Auras;"
+            if ancora not in txt:
+                raise ForjaErro(
+                    f"a aura '{aura_id}' é nova e não achei '{ancora}' em "
+                    f"{arquivo_auras} para inserir antes. Nada foi alterado.")
+            txt = txt.replace(ancora, novo + "\n\n" + ancora, 1)
 
     with open(arquivo_auras, "w", encoding="utf-8") as f:
         f.write(txt)

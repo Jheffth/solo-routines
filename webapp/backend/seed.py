@@ -77,6 +77,12 @@ CONQUISTAS_PRESENTE = [
     ("pena_do_punidor", "Pena do Punidor",
      "Forjada pelo Arquiteto que escreveu as leis de ferro do Sistema — "
      "cada traço desta pena é uma sentença inapelável", "✒", "#ff0a3c", 7777, 777),
+    # Fenix do Gelo — a SEGUNDA forja da Fenix (js/badges/fenix-v2.js).
+    # Nao substitui `fenix_pioneira`: as duas coexistem de proposito, para
+    # comparacao. Ids, arquivos, namespaces e cores diferentes.
+    ("fenix_v2", "Fenix do Gelo",
+     "A chama que congela — segunda forja da Fenix, em azul gelo e branco",
+     "\u2744", "#7fd4ff", 5000, 1000),
 ]
 
 
