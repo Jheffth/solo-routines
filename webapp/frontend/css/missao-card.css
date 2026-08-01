@@ -1850,3 +1850,66 @@
 .mc-compacto.mc-penitencia .mc-corpo { padding-top: 1.55rem; }
 .mc-compacto.mc-penitencia .mc-corpo::before { font-size: .52rem; padding: 2px 9px 3px; }
 .mc-compacto .mc-giroflex { height: 3px; }
+
+/* ══════════════════════════════════════════════════════════════
+   A PENITÊNCIA MAIS FINA
+
+   O cartão ficou alto demais e quebrou o ritmo do Extrato — cinco
+   blocos empilhados no corpo contra três dos cartões normais.
+
+   O maior custo era INVISÍVEL: `.mc-corpo` reservava 1.75rem de
+   padding-top para a etiqueta "PENITÊNCIA", que flutuava absoluta no
+   canto. Uma linha inteira de espaço morto, e nada era desenhado nela.
+   A etiqueta virou chip na fileira que já existia.
+
+   Nada aqui toca no cartão de REPETIÇÃO. Ele usa o mesmo `.mc-rep` e
+   já estava aprovado; por isso todo seletor abaixo começa em
+   `.mc-penitencia`.
+   ══════════════════════════════════════════════════════════════ */
+
+/* A etiqueta absoluta sai de cena — quem diz "penitência" agora é o
+   chip, mais a caveira, mais o giroflex, mais a borda bicolor. Já eram
+   quatro sinais para a mesma informação. */
+.mc-penitencia .mc-corpo::before { content: none; }
+.mc-penitencia .mc-corpo { padding-top: 0; }
+
+.mc-chip-natureza-pen {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--giro-vermelho) 26%, transparent),
+    color-mix(in srgb, var(--giro-azul) 26%, transparent));
+  border-color: color-mix(in srgb, var(--giro-vermelho) 55%, transparent);
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: .08em;
+}
+
+/* As duas frases lado a lado, separadas por ponto médio. */
+.mc-penitencia .mc-pen {
+  margin-top: 5px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+.mc-penitencia .mc-pen-origem,
+.mc-penitencia .mc-pen-reparo { font-size: .71rem; line-height: 1.35; }
+.mc-penitencia .mc-pen-reparo::before {
+  content: '·';
+  margin-right: 8px;
+  color: rgba(255,255,255,.3);
+}
+
+/* O progresso encolhe: sem rótulo em linha própria, barra mais baixa.
+   O número `0/5` já diz o que a palavra "Progresso" dizia. */
+.mc-penitencia .mc-rep { margin-top: 6px; }
+.mc-penitencia .mc-rep-topo { margin-bottom: 3px; }
+.mc-penitencia .mc-rep-lbl { display: none; }
+.mc-penitencia .mc-rep-topo { justify-content: flex-end; }
+.mc-penitencia .mc-rep-seg,
+.mc-penitencia .mc-rep-continua { height: 5px; }
+
+@media (max-width: 640px) {
+  /* Em tela estreita a segunda frase desce sozinha, e o ponto médio
+     deixaria de fazer sentido pendurado no começo da linha. */
+  .mc-penitencia .mc-pen-reparo::before { content: none; }
+}

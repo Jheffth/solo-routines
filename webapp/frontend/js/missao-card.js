@@ -428,15 +428,24 @@ const MissaoCard = {
     const origem = this._esc(m.origem_titulo || '');
     const quando = m.origem_data ? this._ddmm(this._dataDe(m.origem_data)) : '';
     const reparo = parseInt(m.xp_a_reparar, 10) || 0;
+    /* UMA LINHA, não duas.
+
+       O cartão da penitência ficou alto demais e quebrou o ritmo do
+       Extrato — o Arquiteto reportou. Empilhar "o Sistema cobrou por X"
+       e "quitar devolve +N XP" custava duas linhas de texto mais o vão
+       entre elas, para dizer duas coisas curtas que cabem lado a lado.
+
+       Continuam separadas por um ponto médio e com `flex-wrap`, então em
+       tela estreita a segunda desce sozinha em vez de espremer. */
     return `
       <div class="mc-pen" data-mc-pen="${chave}">
-        ${origem ? `<div class="mc-pen-origem">
-          ${this._g('ampulheta', 11)} o Sistema cobrou por
+        ${origem ? `<span class="mc-pen-origem">
+          ${this._g('ampulheta', 11)} cobrado por
           <b>${origem}</b>${quando ? `, ${quando}` : ''}
-        </div>` : ''}
-        ${reparo > 0 ? `<div class="mc-pen-reparo">
-          quitar devolve <b>+${reparo} XP</b> do que a falha tomou
-        </div>` : ''}
+        </span>` : ''}
+        ${reparo > 0 ? `<span class="mc-pen-reparo">
+          quitar devolve <b>+${reparo} XP</b>
+        </span>` : ''}
       </div>`;
   },
 
@@ -1161,6 +1170,19 @@ const MissaoCard = {
         </div>
 
         <div class="mc-chips">
+          <!-- A ETIQUETA "PENITENCIA" VIRA CHIP.
+
+               Ela era um pseudo-elemento absoluto no canto do cartao, e
+               o corpo reservava 1.75rem de padding-top para nao ficar
+               por baixo dela. Uma linha inteira de espaco morto para uma
+               palavra que cabe na fileira que ja existe — e invisivel,
+               porque nada era desenhado naquela linha.
+
+               (Sem crase neste comentario: ele mora dentro de um
+                template literal, e uma crase o fecharia no meio. Ja
+                quebrou este projeto quatro vezes.) -->
+          ${penit ? `<span class="mc-chip mc-chip-natureza-pen">
+            ${this._g('caveira', 11)} Penitência</span>` : ''}
           <span class="mc-chip mc-chip-prior">${this._g('prior_media', 11)} ${prior.rotulo}</span>
           <span class="mc-chip mc-chip-rank" title="Dificuldade ${(m.dificuldade || 'NORMAL').toLowerCase()} — XP ${rank.mult}">${this._g('prior_alta', 11)} ${rank.letra}-Rank</span>
           <span class="mc-chip mc-chip-status">${this._g(st.gl)} ${st.rotulo}</span>

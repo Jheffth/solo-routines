@@ -343,5 +343,58 @@ ok(/cardápio muda, a dívida não|dívida não/.test(pj),
 ok(/PACTO\s+é a REGRA/.test(pj),
    'o arquivo declara a separação regra × ocorrência no cabeçalho');
 
+console.log('\n-- a ALTURA: o cartao nao pode engordar de novo --');
+/* O Arquiteto reportou que o cartao da penitencia estava "muito grosso"
+   e quebrava o desenho do Extrato. A causa maior era invisivel:
+   `.mc-corpo` reservava 1.75rem de padding-top para a etiqueta
+   "PENITENCIA", que flutuava absoluta no canto. Uma linha inteira de
+   espaco morto, e nada era desenhado nela.
+
+   Nao consigo medir pixels sem navegador. Entao estes asserts travam as
+   CAUSAS de altura, que sao contaveis: quantos blocos empilham no
+   corpo, e se o padding fantasma voltou. */
+{
+  const corpoDe = (m) => {
+    const d = doc.createElement('div');
+    d.innerHTML = MC.html(m);
+    return d.querySelector('.mc-corpo');
+  };
+  const normal = corpoDe({ id: 91, titulo: 'Missao comum', prioridade: 'BAIXA',
+    dificuldade: 'FACIL', categoria: 'Saude', status: 'PENDENTE',
+    xp_recompensa: 5, moedas_recompensa: 1 });
+  const penit = corpoDe(pen({ alvo_repeticoes: 5, repeticoes: 0 }));
+
+  ok(normal.children.length === 3,
+     `cartao comum: ${normal.children.length} blocos no corpo`);
+  ok(penit.children.length <= 5,
+     `penitencia: ${penit.children.length} blocos (era 5 com as duas ` +
+     `frases empilhadas; nao pode passar disso)`);
+
+  /* As duas frases numa linha so. Se voltarem a empilhar, `.mc-pen` volta
+     a ter dois FILHOS DE BLOCO em vez de dois spans em linha. */
+  const blocoPen = penit.querySelector('.mc-pen');
+  ok(blocoPen && [...blocoPen.children].every(e => e.tagName === 'SPAN'),
+     'as duas frases sao spans em linha, nao divs empilhados');
+
+  /* A etiqueta virou chip; o padding fantasma tem de estar desligado. */
+  ok(!!penit.parentElement.querySelector('.mc-chip-natureza-pen'),
+     'a etiqueta PENITENCIA e um chip na fileira que ja existia');
+  ok(/\.mc-penitencia \.mc-corpo::before \{\s*content: none/.test(css),
+     'a etiqueta absoluta foi desligada');
+  ok(/\.mc-penitencia \.mc-corpo \{ padding-top: 0/.test(css),
+     'e o padding-top reservado para ela tambem');
+
+  /* O cartao de REPETICAO usa o mesmo .mc-rep e ja estava aprovado.
+     Nenhuma regra nova pode alcanca-lo. */
+  const regrasNovas = css.slice(css.indexOf('A PENITENCIA MAIS FINA') >= 0
+    ? css.indexOf('A PENITENCIA MAIS FINA') : css.indexOf('A PENITÊNCIA MAIS FINA'));
+  const seletores = [...regrasNovas.matchAll(/^(\.[a-z][\w .-]*)\s*\{/gm)]
+    .map(m => m[1].trim());
+  ok(seletores.every(sel => sel.startsWith('.mc-penitencia') ||
+                            sel.startsWith('.mc-chip-natureza-pen')),
+     `as ${seletores.length} regras novas so alcancam a penitencia ` +
+     `(a repeticao usa o mesmo .mc-rep e ja estava aprovada)`);
+}
+
 console.log(`\n=== ${testes - falhas}/${testes} ===`);
 process.exit(falhas ? 1 : 0);
