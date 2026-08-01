@@ -1127,168 +1127,128 @@ Auras.registrar('fenix-pioneira', function (tam) {
    PALETA: carmesim #ff0a3c e azul #2b6bff — as duas cores do giroflex
    da penitência. A Fênix é laranja; não há como confundir.
    ══════════════════════════════════════════════════════════════ */
+/* FORJA:INICIO pena-punidor */
+/* ══════════════════════════════════════════════════════════════
+   Pena do Punidor — aura
+   GERADO POR motors/forja. Não edite à mão.
+   Fonte: motors/forja/pecas/pena_punidor.py
+   ══════════════════════════════════════════════════════════════ */
 Auras.registrar('pena-punidor', function (tam) {
-  const C = 150;
-  const u = 'pn' + (++Auras._seq);   // ids únicos: duas auras na mesma tela
-
-  /* ── 1. O SELO ─────────────────────────────────────────────
-     Três anéis de traços. Eles CONTRAEM e travam — a animação vai de
-     1.18 a 1.00 e para, depois reinicia. É o oposto de girar: um selo
-     se fecha sobre alguém. */
-  const selo = [
-    { r: 132, w: 1.6, dash: '2 10', cor: '#ff0a3c', op: .60, dur: 3.2, atraso: 0 },
-    { r: 116, w: 1.1, dash: '1 14', cor: '#2b6bff', op: .45, dur: 3.2, atraso: .35 },
-    { r: 100, w: 2.2, dash: '26 220', cor: '#ff0a3c', op: .75, dur: 3.2, atraso: .7 },
-  ].map((a, k) => `
-    <circle class="${u}-selo ${u}-selo${k}" cx="${C}" cy="${C}" r="${a.r}"
-            fill="none" stroke="${a.cor}" stroke-width="${a.w}"
-            stroke-dasharray="${a.dash}" stroke-linecap="round"
-            opacity="${a.op}"
-            style="animation-duration:${a.dur}s;animation-delay:${a.atraso}s"/>`).join('');
-
-  /* ── 2. A TINTA QUE CAI ────────────────────────────────────
-     Dezoito traços verticais, de comprimentos e velocidades
-     diferentes, caindo de cima. O movimento vertical é a assinatura
-     desta aura — nenhuma outra do app tem gravidade. */
-  let chuva = '';
-  for (let i = 0; i < 18; i++) {
-    const x = 26 + (i * 16.4) % 248;
-    const len = 14 + (i * 7) % 34;
-    const dur = 2.1 + ((i * 13) % 17) / 10;
-    const atraso = ((i * 29) % 31) / 10;
-    const cor = i % 3 === 0 ? '#2b6bff' : '#ff0a3c';
-    chuva += `<line class="${u}-tinta" x1="${x}" y1="-10" x2="${x}" y2="${-10 + len}"
-                    stroke="${cor}" stroke-width="${i % 4 === 0 ? 2 : 1.2}"
-                    stroke-linecap="round" opacity="0"
-                    style="animation-duration:${dur.toFixed(2)}s;animation-delay:${atraso.toFixed(2)}s"/>`;
-  }
-
-  /* ── 3. O CARIMBO ──────────────────────────────────────────
-     Quatro cunhas nos pontos cardeais. Elas AVANÇAM para o centro e
-     recuam — impacto, não órbita. Cada uma com atraso próprio, senão
-     seria um zoom. */
-  const carimbo = [0, 90, 180, 270].map((ang, k) => `
-    <path class="${u}-cunha" d="M${C} ${C - 88} L${C + 13} ${C - 122} L${C - 13} ${C - 122} Z"
-          fill="url(#${u}-cunhaG)" opacity=".85"
-          transform="rotate(${ang} ${C} ${C})"
-          style="animation-delay:${(k * .18).toFixed(2)}s"/>`).join('');
-
-  /* ── 4. A ASSINATURA ───────────────────────────────────────
-     O mesmo floreio da insígnia. A aura e a medalha são o mesmo
-     objeto em duas escalas — e é isso que faz o conjunto parecer
-     desenhado por uma pessoa só. */
-  const assinatura = `
-    <path class="${u}-assina"
-          d="M64 244 C 92 262, 140 264, 178 250 C 200 242, 206 226, 192 219
-             C 178 212, 168 228, 182 238 C 196 248, 224 244, 238 232"
-          stroke="url(#${u}-tintaG)" stroke-width="2.6" fill="none"
-          stroke-linecap="round" opacity=".9"/>`;
-
-  return `
-<svg class="aura-svg" width="${tam}" height="${tam}" viewBox="0 0 300 300"
-     xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  const u = 'a' + (++Auras._seq);
+  return `<svg viewBox="0 0 300 300" width="${tam}" height="${tam}"
+     xmlns="http://www.w3.org/2000/svg" class="aura-svg"
+     aria-hidden="true" focusable="false"
+     style="display:block;overflow:hidden;width:${tam}px;height:${tam}px">
   <defs>
-    <radialGradient id="${u}-veu" cx=".5" cy=".5" r=".5">
-      <stop offset="0"   stop-color="#ff0a3c" stop-opacity=".30"/>
-      <stop offset=".55" stop-color="#7a0f2e" stop-opacity=".16"/>
-      <stop offset="1"   stop-color="#2b6bff" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="${u}-cunhaG" x1="0" y1="1" x2="0" y2="0">
-      <stop offset="0"   stop-color="#ff0a3c" stop-opacity="0"/>
-      <stop offset=".55" stop-color="#ff0a3c" stop-opacity=".9"/>
-      <stop offset="1"   stop-color="#fff" stop-opacity=".95"/>
-    </linearGradient>
-    <linearGradient id="${u}-tintaG" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0"   stop-color="#ff0a3c"/>
-      <stop offset=".5"  stop-color="#a2185a"/>
-      <stop offset="1"   stop-color="#2b6bff"/>
-    </linearGradient>
-    <filter id="${u}-glow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="2.4" result="b"/>
-      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
-    <!-- A chuva é recortada ao círculo da aura: sem isto ela escorre
-         para fora e vira listra na tela. -->
-    <clipPath id="${u}-corte"><circle cx="${C}" cy="${C}" r="142"/></clipPath>
+<radialGradient id="fzwcg-veu-${u}" cx="0.5" cy="0.5" r="0.5"><stop offset="0.0" stop-color="#ff0a3c" stop-opacity="0.3"/><stop offset="0.55" stop-color="#7a0f2e" stop-opacity="0.16"/><stop offset="1.0" stop-color="#2b6bff" stop-opacity="0"/></radialGradient>
+<linearGradient id="fzwcg-cunha-${u}" x1="0" y1="1" x2="0" y2="0"><stop offset="0.0" stop-color="#ff0a3c" stop-opacity="0"/><stop offset="0.55" stop-color="#ff0a3c" stop-opacity="0.9"/><stop offset="1.0" stop-color="#fff" stop-opacity="0.95"/></linearGradient>
+<linearGradient id="fzwcg-tinta-${u}" x1="0" y1="0" x2="1" y2="0"><stop offset="0.0" stop-color="#ff0a3c" stop-opacity="1"/><stop offset="0.5" stop-color="#a2185a" stop-opacity="1"/><stop offset="1.0" stop-color="#2b6bff" stop-opacity="1"/></linearGradient>
+<filter id="fzwcg-glow-${u}" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="2.4" result="b"/><feComponentTransfer in="b" result="bb"><feFuncA type="linear" slope="1.1"/></feComponentTransfer><feMerge><feMergeNode in="bb"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<clipPath id="fzwcg-corte-${u}"><circle cx="150.0" cy="150.0" r="142.0"/></clipPath>
   </defs>
-
   <style>
-    /* O SELO CONTRAI E TRAVA. Nada gira nesta aura — é o que a separa
-       de todas as outras do app. */
-    .${u}-selo {
-      transform-origin: ${C}px ${C}px;
-      animation-name: ${u}-fechar;
-      animation-timing-function: cubic-bezier(.16,.9,.3,1);
-      animation-iteration-count: infinite;
+
+    /* NENHUM aura-girar. E esse keyframe GLOBAL que todas as outras
+       auras usam, e foi por herda-lo que a primeira versao desta ficou
+       identica a Fenix.
+       (Sem crase aqui: este CSS vira template literal de JS, e uma crase
+        o fecharia no meio — o motor recusa a arte se encontrar uma.) */
+    .fa-selo {
+      transform-origin: 150.0px 150.0px;
+      animation: fa-fechar 3.2s cubic-bezier(.16,.9,.3,1) infinite;
     }
-    @keyframes ${u}-fechar {
+    @keyframes fa-fechar {
       0%       { transform: scale(1.18); opacity: 0; }
       22%      { opacity: 1; }
       55%, 88% { transform: scale(1); }
       100%     { transform: scale(1); opacity: .25; }
     }
-
-    /* A TINTA CAI. Movimento vertical — a assinatura desta aura. */
-    .${u}-tinta {
-      animation-name: ${u}-cair;
+    .fa-chuva path {
+      animation-name: fa-cair;
       animation-timing-function: cubic-bezier(.4,0,.9,.5);
       animation-iteration-count: infinite;
     }
-    @keyframes ${u}-cair {
-      0%   { transform: translateY(0);     opacity: 0; }
+    @keyframes fa-cair {
+      0%   { transform: translateY(0); opacity: 0; }
       12%  { opacity: .9; }
       82%  { opacity: .55; }
-      100% { transform: translateY(320px); opacity: 0; }
+      100% { transform: translateY(300px); opacity: 0; }
     }
-
-    /* O CARIMBO BATE. Avança rápido, recua devagar — é o ritmo de um
-       golpe, e o oposto de uma rotação constante. */
-    .${u}-cunha {
+    .fa-cunha {
       transform-box: fill-box;
-      animation: ${u}-bater 2.6s cubic-bezier(.2,.9,.3,1) infinite;
+      animation: fa-bater 2.6s cubic-bezier(.2,.9,.3,1) infinite;
     }
-    @keyframes ${u}-bater {
-      0%, 62%  { transform: translateY(0);    opacity: .30; }
-      70%      { transform: translateY(26px); opacity: 1; }
-      100%     { transform: translateY(0);    opacity: .30; }
+    @keyframes fa-bater {
+      0%, 62% { transform: translateY(0); opacity: .30; }
+      70%     { transform: translateY(26px); opacity: 1; }
+      100%    { transform: translateY(0); opacity: .30; }
     }
-
-    /* A ASSINATURA se escreve, e some para recomeçar. */
-    .${u}-assina {
-      stroke-dasharray: 300;
-      animation: ${u}-assinar 5.4s ease-in-out infinite;
+    .fa-assina path { animation: fa-assinar 5.4s ease-in-out infinite; }
+    @keyframes fa-assinar {
+      0%       { opacity: 0; }
+      18%, 78% { opacity: .9; }
+      100%     { opacity: 0; }
     }
-    @keyframes ${u}-assinar {
-      0%       { stroke-dashoffset: 300; opacity: 0; }
-      18%      { opacity: .9; }
-      55%, 78% { stroke-dashoffset: 0;   opacity: .9; }
-      100%     { stroke-dashoffset: 0;   opacity: 0; }
-    }
-
-    .${u}-veu { animation: ${u}-veu 4.8s ease-in-out infinite; transform-origin: ${C}px ${C}px; }
-    @keyframes ${u}-veu {
+    .fa-veu { animation: fa-respirar 4.8s ease-in-out infinite;
+               transform-origin: 150.0px 150.0px; }
+    @keyframes fa-respirar {
       0%, 100% { opacity: .55; transform: scale(1); }
       50%      { opacity: .9;  transform: scale(1.05); }
     }
-
     @media (prefers-reduced-motion: reduce) {
-      .${u}-selo, .${u}-tinta, .${u}-cunha, .${u}-assina, .${u}-veu { animation: none; }
-      .${u}-tinta { opacity: .5; }
-      .${u}-assina { stroke-dashoffset: 0; opacity: .9; }
+      .fa-selo, .fa-chuva path, .fa-cunha, .fa-assina path, .fa-veu
+        { animation: none; }
+      .fa-chuva path { opacity: .5; }
     }
+    
   </style>
+<!-- veu -->
+<g class="fa-veu">
+<circle cx="150.0" cy="150.0" r="142.0" fill="url(#fzwcg-veu-${u})"/>
+</g>
+<!-- chuva -->
+<g class="fa-chuva" clip-path="url(#fzwcg-corte-${u})">
+<path d="M 26.00 8.00 L 25.51 9.73 L 25.18 11.47 L 24.97 13.20 L 24.90 14.95 L 24.97 16.70 L 25.18 18.45 L 25.51 20.22 L 26.00 22.00 L 26.00 22.00 L 26.49 20.22 L 26.82 18.45 L 27.03 16.70 L 27.10 14.95 L 27.03 13.20 L 26.82 11.47 L 26.49 9.73 L 26.00 8.00 Z" fill="#2b6bff" opacity="0" style="animation-duration:2.10s;animation-delay:0.00s"/>
+<path d="M 42.40 8.00 L 42.09 10.60 L 41.88 13.20 L 41.75 15.81 L 41.70 18.42 L 41.75 21.05 L 41.88 23.68 L 42.09 26.33 L 42.40 29.00 L 42.40 29.00 L 42.71 26.33 L 42.92 23.68 L 43.05 21.05 L 43.10 18.42 L 43.05 15.81 L 42.92 13.20 L 42.71 10.60 L 42.40 8.00 Z" fill="#ff0a3c" opacity="0" style="animation-duration:3.40s;animation-delay:2.90s"/>
+<path d="M 58.80 8.00 L 58.49 11.47 L 58.28 14.93 L 58.15 18.41 L 58.10 21.89 L 58.15 25.39 L 58.28 28.91 L 58.49 32.44 L 58.80 36.00 L 58.80 36.00 L 59.11 32.44 L 59.32 28.91 L 59.45 25.39 L 59.50 21.89 L 59.45 18.41 L 59.32 14.93 L 59.11 11.47 L 58.80 8.00 Z" fill="#ff0a3c" opacity="0" style="animation-duration:3.00s;animation-delay:2.70s"/>
+<path d="M 75.20 8.00 L 74.89 12.33 L 74.68 16.67 L 74.55 21.01 L 74.50 25.37 L 74.55 29.74 L 74.68 34.14 L 74.89 38.55 L 75.20 43.00 L 75.20 43.00 L 75.51 38.55 L 75.72 34.14 L 75.85 29.74 L 75.90 25.37 L 75.85 21.01 L 75.72 16.67 L 75.51 12.33 L 75.20 8.00 Z" fill="#2b6bff" opacity="0" style="animation-duration:2.60s;animation-delay:2.50s"/>
+<path d="M 91.60 8.00 L 91.11 13.20 L 90.78 18.40 L 90.57 23.61 L 90.50 28.84 L 90.57 34.09 L 90.78 39.36 L 91.11 44.66 L 91.60 50.00 L 91.60 50.00 L 92.09 44.66 L 92.42 39.36 L 92.63 34.09 L 92.70 28.84 L 92.63 23.61 L 92.42 18.40 L 92.09 13.20 L 91.60 8.00 Z" fill="#ff0a3c" opacity="0" style="animation-duration:2.20s;animation-delay:2.30s"/>
+<path d="M 108.00 8.00 L 107.69 9.86 L 107.48 11.71 L 107.35 13.58 L 107.30 15.44 L 107.35 17.32 L 107.48 19.20 L 107.69 21.09 L 108.00 23.00 L 108.00 23.00 L 108.31 21.09 L 108.52 19.20 L 108.65 17.32 L 108.70 15.44 L 108.65 13.58 L 108.52 11.71 L 108.31 9.86 L 108.00 8.00 Z" fill="#ff0a3c" opacity="0" style="animation-duration:3.50s;animation-delay:2.10s"/>
+<path d="M 124.40 8.00 L 124.09 10.72 L 123.88 13.45 L 123.75 16.18 L 123.70 18.92 L 123.75 21.67 L 123.88 24.43 L 124.09 27.20 L 124.40 30.00 L 124.40 30.00 L 124.71 27.20 L 124.92 24.43 L 125.05 21.67 L 125.10 18.92 L 125.05 16.18 L 124.92 13.45 L 124.71 10.72 L 124.40 8.00 Z" fill="#2b6bff" opacity="0" style="animation-duration:3.10s;animation-delay:1.90s"/>
+<path d="M 140.80 8.00 L 140.49 11.59 L 140.28 15.18 L 140.15 18.78 L 140.10 22.39 L 140.15 26.01 L 140.28 29.65 L 140.49 33.32 L 140.80 37.00 L 140.80 37.00 L 141.11 33.32 L 141.32 29.65 L 141.45 26.01 L 141.50 22.39 L 141.45 18.78 L 141.32 15.18 L 141.11 11.59 L 140.80 8.00 Z" fill="#ff0a3c" opacity="0" style="animation-duration:2.70s;animation-delay:1.70s"/>
+<path d="M 157.20 8.00 L 156.71 12.46 L 156.38 16.92 L 156.17 21.38 L 156.10 25.87 L 156.17 30.36 L 156.38 34.88 L 156.71 39.43 L 157.20 44.00 L 157.20 44.00 L 157.69 39.43 L 158.02 34.88 L 158.23 30.36 L 158.30 25.87 L 158.23 21.38 L 158.02 16.92 L 157.69 12.46 L 157.20 8.00 Z" fill="#ff0a3c" opacity="0" style="animation-duration:2.30s;animation-delay:1.50s"/>
+<path d="M 173.60 8.00 L 173.29 13.32 L 173.08 18.65 L 172.95 23.99 L 172.90 29.34 L 172.95 34.71 L 173.08 40.11 L 173.29 45.54 L 173.60 51.00 L 173.60 51.00 L 173.91 45.54 L 174.12 40.11 L 174.25 34.71 L 174.30 29.34 L 174.25 23.99 L 174.12 18.65 L 173.91 13.32 L 173.60 8.00 Z" fill="#2b6bff" opacity="0" style="animation-duration:3.60s;animation-delay:1.30s"/>
+<path d="M 190.00 8.00 L 189.69 9.98 L 189.48 11.96 L 189.35 13.95 L 189.30 15.94 L 189.35 17.94 L 189.48 19.95 L 189.69 21.97 L 190.00 24.00 L 190.00 24.00 L 190.31 21.97 L 190.52 19.95 L 190.65 17.94 L 190.70 15.94 L 190.65 13.95 L 190.52 11.96 L 190.31 9.98 L 190.00 8.00 Z" fill="#ff0a3c" opacity="0" style="animation-duration:3.20s;animation-delay:1.10s"/>
+<path d="M 206.40 8.00 L 206.09 10.85 L 205.88 13.70 L 205.75 16.55 L 205.70 19.41 L 205.75 22.29 L 205.88 25.17 L 206.09 28.08 L 206.40 31.00 L 206.40 31.00 L 206.71 28.08 L 206.92 25.17 L 207.05 22.29 L 207.10 19.41 L 207.05 16.55 L 206.92 13.70 L 206.71 10.85 L 206.40 8.00 Z" fill="#ff0a3c" opacity="0" style="animation-duration:2.80s;animation-delay:0.90s"/>
+<path d="M 222.80 8.00 L 222.31 11.71 L 221.98 15.43 L 221.77 19.15 L 221.70 22.89 L 221.77 26.64 L 221.98 30.40 L 222.31 34.19 L 222.80 38.00 L 222.80 38.00 L 223.29 34.19 L 223.62 30.40 L 223.83 26.64 L 223.90 22.89 L 223.83 19.15 L 223.62 15.43 L 223.29 11.71 L 222.80 8.00 Z" fill="#2b6bff" opacity="0" style="animation-duration:2.40s;animation-delay:0.70s"/>
+<path d="M 239.20 8.00 L 238.89 12.58 L 238.68 17.16 L 238.55 21.76 L 238.50 26.36 L 238.55 30.98 L 238.68 35.63 L 238.89 40.30 L 239.20 45.00 L 239.20 45.00 L 239.51 40.30 L 239.72 35.63 L 239.85 30.98 L 239.90 26.36 L 239.85 21.76 L 239.72 17.16 L 239.51 12.58 L 239.20 8.00 Z" fill="#ff0a3c" opacity="0" style="animation-duration:3.70s;animation-delay:0.50s"/>
+<path d="M 255.60 8.00 L 255.29 13.45 L 255.08 18.90 L 254.95 24.36 L 254.90 29.84 L 254.95 35.33 L 255.08 40.86 L 255.29 46.41 L 255.60 52.00 L 255.60 52.00 L 255.91 46.41 L 256.12 40.86 L 256.25 35.33 L 256.30 29.84 L 256.25 24.36 L 256.12 18.90 L 255.91 13.45 L 255.60 8.00 Z" fill="#ff0a3c" opacity="0" style="animation-duration:3.30s;animation-delay:0.30s"/>
+<path d="M 272.00 8.00 L 271.69 10.10 L 271.48 12.21 L 271.35 14.32 L 271.30 16.44 L 271.35 18.56 L 271.48 20.69 L 271.69 22.84 L 272.00 25.00 L 272.00 25.00 L 272.31 22.84 L 272.52 20.69 L 272.65 18.56 L 272.70 16.44 L 272.65 14.32 L 272.52 12.21 L 272.31 10.10 L 272.00 8.00 Z" fill="#2b6bff" opacity="0" style="animation-duration:2.90s;animation-delay:0.10s"/>
+<path d="M 40.40 8.00 L 39.91 10.97 L 39.58 13.94 L 39.37 16.92 L 39.30 19.91 L 39.37 22.91 L 39.58 25.92 L 39.91 28.95 L 40.40 32.00 L 40.40 32.00 L 40.89 28.95 L 41.22 25.92 L 41.43 22.91 L 41.50 19.91 L 41.43 16.92 L 41.22 13.94 L 40.89 10.97 L 40.40 8.00 Z" fill="#ff0a3c" opacity="0" style="animation-duration:2.50s;animation-delay:3.00s"/>
+<path d="M 56.80 8.00 L 56.49 11.84 L 56.28 15.68 L 56.15 19.53 L 56.10 23.38 L 56.15 27.26 L 56.28 31.15 L 56.49 35.06 L 56.80 39.00 L 56.80 39.00 L 57.11 35.06 L 57.32 31.15 L 57.45 27.26 L 57.50 23.38 L 57.45 19.53 L 57.32 15.68 L 57.11 11.84 L 56.80 8.00 Z" fill="#ff0a3c" opacity="0" style="animation-duration:2.10s;animation-delay:2.80s"/>
+</g>
+<!-- selo -->
+<g filter="url(#fzwcg-glow-${u})">
+<circle class="fa-selo" cx="150.0" cy="150.0" r="132.0" fill="none" stroke="#ff0a3c" stroke-width="1.60" stroke-dasharray="2.0 10.0" stroke-linecap="round" opacity="0.6" style="animation-delay:0.0s"/>
+<circle class="fa-selo" cx="150.0" cy="150.0" r="116.0" fill="none" stroke="#2b6bff" stroke-width="1.10" stroke-dasharray="1.0 14.0" stroke-linecap="round" opacity="0.45" style="animation-delay:0.35s"/>
+<circle class="fa-selo" cx="150.0" cy="150.0" r="100.0" fill="none" stroke="#ff0a3c" stroke-width="2.20" stroke-dasharray="26.0 220.0" stroke-linecap="round" opacity="0.75" style="animation-delay:0.7s"/>
+</g>
+<!-- carimbo -->
+<g filter="url(#fzwcg-glow-${u})">
+<path class="fa-cunha" d="M 150.00 28.00 L 146.78 31.33 L 145.20 34.70 L 143.97 38.12 L 142.95 41.55 L 142.07 45.00 L 141.29 48.45 L 140.61 51.88 L 139.99 55.30 L 139.44 58.67 L 138.95 62.00 L 161.05 62.00 L 160.56 58.67 L 160.01 55.30 L 159.39 51.88 L 158.71 48.45 L 157.93 45.00 L 157.05 41.55 L 156.03 38.12 L 154.80 34.70 L 153.22 31.33 L 150.00 28.00 Z" fill="url(#fzwcg-cunha-${u})" opacity=".85" transform="rotate(0 150.0 150.0)" style="animation-delay:0.00s"/>
+<path class="fa-cunha" d="M 150.00 28.00 L 146.78 31.33 L 145.20 34.70 L 143.97 38.12 L 142.95 41.55 L 142.07 45.00 L 141.29 48.45 L 140.61 51.88 L 139.99 55.30 L 139.44 58.67 L 138.95 62.00 L 161.05 62.00 L 160.56 58.67 L 160.01 55.30 L 159.39 51.88 L 158.71 48.45 L 157.93 45.00 L 157.05 41.55 L 156.03 38.12 L 154.80 34.70 L 153.22 31.33 L 150.00 28.00 Z" fill="url(#fzwcg-cunha-${u})" opacity=".85" transform="rotate(90 150.0 150.0)" style="animation-delay:0.18s"/>
+<path class="fa-cunha" d="M 150.00 28.00 L 146.78 31.33 L 145.20 34.70 L 143.97 38.12 L 142.95 41.55 L 142.07 45.00 L 141.29 48.45 L 140.61 51.88 L 139.99 55.30 L 139.44 58.67 L 138.95 62.00 L 161.05 62.00 L 160.56 58.67 L 160.01 55.30 L 159.39 51.88 L 158.71 48.45 L 157.93 45.00 L 157.05 41.55 L 156.03 38.12 L 154.80 34.70 L 153.22 31.33 L 150.00 28.00 Z" fill="url(#fzwcg-cunha-${u})" opacity=".85" transform="rotate(180 150.0 150.0)" style="animation-delay:0.36s"/>
+<path class="fa-cunha" d="M 150.00 28.00 L 146.78 31.33 L 145.20 34.70 L 143.97 38.12 L 142.95 41.55 L 142.07 45.00 L 141.29 48.45 L 140.61 51.88 L 139.99 55.30 L 139.44 58.67 L 138.95 62.00 L 161.05 62.00 L 160.56 58.67 L 160.01 55.30 L 159.39 51.88 L 158.71 48.45 L 157.93 45.00 L 157.05 41.55 L 156.03 38.12 L 154.80 34.70 L 153.22 31.33 L 150.00 28.00 Z" fill="url(#fzwcg-cunha-${u})" opacity=".85" transform="rotate(270 150.0 150.0)" style="animation-delay:0.54s"/>
+</g>
+<!-- assinatura -->
+<g class="fa-assina">
+<path d="M 64.00 236.00 L 66.68 239.12 L 69.89 241.46 L 73.29 243.54 L 76.84 245.41 L 80.51 247.11 L 84.28 248.63 L 88.15 249.99 L 92.11 251.19 L 96.14 252.24 L 100.24 253.14 L 104.40 253.90 L 108.62 254.52 L 112.89 255.01 L 117.20 255.36 L 121.56 255.57 L 125.95 255.67 L 130.37 255.63 L 134.81 255.48 L 139.28 255.20 L 143.77 254.81 L 148.28 254.31 L 152.79 253.69 L 157.31 252.97 L 161.84 252.14 L 166.37 251.20 L 170.89 250.17 L 175.41 249.03 L 179.92 247.80 L 184.41 246.47 L 188.89 245.04 L 193.35 243.53 L 197.78 241.92 L 202.19 240.23 L 206.57 238.45 L 210.92 236.59 L 215.23 234.64 L 219.49 232.61 L 223.72 230.50 L 227.89 228.30 L 232.00 226.00 L 232.00 226.00 L 227.71 227.92 L 223.39 229.77 L 219.04 231.56 L 214.66 233.26 L 210.26 234.89 L 205.83 236.44 L 201.38 237.90 L 196.92 239.29 L 192.44 240.59 L 187.96 241.80 L 183.47 242.93 L 178.97 243.97 L 174.48 244.92 L 169.99 245.78 L 165.51 246.56 L 161.04 247.24 L 156.58 247.84 L 152.15 248.34 L 147.73 248.75 L 143.33 249.07 L 138.97 249.29 L 134.63 249.42 L 130.33 249.45 L 126.06 249.39 L 121.83 249.24 L 117.64 248.98 L 113.50 248.64 L 109.41 248.19 L 105.36 247.65 L 101.37 247.01 L 97.42 246.28 L 93.53 245.45 L 89.70 244.53 L 85.92 243.51 L 82.20 242.39 L 78.52 241.19 L 74.90 239.90 L 71.32 238.54 L 67.75 237.13 L 64.00 236.00 Z" fill="url(#fzwcg-tinta-${u})" opacity=".9"/>
+</g>
 
-  <!-- O véu de fundo: carmesim no centro, azul dissolvendo na borda.
-       UM só — dois halos brigam entre si. -->
-  <circle class="${u}-veu" cx="${C}" cy="${C}" r="142" fill="url(#${u}-veu)"/>
-
-  <g clip-path="url(#${u}-corte)">${chuva}</g>
-
-  <g filter="url(#${u}-glow)">${selo}</g>
-  <g filter="url(#${u}-glow)">${carimbo}</g>
-  ${assinatura}
 </svg>`;
 });
+
+/* FORJA:FIM pena-punidor */
 
 window.Auras = Auras;
 
