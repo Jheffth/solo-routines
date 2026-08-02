@@ -435,7 +435,11 @@ const Dashboard = {
       if (countEl) {
         const total  = resp?.total ?? lista.length;
         const abertas = lista.filter(m => !['CONCLUIDA', 'FRACASSADA', 'CANCELADA', 'CONFESSADA'].includes(m.status)).length;
-        countEl.textContent = `${total} miss\u00E3o${total !== 1 ? '\u00F5es' : ''} \u00B7 ${abertas} em aberto`;
+        /* PLURAL POR SUBSTITUICAO, nao por acrescimo.
+           Estava `missão` + (n != 1 ? 'ões' : '') — o que soma o sufixo ao
+           singular INTEIRO e produz "80 missãoões". O radical e `miss`, e o
+           que varia e a terminacao. */
+        countEl.textContent = `${total} miss${total !== 1 ? '\u00F5es' : '\u00E3o'} \u00B7 ${abertas} em aberto`;
       }
 
       this._renderExtrato(lista, cont);

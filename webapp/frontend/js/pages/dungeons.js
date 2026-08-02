@@ -702,7 +702,7 @@ const Dungeons = {
           <div class="dgc-stat" style="grid-column:span 2; border-color:rgba(${tema.rgb},.2)">
             <span>📜</span>
             <span class="dgc-stat-label">Missões internas</span>
-            <span class="dgc-stat-val" style="color:${tema.cor}">${nMiss} missão${nMiss !== 1 ? 'ões' : ''} carregada${nMiss !== 1 ? 's' : ''}</span>
+            <span class="dgc-stat-val" style="color:${tema.cor}">${nMiss} miss${nMiss !== 1 ? 'ões' : 'ão'} carregada${nMiss !== 1 ? 's' : ''}</span>
           </div>` : ''}
         </div>
 
