@@ -64,8 +64,22 @@ const App = {
     // 1. Bind eventos de modal
     Modal._bindEvents();
 
-    // 2. Carregar configs visuais
-    await this._carregarConfigs();
+    // 2. Configs visuais e sessão DISPARAM JUNTAS.
+    //
+    //    Antes o `await _carregarConfigs()` ficava aqui, no passo 2, e a
+    //    checagem de sessão só acontecia no passo 9 — dois round-trips em
+    //    SÉRIE antes de a tela poder decidir o que mostrar. Com o banco
+    //    em us-east-1 isso são segundos de tela errada.
+    //
+    //    As duas não dependem uma da outra, então esperam juntas. O
+    //    `catch` de cada uma é próprio: config que falha usa o padrão, e
+    //    sessão que falha manda para o login. Um `Promise.all` sem isso
+    //    faria a primeira falha derrubar a outra.
+    const promessaConfigs = this._carregarConfigs();
+    const promessaSessao = (async () => {
+      if (!Auth.getToken()) return null;
+      try { return await API.auth.me(); } catch (_) { return null; }
+    })();
 
     // 3. Bind navegacao sidebar
     this._bindNavegacao();
@@ -103,24 +117,26 @@ const App = {
       this._mostrarLogin();
     });
 
-    // 9. Verificar autenticacao
-    const token = Auth.getToken();
-    if (token) {
-      try {
-        const usuario = await API.auth.me();
-        if (usuario) {
-          this.mostrarApp(usuario);
-          await Dashboard.carregar();
-        } else {
-          Auth.logout(false);
-          this.mostrarLogin();
-        }
-      } catch (_) {
-        Auth.logout(false);
-        this.mostrarLogin();
-      }
+    // 9. Decidir a tela — e só agora abrir o portal.
+    //
+    //    O `#boot-portal` cobre tudo desde o primeiro pixel. Enquanto ele
+    //    estiver lá, nenhuma tela pode ser desmentida meio segundo
+    //    depois — que era exatamente o defeito: o login pintava e virava
+    //    dashboard.
+    await promessaConfigs;
+    const usuario = await promessaSessao;
+
+    if (usuario) {
+      this.mostrarApp(usuario);
+      this._fecharPortal();
+      // O Dashboard carrega DEPOIS do portal sair: ele tem os próprios
+      // esqueletos, e segurar o portal até o extrato chegar devolveria a
+      // espera em branco que estamos eliminando.
+      await Dashboard.carregar();
     } else {
+      if (Auth.getToken()) Auth.logout(false);
       this.mostrarLogin();
+      this._fecharPortal();
     }
 
     // 10. Inicializa drag-windows
@@ -303,6 +319,18 @@ const App = {
     document.getElementById('login-screen')?.classList.remove('hidden');
     document.getElementById('registro-screen')?.classList.add('hidden');
     Auth.bindOAuth?.();
+  },
+
+  /* O portal sai com transição, não com `display:none` seco: o corte a
+     zero é o que faz uma tela "piscar", e o objetivo aqui é o oposto.
+     `remove()` no fim porque um overlay com `opacity:0` continua
+     interceptando clique se alguém esquecer o `pointer-events`. */
+  _fecharPortal() {
+    const p = document.getElementById('boot-portal');
+    if (!p) return;
+    p.setAttribute('aria-busy', 'false');
+    p.classList.add('saindo');
+    setTimeout(() => p.remove(), 420);
   },
 
   mostrarApp(usuario) {

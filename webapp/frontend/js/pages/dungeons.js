@@ -90,7 +90,7 @@ const Dungeons = {
   async carregar() {
     const cont = document.getElementById('lista-dungeons');
     if (!cont) return;
-    cont.innerHTML = '<div class="loading-spinner-wrap"><div class="loading-spinner"></div></div>';
+    cont.innerHTML = Esqueleto.lista(3, { botao: false });
     try {
       this._lista = await API.dungeons.listar();
       this._render();

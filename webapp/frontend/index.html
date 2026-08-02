@@ -32,6 +32,7 @@
   <link rel="stylesheet" href="css/sr-filtro.css">
   <link rel="stylesheet" href="css/eco.css">
   <link rel="stylesheet" href="css/pacto.css">
+  <link rel="stylesheet" href="css/boot.css">
   <link rel="stylesheet" href="css/modal-auras.css">
   <link rel="stylesheet" href="css/altar-reliquias.css">
   <link rel="stylesheet" href="css/buddylist.css">
@@ -39,6 +40,19 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
+  <!-- ══════════════════════════════════════════════════════════
+       O PORTAL — a unica coisa visivel enquanto a sessao e checada.
+
+       Ele existe para que nao haja NENHUM instante em que a tela diga
+       algo que pode ser desmentido meio segundo depois. Some sozinho
+       quando `App.init` decide entre login e dashboard.
+       ══════════════════════════════════════════════════════════ -->
+  <div id="boot-portal" aria-live="polite" aria-busy="true">
+    <div class="boot-anel"></div>
+    <div class="boot-marca">SOLO ROUTINES</div>
+    <div class="boot-dizer">verificando a sessão…</div>
+  </div>
+
 
   <!-- Filtro de chamas vivas (turbulência animada) — usado pela aura do Arquiteto -->
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -65,7 +79,13 @@
   <div id="app-container">
 
     <!-- TELA DE LOGIN -->
-    <div id="login-screen">
+    <!-- NASCE OCULTO. Antes esta tela era o estado PADRAO do HTML — sem
+         `hidden` — enquanto `#main-app` nascia escondido. Resultado: quem
+         ja estava logado via a tela de login pintar, esperar duas
+         requisicoes, e so entao ser substituida. Parecia deslogado.
+         Quem decide qual tela aparece e o passo de autenticacao, nunca o
+         estado inicial do documento. -->
+    <div id="login-screen" class="hidden">
       <div class="login-mist"></div>
       <div class="login-card">
         <div class="login-logo-wrap" style="display:flex;justify-content:center;align-items:center;margin-bottom:.5rem">
@@ -1364,6 +1384,7 @@
   <!-- O registro das peças. Não desenha nada: só precisa existir antes
        que alguma peça tente se registrar. -->
   <script src="js/pecas.js"></script>
+  <script src="js/esqueleto.js"></script>
   <script src="js/missao-card.js"></script>
   <script src="js/forja-missao.js"></script>
   <script src="js/animations.js"></script>
