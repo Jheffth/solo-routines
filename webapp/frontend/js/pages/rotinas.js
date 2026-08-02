@@ -62,16 +62,9 @@ const Rotinas = {
     if (!cont) return;
     
     const htmlAtual = cont.innerHTML.trim();
-    /* O guarda tem de conhecer o ESQUELETO tambem. Ele decide se a
-       tela ja tem conteudo real (e entao recarrega em silencio, sem
-       piscar). Trocando o spinner pelo esqueleto sem atualizar esta
-       linha, um esqueleto pendente passaria por conteudo e a lista
-       nunca se preencheria. */
-    const vazia = ['loading-spinner', 'sk-lista', 'empty-state']
-      .some(m => htmlAtual.includes(m));
-    const silencioso = htmlAtual.length > 0 && !vazia;
+    const silencioso = htmlAtual.length > 0 && !htmlAtual.includes('loading-spinner') && !htmlAtual.includes('empty-state');
     if (!silencioso) {
-      cont.innerHTML = Esqueleto.lista(4);
+      cont.innerHTML = '<div class="loading-spinner-wrap"><div class="loading-spinner"></div></div>';
     }
 
     try {

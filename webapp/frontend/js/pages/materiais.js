@@ -30,7 +30,7 @@ const Materiais = {
         ?.addEventListener('click', () => this.carregar());
       this._bound = true;
     }
-    cont.innerHTML = Esqueleto.grade(6);
+    cont.innerHTML = '<div class="loading-spinner-wrap"><div class="loading-spinner"></div></div>';
     try {
       const inv = await API.materiais.inventario();
       this._enviaveis  = inv.enviaveis || [];
