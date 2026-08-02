@@ -249,7 +249,12 @@ def _missao_geral(t: TarefaDia, hoje: date) -> dict:
         **_repeticao(t, getattr(t, "repeticoes", 0)),
         **_penitencia(t),
 
-        "editavel":    t.data_prevista == hoje,
+        # PENITENCIA E SEMPRE EDITAVEL. Ela tem `data_prevista` igual ao dia
+        # da falha (ontem, anteontem...), entao `data_prevista == hoje` seria
+        # False e o frontend mostraria "Nao cumprida" com o botao bloqueado.
+        # A divida nao expira por data — so o hunter a quita.
+        "editavel":    True if (getattr(t, "natureza", None) or "").upper() == "PUNICAO"
+                       else t.data_prevista == hoje,
         "gerenciavel": t.data_prevista >= hoje if t.data_prevista else False,
     }
 

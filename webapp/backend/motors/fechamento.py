@@ -404,6 +404,11 @@ def reparar_fechamento_indevido(db: Session, usuario: Usuario,
         TarefaDia.usuario_id == usuario.id,
         TarefaDia.data_prevista >= hoje,
         TarefaDia.status == "FRACASSADA",
+        # PENITENCIA NAO E FECHAMENTO INDEVIDO. Ela tem `data_prevista` igual
+        # ao dia da falha, entao quando nasce hoje a query a capturaria e a
+        # reabriria como erro de fuso — destruindo o fluxo de vida dela.
+        # A divida nunca expira; so o hunter a quita ou o Reerguer a revoga.
+        TarefaDia.natureza != "PUNICAO",
     ).all()
     for t in tarefas:
         xp_devolvido += t.penalidade_xp or 0
