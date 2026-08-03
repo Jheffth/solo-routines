@@ -85,24 +85,31 @@ def atualizar_streak(db: Session, usuario: Usuario, hoje: date) -> int:
 def processar_level_up(db: Session, usuario: Usuario) -> list[dict]:
     """
     Verifica e processa level-up(s).
+    O custo de subir de nível está em Nivel.xp_para_proximo do NÍVEL ATUAL,
+    não do próximo — o registro do nível atual define o quanto custa sair dele.
     Retorna lista de level-ups ocorridos para notificação no frontend.
     """
     eventos = []
     while True:
+        # Custo para sair do nível atual está no próprio nível atual
+        nivel_atual_rec = db.query(Nivel).filter(Nivel.nivel == usuario.nivel_atual).first()
+        if not nivel_atual_rec or not nivel_atual_rec.xp_para_proximo:
+            break  # Nível máximo ou sem dados
+
         prox_nivel = db.query(Nivel).filter(Nivel.nivel == usuario.nivel_atual + 1).first()
         if not prox_nivel:
             break  # Nível máximo (50)
 
-        if usuario.xp_atual >= prox_nivel.xp_para_proximo:
-            usuario.xp_atual -= prox_nivel.xp_para_proximo
+        custo = nivel_atual_rec.xp_para_proximo
+        if usuario.xp_atual >= custo:
+            usuario.xp_atual -= custo
             usuario.nivel_atual += 1
             usuario.classe = prox_nivel.rank
             usuario.titulo = prox_nivel.titulo
             usuario.moedas += prox_nivel.moedas_bonus
 
-            # Atualiza XP para próximo nível
-            prox_prox = db.query(Nivel).filter(Nivel.nivel == usuario.nivel_atual + 1).first()
-            usuario.xp_proximo_nivel = prox_prox.xp_para_proximo if prox_prox else 0
+            # xp_proximo_nivel = custo para sair do novo nível atual
+            usuario.xp_proximo_nivel = prox_nivel.xp_para_proximo or 0
 
             eventos.append({
                 "nivel": usuario.nivel_atual,
@@ -120,6 +127,9 @@ def recalcular_nivel(db: Session, usuario: Usuario) -> dict:
     Deriva nível, rank, título e xp_atual a partir do xp_total (fonte da verdade).
     Usado após estornos/ajustes — mantém o perfil sempre coerente, sem
     ficar com nível alto e XP baixo (ou o contrário).
+
+    CONVENÇÃO: xp_proximo_nivel = custo para SAIR do nível atual
+               = alvo.xp_para_proximo (nível atual, não o próximo).
     """
     xp_total = max(0, usuario.xp_total or 0)
     alvo = (
@@ -133,12 +143,12 @@ def recalcular_nivel(db: Session, usuario: Usuario) -> dict:
     if not alvo:
         return {"nivel": usuario.nivel_atual}
 
-    prox = db.query(Nivel).filter(Nivel.nivel == alvo.nivel + 1).first()
     usuario.nivel_atual      = alvo.nivel
     usuario.classe           = alvo.rank
     usuario.titulo           = alvo.titulo
     usuario.xp_atual         = max(0, xp_total - (alvo.xp_necessario or 0))
-    usuario.xp_proximo_nivel = prox.xp_para_proximo if prox else 0
+    # xp_proximo_nivel = custo de sair do nível atual (está no registro do nível atual)
+    usuario.xp_proximo_nivel = alvo.xp_para_proximo or 0
     return {
         "nivel": usuario.nivel_atual,
         "rank": usuario.classe,
