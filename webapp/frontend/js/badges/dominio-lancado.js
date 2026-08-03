@@ -1,112 +1,101 @@
 /* ============================================================
-   dominio-lancado.js — Insígnia Especial do Arquiteto: Domínio Lançado
-   Padrão: Solo Routines (Cerimônia de Conquista S-Rank)
+   dominio-lancado.js — Insígnia S-Rank (Domínio Lançado)
    ============================================================ */
 
 const DominioLancadoFX = {
-  _svg(tamanho = 260) {
-    // 1. Estrela giratória (Geometria Arquiteto)
-    const pontas = [];
-    for (let i = 0; i < 8; i++) {
-      const a = (Math.PI / 4) * i - Math.PI / 2;
-      const rExt = i % 2 === 0 ? 130 : 90;
-      pontas.push(`M ${130 + 70 * Math.cos(a - Math.PI / 8)} ${130 + 70 * Math.sin(a - Math.PI / 8)}
-                   L ${130 + rExt * Math.cos(a)} ${130 + rExt * Math.sin(a)}
-                   L ${130 + 70 * Math.cos(a + Math.PI / 8)} ${130 + 70 * Math.sin(a + Math.PI / 8)} Z`);
-    }
-
-    // 2. Lâminas do Domínio (Giro Acelerado)
-    const laminas = [];
-    for (let i = 0; i < 6; i++) {
-      const a = (Math.PI / 3) * i;
-      laminas.push(`M 130 130 L ${130 + 20 * Math.cos(a - 0.15)} ${130 + 20 * Math.sin(a - 0.15)}
-                    L ${130 + 125 * Math.cos(a)} ${130 + 125 * Math.sin(a)}
-                    L ${130 + 20 * Math.cos(a + 0.15)} ${130 + 20 * Math.sin(a + 0.15)} Z`);
-    }
-
-    // 3. Circuito do Sistema (Runas Tecnológicas)
-    const runas = [];
-    for (let i = 0; i < 16; i++) {
-      const a = (Math.PI / 8) * i;
-      const rIn = 65, rOut = 85;
-      runas.push(`M ${130 + rIn * Math.cos(a)} ${130 + rIn * Math.sin(a)} 
-                  L ${130 + rOut * Math.cos(a)} ${130 + rOut * Math.sin(a)} 
-                  L ${130 + (rOut + 10) * Math.cos(a + 0.1)} ${130 + (rOut + 10) * Math.sin(a + 0.1)}`);
-    }
-
-    return `
-    <svg viewBox="0 0 260 260" width="${tamanho}" height="${tamanho}" style="overflow:visible" class="cq-svg">
+  _seq: 0,
+  _svg(tam) {
+    const u = 'idominio' + (++this._seq);
+    return `<svg class="conquista-svg" aria-hidden="true" focusable="false" style="display:block;overflow:hidden;width:${tam}px;height:${tam}px" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300">
+      <style>/*<![CDATA[*/
+        .dl-expansao { transform-origin: 150px 150px; animation: dl-expandir 8s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+        .dl-giro { transform-origin: 150px 150px; animation: dl-girar 20s linear infinite; }
+        .dl-giro-reverso { transform-origin: 150px 150px; animation: dl-girar 30s linear infinite reverse; }
+        .dl-energia g { transform-origin: 150px 150px; animation: dl-raio 4s ease-out infinite; }
+        @keyframes dl-expandir { 0% { transform: scale(0.8); opacity: 0.5; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(0.8); opacity: 0.5; } }
+        @keyframes dl-girar { 100% { transform: rotate(360deg); } }
+        @keyframes dl-raio { 0% { transform: scale(0.1) rotate(0deg); opacity: 1; } 100% { transform: scale(1.5) rotate(45deg); opacity: 0; } }
+      /*]]>*/</style>
       <defs>
-        <!-- Gradientes Fluorescentes (Verde e Azul) -->
-        <radialGradient id="arqBase" cx="50%" cy="50%">
-          <stop offset="0%" stop-color="#022c22" /> <!-- Verde ultra escuro -->
-          <stop offset="60%" stop-color="#083344" /> <!-- Cyan escuro -->
+        <radialGradient cx="150" cy="150" r="150" id="${u}_bg" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#064e3b" />
+          <stop offset="50%" stop-color="#022c22" />
           <stop offset="100%" stop-color="#000000" />
         </radialGradient>
-        
-        <linearGradient id="arqLaminas" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#6ee7b7" /> <!-- Verde Fluorescente -->
-          <stop offset="50%" stop-color="#22d3ee" /> <!-- Azul Fluorescente -->
-          <stop offset="100%" stop-color="#065f46" />
-        </linearGradient>
-
-        <radialGradient id="arqCristal" cx="40%" cy="30%">
+        <radialGradient cx="150" cy="150" r="100" id="${u}_esfera" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stop-color="#34d399" />
-          <stop offset="50%" stop-color="#0ea5e9" />
-          <stop offset="100%" stop-color="#0f172a" />
+          <stop offset="40%" stop-color="#059669" />
+          <stop offset="100%" stop-color="#064e3b" />
         </radialGradient>
-
-        <filter id="arqSombra">
-          <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#000" flood-opacity="0.9"/>
-          <feDropShadow dx="0" dy="0" stdDeviation="12" flood-color="#22d3ee" flood-opacity="0.6"/>
+        <filter x="-50%" y="-50%" width="200%" height="200%" id="${u}_glow">
+          <feGaussianBlur stdDeviation="5.0" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+        <filter x="-50%" y="-50%" width="200%" height="200%" id="${u}_glow_forte">
+          <feGaussianBlur stdDeviation="12.0" result="blur" />
+          <feComponentTransfer in="blur" result="glow"><feFuncA type="linear" slope="2.0"/></feComponentTransfer>
+          <feMerge>
+            <feMergeNode in="glow" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
         </filter>
       </defs>
+      
+      <!-- Fundo Base -->
+      <circle cx="150" cy="150" r="140" fill="url(#${u}_bg)" stroke="#064e3b" stroke-width="3" />
+      
+      <!-- Linhas de Força (Expansão do Domínio) -->
+      <g class="dl-expansao">
+        <circle cx="150" cy="150" r="120" fill="none" stroke="#10b981" stroke-width="2" filter="url(#${u}_glow)" opacity="0.4"/>
+        <circle cx="150" cy="150" r="90" fill="none" stroke="#34d399" stroke-width="1" filter="url(#${u}_glow)" opacity="0.6"/>
+        <circle cx="150" cy="150" r="60" fill="none" stroke="#6ee7b7" stroke-width="3" filter="url(#${u}_glow_forte)" opacity="0.8"/>
+      </g>
 
-      <g filter="url(#arqSombra)">
-        <!-- Estrela de Fundo (Octógono Geométrico) -->
-        <g class="cq-svg-star" style="animation-duration: 22s;">
-          <path d="${pontas.join(' ')}" fill="url(#arqBase)" stroke="#22d3ee" stroke-width="2" />
-        </g>
+      <!-- Geometria Sagrada / Barreiras -->
+      <g class="dl-giro">
+        <polygon points="150,20 262,85 262,215 150,280 38,215 38,85" fill="none" stroke="#059669" stroke-width="1.5" opacity="0.5" filter="url(#${u}_glow)"/>
+      </g>
+      <g class="dl-giro-reverso">
+        <polygon points="150,30 253,90 253,210 150,270 47,210 47,90" fill="none" stroke="#10b981" stroke-width="1" opacity="0.7" transform="rotate(30 150 150)" filter="url(#${u}_glow)"/>
+      </g>
 
-        <!-- Lâminas Cortantes (Giro Rápido) -->
-        <g style="transform-origin: 130px 130px; animation: cq-anel-girar 12s linear infinite reverse;">
-          <path d="${laminas.join(' ')}" fill="url(#arqLaminas)" opacity="0.9" />
-        </g>
+      <!-- Esfera Central (Núcleo do Domínio) -->
+      <circle cx="150" cy="150" r="50" fill="url(#${u}_esfera)" stroke="#6ee7b7" stroke-width="2" filter="url(#${u}_glow_forte)"/>
+      <circle cx="150" cy="150" r="15" fill="#a7f3d0" filter="url(#${u}_glow_forte)"/>
 
-        <!-- Circuito do Sistema -->
-        <g style="transform-origin: 130px 130px; animation: cq-anel-girar 20s linear infinite;">
-          <path d="${runas.join(' ')}" stroke="#6ee7b7" stroke-width="2.5" fill="none" opacity="0.9" stroke-linecap="round"/>
-        </g>
+      <!-- Raios de Energia Emitidos -->
+      <g class="dl-energia">
+        ${Array.from({length: 8}).map((_, i) => {
+          const delay = (Math.random() * 4).toFixed(2);
+          const a = (Math.PI / 4) * i;
+          return \`<g style="animation-delay: \${delay}s">
+            <path d="M 150 150 L \${150 + 100 * Math.cos(a)} \${150 + 100 * Math.sin(a)}" stroke="#34d399" stroke-width="3" fill="none" filter="url(#\${u}_glow)"/>
+          </g>\`;
+        }).join('')}
+      </g>
 
-        <!-- Octógono Central (O Núcleo do Sistema) -->
-        <polygon points="130,50 186,74 210,130 186,186 130,210 74,186 50,130 74,74" fill="url(#arqBase)" stroke="#22d3ee" stroke-width="3"/>
-
-        <!-- Gema Central Triangular Reversa (Símbolo de Controle) -->
-        <polygon points="130,80 180,110 130,170 80,110" fill="url(#arqCristal)" stroke="#6ee7b7" stroke-width="2"/>
-        <!-- Vidro -->
-        <polygon points="130,80 180,110 130,130" fill="rgba(255,255,255,0.4)"/>
-        <polygon points="80,110 130,130 130,170" fill="rgba(0,0,0,0.3)"/>
-        <polygon points="180,110 130,130 130,170" fill="rgba(0,0,0,0.1)"/>
-        
-        <!-- Furo Central Brilhante -->
-        <circle cx="130" cy="130" r="12" fill="#fff" />
-        
-        <!-- Pulsar Externo -->
-        <circle cx="130" cy="130" r="128" fill="none" stroke="#6ee7b7" stroke-width="3" stroke-dasharray="10 50" style="transform-origin:130px 130px; animation: cq-anel-girar 5s linear infinite;" />
+      <!-- Runas de Contenção Orbitais -->
+      <g class="dl-giro">
+        ${Array.from({length: 12}).map((_, i) => {
+          const a = (Math.PI / 6) * i;
+          return \`<circle cx="\${150 + 120 * Math.cos(a)}" cy="\${150 + 120 * Math.sin(a)}" r="4" fill="#a7f3d0" filter="url(#\${u}_glow)"/>\`;
+        }).join('')}
       </g>
     </svg>`;
   },
 
-  demo() {
+  celebrar() {
     if (typeof ConquistaFX === 'undefined') return;
     ConquistaFX.show({
-      id: 'dominio_lancado_' + Date.now(),
-      titulo: 'DOMÍNIO LANÇADO',
-      descricao: 'O Arquiteto alterou as regras do próprio Sistema.',
       codigo: 'dominio_lancado',
-      xp: 100000,
-      xpCor: '#6ee7b7',
-      shimmer: 'linear-gradient(100deg, #d1fae5 20%, #22d3ee 40%, #6ee7b7 60%, #0ea5e9 80%)'
+      titulo: 'DOMÍNIO LANÇADO',
+      descricao: 'Você sobrepôs sua própria realidade sobre o mundo.',
+      icone: '💠', cor: '#10b981',
+      xp_bonus: 30000, moedas_bonus: 3000,
+      shimmer: 'linear-gradient(100deg, #6ee7b7 20%, #059669 40%, #6ee7b7 60%, #059669 80%)'
     });
   }
 };

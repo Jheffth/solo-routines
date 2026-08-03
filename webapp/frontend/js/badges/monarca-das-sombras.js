@@ -1,111 +1,103 @@
 /* ============================================================
-   monarca-das-sombras.js — Insígnia do Monarca das Sombras
-   Padrão: Solo Routines (Cerimônia de Conquista S-Rank)
+   monarca-das-sombras.js — Insígnia S-Rank (Monarca das Sombras)
    ============================================================ */
 
 const MonarcaDasSombrasFX = {
-  _svg(tamanho = 260) {
-    // 1. Estrela giratória de 12 pontas (Base Cósmica)
-    const pontas = [];
-    for (let i = 0; i < 12; i++) {
-      const a = (Math.PI / 6) * i - Math.PI / 2;
-      const rExt = i % 2 === 0 ? 128 : 98;
-      pontas.push(`M ${130 + 88 * Math.cos(a - Math.PI / 12)} ${130 + 88 * Math.sin(a - Math.PI / 12)}
-                   L ${130 + rExt * Math.cos(a)} ${130 + rExt * Math.sin(a)}
-                   L ${130 + 88 * Math.cos(a + Math.PI / 12)} ${130 + 88 * Math.sin(a + Math.PI / 12)} Z`);
-    }
-
-    // 2. Lâminas giratórias (Estilo adagas do Sung Jin-Woo)
-    const laminas = [];
-    for (let i = 0; i < 4; i++) {
-      const a = (Math.PI / 2) * i;
-      laminas.push(`M 130 130 L ${130 + 15 * Math.cos(a - 0.2)} ${130 + 15 * Math.sin(a - 0.2)}
-                    L ${130 + 130 * Math.cos(a)} ${130 + 130 * Math.sin(a)}
-                    L ${130 + 15 * Math.cos(a + 0.2)} ${130 + 15 * Math.sin(a + 0.2)} Z`);
-    }
-
-    // 3. Anel de Runas Obscuras
-    const runas = [];
-    for (let i = 0; i < 24; i++) {
-      const a = (Math.PI / 12) * i;
-      const rIn = 72, rOut = 80;
-      runas.push(`M ${130 + rIn * Math.cos(a)} ${130 + rIn * Math.sin(a)} L ${130 + rOut * Math.cos(a + 0.1)} ${130 + rOut * Math.sin(a + 0.1)}`);
-    }
-
-    return `
-    <svg viewBox="0 0 260 260" width="${tamanho}" height="${tamanho}" style="overflow:visible" class="cq-svg">
+  _seq: 0,
+  _svg(tam) {
+    const u = 'imonarca' + (++this._seq);
+    return `<svg class="conquista-svg" aria-hidden="true" focusable="false" style="display:block;overflow:hidden;width:${tam}px;height:${tam}px" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300">
+      <style>/*<![CDATA[*/
+        .mds-giro-lento { transform-origin: 150px 150px; animation: mds-girar 40s linear infinite; }
+        .mds-giro-rapido { transform-origin: 150px 150px; animation: mds-girar 15s linear infinite reverse; }
+        .mds-pulso { transform-origin: 150px 150px; animation: mds-pulsar 3s ease-in-out infinite; }
+        .mds-particulas g { transform-origin: 150px 150px; animation: mds-flutuar 3s ease-in-out infinite alternate; }
+        @keyframes mds-girar { 100% { transform: rotate(360deg); } }
+        @keyframes mds-pulsar { 0%, 100% { transform: scale(1); filter: brightness(1); } 50% { transform: scale(1.05); filter: brightness(1.3); } }
+        @keyframes mds-flutuar { 0% { transform: translateY(0px) scale(0.8); opacity: 0.5; } 100% { transform: translateY(-10px) scale(1.2); opacity: 1; } }
+      /*]]>*/</style>
       <defs>
-        <!-- Gradientes Sombrios (Sepuries) -->
-        <radialGradient id="monarcaBase" cx="38%" cy="30%">
-          <stop offset="0%" stop-color="#4c1d95" /> <!-- Roxo profundo -->
-          <stop offset="40%" stop-color="#312e81" /> <!-- Indigo escuro -->
-          <stop offset="80%" stop-color="#0f172a" /> <!-- Quase preto -->
+        <radialGradient cx="150" cy="150" r="150" id="${u}_bg" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#4c1d95" />
+          <stop offset="50%" stop-color="#1e1b4b" />
           <stop offset="100%" stop-color="#000000" />
         </radialGradient>
-        
-        <linearGradient id="monarcaLaminas" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#c084fc" /> <!-- Roxo brilhante -->
-          <stop offset="50%" stop-color="#2563eb" /> <!-- Azul eletrizante -->
-          <stop offset="100%" stop-color="#020617" />
+        <linearGradient x1="0" y1="0" x2="300" y2="300" id="${u}_metal" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#c084fc" />
+          <stop offset="50%" stop-color="#7e22ce" />
+          <stop offset="100%" stop-color="#3b0764" />
         </linearGradient>
-
-        <radialGradient id="monarcaCristal" cx="30%" cy="30%">
-          <stop offset="0%" stop-color="#e879f9" /> <!-- Magenta -->
-          <stop offset="50%" stop-color="#9333ea" /> <!-- Roxo médio -->
-          <stop offset="100%" stop-color="#312e81" />
-        </radialGradient>
-
-        <filter id="monarcaSombra">
-          <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#000" flood-opacity="0.9"/>
-          <feDropShadow dx="0" dy="0" stdDeviation="15" flood-color="#a855f7" flood-opacity="0.5"/>
+        <filter x="-40%" y="-40%" width="180%" height="180%" id="${u}_glow">
+          <feGaussianBlur stdDeviation="4.0" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+        <filter x="-40%" y="-40%" width="180%" height="180%" id="${u}_glow_forte">
+          <feGaussianBlur stdDeviation="8.0" result="blur" />
+          <feComponentTransfer in="blur" result="glow"><feFuncA type="linear" slope="1.5"/></feComponentTransfer>
+          <feMerge>
+            <feMergeNode in="glow" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
         </filter>
       </defs>
+      
+      <!-- Fundo -->
+      <circle cx="150" cy="150" r="135" fill="url(#${u}_bg)" stroke="#4c1d95" stroke-width="2" />
+      
+      <!-- Anéis Externos (Símbolo de Domínio) -->
+      <g class="mds-giro-lento">
+        <circle cx="150" cy="150" r="120" fill="none" stroke="#a855f7" stroke-width="1.5" stroke-dasharray="10 15" opacity="0.6"/>
+        <circle cx="150" cy="150" r="105" fill="none" stroke="#c084fc" stroke-width="1" stroke-dasharray="2 6" opacity="0.8"/>
+        <!-- Geometria rúnica -->
+        <polygon points="150,20 262,85 262,215 150,280 38,215 38,85" fill="none" stroke="#7e22ce" stroke-width="1.5" opacity="0.4" />
+        <polygon points="150,30 253,90 253,210 150,270 47,210 47,90" fill="none" stroke="#9333ea" stroke-width="0.8" opacity="0.3" transform="rotate(30 150 150)"/>
+      </g>
 
-      <g filter="url(#monarcaSombra)">
-        <!-- Estrela de Fundo (Girando lentamente) -->
-        <g class="cq-svg-star" style="animation-duration: 26s;">
-          <path d="${pontas.join(' ')}" fill="url(#monarcaBase)" stroke="#4c1d95" stroke-width="1.5" />
-        </g>
+      <!-- Espadas das Sombras / Adagas -->
+      <g class="mds-giro-rapido">
+        ${Array.from({length: 4}).map((_, i) => {
+          const a = (Math.PI / 2) * i;
+          return \`<path d="M 150 150 L \${150 + 12 * Math.cos(a - 0.1)} \${150 + 12 * Math.sin(a - 0.1)} L \${150 + 140 * Math.cos(a)} \${150 + 140 * Math.sin(a)} L \${150 + 12 * Math.cos(a + 0.1)} \${150 + 12 * Math.sin(a + 0.1)} Z" fill="url(#\${u}_metal)" filter="url(#\${u}_glow)"/>\`;
+        }).join('')}
+      </g>
 
-        <!-- Lâminas Sombrias (Sentido oposto) -->
-        <g style="transform-origin: 130px 130px; animation: cq-anel-girar 15s linear infinite reverse;">
-          <path d="${laminas.join(' ')}" fill="url(#monarcaLaminas)" stroke="#e879f9" stroke-width="1" />
-        </g>
+      <!-- Cristal Central Pulsante -->
+      <g class="mds-pulso">
+        <polygon points="150,60 227,105 227,195 150,240 73,195 73,105" fill="url(#${u}_bg)" stroke="url(#${u}_metal)" stroke-width="3" filter="url(#${u}_glow_forte)"/>
+        <!-- Reflexos do Cristal -->
+        <polygon points="150,60 227,105 150,150" fill="rgba(192,132,252,0.15)"/>
+        <polygon points="73,105 150,150 73,195" fill="rgba(255,255,255,0.05)"/>
+        <!-- Olho Interior -->
+        <path d="M 100 150 Q 150 100 200 150 Q 150 200 100 150 Z" fill="#000" stroke="#c084fc" stroke-width="2" filter="url(#${u}_glow)"/>
+        <circle cx="150" cy="150" r="12" fill="#d8b4fe" filter="url(#${u}_glow_forte)"/>
+        <circle cx="150" cy="150" r="4" fill="#ffffff" />
+      </g>
 
-        <!-- Disco Central Escuro -->
-        <circle cx="130" cy="130" r="90" fill="url(#monarcaBase)" stroke="#312e81" stroke-width="3" />
-
-        <!-- Runas Giratórias -->
-        <g style="transform-origin: 130px 130px; animation: cq-anel-girar 18s linear infinite;">
-          <path d="${runas.join(' ')}" stroke="#c084fc" stroke-width="2" fill="none" opacity="0.8" />
-        </g>
-
-        <!-- Joia Hexagonal Central (Lapidada) -->
-        <polygon points="130,55 195,92 195,168 130,205 65,168 65,92" fill="url(#monarcaCristal)" stroke="#e879f9" stroke-width="2"/>
-        <!-- Reflexos do Cristal (Vidro) -->
-        <polygon points="130,55 195,92 130,130" fill="rgba(255,255,255,0.2)"/>
-        <polygon points="65,92 130,130 65,168" fill="rgba(255,255,255,0.08)"/>
-        <polygon points="130,130 195,168 130,205" fill="rgba(0,0,0,0.4)"/>
-        
-        <!-- O Olho do Monarca (Emblema Central) -->
-        <path d="M 100 130 Q 130 90 160 130 Q 130 170 100 130 Z" fill="#000" stroke="#c084fc" stroke-width="2"/>
-        <circle cx="130" cy="130" r="10" fill="#e879f9" />
-        
-        <!-- Filete de Brilho Perpétuo na Borda Externa -->
-        <circle cx="130" cy="130" r="128" fill="none" stroke="rgba(232,121,249,0.8)" stroke-width="2" stroke-dasharray="30 800" style="transform-origin:130px 130px; animation: cq-anel-girar 3s linear infinite;" />
+      <!-- Partículas de Fumaça (Arise) -->
+      <g class="mds-particulas">
+        ${Array.from({length: 12}).map((_, i) => {
+          const delay = (Math.random() * 3).toFixed(2);
+          const dur = (2 + Math.random() * 2).toFixed(2);
+          const cx = 50 + Math.random() * 200;
+          const cy = 50 + Math.random() * 200;
+          const r = 2 + Math.random() * 3;
+          return \`<g style="animation-delay: \${delay}s; animation-duration: \${dur}s"><circle cx="\${cx}" cy="\${cy}" r="\${r}" fill="#c084fc" filter="url(#\${u}_glow_forte)" opacity="0.7"/></g>\`;
+        }).join('')}
       </g>
     </svg>`;
   },
 
-  demo() {
+  celebrar() {
     if (typeof ConquistaFX === 'undefined') return;
     ConquistaFX.show({
-      id: 'monarca-das-sombras_' + Date.now(),
+      codigo: 'monarca_das_sombras',
       titulo: 'MONARCA DAS SOMBRAS',
       descricao: 'O Domínio Completo da Escuridão e do Sistema.',
-      codigo: 'monarca_das_sombras',
-      xp: 50000,
-      xpCor: '#e879f9',
+      icone: '👑', cor: '#c084fc',
+      xp_bonus: 50000, moedas_bonus: 5000,
       shimmer: 'linear-gradient(100deg, #e879f9 20%, #7c3aed 40%, #e879f9 60%, #7c3aed 80%)'
     });
   }
