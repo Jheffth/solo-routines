@@ -1208,27 +1208,35 @@ const ArquitetoConsole = {
 
 
         ${sec('auras', '🌸 Auras Cosm\u00e9ticas', false, [
+          bt('Preview: Monarca das Sombras',       'window.Auras?.vitrine("monarca-das-sombras")', 'roxo', true),
+          bt('Preview: Domínio Lançado',           'window.Auras?.vitrine("dominio-lancado")', 'verde', true),
           bt('Preview: Fênix (Chama Imortal)',   'window.Auras?.vitrine("fenix-pioneira")', 'ouro', true),
           bt('Preview: Pena do Punidor',           'window.Auras?.vitrine("pena-punidor")',   'vermelho', true),
           bt('Preview: Bella Rosa',                'window.Auras?.vitrine("bella-rosa")', 'rosa', true),
           bt('Preview: Pink Spirit',               'window.Auras?.vitrine("pink-spirit")', 'rosa', true),
+          bt('Preview: Lobo Lunar (Gelo)',         'window.Auras?.vitrine("lobo-lunar")', 'gelo', true),
           bt('Preview: todas as auras',            'window.Auras?.vitrine()', 'ouro', true),
           bt('Diagnóstico de auras',          'window.Auras?.diagnostico?.()', 'cinza', true),
           bt('\u2736 Forjar Pena do Punidor (meu)','ArquitetoConsole._forjarAura("pena-punidor")', 'vermelho', false),
           bt('\u2736 Forjar Fênix (meu)',          'ArquitetoConsole._forjarAura("fenix-pioneira")', 'ouro', false),
           bt('\u2736 Forjar Bella Rosa (meu)',      'ArquitetoConsole._forjarAura("bella-rosa")', 'rosa', false),
           bt('\u2736 Forjar Pink Spirit (meu)',     'ArquitetoConsole._forjarAura("pink-spirit")', 'rosa', false),
+          bt('\u2736 Forjar Lobo Lunar (meu)',     'ArquitetoConsole._forjarAura("lobo-lunar")', 'gelo', false),
           bt('\u2736 Enviar Aura a Hunter',         'ArquitetoConsole.enviarAura()', 'ouro', false),
         ])}
 
         ${sec('insignias', '🎖 Insígnias com arte própria', false, [
+          bt('Cerimônia: Monarca das Sombras',  'window.MonarcaDasSombrasFX?.demo()', 'roxo', true),
+          bt('Cerimônia: Domínio Lançado',      'window.DominioLancadoFX?.demo()', 'verde', true),
           bt('Cerimônia: Mono Evelynn',        'window.EvelynnFX.cerimonia()', 'rosa', true),
           bt('Cerimônia: Fênix Pioneira',      'window.FenixFX.cerimonia()', 'ouro', true),
           bt('Cerimônia: Pena do Punidor',      'window.PenaPunidorFX.cerimonia()', 'vermelho', true),
+          bt('Cerimônia: Lobo Lunar',           'window.LoboLunarFX.cerimonia()', 'gelo', true),
           bt('Vitrine: Mono Evelynn',            'vitrineInsignia("mono_evelynn")', 'rosa', true),
           bt('Vitrine: Isabella Costa',          'vitrineInsignia("isabella")', 'rosa', true),
           bt('Vitrine: Fênix Pioneira',          'vitrineInsignia("fenix_pioneira")', 'ouro', true),
           bt('Vitrine: Pena do Punidor',         'vitrineInsignia("pena_do_punidor")', 'vermelho', true),
+          bt('Vitrine: Lobo Lunar',              'vitrineInsignia("lobo_lunar")', 'gelo', true),
           bt('Nexus Social (vitrine)',            'vitrineInsignia("nexus-social")', 'ciano', true),
           bt('Vitrine: todas as artes',   'vitrineInsignia()', 'ciano', true),
           bt('Aura: Bella Rosa (preview)', 'window.Auras?.vitrine("bella-rosa")', 'rosa', true),
@@ -2223,6 +2231,7 @@ ArquitetoConsole.enviarAura = async function () {
     { id: 'pena-punidor',   nome: 'Pena do Punidor — A Sentença', cor: '#c0392b' },
     { id: 'bella-rosa',     nome: 'Bella Rosa — Femme Fatale', cor: '#f48fb1' },
     { id: 'pink-spirit',    nome: 'Pink Spirit',                  cor: '#f48fb1' },
+    { id: 'lobo-lunar',     nome: 'Lobo Lunar — Alfa da Alcateia', cor: '#7ec8e3' },
     { id: 'arquiteto',      nome: 'A Forja Viva',                 cor: '#fbbf24' },
     { id: 'admin',          nome: 'O Selo do Guardião',           cor: '#38bdf8' },
   ];
@@ -2302,6 +2311,7 @@ ArquitetoConsole._forjarAura = async function (auraId) {
     "fenix-pioneira": "Fênix — Chama Imortal",
     "bella-rosa":     "Bella Rosa \u2014 Femme Fatale",
     "pink-spirit":    "Pink Spirit",
+    "lobo-lunar":     "Lobo Lunar \u2014 Alfa da Alcateia",
   }[auraId] || auraId;
   try {
     // busca o próprio perfil para obter o id (via API para capturar 401)
@@ -2357,7 +2367,7 @@ window.IsabellaFX = IsabellaFX;
   if (window.NexusSocialArte)
     reg('nexus-social', tam => NexusSocialArte._svgMedalhaNexus(tam));
   if (window.IsabellaFX)
-    reg('isabella',     tam => IsabellaFX._svgMedalhaIsabella(tam));
+    reg('isabella',     tam => IsabellaFX._svg(tam));
   if (window.FenixFX)
     reg('fenix_pioneira', tam => FenixFX._svgMedalhaFenix(tam));
 })();

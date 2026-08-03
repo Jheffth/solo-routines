@@ -1427,5 +1427,341 @@ Auras.registrar('lobo-sombrio', function (tam) {
 
 /* FORJA:FIM lobo-sombrio */
 
+/* FORJA:INICIO isabella */
+/* ══════════════════════════════════════════════════════════════
+   Bella Rosa (Femme Fatale) — aura
+   GERADO por motors/forja com drawsvg + Jinja2. Não edite à mão.
+   Fonte: motors/forja/pecas/isabella.py
+   ══════════════════════════════════════════════════════════════ */
+Auras.registrar('isabella', function (tam) {
+  const u = 'aisabella' + (++Auras._seq);
+  return `<svg class="aura-svg" aria-hidden="true" focusable="false" style="display:block;overflow:hidden;width:${tam}px;height:${tam}px" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="${tam}" height="${tam}" viewBox="0 0 300 300">
+<style>/*<![CDATA[*/
+    .isa-aura-pulso { 
+      transform-origin: 150.0px 150.0px;
+      animation: isa-respirar 4.2s ease-in-out infinite; 
+    }
+    @keyframes isa-respirar {
+      0%, 100% { opacity: .6; transform: scale(1); }
+      50%      { opacity: 1;  transform: scale(1.08); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .isa-aura-pulso { animation: none; }
+    }
+    /*]]>*/</style>
+<defs>
+<radialGradient cx="150.0" cy="150.0" r="150.0" gradientUnits="userSpaceOnUse" id="${u}_veu">
+<stop offset="0.0" stop-color="#f8bbd0" stop-opacity="0.25" />
+<stop offset="0.45" stop-color="#e91e63" stop-opacity="0.15" />
+<stop offset="1.0" stop-color="#880e4f" stop-opacity="0" />
+</radialGradient>
+</defs>
+<g class="isa-aura-pulso">
+<circle cx="150.0" cy="150.0" r="148.0" fill="url(#${u}_veu)"/>
+</g>
+</svg>`;
+});
+
+/* FORJA:FIM isabella */
+
+/* FORJA:INICIO lobo-lunar */
+/* ══════════════════════════════════════════════════════════════
+   Lobo Lunar (Alcateia de Gelo) — aura
+   GERADO por motors/forja com drawsvg + Jinja2. Não edite à mão.
+   Fonte: motors/forja/pecas/lobo_lunar.py
+   ══════════════════════════════════════════════════════════════ */
+Auras.registrar('lobo-lunar', function (tam) {
+  const u = 'alobolunar' + (++Auras._seq);
+  return `<svg class="aura-svg" aria-hidden="true" focusable="false" style="display:block;overflow:hidden;width:${tam}px;height:${tam}px" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="${tam}" height="${tam}" viewBox="0 0 300 300">
+<style>/*<![CDATA[*/
+    .la-bruma {
+        transform-origin: 150.0px 150.0px;
+        animation: la-respirar 5s ease-in-out infinite;
+    }
+    @keyframes la-respirar {
+        0%, 100% { opacity: .5; transform: scale(1); }
+        50%      { opacity: .8; transform: scale(1.04); }
+    }
+
+    .la-onda {
+        transform-origin: 150.0px 150.0px;
+        animation: la-expandir 3s cubic-bezier(.1,.7,.3,1) infinite;
+    }
+    @keyframes la-expandir {
+        0%   { transform: scale(0.2); opacity: .8; }
+        100% { transform: scale(1.1); opacity: 0; }
+    }
+
+    .la-girar {
+        transform-origin: 150.0px 150.0px;
+        animation: la-spin 50s linear infinite;
+    }
+    @keyframes la-spin {
+        100% { transform: rotate(360deg); }
+    }
+
+    .la-cristal {
+        animation: la-flicker 1.6s ease-in-out infinite alternate;
+    }
+    @keyframes la-flicker {
+        0%   { opacity: .4; transform: scale(0.9); }
+        100% { opacity: .8; transform: scale(1.1); }
+    }
+
+    .la-gelo circle {
+        animation-name: la-subir;
+        animation-timing-function: cubic-bezier(.3,0,.7,1);
+        animation-iteration-count: infinite;
+    }
+    @keyframes la-subir {
+        0%   { transform: translateY(18px) scale(0.4); opacity: 0; }
+        30%  { opacity: .8; }
+        100% { transform: translateY(-90px) scale(1.1); opacity: 0; }
+    }
+
+    .la-constelacao {
+        animation: la-brilho-const 6s ease-in-out infinite;
+    }
+    @keyframes la-brilho-const {
+        0%, 100% { opacity: .3; }
+        50%      { opacity: .7; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .la-bruma, .la-onda, .la-girar, .la-cristal,
+        .la-gelo circle, .la-constelacao { animation: none !important; }
+    }
+    /*]]>*/</style>
+<defs>
+<radialGradient cx="150.0" cy="150.0" r="150.0" gradientUnits="userSpaceOnUse" id="${u}_bruma">
+<stop offset="0.0" stop-color="#b8c7e8" stop-opacity="0.3" />
+<stop offset="0.5" stop-color="#5b7fbf" stop-opacity="0.08" />
+<stop offset="1.0" stop-color="#1a1f3a" stop-opacity="0" />
+</radialGradient>
+<linearGradient x1="0" y1="0" x2="300" y2="300" gradientUnits="userSpaceOnUse" id="${u}_cristal">
+<stop offset="0.0" stop-color="#ffffff" stop-opacity="1" />
+<stop offset="0.5" stop-color="#7ec8e3" stop-opacity="0.6" />
+<stop offset="1.0" stop-color="#5b7fbf" stop-opacity="0.2" />
+</linearGradient>
+<filter x="-40%" y="-40%" width="180%" height="180%" id="${u}_glow">
+<feGaussianBlur stdDeviation="4.0" result="b"/><feComponentTransfer in="b" result="bb"><feFuncA type="linear" slope="1.3"/></feComponentTransfer><feMerge><feMergeNode in="bb"/><feMergeNode in="SourceGraphic"/></feMerge>
+</filter>
+<filter x="-40%" y="-40%" width="180%" height="180%" id="${u}_glow_forte">
+<feGaussianBlur stdDeviation="8.0" result="b"/><feComponentTransfer in="b" result="bb"><feFuncA type="linear" slope="1.5"/></feComponentTransfer><feMerge><feMergeNode in="bb"/><feMergeNode in="SourceGraphic"/></feMerge>
+</filter>
+<clipPath id="${u}_corte">
+<circle cx="150.0" cy="150.0" r="142.0" />
+</clipPath>
+</defs>
+<g class="la-bruma">
+<circle cx="150.0" cy="150.0" r="148.0" fill="url(#${u}_bruma)"/>
+</g>
+<g>
+<circle cx="150.0" cy="150.0" r="120.0" fill="none" stroke="#b8c7e8" stroke-width="2.4" stroke-dasharray="8.0 16.0" opacity="0.5" class="la-onda" style="animation-delay:0.0s"/>
+<circle cx="150.0" cy="150.0" r="120.0" fill="none" stroke="#b8c7e8" stroke-width="1.6" stroke-dasharray="8.0 16.0" opacity="0.5" class="la-onda" style="animation-delay:1.2s"/>
+<circle cx="150.0" cy="150.0" r="120.0" fill="none" stroke="#b8c7e8" stroke-width="0.8" stroke-dasharray="8.0 16.0" opacity="0.5" class="la-onda" style="animation-delay:2.4s"/>
+</g>
+<g class="la-girar">
+<g transform="rotate(15.0 225.0 150.0)" style="animation-delay:0.00s" class="la-cristal"><polygon points="225.0,144.0 228.6,150.0 225.0,156.0 221.4,150.0" fill="url(#${u}_cristal)" stroke="#ffffff" stroke-width="0.8" opacity=".7"/></g>
+<g transform="rotate(45.0 215.0 187.5)" style="animation-delay:0.20s" class="la-cristal"><polygon points="215.0,181.5 218.6,187.5 215.0,193.5 211.4,187.5" fill="url(#${u}_cristal)" stroke="#ffffff" stroke-width="0.8" opacity=".7"/></g>
+<g transform="rotate(75.0 187.5 215.0)" style="animation-delay:0.40s" class="la-cristal"><polygon points="187.5,209.0 191.1,215.0 187.5,221.0 183.9,215.0" fill="url(#${u}_cristal)" stroke="#ffffff" stroke-width="0.8" opacity=".7"/></g>
+<g transform="rotate(105.0 150.0 225.0)" style="animation-delay:0.60s" class="la-cristal"><polygon points="150.0,219.0 153.6,225.0 150.0,231.0 146.4,225.0" fill="url(#${u}_cristal)" stroke="#ffffff" stroke-width="0.8" opacity=".7"/></g>
+<g transform="rotate(135.0 112.5 215.0)" style="animation-delay:0.80s" class="la-cristal"><polygon points="112.5,209.0 116.1,215.0 112.5,221.0 108.9,215.0" fill="url(#${u}_cristal)" stroke="#ffffff" stroke-width="0.8" opacity=".7"/></g>
+<g transform="rotate(165.0 85.0 187.5)" style="animation-delay:1.00s" class="la-cristal"><polygon points="85.0,181.5 88.6,187.5 85.0,193.5 81.4,187.5" fill="url(#${u}_cristal)" stroke="#ffffff" stroke-width="0.8" opacity=".7"/></g>
+<g transform="rotate(195.0 75.0 150.0)" style="animation-delay:1.20s" class="la-cristal"><polygon points="75.0,144.0 78.6,150.0 75.0,156.0 71.4,150.0" fill="url(#${u}_cristal)" stroke="#ffffff" stroke-width="0.8" opacity=".7"/></g>
+<g transform="rotate(225.0 85.0 112.5)" style="animation-delay:1.40s" class="la-cristal"><polygon points="85.0,106.5 88.6,112.5 85.0,118.5 81.4,112.5" fill="url(#${u}_cristal)" stroke="#ffffff" stroke-width="0.8" opacity=".7"/></g>
+<g transform="rotate(255.0 112.5 85.0)" style="animation-delay:1.60s" class="la-cristal"><polygon points="112.5,79.0 116.1,85.0 112.5,91.0 108.9,85.0" fill="url(#${u}_cristal)" stroke="#ffffff" stroke-width="0.8" opacity=".7"/></g>
+<g transform="rotate(285.0 150.0 75.0)" style="animation-delay:1.80s" class="la-cristal"><polygon points="150.0,69.0 153.6,75.0 150.0,81.0 146.4,75.0" fill="url(#${u}_cristal)" stroke="#ffffff" stroke-width="0.8" opacity=".7"/></g>
+<g transform="rotate(315.0 187.5 85.0)" style="animation-delay:2.00s" class="la-cristal"><polygon points="187.5,79.0 191.1,85.0 187.5,91.0 183.9,85.0" fill="url(#${u}_cristal)" stroke="#ffffff" stroke-width="0.8" opacity=".7"/></g>
+<g transform="rotate(345.0 215.0 112.5)" style="animation-delay:2.20s" class="la-cristal"><polygon points="215.0,106.5 218.6,112.5 215.0,118.5 211.4,112.5" fill="url(#${u}_cristal)" stroke="#ffffff" stroke-width="0.8" opacity=".7"/></g>
+</g>
+<g class="la-gelo">
+<circle cx="216.0" cy="103.4" r="2.7" fill="#f0f4ff" opacity="0.43" style="animation-duration:2.75s; animation-delay:1.97s"/>
+<circle cx="182.1" cy="187.7" r="3.1" fill="#f0f4ff" opacity="0.79" style="animation-duration:2.46s; animation-delay:0.43s"/>
+<circle cx="215.8" cy="163.1" r="2.5" fill="#f0f4ff" opacity="0.84" style="animation-duration:4.47s; animation-delay:2.76s"/>
+<circle cx="230.9" cy="183.8" r="1.5" fill="#f0f4ff" opacity="0.61" style="animation-duration:3.33s; animation-delay:2.73s"/>
+<circle cx="196.8" cy="173.0" r="1.4" fill="#f0f4ff" opacity="0.87" style="animation-duration:4.48s; animation-delay:1.30s"/>
+<circle cx="156.9" cy="179.5" r="1.6" fill="#f0f4ff" opacity="0.76" style="animation-duration:3.47s; animation-delay:0.18s"/>
+<circle cx="163.1" cy="182.3" r="3.3" fill="#f0f4ff" opacity="0.53" style="animation-duration:2.18s; animation-delay:0.41s"/>
+<circle cx="148.9" cy="132.9" r="3.0" fill="#f0f4ff" opacity="0.59" style="animation-duration:3.37s; animation-delay:2.52s"/>
+<circle cx="199.7" cy="239.0" r="3.3" fill="#f0f4ff" opacity="0.44" style="animation-duration:2.74s; animation-delay:1.25s"/>
+<circle cx="62.1" cy="72.8" r="2.3" fill="#f0f4ff" opacity="0.76" style="animation-duration:3.34s; animation-delay:0.17s"/>
+<circle cx="73.6" cy="124.5" r="2.1" fill="#f0f4ff" opacity="0.85" style="animation-duration:3.74s; animation-delay:2.71s"/>
+<circle cx="179.6" cy="79.8" r="3.3" fill="#f0f4ff" opacity="0.52" style="animation-duration:2.26s; animation-delay:2.62s"/>
+<circle cx="177.4" cy="159.0" r="2.4" fill="#f0f4ff" opacity="0.44" style="animation-duration:2.90s; animation-delay:0.99s"/>
+<circle cx="166.9" cy="105.9" r="2.5" fill="#f0f4ff" opacity="0.63" style="animation-duration:2.48s; animation-delay:2.56s"/>
+<circle cx="190.6" cy="152.4" r="2.0" fill="#f0f4ff" opacity="0.62" style="animation-duration:4.09s; animation-delay:0.02s"/>
+<circle cx="167.1" cy="229.9" r="3.3" fill="#f0f4ff" opacity="0.64" style="animation-duration:2.31s; animation-delay:0.13s"/>
+<circle cx="239.1" cy="150.4" r="2.3" fill="#f0f4ff" opacity="0.47" style="animation-duration:3.20s; animation-delay:1.29s"/>
+<circle cx="141.4" cy="81.3" r="2.8" fill="#f0f4ff" opacity="0.52" style="animation-duration:3.56s; animation-delay:1.46s"/>
+<circle cx="165.7" cy="106.2" r="3.4" fill="#f0f4ff" opacity="0.86" style="animation-duration:2.52s; animation-delay:1.94s"/>
+<circle cx="226.0" cy="165.2" r="1.8" fill="#f0f4ff" opacity="0.57" style="animation-duration:3.84s; animation-delay:2.60s"/>
+<circle cx="168.1" cy="191.5" r="3.2" fill="#f0f4ff" opacity="0.80" style="animation-duration:4.01s; animation-delay:0.99s"/>
+<circle cx="66.4" cy="199.0" r="2.9" fill="#f0f4ff" opacity="0.72" style="animation-duration:3.21s; animation-delay:0.86s"/>
+</g>
+<g class="la-constelacao">
+<line x1="238.5" y1="165.3" x2="197.3" y2="217.1" stroke="#7ec8e3" stroke-width="0.3" stroke-opacity=".35" stroke-dasharray="2.0 4.0"/>
+<line x1="111.8" y1="244.3" x2="81.3" y2="195.1" stroke="#7ec8e3" stroke-width="0.3" stroke-opacity=".35" stroke-dasharray="2.0 4.0"/>
+<line x1="79.4" y1="100.0" x2="141.9" y2="92.6" stroke="#7ec8e3" stroke-width="0.3" stroke-opacity=".35" stroke-dasharray="2.0 4.0"/>
+<line x1="141.9" y1="92.6" x2="206.3" y2="63.2" stroke="#7ec8e3" stroke-width="0.3" stroke-opacity=".35" stroke-dasharray="2.0 4.0"/>
+<circle cx="238.5" cy="165.3" r="2.5" fill="#ffffff" opacity="0.54" filter="url(#${u}_glow)"/>
+<circle cx="197.3" cy="217.1" r="2.5" fill="#ffffff" opacity="0.43" filter="url(#${u}_glow)"/>
+<circle cx="111.8" cy="244.3" r="2.5" fill="#ffffff" opacity="0.51" filter="url(#${u}_glow)"/>
+<circle cx="81.3" cy="195.1" r="2.5" fill="#ffffff" opacity="0.39" filter="url(#${u}_glow)"/>
+<circle cx="79.4" cy="100.0" r="2.5" fill="#ffffff" opacity="0.54" filter="url(#${u}_glow)"/>
+<circle cx="141.9" cy="92.6" r="2.5" fill="#ffffff" opacity="0.31" filter="url(#${u}_glow)"/>
+<circle cx="206.3" cy="63.2" r="2.5" fill="#ffffff" opacity="0.65" filter="url(#${u}_glow)"/>
+</g>
+</svg>`;
+});
+
+/* FORJA:FIM lobo-lunar */
+
+/* ============================================================
+   Aura: Monarca das Sombras (Sombria, Sepuries, Roxo)
+   ============================================================ */
+Auras.registrar('monarca-das-sombras', function (tam) {
+  const u = 'aura_monarca_' + Auras._seq++;
+  
+  // Fogo sombrio (Base roxa e magenta)
+  const fogoBase = Auras._coroaDeChamas({ 
+    picos: 14, min: 90, max: 140, base: 120, turb: 0.1 
+  });
+  
+  const fogoInterno = Auras._coroaDeChamas({ 
+    picos: 10, min: 70, max: 100, base: 85, turb: 0.15 
+  });
+
+  return `
+    ${Auras._estilo()}
+    <svg viewBox="0 0 300 300" width="${tam}" height="${tam}" class="aura-svg">
+      <defs>
+        <radialGradient id="${u}_brilho" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#7c3aed" stop-opacity="0.5"/>
+          <stop offset="60%" stop-color="#4c1d95" stop-opacity="0.2"/>
+          <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+        </radialGradient>
+        
+        <radialGradient id="${u}_fogoExt" cx="50%" cy="50%" r="50%">
+          <stop offset="60%" stop-color="#312e81"/>
+          <stop offset="90%" stop-color="#7c3aed"/>
+          <stop offset="100%" stop-color="#e879f9" stop-opacity="0"/>
+        </radialGradient>
+
+        <radialGradient id="${u}_fogoInt" cx="50%" cy="50%" r="50%">
+          <stop offset="50%" stop-color="#0f172a"/>
+          <stop offset="80%" stop-color="#9333ea"/>
+          <stop offset="100%" stop-color="#e879f9" stop-opacity="0"/>
+        </radialGradient>
+
+        <filter id="${u}_glow">
+          <feGaussianBlur stdDeviation="6" result="blur" />
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        
+        <!-- Sombra Projetada Escura -->
+        <filter id="${u}_sombra">
+           <feDropShadow dx="0" dy="0" stdDeviation="15" flood-color="#c084fc" flood-opacity="0.3"/>
+        </filter>
+      </defs>
+
+      <!-- Brilho de Fundo Sombrio -->
+      <circle cx="150" cy="150" r="140" fill="url(#${u}_brilho)" class="aura-arder2"/>
+
+      <g filter="url(#${u}_sombra)">
+        <!-- Coroa de Chamas Externa -->
+        <g class="aura-r1">
+          <g class="aura-arder" filter="url(#${u}_glow)">
+            <path d="${fogoBase}" fill="url(#${u}_fogoExt)" opacity="0.8"/>
+          </g>
+        </g>
+
+        <!-- Coroa de Chamas Interna (Sentido Inverso) -->
+        <g class="aura-r2">
+          <g class="aura-arder2" filter="url(#${u}_glow)">
+            <path d="${fogoInterno}" fill="url(#${u}_fogoInt)" opacity="0.9"/>
+          </g>
+        </g>
+        
+        <!-- Partículas Sombrias (Estrelas / Fagulhas) -->
+        <g class="aura-r3" opacity="0.7" filter="url(#${u}_glow)">
+          <circle cx="150" cy="30" r="3" fill="#e879f9" />
+          <circle cx="250" cy="100" r="2" fill="#c084fc" />
+          <circle cx="230" cy="220" r="3.5" fill="#e879f9" />
+          <circle cx="90" cy="250" r="2" fill="#c084fc" />
+          <circle cx="40" cy="150" r="2.5" fill="#e879f9" />
+        </g>
+        
+        <!-- Anel Central Obscuro -->
+        <circle cx="150" cy="150" r="75" fill="none" stroke="#7c3aed" stroke-width="2" stroke-dasharray="10 30" class="aura-r2" opacity="0.6"/>
+      </g>
+    </svg>`;
+});
+
+/* ============================================================
+   Aura: Domínio Lançado (Arquiteto S-Rank, Verde/Azul)
+   ============================================================ */
+Auras.registrar('dominio-lancado', function (tam) {
+  const u = 'aura_dominio_' + Auras._seq++;
+  
+  // Geometria precisa, não fogo caótico
+  const lamina = `M145 20 L155 20 L150 5 Z`;
+  const matriz = [];
+  for(let i=0; i<12; i++) {
+    matriz.push(`<g transform="rotate(${i*30} 150 150)"><path d="${lamina}" fill="#6ee7b7" opacity="0.8"/></g>`);
+  }
+
+  const matrizInterna = [];
+  for(let i=0; i<8; i++) {
+    matrizInterna.push(`<g transform="rotate(${i*45} 150 150)"><rect x="148" y="45" width="4" height="15" fill="#22d3ee" rx="2" opacity="0.9"/></g>`);
+  }
+
+  return `
+    ${Auras._estilo()}
+    <svg viewBox="0 0 300 300" width="${tam}" height="${tam}" class="aura-svg">
+      <defs>
+        <radialGradient id="${u}_brilho" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#022c22" stop-opacity="0.8"/>
+          <stop offset="50%" stop-color="#0891b2" stop-opacity="0.3"/>
+          <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+        </radialGradient>
+
+        <filter id="${u}_glow">
+          <feGaussianBlur stdDeviation="5" result="blur" />
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+
+      <!-- Brilho de Fundo -->
+      <circle cx="150" cy="150" r="145" fill="url(#${u}_brilho)" class="aura-arder2"/>
+
+      <g filter="url(#${u}_glow)">
+        <!-- Pistas de Dados Externas (Círculos concêntricos hifados) -->
+        <g class="aura-r1">
+          <circle cx="150" cy="150" r="135" fill="none" stroke="#6ee7b7" stroke-width="1.5" stroke-dasharray="15 25" opacity="0.5"/>
+          <circle cx="150" cy="150" r="120" fill="none" stroke="#22d3ee" stroke-width="1" stroke-dasharray="4 8" opacity="0.6"/>
+          ${matriz.join('')}
+        </g>
+
+        <!-- Matriz Interna (Sentido Inverso) -->
+        <g class="aura-r2">
+          <circle cx="150" cy="150" r="95" fill="none" stroke="#2dd4bf" stroke-width="2" stroke-dasharray="30 40" opacity="0.7"/>
+          <circle cx="150" cy="150" r="85" fill="none" stroke="#0284c7" stroke-width="3" opacity="0.3"/>
+          ${matrizInterna.join('')}
+        </g>
+        
+        <!-- Núcleo Pulsante -->
+        <g class="aura-arder">
+          <circle cx="150" cy="150" r="70" fill="none" stroke="#6ee7b7" stroke-width="1" opacity="0.8" stroke-dasharray="2 4"/>
+          <!-- Triângulos orbitando o centro -->
+          <polygon points="150,65 155,75 145,75" fill="#22d3ee" class="aura-r3"/>
+          <polygon points="150,235 155,225 145,225" fill="#22d3ee" class="aura-r3"/>
+        </g>
+      </g>
+    </svg>`;
+});
+
 window.Auras = Auras;
 
