@@ -1,16 +1,18 @@
 # 📦 Solo Projects — Configuração de Deploy
 
-Referência completa para criar e configurar novos projetos no stack Solo.
+Referência completa para criar e configurar projetos no stack Solo, agora focado no ambiente da VPS Contabo.
 
 ---
 
 ## 🏗️ Arquitetura Padrão
 
 ```
-GitHub (código)
-    ↓  push automático
-Render (servidor)  →  conecta  →  Neon (banco PostgreSQL)
-  grátis                            grátis / persistente
+GitHub (código para controle de versão e histórico)
+    ↓
+Máquina Local (modificações) → Envia via SFTP / SCP → VPS Contabo (169.58.116.61)
+                                                          ↓
+                                                    Docker Compose
+                                                    (Servidor Uvicorn + Banco PostgreSQL no Neon)
 ```
 
 ---
@@ -22,59 +24,48 @@ Render (servidor)  →  conecta  →  Neon (banco PostgreSQL)
 | **Backend** | FastAPI | 0.111.0 |
 | **Servidor** | Uvicorn | 0.29.0 |
 | **ORM** | SQLAlchemy | 2.0.30 |
-| **Banco (prod)** | PostgreSQL (Neon) | 18 |
+| **Banco (prod)** | PostgreSQL (Neon ou Local) | 18 |
 | **Banco (local)** | SQLite | — |
 | **Auth** | JWT (python-jose) | 3.3.0 |
-| **Hash senha** | passlib + bcrypt | 1.7.4 |
-| **Scheduler** | APScheduler | 3.10.4 |
 | **Frontend** | HTML/CSS/JS puro | — |
-| **Python** | 3.12 (pinado) | 3.12.0 |
+| **VPS** | Contabo | Ubuntu / Linux |
 
 ---
 
-## 🌐 Serviços Utilizados (todos grátis)
+## 🌐 Serviços Utilizados
 
 | Serviço | Função | URL | Plano |
 |---|---|---|---|
-| **GitHub** | Repositório de código | github.com/Jheffth | Free |
-| **Render** | Hospedagem do app | render.com | Free (Web Service) |
-| **Neon** | Banco PostgreSQL | neon.tech | Free (0.5 GB) |
+| **GitHub** | Repositório de código (histórico) | github.com/Jheffth | Free |
+| **Contabo**| Hospedagem do app (VPS) | soloroutines.duckdns.org | Pago |
+| **Neon** | Banco PostgreSQL | neon.tech | Free |
 
 ---
 
-## 🚀 Como criar um novo projeto
+## 🚀 Como fazer o Deploy no Contabo
 
-### 1. Repositório (GitHub)
-- Criar repo em github.com/Jheffth
-- Push inicial com `.gitignore` configurado
+Não estamos mais usando o Render. O deploy não é mais automático apenas dando `git push`. 
 
-### 2. Banco de Dados (Neon)
-1. Acessar [neon.tech](https://neon.tech) → Login com GitHub
-2. **New Project** → nome do projeto
-3. Region: `AWS US East 1 (N. Virginia)`
-4. Postgres version: `18`
-5. Neon Auth: **desligado**
-6. Copiar a **Connection String** (clicar em "Show password")
-7. Formato: `postgresql://user:senha@host/dbname?sslmode=require`
+**Para aplicar mudanças na produção:**
 
-### 3. Servidor (Render)
-1. Acessar [render.com](https://render.com) → Login com GitHub
-2. **New → Web Service**
-3. Conectar repositório GitHub
-4. Configurar:
-   - **Language:** `Python`
-   - **Branch:** `master`
-   - **Root Directory:** `webapp/backend` *(se usar estrutura monorepo)*
-   - **Build Command:** `pip install -r requirements.txt`
-   - **Start Command:** `python entrypoint.py`
-   - **Instance Type:** `Free`
-5. Adicionar **Environment Variables:**
+### Opção 1: Script Automático via Python
+1. Rode o script local `python scripts/deploy_contabo.py`.
+2. Este script acessa o servidor usando suas credenciais (IP: `169.58.116.61`, usuário: `root`, senha: `1601Jcs332503`), sincroniza os arquivos via SFTP, e reconstrói a imagem Docker.
+*(Lembre-se de ajustar o script se novos arquivos precisarem ser enviados, ou configure um rsync).*
 
-| Variável | Valor |
-|---|---|
-| `SECRET_KEY` | *(string aleatória segura)* |
-| `DATABASE_URL` | *(connection string do Neon)* |
-| `PYTHON_VERSION` | `3.12.0` |
+### Opção 2: Manual via SSH
+1. **Transferir os arquivos modificados:**
+   Use SCP ou um cliente FTP (como FileZilla/Termius) para enviar os arquivos da sua máquina para o diretório `/root/app/` no Contabo.
+2. **Acessar o servidor:**
+   `ssh root@169.58.116.61` (senha: `1601Jcs332503`)
+3. **Reiniciar os contêineres:**
+   ```bash
+   cd /root/app/webapp
+   docker compose build api
+   docker compose up -d
+   ```
+
+*(Nota: Como o diretório /root/app/ no Contabo não é um repositório git, um simples git pull não funcionará lá).*
 
 ---
 
@@ -83,84 +74,48 @@ Render (servidor)  →  conecta  →  Neon (banco PostgreSQL)
 | Arquivo | Função |
 |---|---|
 | `requirements.txt` | Dependências Python |
-| `entrypoint.py` | Lê `PORT` do ambiente e inicia uvicorn |
-| `config.py` | Lê variáveis de ambiente (`DATABASE_URL`, `SECRET_KEY`) |
-| `database.py` | Suporte a SQLite (local) e PostgreSQL (prod) |
-| `seed.py` | Cria usuários e dados iniciais automaticamente |
-| `.python-version` | Pina Python 3.12 para o Render |
-| `runtime.txt` | Backup do pin de versão Python |
-| `.gitignore` | Protege `.env`, `.db`, `__pycache__`, etc. |
+| `config.py` | Lê variáveis de ambiente |
+| `database.py` | Suporte a SQLite e PostgreSQL |
+| `Dockerfile` | Constrói a imagem da API FastAPI |
+| `docker-compose.yml`| Orquestra API, Banco (opcional) e Caddy/Proxy |
 
 ---
 
-## ⚙️ config.py padrão
+## 🔄 Fluxo de manutenção atualizado
 
-```python
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
-
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-in-production")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24h
-
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./app.db")
-# Neon/Railway usam postgres://, SQLAlchemy 2.x exige postgresql://
-if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+```text
+1. Editar código localmente e testar (localhost:8000).
+2. Commit e Push pro GitHub (Para garantir o backup e histórico do código):
+   git add . && git commit -m "..." && git push origin master
+3. Enviar as alterações para o Contabo (SFTP/SCP) para a pasta /root/app/.
+4. No servidor, rodar:
+   cd /root/app/webapp && docker compose build api && docker compose up -d
+5. (Se alterou JS/CSS) Dar Ctrl+F5 no navegador em soloroutines.duckdns.org
 ```
 
 ---
 
-## 📋 entrypoint.py padrão
+## ⚠️ Sobre o Cache do Frontend (Auras e Insígnias SVG)
 
-```python
-import os
-import uvicorn
+Muitas artes do sistema, como **Auras** e **Insígnias S-Rank** (ex: *Monarca das Sombras*, *Fênix*, etc.), são construídas via código no Frontend (Javascript + SVG gerado dinamicamente).
+Elas **não** ficam salvas no banco de dados.
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run("main:app", host="0.0.0.0", port=port)
-```
+Sempre que um agente criar um desses elementos:
+- Eles não aparecerão sozinhos após o envio.
+- Você precisará dar **Ctrl + F5** (Hard Refresh) no site (`soloroutines.duckdns.org`) para o seu navegador limpar o cache e carregar os novos `.js`.
 
 ---
 
-## 🔄 Fluxo de manutenção
+## 🔑 Acesso ao Servidor (Contabo)
 
-```
-Editar código localmente
-    ↓
-git add . && git commit -m "descrição"
-    ↓
-git push origin master
-    ↓
-Render detecta e deploya automaticamente (~2 min)
-    ↓
-Banco Neon não é afetado (dados persistem sempre)
-```
-
----
-
-## ⚠️ Limitações do plano gratuito
-
-| Serviço | Limitação |
+| Parâmetro | Valor |
 |---|---|
-| **Render** | App hiberna após 50s de inatividade (acorda em ~30s) |
-| **Render** | 750h de compute/mês |
-| **Neon** | 0.5 GB de armazenamento |
-| **Neon** | Banco hiberna após inatividade (reconecta automaticamente) |
-
-> **Dica:** Bot Telegram em modo **polling** mantém o Render ativo 24/7, eliminando a hibernação.
-
----
-
-## 🔑 Projetos ativos
-
-| Projeto | GitHub | Render | Neon |
-|---|---|---|---|
-| **Solo Finances** | Jheffth/solo-finances | solo-finances.onrender.com | — |
-| **Solo Routines** | Jheffth/solo-routines | solo-routines.onrender.com | ep-broad-hat-at3qi4mu |
+| **IP / Host** | `169.58.116.61` |
+| **Domínio** | `soloroutines.duckdns.org` |
+| **Usuário SSH** | `root` |
+| **Senha SSH** | `1601Jcs332503` |
+| **Diretório App** | `/root/app/` |
+| **Diretório Docker**| `/root/app/webapp/` |
 
 ---
 
@@ -175,7 +130,4 @@ Banco Neon não é afetado (dados persistem sempre)
 --text-primary: #e2e8f0
 ```
 
-- Dark mode obrigatório
-- Glassmorphism nos cards
-- Animações suaves (CSS transitions)
-- Fonte: Inter ou Outfit (Google Fonts)
+- Dark mode obrigatório, Glassmorphism nos cards, Animações S-Rank (CSS).
