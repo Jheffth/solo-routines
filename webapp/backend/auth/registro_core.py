@@ -18,6 +18,9 @@ from sqlalchemy.orm import Session
 from database import Usuario, Convite, Conquista, ConquistaUsuario
 from auth.service import hash_senha, registrar_log
 
+# Níveis que podem ser concedidos por convite (espelho de convites.py NIVEIS_PERMITIDOS)
+_NIVEIS_CONVITE = ("User", "Suporte", "Moderador", "Admin", "Criador")
+
 
 def validar_convite(db: Session, codigo: str) -> Convite:
     """Confere o convite ou levanta HTTPException 400 com o motivo exato."""
@@ -68,8 +71,9 @@ def criar_conta(
     senha fica impossível para essa conta, sem precisar tornar a coluna
     anulável (migração arriscada em Postgres).
     """
+    # Nível de Acesso — aceita todos os níveis permitidos por convite
     nivel = (getattr(convite, "nivel_acesso", "User") or "User").strip().capitalize()
-    if nivel not in ("User", "Admin"):
+    if nivel not in _NIVEIS_CONVITE:
         nivel = "User"
 
     senha_hash = hash_senha(senha) if senha else hash_senha(secrets.token_urlsafe(32))
@@ -84,7 +88,11 @@ def criar_conta(
         titulo="O Mais Fraco",
         xp_total=0, xp_atual=0, nivel_atual=1, xp_proximo_nivel=100,
         moedas=50,
+        fragmentos=0,
+        assinante=False,
         nivel_acesso=nivel,
+        # Aura presenteada pelo convite (se houver)
+        aura_id=getattr(convite, "aura_id", None) or None,
         ativo=True,
     )
     db.add(novo)
@@ -122,7 +130,33 @@ def criar_conta(
     except Exception:
         pass
 
+    # ── Presentes premium do convite ─────────────────────────────────
+
+    # 1. Assinatura embutida no convite
+    assinatura_tipo = getattr(convite, "assinatura_tipo", None)
+    if assinatura_tipo:
+        try:
+            from motors import assinaturas as assin_motor
+            assin_motor.ativar_por_convite(db, novo, assinatura_tipo)
+        except Exception as e:
+            print(f"[REGISTRO] ⚠ Assinatura por convite falhou para {novo.login}: {e}")
+
+    # 2. Fragmentos bônus do convite
+    fragmentos_bonus = int(getattr(convite, "fragmentos_bonus", 0) or 0)
+    if fragmentos_bonus > 0:
+        try:
+            from motors import fragmentos as frag_motor
+            frag_motor.creditar(
+                db, novo, fragmentos_bonus,
+                motivo="convite",
+                observacao=f"Bônus de entrada — convite {convite.codigo}",
+            )
+        except Exception as e:
+            print(f"[REGISTRO] ⚠ Fragmentos bônus falhou para {novo.login}: {e}")
+
     registrar_log(db, novo.login, "REGISTRO",
                   f"Novo hunter convocado ({origem}): {novo.nome} · nível {nivel} · "
-                  f"convite {convite.codigo} · badges: {', '.join(concedidas) or 'nenhuma'}")
+                  f"convite {convite.codigo} · badges: {', '.join(concedidas) or 'nenhuma'} · "
+                  f"assinatura: {assinatura_tipo or 'nenhuma'} · "
+                  f"fragmentos_bonus: {fragmentos_bonus}")
     return novo, concedidas

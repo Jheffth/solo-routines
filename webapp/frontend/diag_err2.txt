@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "C:\JEFFERSON\PROJETOS\01 - SOLO ROTINAS\webapp\frontend\diag_frontend.py", line 5, in <module>
+    from routers.auth import criar_token_acesso
+ModuleNotFoundError: No module named 'routers.auth'

@@ -131,7 +131,8 @@ def _missao_de_rotina(ed: ExecucaoDia, r: Rotina, hoje: date) -> dict:
         #                 ninguém conclui ontem, ninguém adianta amanhã.
         #   gerenciavel → EDITAR/EXCLUIR. Vale de hoje em diante; o passado é
         #                 histórico e não se reescreve.
-        "editavel":    ed.data == hoje,
+        # Exceção: missões passivas permitem confissão no dia seguinte, e missões ainda ATIVAS (viraram a noite) continuam editáveis.
+        "editavel":    ed.data == hoje or ed.status == "ATIVA" or (getattr(r, "natureza", "ATIVA") == "PASSIVA" and ed.data == hoje - timedelta(days=1)),
         "gerenciavel": ed.data >= hoje,
     }
 
@@ -373,20 +374,27 @@ def listar_extrato(
     ORDEM_STATUS = {"ATIVA": 0, "PENDENTE": 1, "PAUSADA": 2,
                     "CONCLUIDA": 3, "FRACASSADA": 4, "CANCELADA": 5}
 
-    # A PENITENCIA NAO ROLA PARA FORA DA TELA. Ela vem antes de
-    # qualquer ordenacao — foi assim que o Arquiteto desenhou o
-    # incomodo: sem travar nada, mas sem sumir.
-    def _penitencia_primeiro(m):
+    # A PENITÊNCIA E MISSÕES ATIVAS NÃO ROLAM PARA FORA DA TELA.
+    # Elas vêm antes de qualquer ordenação por data — foi assim que o Arquiteto
+    # desenhou o incômodo: sem travar nada, mas sem sumir. Missões ATIVAS
+    # (rodando agora) vão para o topo absoluto, seguidas das punições.
+    # Como o extrato agora inclui missões futuras, elas empurrariam as
+    # missões ativas (de hoje ou ontem) para baixo se ordenássemos só por data.
+    def _fixos_no_topo(m):
+        if m["status"] == "ATIVA":
+            return 0
         aberta = (m.get("natureza") == "PUNICAO"
-                  and m["status"] not in ("CONCLUIDA", "CANCELADA"))
-        return 0 if aberta else 1
+                  and m["status"] not in ("CONCLUIDA", "CANCELADA", "FRACASSADA", "CONFESSADA"))
+        return 1 if aberta else 2
+
     missoes.sort(key=lambda m: (
         m["data"] or "",
         -ORDEM_STATUS.get(m["status"], 9),
     ), reverse=True)
-    # E SO ENTAO a penitencia sobe. Ordenar antes seria perder o
-    # criterio de data dentro do grupo dela.
-    missoes.sort(key=_penitencia_primeiro)
+    
+    # E SÓ ENTÃO os fixos sobem. Ordenar antes seria perder o
+    # critério de data dentro do grupo deles.
+    missoes.sort(key=_fixos_no_topo)
 
     total = len(missoes)
     missoes = missoes[:limite]

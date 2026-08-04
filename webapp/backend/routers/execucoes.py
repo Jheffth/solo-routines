@@ -458,7 +458,7 @@ def _tarefa_de_repeticao(db: Session, usuario: Usuario, tarefa_id: int) -> Taref
                                    TarefaDia.usuario_id == usuario.id).first()
     if not t:
         raise HTTPException(404, "Missao nao encontrada")
-    if especiais.normalizar(getattr(t, "natureza", None)) != especiais.REPETICAO:
+    if especiais.normalizar(getattr(t, "natureza", None)) not in (especiais.REPETICAO, especiais.PUNICAO):
         raise HTTPException(400, "Esta missao nao e uma missao de repeticoes")
     return t
 

@@ -538,12 +538,22 @@ const Dashboard = {
       return;
     }
 
-    // ── Agrupamento por dia ──────────────────────────────────────────
-    // A API já devolve mais recente primeiro e, dentro do dia, o que ainda
-    // pede ação no topo. O Map preserva essa ordem de chegada, então basta
-    // empilhar; reordenar aqui só desfaria o critério do backend.
+    // ── Separação: penitências abertas ficam PINADAS no topo ────────
+    // Uma penitência pertence ao dia da falha (ontem, anteontem...) mas a
+    // dívida não expira por data — só o hunter a quita. Colocá-la junto com
+    // o bloco "Ontem" a empurrava para baixo das rotinas de Hoje. A solução:
+    // tiramos as penitências abertas do agrupamento por dia e as colocamos
+    // numa seção própria, fixada acima de tudo.
+    const STATUS_ABERTO = new Set(['PENDENTE', 'ATIVA']);
+    const penitenciasAbertas = lista.filter(
+      m => m.natureza === 'PUNICAO' && STATUS_ABERTO.has(m.status));
+    const penitenciasAbertasIds = new Set(penitenciasAbertas.map(m => m.uid || m.id));
+
+    // ── Agrupamento por dia (excluindo as penitências já pinadas) ────
     const porDia = new Map();
     lista.forEach(m => {
+      // Penitências abertas saem do bloco de dia — já aparecem no topo.
+      if (penitenciasAbertasIds.has(m.uid || m.id)) return;
       const dia = String(m.data || '').slice(0, 10) || 'sem-data';
       if (!porDia.has(dia)) porDia.set(dia, []);
       porDia.get(dia).push(m);
@@ -573,7 +583,29 @@ const Dashboard = {
     // janela tem folga mas a coluna não.
     cont.classList.add('mc-lista');
 
-    const html = [...porDia.entries()].map(([dia, itens]) => `
+    // ── Seção de penitências pinadas ────────────────────────────────
+    const htmlPenitencias = penitenciasAbertas.length ? `
+      <section data-dia="__penitencias__" style="margin-bottom:.9rem">
+        <header style="position:sticky;top:0;z-index:4;display:flex;align-items:baseline;
+          gap:.5rem;flex-wrap:wrap;padding:.35rem .15rem;margin-bottom:.45rem;
+          background:var(--bg-card);border-bottom:2px solid rgba(239,68,68,.4)">
+          <span style="font-family:var(--font-section);font-size:.74rem;font-weight:700;
+            letter-spacing:.05em;color:#f87171">⚠ DÍVIDAS ABERTAS</span>
+          <span data-resumo-dia style="font-family:var(--font-section);font-size:.62rem;color:var(--text-muted)">${this._resumoDoDia(penitenciasAbertas)}</span>
+        </header>
+        <div data-cartoes style="display:flex;flex-direction:column;gap:.5rem">
+          ${penitenciasAbertas.map(m => MissaoCard.html(m, { compacto: true })).join('')}
+        </div>
+      </section>` : '';
+
+    // ── Seções de dia normais (mais recente no topo) ─────────────────
+    const diasOrdenados = [...porDia.entries()].sort((a, b) => {
+      if (a[0] === 'sem-data') return 1;
+      if (b[0] === 'sem-data') return -1;
+      return b[0].localeCompare(a[0]);
+    });
+
+    const htmlDias = diasOrdenados.map(([dia, itens]) => `
       <section data-dia="${dia}" style="margin-bottom:.9rem">
         <header style="position:sticky;top:0;z-index:3;display:flex;align-items:baseline;
           gap:.5rem;flex-wrap:wrap;padding:.35rem .15rem;margin-bottom:.45rem;
@@ -586,6 +618,8 @@ const Dashboard = {
           ${itens.map(m => MissaoCard.html(m, { compacto: true })).join('')}
         </div>
       </section>`).join('');
+
+    const html = htmlPenitencias + htmlDias;
 
     this._reconciliar(cont, html);
 

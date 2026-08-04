@@ -1,0 +1,14 @@
+[CONFIG] AVISO: SECRET_KEY ausente - usando chave temporaria de desenvolvimento.
+[CONFIG] Defina SECRET_KEY no .env para manter as sessoes entre reinicios.
+Total retornado pelo extrato: 86
+Missoes de hoje (2026-08-02): 6
+  [ATIVA] Sem cafeína após as 16h | natureza=PASSIVA | editavel=True
+  [ATIVA] Banho Revigorante | natureza=ATIVA | editavel=True
+  [ATIVA] Fio dental Rotineiro | natureza=ATIVA | editavel=True
+  [ATIVA] Colocar o Dolphin para carregar. | natureza=ATIVA | editavel=True
+  [ATIVA] Ler 05 páginas de um bom livro | natureza=ATIVA | editavel=True
+  [PENDENTE] Sem redes sociais entre 22h e 10h | natureza=PASSIVA | editavel=True
+
+Penitencias na lista:
+  [PENDENTE] Fazer 30 flexões | data=2026-08-01 | editavel=True
+  [PENDENTE] Fazer 5 abdominais | data=2026-08-01 | editavel=True

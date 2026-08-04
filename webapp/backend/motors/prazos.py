@@ -156,6 +156,19 @@ def da_tarefa(tarefa) -> dict:
     criada = tempo.de_utc(getattr(tarefa, "criado_em", None))
     inicio = max(criada, abertura_do_dia) if criada else abertura_do_dia
 
+    # A PENITENCIA NAO TEM PRAZO. Ela nasce no dia da falha, mas a divida
+    # nunca expira — o cartao nao pode bloquea-la so porque o relogio virou.
+    # Devolvemos um prazo que comeca hoje e termina daqui a 365 dias.
+    if getattr(tarefa, "natureza", None) == "PUNICAO":
+        hoje = tempo.hoje()
+        inicio = datetime.combine(hoje, time(0, 0))
+        fim = datetime.combine(hoje + timedelta(days=365), _FIM_DO_DIA)
+        return {
+            "inicio": inicio, "fim": fim,
+            "janela": False, "auto_inicia": False,
+            "minutos": 525600,  # um ano
+        }
+
     # DIA FUTURO SEM HORA: o dia inteiro, e o `prazo_minutos` não se aplica.
     # Aplicá-lo daria a janela de meia-noite que o Arquiteto reportou.
     futura_sem_hora = hora is None and dia > tempo.hoje()

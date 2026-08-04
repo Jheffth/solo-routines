@@ -280,6 +280,24 @@ const Perfil = {
               value="${dados.xp_total || 0}" min="0"
               style="border-color:rgba(6,182,212,.4)">
           </div>
+
+          <!-- Ações Rápidas (Arquiteto) -->
+          <div style="grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; align-items: flex-start;">
+            <button type="button" class="btn btn-sm" onclick="Perfil.nerfarArquiteto()" style="
+              width: auto;
+              font-family:var(--font-section);font-size:.75rem;padding:.5rem 1rem;border-radius:.5rem;
+              border:1px solid rgba(239,68,68,.4);background:rgba(239,68,68,.1);
+              color:#fca5a5;cursor:pointer; transition: all 0.2s ease;">
+              &#9888; Nerfar Arquiteto
+            </button>
+            <button type="button" class="btn btn-sm" onclick="Perfil.buffarArquiteto()" style="
+              width: auto;
+              font-family:var(--font-section);font-size:.75rem;padding:.5rem 1rem;border-radius:.5rem;
+              border:1px solid rgba(245,158,11,.4);background:rgba(245,158,11,.1);
+              color:var(--gold-xp);cursor:pointer; transition: all 0.2s ease;">
+              &#9889; Buffar Arquiteto
+            </button>
+          </div>
           ` : ''}
 
         </div>
@@ -354,8 +372,47 @@ const Perfil = {
         }, 2000);
       }
     } catch (err) {
-      SoloDialog.toast('Erro ao salvar: ' + (err.message || err), 'error');
       if (btn) { btn.disabled = false; btn.innerHTML = '&#128190; Salvar Alterações'; }
+      SoloDialog.toast('Erro ao salvar: ' + (err.message || err), 'error');
+    }
+  },
+
+  // ── Funções Exclusivas do Arquiteto ──────────────────────
+  async nerfarArquiteto() {
+    const ok = typeof SoloDialog !== 'undefined' && SoloDialog.confirm
+      ? await SoloDialog.confirm("Tem certeza que deseja NERFAR o Arquiteto para o Nível 1 e Rank E?", {
+          titulo: "CUIDADO: Nerf de Arquiteto",
+          textoConfirmar: "Sim, Nerfar",
+          corBotao: "#ef4444"
+        })
+      : confirm("Tem certeza que deseja NERFAR o Arquiteto para o Nível 1 e Rank E?");
+    if (!ok) return;
+
+    try {
+      const resp = await API.post('/perfil/nerf_arquiteto', {});
+      SoloDialog.toast(resp.detalhe || 'Arquiteto nerfado com sucesso.', 'success');
+      await this.carregar();
+    } catch (err) {
+      SoloDialog.toast('Erro: ' + (err.message || err), 'error');
+    }
+  },
+
+  async buffarArquiteto() {
+    const ok = typeof SoloDialog !== 'undefined' && SoloDialog.confirm
+      ? await SoloDialog.confirm("Tem certeza que deseja BUFFAR o Arquiteto de volta ao Topo?", {
+          titulo: "Restaurar Poderes",
+          textoConfirmar: "Sim, Buffar",
+          corBotao: "#f59e0b"
+        })
+      : confirm("Tem certeza que deseja BUFFAR o Arquiteto de volta ao Topo?");
+    if (!ok) return;
+
+    try {
+      const resp = await API.post('/perfil/buff_arquiteto', {});
+      SoloDialog.toast(resp.detalhe || 'Poderes do Arquiteto restaurados.', 'success');
+      await this.carregar();
+    } catch (err) {
+      SoloDialog.toast('Erro: ' + (err.message || err), 'error');
     }
   },
 
@@ -451,7 +508,7 @@ const Perfil = {
       const medalha = this._medalhaDe(c, 64);
 
       return `
-        <div class="${classes}" style="${style}" title="${c.desbloqueada ? 'Conquistada' : 'Bloqueada'} — ${rar.nome}">
+        <div class="${classes}" style="${style}" data-id="${c.codigo || c.id}" title="${c.desbloqueada ? 'Conquistada' : 'Bloqueada'} — ${rar.nome}">
           <div class="reliquia-brilho"></div>
           ${c.exclusiva_arquiteto ? '<div class="reliquia-selo-arq">⟁</div>' : ''}
           <div class="reliquia-medalha">${medalha}</div>

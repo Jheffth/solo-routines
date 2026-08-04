@@ -27,6 +27,8 @@ from motors.forja import entrega                        # noqa: E402
 from motors.forja.pecas import pena_punidor             # noqa: E402
 from motors.forja.pecas import fenix_v3                 # noqa: E402
 from motors.forja.pecas import lobo_sombrio             # noqa: E402
+from motors.forja.pecas import isabella                 # noqa: E402
+from motors.forja.pecas import lobo_lunar               # noqa: E402
 
 FRONT = os.path.join(RAIZ, "webapp", "frontend")
 
@@ -85,6 +87,42 @@ PECAS = {
         "aura": {
             "id": "lobo-sombrio",
             "titulo": "Lobo Sombrio (Abissal)",
+        },
+    },
+    "isabella": {
+        "modulo": isabella,
+        "badge": {
+            "destino": os.path.join(FRONT, "js", "badges", "isabella.js"),
+            "ns": "IsabellaFX",
+            "codigo": "isabella",
+            "titulo": "Bella Rosa — Femme Fatale",
+            "descricao": "Elegância extrema, banhada em pétalas de seda e aço.",
+            "icone": "🎀",
+            "cor": "#f48fb1",
+            "xp": 6666,
+            "moedas": 666,
+        },
+        "aura": {
+            "id": "isabella",
+            "titulo": "Bella Rosa (Femme Fatale)",
+        },
+    },
+    "lobo_lunar": {
+        "modulo": lobo_lunar,
+        "badge": {
+            "destino": os.path.join(FRONT, "js", "badges", "lobo-lunar.js"),
+            "ns": "LoboLunarFX",
+            "codigo": "lobo_lunar",
+            "titulo": "Lobo Lunar — Alfa da Alcateia",
+            "descricao": "Forjado sob a lua cheia. O uivo que congela o ar e parte a noite ao meio.",
+            "icone": "🐺",
+            "cor": "#7ec8e3",
+            "xp": 8500,
+            "moedas": 850,
+        },
+        "aura": {
+            "id": "lobo-lunar",
+            "titulo": "Lobo Lunar (Alcateia de Gelo)",
         },
     }
 }

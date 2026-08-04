@@ -102,6 +102,17 @@ COLUNAS = [
     ("tarefas_dia",  "origem_data",        "DATE",                        "DATE"),
     ("tarefas_dia",  "xp_a_reparar",       "INTEGER NOT NULL DEFAULT 0",  "INTEGER NOT NULL DEFAULT 0"),
 
+    # ── FRAGMENTOS DO MONARCA — Moeda Premium ────────────────────────
+    # As 5 novas tabelas (planos, assinaturas, pacotes_fragmentos,
+    # pagamentos, fragmentos_ledger) são criadas pelo criar_tabelas()
+    # automaticamente — entram aqui só as colunas em tabelas que já existem.
+    ("usuarios",   "fragmentos",       "INTEGER NOT NULL DEFAULT 0",     "INTEGER NOT NULL DEFAULT 0"),
+    ("usuarios",   "assinante",        "BOOLEAN NOT NULL DEFAULT 0",     "BOOLEAN NOT NULL DEFAULT FALSE"),
+    ("convites",   "assinatura_tipo",  "VARCHAR(20)",                    "VARCHAR(20)"),
+    ("convites",   "aura_id",          "VARCHAR(50)",                    "VARCHAR(50)"),
+    ("convites",   "fragmentos_bonus", "INTEGER NOT NULL DEFAULT 0",     "INTEGER NOT NULL DEFAULT 0"),
+    ("recompensas","custo_fragmentos", "INTEGER NOT NULL DEFAULT 0",     "INTEGER NOT NULL DEFAULT 0"),
+
     # REPETICAO — a missao que conta em vez de concluir.
     #
     # A tabela `contadores` nao entra aqui: ela e NOVA, e o `create_all()`

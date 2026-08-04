@@ -34,6 +34,7 @@ from routers.extrato  import router as extrato_router
 from routers.economia import router as economia_router
 from routers.auras    import router as auras_router
 from routers.versao   import router as versao_router
+from routers.pagamentos import router as pagamentos_router
 
 # ==============================================================================
 # APP
@@ -98,6 +99,7 @@ app.include_router(social_router,        prefix="/api")
 app.include_router(extrato_router,       prefix="/api")
 app.include_router(economia_router,      prefix="/api")
 app.include_router(auras_router,         prefix="/api")
+app.include_router(pagamentos_router,    prefix="/api")
 app.include_router(versao_router)
 
 # ==============================================================================
@@ -193,13 +195,24 @@ async def startup():
     except Exception as e:
         print(f"[STARTUP] 🚨 Falha na migração: {e}")
 
-    # 2. Seed
+    # 2. Seed principal
     try:
         criar_tabelas()
         popular_banco()
         print("[STARTUP] ✅ Banco inicializado.")
     except Exception as e:
         print(f"[STARTUP WARNING] {e}")
+
+    # 2b. Seed Fragmentos do Monarca (planos e pacotes)
+    try:
+        from seed_fragmentos import semear_fragmentos
+        _db = SessionLocal()
+        try:
+            semear_fragmentos(_db)
+        finally:
+            _db.close()
+    except Exception as e:
+        print(f"[STARTUP WARNING] fragmentos seed: {e}")
 
     # 3. Balança do Sistema — as tabelas que precificam e cronometram missões.
     #    Num try próprio: se a semeadura falhar, o motor cai nos valores de

@@ -816,6 +816,7 @@ const Estandarte = {
           <div class="pt-gemas">
             ${this._gema('ametista', u.nivel_atual ?? 1, 'Nível', { auraV3: true })}
             ${this._gema('ambar', (u.moedas ?? 0).toLocaleString('pt-BR'), 'Mana Coins', { auraV3: true })}
+            ${this._gema('safira', (u.fragmentos ?? 0).toLocaleString('pt-BR'), 'Fragmentos', { auraV3: true })}
             ${this._gema('rubi', u.streak_atual ?? 0, 'Streak', { auraV3: true })}
           </div>
 
@@ -895,6 +896,7 @@ const Estandarte = {
             <div class="est-medalhas">
               ${this._medalha('nivel', u.nivel_atual ?? 1, 'Nível')}
               ${this._medalha('mana', (u.moedas ?? 0).toLocaleString('pt-BR'), 'Mana')}
+              ${this._medalha('fragmentos', (u.fragmentos ?? 0).toLocaleString('pt-BR'), 'Frags')}
               ${this._medalha('chama', u.streak_atual ?? 0, 'Streak')}
             </div>
           </div>

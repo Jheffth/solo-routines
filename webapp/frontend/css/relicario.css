@@ -121,6 +121,19 @@
 }
 .rar-lendaria.desbloqueada .reliquia-rar { color: #fbbf24; }
 /* lendária desbloqueada emite partículas de luz (raios girando) */
+/* Override exclusivo para a Isabella (Femme Fatale) — Glow Rosa ao invés de Dourado */
+.rar-lendaria.desbloqueada[data-id="isabella"], .rar-lendaria.desbloqueada[data-bc="isabella"] {
+  border-color: rgba(233, 30, 99, 0.7) !important;
+  box-shadow: 0 0 40px rgba(233, 30, 99, 0.35), inset 0 0 25px rgba(233, 30, 99, 0.2) !important;
+}
+.rar-lendaria.desbloqueada[data-id="isabella"] .reliquia-rar, .rar-lendaria.desbloqueada[data-bc="isabella"] .reliquia-rar { 
+  color: #f48fb1 !important; 
+  text-shadow: 0 0 10px rgba(244, 143, 177, 0.5);
+}
+.rar-lendaria.desbloqueada[data-id="isabella"]::before, .rar-lendaria.desbloqueada[data-bc="isabella"]::before {
+  display: none !important;
+}
+
 .rar-lendaria.desbloqueada::before {
   content: '';
   position: absolute;

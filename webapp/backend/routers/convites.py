@@ -47,8 +47,12 @@ class ConviteCreate(BaseModel):
     nota: Optional[str] = None            # "para o João"
     validade_dias: Optional[int] = 30     # null = não expira
     quantidade: int = 1                   # gerar vários de uma vez
-    nivel_acesso: str = "User"            # User | Admin
+    nivel_acesso: str = "User"            # User | Suporte | Moderador | Admin | Criador
     badges: Optional[List[str]] = None    # códigos de conquistas a presentear
+    # Presentes premium — entregues no momento do cadastro
+    assinatura_tipo: Optional[str] = None # "MENSAL" | "SEMESTRAL" | "VITALICIO"
+    aura_id: Optional[str] = None         # ID de aura presenteada ao novo hunter
+    fragmentos_bonus: int = 0             # 🔮 creditados na conta no registro
 
     @field_validator("nivel_acesso")
     @classmethod
@@ -57,6 +61,22 @@ class ConviteCreate(BaseModel):
         if v not in NIVEIS_PERMITIDOS:
             raise ValueError(f"Nível inválido — use um de: {', '.join(NIVEIS_PERMITIDOS)}")
         return v
+
+    @field_validator("assinatura_tipo")
+    @classmethod
+    def _assinatura(cls, v):
+        if v is None:
+            return None
+        v = (v or "").strip().upper()
+        _validos = ("MENSAL", "SEMESTRAL", "VITALICIO")
+        if v not in _validos:
+            raise ValueError(f"assinatura_tipo inválido — use: {', '.join(_validos)}")
+        return v
+
+    @field_validator("fragmentos_bonus")
+    @classmethod
+    def _frag(cls, v):
+        return max(0, int(v or 0))
 
 
 def _badges_do(c: Convite) -> list:
@@ -87,6 +107,10 @@ def _to_dict(c: Convite, db: Session) -> dict:
         "id": c.id, "codigo": c.codigo, "nota": c.nota, "estado": estado,
         "nivel_acesso": getattr(c, "nivel_acesso", "User") or "User",
         "badges": presentes,
+        # Presentes premium
+        "assinatura_tipo":  getattr(c, "assinatura_tipo", None),
+        "aura_id":          getattr(c, "aura_id", None),
+        "fragmentos_bonus": getattr(c, "fragmentos_bonus", 0) or 0,
         "usado_por": usado_por,
         "usado_em":  c.usado_em.isoformat()  if c.usado_em  else None,
         "expira_em": c.expira_em.isoformat() if c.expira_em else None,
@@ -166,8 +190,11 @@ def gerar(
             expira_em=expira,
         )
         try:
-            c.nivel_acesso = payload.nivel_acesso
-            c.badges = json.dumps(badges) if badges else None
+            c.nivel_acesso    = payload.nivel_acesso
+            c.badges          = json.dumps(badges) if badges else None
+            c.assinatura_tipo = payload.assinatura_tipo or None
+            c.aura_id         = (payload.aura_id or "").strip() or None
+            c.fragmentos_bonus = max(0, payload.fragmentos_bonus or 0)
         except Exception:
             pass
         db.add(c)
@@ -217,6 +244,10 @@ def validar(codigo: str, db: Session = Depends(get_db)):
         "valido": True,
         "convocado_por": convocador.nome if convocador else "o Arquiteto",
         "nota": c.nota,
-        "nivel_acesso": getattr(c, "nivel_acesso", "User") or "User",
-        "badges": presentes,
+        "nivel_acesso":     getattr(c, "nivel_acesso", "User") or "User",
+        "badges":           presentes,
+        # Presentes premium — exibidos na tela de registro para o convocado
+        "assinatura_tipo":  getattr(c, "assinatura_tipo", None),
+        "aura_id":          getattr(c, "aura_id", None),
+        "fragmentos_bonus": getattr(c, "fragmentos_bonus", 0) or 0,
     }

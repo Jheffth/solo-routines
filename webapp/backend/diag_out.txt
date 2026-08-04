@@ -1,0 +1,47 @@
+[CONFIG] AVISO: SECRET_KEY ausente - usando chave temporaria de desenvolvimento.
+[CONFIG] Defina SECRET_KEY no .env para manter as sessoes entre reinicios.
+
+=== DIAGNOSTICO EXTRATO — 2026-08-02 20:33:53 ===
+
+ExecucaoDia de hoje: 6
+  [PENDENTE] Sem redes sociais entre 22h e 10h
+    inicio=2026-08-02 22:00:00 fim=2026-08-03 10:00:00
+    venceu=False restante_seg=48366
+  [ATIVA] Sem cafeína após as 16h
+    inicio=2026-08-02 16:00:00 fim=2026-08-03 05:00:00
+    venceu=False restante_seg=30366
+  [ATIVA] Banho Revigorante
+    inicio=2026-08-02 20:00:00 fim=2026-08-02 22:00:00
+    venceu=False restante_seg=5166
+  [ATIVA] Fio dental Rotineiro
+    inicio=2026-08-02 20:00:00 fim=2026-08-02 22:00:00
+    venceu=False restante_seg=5166
+  [ATIVA] Colocar o Dolphin para carregar.
+    inicio=2026-08-02 20:00:00 fim=2026-08-02 23:30:00
+    venceu=False restante_seg=10566
+  [ATIVA] Ler 05 páginas de um bom livro
+    inicio=2026-08-02 20:00:00 fim=2026-08-03 00:00:00
+    venceu=False restante_seg=12366
+
+Consulta extrato: inicio=2026-07-03 fim=2026-09-01
+Total ExecucaoDia no intervalo: 73
+De hoje: 6
+  [PENDENTE] Sem redes sociais entre 22h e 10h (data=2026-08-02)
+  [ATIVA] Sem cafeína após as 16h (data=2026-08-02)
+  [ATIVA] Banho Revigorante (data=2026-08-02)
+  [ATIVA] Fio dental Rotineiro (data=2026-08-02)
+  [ATIVA] Colocar o Dolphin para carregar. (data=2026-08-02)
+  [ATIVA] Ler 05 páginas de um bom livro (data=2026-08-02)
+
+Rodando processar_usuario...
+  OK: {'rotinas': 0, 'gerais': 0, 'passivas': 0, 'xp_perdido': 0, 'punicao': None, 'materializadas': 0, 'acesas': 0, 'reabertas': 0, 'xp_devolvido': 0}
+
+Penitencias pendentes: 2
+  [PENDENTE] Fazer 30 flexões data_prevista=2026-08-01
+    editavel calculado: True
+    prazo.fim=2027-08-02 23:59:59 venceu=False
+  [PENDENTE] Fazer 5 abdominais data_prevista=2026-08-01
+    editavel calculado: True
+    prazo.fim=2027-08-02 23:59:59 venceu=False
+
+=== FIM ===

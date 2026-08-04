@@ -219,6 +219,7 @@ const BannerV4 = {
             <div class="pt-v4-fio-conector"></div>
             ${A.gema('ametista', u.nivel_atual ?? 1, 'Nível', { auraV3: true })}
             ${A.gema('ambar', (u.moedas ?? 0).toLocaleString('pt-BR'), 'Mana Coins', { auraV3: true })}
+            ${A.gema('safira', (u.fragmentos ?? 0).toLocaleString('pt-BR'), 'Fragmentos', { auraV3: true })}
             ${A.gema('rubi', u.streak_atual ?? 0, 'Streak', { auraV3: true })}
           </div>
 
@@ -320,12 +321,13 @@ const BannerV4 = {
     texto('.pt-v4-quote-text', u.bio || 'Desperte o seu sistema. Erga-se contra a maré do ordinário.');
 
     /* Gemas: só o número, que é texto solto dentro do SVG. A ordem
-       é a da marcação — nível, mana, streak — e o `html()` acima é
+       é a da marcação — nível, mana, fragmentos, streak — e o `html()` acima é
        a única coisa que pode mudá-la. */
     const gemas = el.querySelectorAll('.pt-gema .gema-valor');
     const valores = [
       String(u.nivel_atual ?? 1),
       (u.moedas ?? 0).toLocaleString('pt-BR'),
+      (u.fragmentos ?? 0).toLocaleString('pt-BR'),
       String(u.streak_atual ?? 0),
     ];
     gemas.forEach((n, i) => {

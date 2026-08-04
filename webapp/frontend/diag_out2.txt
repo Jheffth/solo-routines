@@ -1,0 +1,2 @@
+[CONFIG] AVISO: SECRET_KEY ausente - usando chave temporaria de desenvolvimento.
+[CONFIG] Defina SECRET_KEY no .env para manter as sessoes entre reinicios.

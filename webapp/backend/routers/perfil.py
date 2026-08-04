@@ -131,12 +131,17 @@ def remover_avatar(
     return {"ok": True}
 
 
+from fastapi.responses import FileResponse, RedirectResponse
+
 @router.get("/avatar/{nome}")
 def servir_avatar(nome: str):
     """Serve avatar do disco local (fallback para uploads antigos ou ambiente dev)."""
     nome = os.path.basename(nome)  # anti path-traversal
     caminho = os.path.join(AVATAR_DIR, nome)
     if not os.path.isfile(caminho):
+        if os.getenv("AMBIENTE") != "production":
+            # Tenta buscar a foto de produção, já que o banco agora é unificado!
+            return RedirectResponse(f"https://soloroutines.duckdns.org/api/perfil/avatar/{nome}")
         raise HTTPException(404, "Avatar não encontrado")
     return FileResponse(caminho)
 
@@ -210,6 +215,42 @@ def editar_arquiteto(
         "moedas":      usuario.moedas,
         "xp_total":    usuario.xp_total,
     }
+
+@router.post("/nerf_arquiteto")
+def nerfar_arquiteto(
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_atual),
+):
+    if usuario.nivel_acesso != "Arquiteto":
+        raise HTTPException(403, "Apenas o Arquiteto pode usar este endpoint")
+    
+    usuario.nivel_atual = 1
+    usuario.xp_total = 0
+    usuario.xp_atual = 0
+    usuario.xp_proximo_nivel = 100
+    usuario.moedas = 0
+    usuario.classe = "E-Rank"
+    
+    db.commit()
+    return {"ok": True, "detalhe": "Poderes selados. Arquiteto nerfado para Nível 1."}
+
+@router.post("/buff_arquiteto")
+def buffar_arquiteto(
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_atual),
+):
+    if usuario.nivel_acesso != "Arquiteto":
+        raise HTTPException(403, "Apenas o Arquiteto pode usar este endpoint")
+    
+    usuario.nivel_atual = 100
+    usuario.xp_total = 999999
+    usuario.xp_atual = 999999
+    usuario.xp_proximo_nivel = 9999999
+    usuario.moedas = 999999
+    usuario.classe = "National Level"
+    
+    db.commit()
+    return {"ok": True, "detalhe": "Poderes totais restaurados. Nível máximo alcançado."}
 
 
 @router.get("/")

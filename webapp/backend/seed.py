@@ -81,6 +81,8 @@ CONQUISTAS_PRESENTE = [
      "Ascensão Absoluta — A entidade paramétrica de fogo geométrico.", "🔥", "#fb8500", 9999, 999),
     ("lobo_sombrio", "Monarca Lobo Sombrio",
      "Extraído da Escuridão — Vetorizado pela Forja com perfeição absoluta.", "🐺", "#7c3aed", 8000, 800),
+    ("lobo_lunar", "Lobo Lunar — Alfa da Alcateia",
+     "Forjado sob a lua cheia. O uivo que congela o ar e parte a noite ao meio.", "🐺", "#7ec8e3", 8500, 850),
 ]
 
 
@@ -96,6 +98,7 @@ TRANSFERIVEIS = {
     "diana", "pioneiro", "aliado", "mono_evelynn",
     "nexus-social", "isabella", "fenix_pioneira", "pena_do_punidor", "fenix_v3",
     "lobo_sombrio",
+    "lobo_lunar",
 }
 
 

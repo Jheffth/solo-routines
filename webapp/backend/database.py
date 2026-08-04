@@ -42,6 +42,10 @@ class Usuario(Base):
     # Moeda in-game
     moedas          = Column(Integer, default=0)             # Mana Coins
 
+    # Moeda premium (comprada com R$)
+    fragmentos      = Column(Integer, default=0)             # Fragmentos do Monarca 🔮
+    assinante       = Column(Boolean, default=False)         # flag rápida: tem assinatura ativa?
+
     # Streaks
     streak_atual    = Column(Integer, default=0)
     streak_max      = Column(Integer, default=0)
@@ -70,6 +74,8 @@ class Usuario(Base):
                                    lazy="dynamic",
                                    foreign_keys="ConquistaUsuario.usuario_id")
     recompensas_res = relationship("RecompensaUsuario", back_populates="usuario", lazy="dynamic")
+    assinatura      = relationship("Assinatura", back_populates="usuario",
+                                   uselist=False, primaryjoin="and_(Assinatura.usuario_id==Usuario.id, Assinatura.status=='ATIVA')")
 
 
 # ==============================================================================
@@ -419,6 +425,7 @@ class Recompensa(Base):
     icone            = Column(String(10), default="🎁")
     categoria        = Column(String(50), default="Lazer")
     custo_moedas     = Column(Integer, default=100)
+    custo_fragmentos = Column(Integer, default=0)            # custo em Fragmentos do Monarca (0 = não aceita)
     custo_xp         = Column(Integer, default=0)            # XP mínimo para resgatar
     nivel_minimo     = Column(Integer, default=1)
     estoque          = Column(Integer, default=-1)           # -1 = ilimitado
@@ -614,13 +621,17 @@ class Convite(Base):
     codigo         = Column(String(20), unique=True, nullable=False, index=True)
     criado_por_id  = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
     nota           = Column(String(200), nullable=True)   # "para o João", etc.
-    nivel_acesso   = Column(String(20), default="User")   # User | Admin (a conta nasce assim)
-    badges         = Column(Text, nullable=True)          # JSON: ["diana","solo"] — presentes anexados
-    usado_por_id   = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
-    usado_em       = Column(DateTime, nullable=True)
-    expira_em      = Column(DateTime, nullable=True)      # null = não expira
-    revogado       = Column(Boolean, default=False)
-    criado_em      = Column(DateTime, default=datetime.utcnow)
+    nivel_acesso      = Column(String(20), default="User")   # User | Suporte | Moderador | Admin | Criador
+    badges            = Column(Text, nullable=True)          # JSON: ["diana","solo"] — presentes anexados
+    # Presentes premium entregues no cadastro
+    assinatura_tipo   = Column(String(20), nullable=True)    # "MENSAL"|"SEMESTRAL"|"VITALICIO" — null = sem assinatura
+    aura_id           = Column(String(50), nullable=True)    # aura presenteada ao novo hunter
+    fragmentos_bonus  = Column(Integer, default=0)           # 🔮 creditados na conta no momento do registro
+    usado_por_id      = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    usado_em          = Column(DateTime, nullable=True)
+    expira_em         = Column(DateTime, nullable=True)      # null = não expira
+    revogado          = Column(Boolean, default=False)
+    criado_em         = Column(DateTime, default=datetime.utcnow)
 
 
 # ==============================================================================
@@ -870,6 +881,110 @@ class ConfiguracaoApp(Base):
     chave            = Column(String(100), primary_key=True)
     valor            = Column(Text, nullable=True)
     atualizado_em    = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+# ==============================================================================
+# FRAGMENTOS DO MONARCA — Moeda Premium (comprada com R$)
+# ==============================================================================
+
+class Plano(Base):
+    """Catálogo de planos de assinatura disponíveis na plataforma."""
+    __tablename__ = "planos"
+
+    id                      = Column(Integer, primary_key=True, index=True)
+    nome                    = Column(String(50), nullable=False)   # "Mensal", "Semestral", "Vitalicio"
+    descricao               = Column(Text, nullable=True)
+    preco_brl               = Column(Float, nullable=False)
+    ciclo                   = Column(String(20), nullable=False)   # "MENSAL" | "SEMESTRAL" | "VITALICIO"
+    fragmentos_bonus_mensal = Column(Integer, default=0)           # 🔮 creditados a cada mês ativo
+    destaque                = Column(Boolean, default=False)       # exibido em destaque na vitrine
+    ativo                   = Column(Boolean, default=True)
+    ordem                   = Column(Integer, default=0)
+
+    assinaturas = relationship("Assinatura", back_populates="plano", lazy="dynamic")
+
+
+class Assinatura(Base):
+    """
+    Assinatura ativa de um usuário. Um usuário tem no máximo 1 assinatura ATIVA.
+    Ao renovar/upgrade, a anterior é marcada EXPIRADA e uma nova é criada.
+    Assinaturas geradas por convite do Arquiteto não têm mp_preapproval_id.
+    """
+    __tablename__ = "assinaturas"
+
+    id                = Column(Integer, primary_key=True, index=True)
+    usuario_id        = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    plano_id          = Column(Integer, ForeignKey("planos.id"), nullable=False)
+    status            = Column(String(20), default="ATIVA")        # ATIVA | PAUSADA | CANCELADA | EXPIRADA
+    origem            = Column(String(20), default="pagamento")    # "pagamento" | "convite" | "arquiteto"
+    mp_preapproval_id = Column(String(100), nullable=True)         # ID do Preapproval (mensais recorrentes)
+    vitalicia         = Column(Boolean, default=False)             # True = nunca expira
+    inicio_em         = Column(DateTime, default=datetime.utcnow)
+    expira_em         = Column(DateTime, nullable=True)            # null = vitalícia
+    proximo_ciclo_em  = Column(DateTime, nullable=True)            # próxima cobrança (mensais)
+    cancelada_em      = Column(DateTime, nullable=True)
+    criado_em         = Column(DateTime, default=datetime.utcnow)
+
+    usuario = relationship("Usuario", back_populates="assinatura",
+                           primaryjoin="and_(Assinatura.usuario_id==Usuario.id, Assinatura.status=='ATIVA')")
+    plano   = relationship("Plano", back_populates="assinaturas")
+
+
+class PacoteFragmentos(Base):
+    """Catálogo de pacotes de Fragmentos disponíveis para compra."""
+    __tablename__ = "pacotes_fragmentos"
+
+    id                   = Column(Integer, primary_key=True, index=True)
+    nome                 = Column(String(100), nullable=False)
+    descricao            = Column(Text, nullable=True)
+    icone                = Column(String(10), default="🔮")
+    fragmentos_entregues = Column(Integer, nullable=False)
+    preco_brl            = Column(Float, nullable=False)
+    bonus_pct            = Column(Float, default=0.0)             # % de bônus (0.25 = +25%)
+    destaque             = Column(Boolean, default=False)
+    ativo                = Column(Boolean, default=True)
+    ordem                = Column(Integer, default=0)
+
+
+class Pagamento(Base):
+    """
+    Registro IMUTÁVEL de cada transação financeira com o Mercado Pago.
+    Linhas nunca são deletadas. mp_payment_id é UNIQUE para garantir idempotência.
+    """
+    __tablename__ = "pagamentos"
+    __table_args__ = (UniqueConstraint("mp_payment_id", name="uq_pagamento_mp_id"),)
+
+    id                    = Column(Integer, primary_key=True, index=True)
+    usuario_id            = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    tipo                  = Column(String(20), nullable=False)    # "FRAGMENTOS" | "ASSINATURA"
+    referencia_id         = Column(Integer, nullable=True)        # pacote_id ou plano_id
+    mp_payment_id         = Column(String(100), nullable=True, index=True)  # ID do pagamento no MP
+    mp_status             = Column(String(50), nullable=True)     # approved | pending | rejected
+    valor_brl             = Column(Float, nullable=False)
+    fragmentos_creditados = Column(Integer, default=0)
+    webhook_recebido_em   = Column(DateTime, nullable=True)
+    criado_em             = Column(DateTime, default=datetime.utcnow)
+    processado_em         = Column(DateTime, nullable=True)       # null = pendente
+
+
+class FragmentosLedger(Base):
+    """
+    Ledger imutável de todos os movimentos de Fragmentos do Monarca.
+    Nenhum código modifica usuario.fragmentos sem criar uma entrada aqui.
+    delta > 0 = crédito, delta < 0 = débito.
+    """
+    __tablename__ = "fragmentos_ledger"
+
+    id           = Column(Integer, primary_key=True, index=True)
+    usuario_id   = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    delta        = Column(Integer, nullable=False)               # positivo = ganhou, negativo = gastou
+    saldo_apos   = Column(Integer, nullable=False)               # snapshot do saldo após a operação
+    motivo       = Column(String(50), nullable=False)            # ver MOTIVOS abaixo
+    # MOTIVOS válidos: compra_pacote | assinatura | gasto_loja | bonus_mensal |
+    #                  convite | bonus_arquiteto | indicacao | correcao
+    referencia_id = Column(Integer, nullable=True)              # pagamento.id, recompensa_usuario.id, etc.
+    observacao    = Column(String(200), nullable=True)
+    criado_em     = Column(DateTime, default=datetime.utcnow)
 
 
 # ==============================================================================
