@@ -95,6 +95,8 @@ def materializar(db: Session, usuario_id: int, ate: date | None = None) -> int:
         ).all()
     }
 
+    agora = tempo.agora()
+
     for r in rotinas:
         # Uma rotina criada hoje à noite não deve gerar a missão de hoje se
         # a janela dela já passou? Deve sim — quem cria decide. O que não
@@ -102,6 +104,28 @@ def materializar(db: Session, usuario_id: int, ate: date | None = None) -> int:
         nascimento = tempo.dia_de_utc(r.criado_em) or hoje
         if nascimento > hoje:
             continue
+
+        # ── A PROGRESSIVA É A EXCEÇÃO, e por uma razão de gravidade ──
+        #
+        # Para uma rotina comum, nascer com a janela já vencida custa um
+        # pouco de XP e mais nada — por isso a decisão acima é razoável.
+        # Para uma PROGRESSIVA é fatal: o dia vence, `fechar_vencidas`
+        # marca FRACASSADA, e `aplicar_fatal_failure` desliga o desafio
+        # PARA SEMPRE. Progressiva não pode ser reerguida.
+        #
+        # O Arquiteto criou um desafio com janela das 06:20 às 06:40 e ele
+        # nasceu morto no Dashboard, sem que houvesse um instante em que
+        # fosse possível cumpri-lo. Um desafio que morre antes da largada
+        # não é dureza, é defeito.
+        #
+        # A regra: no DIA EM QUE ELA NASCE, a progressiva só ganha
+        # instância se ainda houver tempo de cumpri-la. Caso contrário a
+        # corrente começa amanhã, inteira. Dos dias seguintes em diante o
+        # rigor volta ao normal — aí o hunter teve o dia todo para agir.
+        if getattr(r, "eh_progressiva", False) and nascimento == hoje:
+            if prazos.da_rotina(r, hoje)["fim"] <= agora:
+                continue
+
         if rotina_devida_em(r, hoje) and r.id not in existentes:
             db.add(ExecucaoDia(
                 rotina_id=r.id, usuario_id=usuario_id,
@@ -202,6 +226,12 @@ def fechar_vencidas(db: Session, usuario: Usuario, ate: date | None = None) -> d
                 "xp": pen, "critica": (r.prioridade or "").upper() == "CRITICA",
                 "diaria": (r.tipo or "").upper() == "DIARIA",
             })
+            # FATAL FAILURE — a derrota que encerra o desafio inteiro.
+            # Uma missão progressiva não tem segunda chance: fracassar UM
+            # dia mata o desafio permanentemente. O hunter viu o aviso
+            # quando criou — a dureza é o que dá valor à corrente.
+            if getattr(r, "eh_progressiva", False):
+                especiais.aplicar_fatal_failure(db, r, agora)
 
     # ── Missões gerais (avulsas) ──────────────────────────────────────
     # Só as de dias já passados. A de hoje que estourou o prazo continua
@@ -254,6 +284,18 @@ def fechar_vencidas(db: Session, usuario: Usuario, ate: date | None = None) -> d
             # fechamento dos outros hunters. Fica concluído e sem crédito,
             # e o log mostra o quê.
             print(f"[FECHAMENTO] ⚠ passiva {r.titulo}: {e}")
+        # PROGRESSIVA PASSIVA: dia mantido = +1 na corrente.
+        # Se bateu o alvo, a própria missão se conclui gloriosa.
+        if getattr(r, "eh_progressiva", False):
+            try:
+                r.dias_progressivos_ok = (r.dias_progressivos_ok or 0) + 1
+                alvo = r.dias_progressivos_alvo or 0
+                if alvo and r.dias_progressivos_ok >= alvo:
+                    r.ativo   = False
+                    r.status  = "CONCLUIDA"
+                    r.concluida_em = fim
+            except Exception as exc:
+                print(f"[FECHAMENTO] ⚠ progressiva passiva {r.titulo}: {exc}")
         passivas += 1
 
     # ── A PENITENCIA ──────────────────────────────────────────────────
