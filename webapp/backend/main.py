@@ -149,8 +149,27 @@ if os.path.exists(frontend_path):
 from apscheduler.schedulers.background import BackgroundScheduler
 from routers.bot_telegram import notificar_manha, notificar_tarde, notificar_noite
 from database import SessionLocal
+from motors import tempo
 
-scheduler = BackgroundScheduler()
+# O SCHEDULER TEM DE USAR O MESMO RELÓGIO QUE O RESTO DO SISTEMA.
+#
+# `BackgroundScheduler()` sem argumento agenda pelo fuso do SISTEMA
+# OPERACIONAL. `motors/tempo.py` existe justamente porque o fuso do
+# servidor NÃO é o do hunter — está escrito lá: "o servidor roda em UTC e
+# o hunter vive em Brasília". Só que o agendador ficou de fora dessa
+# regra, e a consequência não é sutil: num servidor em UTC o job de
+# fechamento das "00h05" dispara às 21h05 de Brasília, no meio da noite
+# do hunter, quando as diárias com janela tardia ainda nem venceram.
+#
+# O estrago cai justamente na punição. O gatilho "TODAS as diárias do dia
+# falharam" compara as falhas com o total de diárias do dia; julgado às
+# 21h05, o dia ainda tem missões vivas, a conta nunca fecha, e a
+# penitência não nasce — sem erro nenhum em log.
+#
+# Fixar o fuso aqui torna a hora do cron independente de como o servidor
+# está configurado, que é a única forma de o comportamento sobreviver a
+# uma migração de hospedagem.
+scheduler = BackgroundScheduler(timezone=tempo.FUSO)
 
 def _job(fn):
     db = SessionLocal()
