@@ -41,7 +41,20 @@ const dom = new JSDOM('<!doctype html><body></body>',
   { pretendToBeVisual: true, runScripts: 'outside-only', url: 'http://localhost/' });
 const w = dom.window, doc = w.document;
 w.console = { log(){}, warn(){}, error(){} };
-const ctx = vm.createContext(w);
+/* `vm.createContext(w)` FUNCIONAVA E PAROU DE FUNCIONAR.
+
+   Do Node 22 em diante, passar o objeto `window` do jsdom para
+   `createContext` não expõe mais os globais dentro do contexto: o
+   script roda e morre em "window is not defined", e o teste inteiro
+   some do relatório sem nunca ter medido nada. Quem devolve um contexto
+   com os globais ligados é `dom.getInternalVMContext()`.
+
+   O fallback existe porque o método é interno e pode sumir; sem ele, um
+   Node mais novo derrubaria o arquivo de novo, e do mesmo jeito
+   silencioso. */
+const ctx = typeof dom.getInternalVMContext === 'function'
+  ? dom.getInternalVMContext()
+  : vm.createContext(w);
 vm.runInContext(ler('js', 'glifos.js'), ctx);
 vm.runInContext(ler('js', 'missao-card.js'), ctx);
 const MC = vm.runInContext('MissaoCard', ctx);
@@ -483,7 +496,29 @@ console.log('\n-- a ALTURA: o cartao nao pode engordar de novo --');
      com `.mc-penitencia`, e reprovou `.mc-compacto.mc-penitencia` — que
      e ainda MAIS restrito, nao menos. O que importa e que a penitencia
      apareca no seletor, em qualquer posicao. */
-  const regrasNovas = cssBruto.slice(cssBruto.lastIndexOf('A PENITÊNCIA MAIS FINA'));
+  /* A FATIA PRECISA DE FIM, e esta e a segunda vez que uma fatia sem
+     limite engana um assert neste projeto.
+
+     Antes ela ia do cabecalho da secao ate o FIM DO ARQUIVO. Funcionou
+     enquanto a penitencia foi a ultima coisa do CSS; na primeira secao
+     nova depois dela, o assert passou a acusar de "forasteiro" todo
+     seletor alheio que viesse abaixo — reprovando codigo correto. E
+     ninguem viu, porque este arquivo morria no `window is not defined`
+     do Node 22 antes de chegar aqui.
+
+     O fim agora e um marcador escrito no proprio CSS. Se ele sumir, o
+     teste PARA em vez de voltar a medir o arquivo inteiro: um assert
+     que se conserta sozinho medindo mais do que deve e exatamente o
+     defeito que se esta corrigindo. */
+  const FIM = 'FIM DA PENITÊNCIA';
+  const ini = cssBruto.lastIndexOf('A PENITÊNCIA MAIS FINA');
+  const fim = cssBruto.indexOf(FIM, ini);
+  if (ini < 0 || fim < 0) {
+    throw new Error('marcadores da secao da penitencia nao encontrados no CSS ' +
+                    `(inicio=${ini}, "${FIM}"=${fim}) — o assert das regras ` +
+                    'novas nao tem como saber o que olhar');
+  }
+  const regrasNovas = cssBruto.slice(ini, fim);
   const seletores = [...regrasNovas.matchAll(/^(\.[a-z][\w .:>-]*),?\s*\{?\s*$/gm)]
     .map(m => m[1].trim())
     .concat([...regrasNovas.matchAll(/^(\.[a-z][\w .:>-]*)\s*\{/gm)].map(m => m[1].trim()));

@@ -2072,3 +2072,233 @@
     opacity: .4;
   }
 }
+/* FIM DA PENITÊNCIA — daqui para baixo não é mais dela.
+
+   Esta linha NÃO é decoração. `teste_penitencia_card.js` tem um assert
+   que exige que toda regra da seção da penitência alcance apenas a
+   penitência, e ele fatiava do cabeçalho da seção até o FIM DO ARQUIVO.
+   Enquanto a penitência foi a última coisa do arquivo, funcionou; na
+   primeira seção nova depois dela (o overlay condicional, e depois a
+   escada progressiva), o assert passou a reprovar código correto — só
+   que ninguém viu, porque o harness do teste estava quebrado no Node 22
+   e o arquivo inteiro morria antes de medir. Dois defeitos silenciosos
+   se escondendo um atrás do outro.
+
+   Quem for mover este marcador: ele delimita o que aquele assert olha.
+   Regra de penitência abaixo dele deixa de ser vigiada. */
+
+
+/* ══════════════════════════════════════════════════════════════
+   A ESCADA — o fundo do DESAFIO PROGRESSIVO
+   ══════════════════════════════════════════════════════════════
+
+   POR QUE NÃO PODIA SER MAIS UMA VARREDURA. O cartão de penitência já
+   fala a língua da LUZ QUE VARRE, a missão ATIVA comum fala a dos
+   CHEVRONS deslizando (`.mc-corrente`), e o protocolo passivo fala a do
+   SELO. Um quarto efeito no mesmo idioma seria só um primo mais claro
+   do giroflex — foi exatamente o defeito que reprovou duas auras neste
+   projeto. A progressiva precisa de gramática própria.
+
+   A GRAMÁTICA É A ASCENSÃO. Não há ida e volta, não há respiração: o
+   que está no fundo SOBE, sempre, numa direção só — como os dias que a
+   corrente empilha.
+
+   A PRIMEIRA VERSÃO DISTO ERAM DEGRAUS, e estava errada. Traços
+   horizontais de ponta a ponta do cartão, subindo. No papel, escada;
+   na tela, CADERNO PAUTADO — linha de tabela, não degrau. Só ficou
+   evidente ao renderizar e olhar, que é a regra deste projeto: nenhum
+   assert responde "está bonito?".
+
+   O que subiu no lugar foram BRASAS. Três camadas de pontos em ritmos
+   diferentes — as maiores passam mais rápido, as menores ficam para
+   trás — e é a diferença de ritmo que dá profundidade em vez de padrão.
+   Sobem do calor acumulado na base, e a base é o placar.
+
+   E A INTENSIDADE É O PLACAR. Aqui está a parte que nenhum outro cartão
+   do app faz: `--prog-carga` chega do JS com a fração da corrente já
+   construída, e é ela que acende o fundo. No dia 2 de 30 o cartão está
+   quase apagado; no dia 28 ele queima. Isso não é enfeite — é a única
+   coisa que distingue a progressiva de qualquer outra missão: o que
+   está em jogo CRESCE. Perder no dia 2 custa dois dias; perder no dia
+   28 custa vinte e oito. Um efeito de intensidade fixa contaria a mesma
+   história nos dois casos, que é a história errada.
+
+   UM ELEMENTO, UMA ANIMAÇÃO — a mesma regra da varredura, e pelo mesmo
+   motivo escrito lá em cima: duas animações no mesmo elemento se
+   cancelam nesta base de código.
+
+   O TRUQUE QUE PERMITE OS TRÊS RITMOS COM UMA ANIMAÇÃO SÓ: `background-
+   position` aceita um valor POR CAMADA, e o keyframe pode dar a cada
+   uma um deslocamento diferente. Todas percorrem o seu no mesmo tempo,
+   então quem anda mais longe anda mais rápido. É paralaxe de verdade,
+   sem uma segunda animação e sem um segundo elemento. A brasa entra
+   como quarta camada, com a posição REPETIDA nos dois keyframes — é o
+   que já foi conquistado, e conquistado não anda.
+
+   Cada deslocamento é o ALTURA EXATA do ladrilho da sua camada. Um
+   valor diferente disso faz o padrão saltar no fim do ciclo.
+   ══════════════════════════════════════════════════════════════ */
+.mc-prog-escada {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  overflow: hidden;
+
+  /* O piso mínimo não é zero DE PROPÓSITO: um desafio no dia 0 ainda
+     precisa parecer um desafio. A carga acende dali para cima. */
+  opacity: calc(.42 + var(--prog-carga, 0) * .48);
+
+  background-image:
+    /* 1 · BRASAS DA FRENTE — as maiores, e por isso as mais rápidas. */
+    radial-gradient(circle at 18% 72%,
+      color-mix(in srgb, var(--mc-cor) 62%, transparent) 0 1.7px,
+      transparent 2.3px),
+    /* 2 · MEIO. */
+    radial-gradient(circle at 64% 26%,
+      color-mix(in srgb, var(--mc-cor) 46%, transparent) 0 1.2px,
+      transparent 1.8px),
+    /* 3 · FUNDO — as menores, quase paradas. São elas que dão distância;
+          sem esta camada o campo vira um padrão só, e padrão se lê como
+          textura de fundo, não como coisa subindo. */
+    radial-gradient(circle at 86% 58%,
+      color-mix(in srgb, var(--mc-cor) 34%, transparent) 0 .9px,
+      transparent 1.5px),
+    /* 4 · A BRASA. O calor que a corrente acumulou, preso na base — é de
+          onde as fagulhas saem, e o seu tamanho é o placar. */
+    radial-gradient(130% 62% at 50% 116%,
+      color-mix(in srgb, var(--mc-cor) calc(20% + var(--prog-carga, 0) * 38%), transparent) 0%,
+      transparent 74%);
+  /* O LADRILHO DA CAMADA DA FRENTE É O MAIOR — e isso decide as duas
+     coisas de uma vez. Ladrilho alto ⇒ percurso longo no keyframe ⇒
+     mais rápida (é o que a frente tem de ser). Ladrilho largo ⇒ menos
+     brasas por área: perto, poucas e grandes; ao fundo, muitas e
+     pequenas. Foi ao contrário na primeira tentativa e a profundidade
+     saía invertida — as fagulhas miúdas corriam na frente das graúdas. */
+  background-size: 82px 101px, 57px 71px, 38px 49px, 100% 100%;
+  background-repeat: repeat, repeat, repeat, no-repeat;
+
+  /* Devagar. Um desafio de 30 dias que pisca rápido vira urgência, e
+     urgência é a linguagem da penitência, não desta. */
+  animation: mc-prog-subir 6s linear infinite;
+}
+@keyframes mc-prog-subir {
+  from { background-position: 0 0,      0 0,     0 0,     50% 100%; }
+  to   { background-position: 0 -101px, 0 -71px, 0 -49px, 50% 100%; }
+}
+
+/* UMA TRAMA SÓ NO FUNDO. A progressiva ATIVA receberia também a
+   `.mc-corrente` (chevrons, emitida para todo status ATIVA), e duas
+   tramas em ritmos diferentes no mesmo fundo brigam. A penitência e a
+   passiva resolvem assim neste mesmo arquivo — copiei a estrutura. */
+.mc-progressiva .mc-corrente { display: none; }
+
+/* O conteúdo fica ACIMA da escada, senão o texto some sob os degraus. */
+.mc-progressiva .mc-corpo,
+.mc-progressiva .mc-sigilo { position: relative; z-index: 1; }
+
+/* AS BRASAS QUE PARARAM — o desafio que morreu.
+
+   O fundo NÃO some no fracasso, e isso é deliberado. A progressiva é a
+   única missão do app cuja derrota é definitiva (`FRACASSADA_FATAL`,
+   sem Reerguer). Apagar o fundo daria a ela o mesmo cinza de qualquer
+   missão perdida, quando o que aconteceu foi outra coisa: uma corrente
+   de dias ruiu.
+
+   Então as fagulhas ficam onde estavam — paradas no ar, cinzas, sem o
+   calor na base que as empurrava. Cinza que já subiu e não sobe mais.
+   Nada é redesenhado aqui: só se congela a animação, tira-se a cor e
+   apaga-se a brasa. O desenho é o mesmo porque o que morreu foi o
+   movimento, não a corrente. */
+.mc-progressiva.st-fracassada .mc-prog-escada {
+  animation: none;
+  opacity: .2;
+  filter: grayscale(1);
+  /* Congeladas no meio do percurso, não no início — no início elas
+     estariam alinhadas com a borda de baixo e leria como "prestes a
+     começar", que é o oposto do que aconteceu. */
+  background-position: 0 -51px, 0 -36px, 0 -25px, 50% 150%;
+}
+
+/* PENITÊNCIA VENCE. Uma penitência pode nascer progressiva; se as duas
+   tramas aparecerem juntas o cartão vira ruído. A dívida é a emergência
+   do momento — o giroflex fala primeiro. */
+.mc-penitencia .mc-prog-escada { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  /* A escada para, mas a CARGA fica: o cartão continua mais quente
+     conforme a corrente é maior. É a informação; o movimento era só o
+     jeito de contá-la. */
+  .mc-prog-escada {
+    animation: none;
+    background-position: 0 0, 50% 100%;
+  }
+}
+
+
+/* -- OVERLAY CONDICIONAL � dialog de bifurca��o --------------------------- */
+.mc-cond-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,.72);
+  backdrop-filter: blur(6px);
+  animation: mc-cond-in .18s ease;
+}
+@keyframes mc-cond-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.mc-cond-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+  padding: 1.5rem 1.75rem;
+  border-radius: 16px;
+  background: var(--bg-card, #1a1a2e);
+  border: 1px solid rgba(255,255,255,.1);
+  box-shadow: 0 24px 80px rgba(0,0,0,.6),
+              0 0 0 1px rgba(255,255,255,.06) inset;
+  max-width: min(400px, 90vw);
+  width: 100%;
+  animation: mc-cond-slide .22s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes mc-cond-slide {
+  from { opacity: 0; transform: translateY(12px) scale(.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);   }
+}
+
+.mc-cond-pergunta {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-primary, #f1f5f9);
+  text-align: center;
+  padding: .25rem 0 .5rem;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+}
+
+.mc-cond-dialog .mc-btn {
+  width: 100%;
+  justify-content: center;
+  padding: .65rem 1rem;
+  font-size: .9rem;
+}
+
+.mc-cond-cancelar {
+  background: transparent !important;
+  border: 1px solid rgba(255,255,255,.08) !important;
+  color: var(--text-muted, #64748b) !important;
+  font-size: .78rem !important;
+  padding: .4rem .75rem !important;
+  margin-top: .25rem;
+}
+.mc-cond-cancelar:hover {
+  border-color: rgba(255,255,255,.18) !important;
+  color: var(--text-secondary, #94a3b8) !important;
+}

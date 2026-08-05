@@ -106,6 +106,13 @@ const MissaoCard = {
     return (m?.natureza || 'ATIVA').toUpperCase() === 'PASSIVA';
   },
 
+  /* A missão CONDICIONAL — bifurca ao concluir.
+     Ao invés de registrar fracasso ou vitória direta, o hunter
+     responde uma pergunta e escolhe o ramo (A = cumpriu / B = não cumpriu). */
+  _ehCondicional(m) {
+    return (m?.natureza || 'ATIVA').toUpperCase() === 'CONDICIONAL';
+  },
+
   /* O protocolo JÁ ENTROU EM VIGOR?
 
      Mesma técnica do contador de prazo: o servidor manda quantos SEGUNDOS
@@ -381,6 +388,10 @@ const MissaoCard = {
     return (m?.natureza || 'ATIVA').toUpperCase() === 'PUNICAO';
   },
 
+  _ehProgressiva(m) {
+    return !!m?.eh_progressiva;
+  },
+
   /* ── O CRONÔMETRO DA DÍVIDA ───────────────────────────────
 
      Um contador CRESCENTE desde o instante em que a penitência
@@ -647,6 +658,42 @@ const MissaoCard = {
              (alvo === null ? ' Registrar' : ' Fiz uma'),
              'title="Somar uma repetição"')
          + gerir + extinguir;
+  },
+
+  /* ── A CARGA DO DESAFIO ─────────────────────────────────
+     Quanto da corrente já foi construída, de 0 a 1.
+
+     Existe para o EFEITO, não para a barra: é o único cartão do app
+     cujo fundo muda de intensidade conforme o placar. E isso não é
+     enfeite — é a única coisa que a progressiva tem de diferente de
+     todas as outras missões: o que está em jogo CRESCE. Perder no dia 2
+     custa dois dias; perder no dia 28 custa vinte e oito. Um efeito de
+     intensidade fixa contaria a mesma história nos dois casos, que é
+     exatamente a história errada.
+
+     Sem alvo declarado não há fração — devolve 0, e o fundo fica no
+     mínimo em vez de sumir. */
+  _cargaProgressiva(m) {
+    const alvo = parseInt(m?.dias_progressivos_alvo, 10);
+    const ok = parseInt(m?.dias_progressivos_ok, 10) || 0;
+    if (!alvo || alvo <= 0) return 0;
+    return Math.max(0, Math.min(1, ok / alvo));
+  },
+
+  /* ── BARRA DO DESAFIO PROGRESSIVO ──────────────────────── */
+  _barraProgressiva(m) {
+    const alvo = parseInt(m.dias_progressivos_alvo, 10);
+    const ok = parseInt(m.dias_progressivos_ok, 10) || 0;
+    if (!alvo) return '';
+    const pct = Math.max(0, Math.min(100, (ok / alvo) * 100));
+    return `
+      <div class="mc-prog-track" style="padding: 0 1rem 1rem 1rem;">
+        <div style="font-size: 0.75rem; color: var(--mc-cor); opacity: 0.9; margin-bottom: 0.375rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;">
+          Dias Consecutivos: ${ok} / ${alvo}
+        </div>
+        <div class="mc-barra" style="margin: 0; background: var(--bg-surface-3);"><div class="mc-barra-fill" style="width:${pct}%; background: var(--mc-cor);"></div></div>
+      </div>
+    `;
   },
 
   _prazo(m) {
@@ -931,6 +978,13 @@ const MissaoCard = {
       }
     }
 
+    // ── MISSÃO CONDICIONAL: bifurca ao concluir ─────────────
+    // Não tem fracasso automático — ao clicar "Concluir" aparece
+    // o diálogo de bifurcação. Concluída, exibe o ramo escolhido.
+    if (this._ehCondicional(m)) {
+      return this._acoesCondicional(m, chave, gerir, extinguir, status, b);
+    }
+
     let acoes;
     switch (status) {
       case 'PENDENTE':
@@ -975,6 +1029,51 @@ const MissaoCard = {
         acoes = '';
     }
     return acoes + gerir + extinguir;
+  },
+
+  /* ── Ações CONDICIONAL ─────────────────────────────────────
+     A condicional se cumpre como uma ativa normal (Iniciar → Concluir),
+     mas ao clicar Concluir abrimos um diálogo inline com os dois ramos.
+     O endpoint é POST /execucoes/responder, não /concluir. */
+  _acoesCondicional(m, chave, gerir, extinguir, status, b) {
+    if (status === 'CONCLUIDA') {
+      const cond = (() => { try { return JSON.parse(m.condicional_payload || '{}'); } catch(_) { return {}; } })();
+      const vitoria = m.condicional_vitoria;   // true = ramo A, false = ramo B
+      const rotulo  = vitoria
+        ? `✅ ${cond.opcao_a?.txt || 'Ramo A'}`
+        : `⚠️ ${cond.opcao_b?.txt || 'Ramo B'}`;
+      return `<span class="mc-selo mc-selo-ok">
+                ${this._g('concluida', 13)} ${rotulo}
+              </span>` + gerir + extinguir;
+    }
+    if (status === 'FRACASSADA') {
+      return `<span class="mc-selo mc-selo-falha">${this._g('fracassada', 13)} Prazo perdido</span>` + gerir + extinguir;
+    }
+    if (status === 'CANCELADA') {
+      return `<span class="mc-selo mc-selo-neutro">${this._g('cancelada', 13)} Cancelada hoje</span>` +
+             b('retomar', 'mc-btn-neutro', this._g('ativa', 13) + ' Retomar');
+    }
+    if (status === 'CONFESSADA') {
+      return `<span class="mc-selo mc-selo-confessado">${this._g('confessada', 13)} Confessada</span>` + gerir + extinguir;
+    }
+    // PENDENTE / ATIVA / PAUSADA — exibe botões padrão mas Concluir chama RESPONDER
+    const iniciar  = status === 'PENDENTE'
+      ? b('iniciar',  'mc-btn-iniciar',  this._g('ativa', 13) + ' Iniciar Missão') : '';
+    const pausar   = status === 'ATIVA'
+      ? b('pausar',   'mc-btn-neutro',   this._g('pausada', 13) + ' Pausar') : '';
+    const retomar  = status === 'PAUSADA'
+      ? b('retomar',  'mc-btn-iniciar',  this._g('ativa', 12) + ' Retomar') : '';
+    const cancelar = (status !== 'PENDENTE')
+      ? b('cancelar', 'mc-btn-perigo',   this._g('cancelada', 13) + ' Cancelar') : '';
+    // Cancela via botão padrão se pendente
+    const cancelarPendente = (status === 'PENDENTE')
+      ? b('cancelar', 'mc-btn-neutro',   this._g('cancelada', 13), 'title="Cancelar hoje"') : '';
+    // Botão de concluir — abre o diálogo condicional
+    const concluir = `<button class="mc-btn mc-btn-concluir" data-mc-acao="responder"
+                              data-mc-id="${chave}" title="Bifurcar a missão condicional">
+                       ${this._g('concluida', 13)} Concluir
+                     </button>`;
+    return iniciar + pausar + retomar + cancelarPendente + cancelar + concluir + gerir + extinguir;
   },
 
   /* ── Ações da REGRA (gestão, nunca execução) ─────────────
@@ -1117,6 +1216,12 @@ const MissaoCard = {
       // virada das 16:00 e o cartão ficaria dizendo "entra em vigor" a noite
       // toda. É estado, não relógio — por isso entra aqui.
       this._ehPassiva(m) ? (this._emVigor(m) ? 'V' : 'v') : '',
+      // O ALVO entra junto do placar porque a CARGA (`--prog-carga`, que
+      // acende o fundo) é a razão entre os dois. Com só o placar aqui,
+      // editar o desafio de 30 para 10 dias deixaria o fundo na
+      // intensidade antiga até a próxima virada de dia.
+      this._ehProgressiva(m)
+        ? `P${m.dias_progressivos_ok || 0}/${m.dias_progressivos_alvo || 0}` : '',
       m.editavel ? 'E' : '', m.gerenciavel ? 'G' : '',
       m.ativo === false ? 'off' : '',
       (m.dias_semana || []).join(','), m.hora_inicio || '', m.hora_fim || '',
@@ -1163,20 +1268,35 @@ const MissaoCard = {
     const repet = this._ehRepeticao(m) ? ' mc-repeticao' : '';
     // PENITÊNCIA na raiz: não é estado passageiro, é o que a missão É.
     const penit = this._ehPenitencia(m) ? ' mc-penitencia' : '';
+    // PROGRESSIVA na raiz
+    const prog = this._ehProgressiva(m) ? ' mc-progressiva' : '';
     const modoRep = repet
       ? (this._alvoDe(m) !== null ? ' mc-rep-modo-meta' : ' mc-rep-modo-bonus')
       : '';
 
     return `
-    <div class="mc ${st.classe}${compacto}${selado}${passiva}${repet}${modoRep}${penit}" data-mc-card="${chave}"
+    <div class="mc ${st.classe}${compacto}${selado}${passiva}${repet}${modoRep}${penit}${prog}" data-mc-card="${chave}"
          data-mc-sig="${this.assinatura(m, opts)}"
-         style="--mc-cor:${cor};--mc-cor-suave:${this._alpha(cor, .14)}">
+         style="--mc-cor:${cor};--mc-cor-suave:${this._alpha(cor, .14)}${
+           prog ? `;--prog-carga:${this._cargaProgressiva(m).toFixed(3)}` : ''}">
       <div class="mc-fio"></div>
       ${repet ? this._contagem(m, chave) : (passiva ? this._vigilia(m, chave) : '')}
       ${penit ? `<div class="mc-giroflex" aria-hidden="true">
         <i class="mc-giro-r"></i><i class="mc-giro-b"></i></div>
         ${['CONCLUIDA', 'CANCELADA', 'CONFESSADA'].includes(status) ? ''
           : '<div class="mc-giro-varredura" aria-hidden="true"></div>'}` : ''}
+      ${/* A ESCADA DO DESAFIO PROGRESSIVO.
+
+            Um elemento só, como a varredura do giroflex — e pelo mesmo
+            motivo escrito lá: duas animações no mesmo elemento se
+            cancelam nesta base, e isso já custou uma tarde.
+
+            Ela é emitida enquanto o desafio VIVE. Fracassado, a escada
+            fica (partida, parada) porque o cartão precisa mostrar o que
+            foi perdido; concluído, sai — o desafio virou história e a
+            insígnia é que fala. */
+        prog && !['CONCLUIDA', 'CANCELADA'].includes(status)
+          ? '<div class="mc-prog-escada" aria-hidden="true"></div>' : ''}
       ${this._corrente(status)}
       ${this._sigilo(cor, m.categoria, !!penit)}
       <div class="mc-corpo">
@@ -1194,7 +1314,7 @@ const MissaoCard = {
                para nao passar por baixo. Inline antes do titulo ele
                custa ZERO altura, porque divide a linha que o titulo ja
                ocupava. -->
-          ${penit ? `<span class="mc-selo-pen">${'Penitência'}</span>` : ''}
+          ${prog ? `<span class="mc-selo-prog" style="color: var(--mc-cor); font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.125rem; display: block;">Desafio Progressivo</span>` : (penit ? `<span class="mc-selo-pen">${'Penitência'}</span>` : '')}
           <div class="mc-titulo" title="${this._esc(m.titulo)}">${this._esc(m.titulo) || 'Missão'}</div>
           ${compacto ? '' : recompensa}
         </div>
@@ -1224,6 +1344,7 @@ const MissaoCard = {
               primeiro ajuste. Faltava: os botões contavam e não havia o
               que encher. */
           penit && this._alvoDe(m) !== null ? this._barraSegmentada(m, chave) : ''}
+        ${prog ? this._barraProgressiva(m) : ''}
         ${repet
           ? (this._alvoDe(m) !== null
                ? this._barraSegmentada(m, chave)
@@ -1272,7 +1393,7 @@ const MissaoCard = {
           <span class="mc-chip mc-chip-rank" title="Dificuldade ${(r.dificuldade || 'NORMAL').toLowerCase()} — XP ${rank.mult}">${this._g('prior_alta', 11)} ${rank.letra}-Rank</span>
           <span class="mc-chip mc-chip-estado ${ativo ? 'on' : 'off'}">${ativo ? this._g('ativa', 12) + ' Ativa' : this._g('pausada', 12) + ' Pausada'}</span>
           ${r.categoria ? `<span class="mc-chip mc-chip-cat">${this._esc(r.categoria)}</span>` : ''}
-          <span class="mc-chip mc-chip-tipo">${tipo}</span>
+          <span class="mc-chip mc-chip-tipo">${this._ehProgressiva(r) ? 'DESAFIO PROGRESSIVO' : tipo}</span>
         </div>
 
         ${r.descricao ? `<div class="mc-ag-desc">${this._esc(r.descricao)}</div>` : ''}
@@ -1511,11 +1632,66 @@ const MissaoCard = {
             missionComplete(card, g.xp_ganho || 0, g.moedas_ganhas || 0);
           }
           break;
-      }
+
+        case 'responder': {
+          // BIFURCAÇÃO CONDICIONAL — mostra popup com as duas opções.
+          // Não chama nenhuma API ainda: espera o hunter escolher o ramo.
+          const m = this._cache?.[chave];
+          const cond = (() => {
+            try { return JSON.parse(m?.condicional_payload || '{}'); }
+            catch(_) { return {}; }
+          })();
+          const pergunta = cond.pergunta || 'O que aconteceu?';
+          const aTxt = cond.opcao_a?.txt || 'Ramo A — Cumpri';
+          const bTxt = cond.opcao_b?.txt || 'Ramo B — Não cumpri';
+
+          const vitoria = await new Promise(resolve => {
+            const overlay = document.createElement('div');
+            overlay.className = 'mc-cond-overlay';
+            overlay.innerHTML = `
+              <div class="mc-cond-dialog">
+                <div class="mc-cond-pergunta">${pergunta}</div>
+                <button class="mc-btn mc-btn-concluir mc-cond-ramo" data-vitoria="true">
+                  ✅ ${aTxt}
+                </button>
+                <button class="mc-btn mc-btn-neutro mc-cond-ramo" data-vitoria="false">
+                  ⚠️ ${bTxt}
+                </button>
+                <button class="mc-btn mc-cond-cancelar">Cancelar</button>
+              </div>`;
+            document.body.appendChild(overlay);
+            overlay.querySelectorAll('.mc-cond-ramo').forEach(b => {
+              b.addEventListener('click', () => {
+                overlay.remove();
+                resolve(b.dataset.vitoria === 'true');
+              });
+            });
+            overlay.querySelector('.mc-cond-cancelar').addEventListener('click', () => {
+              overlay.remove();
+              resolve(null);
+            });
+          });
+
+          if (vitoria === null) {
+            btn.disabled = false;
+            return;
+          }
+
+          resp = await API.post('/execucoes/responder', {
+            rotina_id: parseInt(id, 10),
+            vitoria,
+          });
+          if (typeof missionComplete === 'function' && card) {
+            const g = resp || {};
+            missionComplete(card, g.xp_ganho || 0, g.moedas_ganhas || 0);
+          }
+          break;
+        }
 
       // O SERVIDOR JÁ DISSE COMO A MISSÃO FICOU — usa isso e repinta este
       // cartão, em vez de mandar a página inteira recarregar para descobrir.
       // É a diferença entre a lista piscar e o botão simplesmente virar.
+      }  // fim do switch(acao)
       this._absorver(chave, acao, resp);
       this.repintar(chave);
 
