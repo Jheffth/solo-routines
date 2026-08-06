@@ -2372,96 +2372,115 @@
 .mc-condicional .mc-corpo,
 .mc-condicional .mc-sigilo { position: relative; z-index: 1; }
 
-/* ── O CORPO: a pergunta e os dois caminhos ─────────────────── */
-.mc-cond-corpo { padding: .1rem 1rem .85rem; }
+/* ── O CORPO: uma linha só ──────────────────────────────────
+
+   A primeira versão trazia os dois ramos inteiros aqui (título gerado,
+   janela, espólio) e o cartão dobrou de altura. O Arquiteto reprovou:
+   a pergunta é a pergunta. A missão nasce ABAIXO, como cartão de
+   missão, ligada pelo fio. */
+.mc-cond-corpo {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  flex-wrap: wrap;
+  padding: .1rem 1rem .7rem;
+}
 .mc-cond-q {
-  font-size: .95rem;
+  font-size: .9rem;
   font-weight: 600;
   color: var(--text-primary);
-  margin: 0 0 .6rem;
-  letter-spacing: .01em;
 }
-.mc-cond-vias {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: stretch;
-  gap: .5rem;
-}
-/* O DIVISOR. Um fio vertical, não a palavra "ou": o cartão já tem texto
-   demais, e a forquilha do fundo já disse que são dois caminhos. */
-.mc-cond-ou {
-  width: 1px;
-  background: linear-gradient(to bottom, transparent,
-    color-mix(in srgb, var(--mc-cor) 30%, transparent), transparent);
-}
-.mc-cond-via-btn {
-  display: flex;
-  flex-direction: column;
-  gap: .25rem;
-  text-align: left;
-  padding: .5rem .65rem;
-  border-radius: 9px;
-  border: 1px solid color-mix(in srgb, var(--mc-cor) 22%, transparent);
-  background: color-mix(in srgb, var(--mc-cor) 6%, transparent);
-  color: var(--text-primary);
-  font: inherit;
-  cursor: pointer;
-  transition: border-color .16s ease, background .16s ease, transform .16s ease;
-}
-.mc-cond-via-btn:hover {
-  border-color: color-mix(in srgb, var(--mc-cor) 55%, transparent);
-  background: color-mix(in srgb, var(--mc-cor) 13%, transparent);
-  transform: translateY(-1px);
-}
-.mc-cond-resposta {
-  font-size: .82rem;
-  font-weight: 700;
+.mc-cond-vias { display: inline-flex; align-items: center; gap: .4rem; }
+.mc-cond-btn {
+  padding: .26rem .8rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--mc-cor) 34%, transparent);
+  background: color-mix(in srgb, var(--mc-cor) 8%, transparent);
   color: var(--mc-cor);
-  letter-spacing: .02em;
+  font: inherit;
+  font-size: .74rem;
+  font-weight: 700;
+  letter-spacing: .03em;
+  cursor: pointer;
+  transition: background .16s ease, border-color .16s ease;
 }
-/* O QUE A RESPOSTA GERA. É a linha que a versão anterior não tinha —
-   sem ela o hunter escolhe sem saber o que vai receber. */
-.mc-cond-gera {
-  font-size: .78rem;
-  color: var(--text-secondary);
-  line-height: 1.25;
+.mc-cond-btn:hover {
+  background: color-mix(in srgb, var(--mc-cor) 18%, transparent);
+  border-color: color-mix(in srgb, var(--mc-cor) 65%, transparent);
 }
-.mc-cond-pe {
-  display: flex;
-  align-items: center;
-  gap: .5rem;
-  flex-wrap: wrap;
-  margin-top: .1rem;
-}
-.mc-cond-janela,
-.mc-cond-espolio {
+/* Respondida: o eco da escolha. O caminho não tomado fica, apagado —
+   some seria apagar a decisão. */
+.mc-cond-eco {
   display: inline-flex;
   align-items: center;
-  gap: .22rem;
+  gap: .2rem;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .03em;
+}
+.mc-cond-eco.escolhida { color: var(--mc-cor); }
+.mc-cond-eco.descartada {
+  color: var(--text-muted);
+  opacity: .45;
+  text-decoration: line-through;
+}
+
+/* ══ O FIO — a missão sabe de que pergunta nasceu ══════════════
+
+   Sem isto a missão gerada aparece no Dashboard como tarefa que
+   ninguém criou: "Comprar mamão e reabastecer" surge do nada e o
+   hunter não liga uma coisa à outra.
+
+   O desenho é uma ESPINHA na borda esquerda com um cotovelo no alto,
+   apontando para o cartão de cima. Não é uma linha desenhada ENTRE os
+   dois cartões de propósito: eles são irmãos numa lista que filtra,
+   ordena e reordena — um traço que depende de estarem grudados
+   quebraria na primeira ordenação. A espinha viaja com o cartão. */
+/* A PERGUNTA NÃO TEM ESPÓLIO PRÓPRIO. Ela é container: XP e moedas
+   moram na missão que ela gera, e "0 XP" no topo é ruído — foi o que
+   sobrou visível na primeira prévia. */
+.mc-condicional .mc-recompensa { display: none; }
+
+.mc-de-pergunta { position: relative; }
+/* O FIO VAI POR DENTRO. Fora do cartão ele some: `.mc` recorta o
+   conteúdo, e um traço em `left: -9px` simplesmente não é pintado —
+   apareceu como nada na prévia. Dentro da borda esquerda ele viaja com
+   o cartão e sobrevive a qualquer reordenação da lista. */
+.mc-de-pergunta::after {
+  content: '';
+  position: absolute;
+  left: 0; top: 0;
+  width: 3px;
+  height: 34px;
+  background: linear-gradient(to bottom,
+    color-mix(in srgb, var(--mc-cor) 85%, transparent), transparent);
+  border-radius: 0 0 3px 0;
+  pointer-events: none;
+  z-index: 2;
+}
+/* A etiqueta de origem: de qual pergunta, e qual resposta. */
+.mc-de-q {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  margin: -.15rem 1rem .35rem;
   font-size: .66rem;
   color: var(--text-muted);
+  letter-spacing: .04em;
 }
-.mc-cond-espolio b { color: var(--text-secondary); font-weight: 700; }
-
-/* RESPONDIDA: o caminho tomado ganha corpo, o outro vira sombra —
-   fica, mas sem peso. Some seria apagar a decisão; a memória do que
-   NÃO foi escolhido é parte do registro. */
-.mc-cond-via-btn.escolhida {
-  border-color: color-mix(in srgb, var(--mc-cor) 62%, transparent);
-  background: color-mix(in srgb, var(--mc-cor) 14%, transparent);
-  cursor: default;
+.mc-de-q-txt {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 62%;
 }
-.mc-cond-via-btn.descartada {
-  opacity: .3;
-  filter: grayscale(.7);
-  border-style: dashed;
-  cursor: default;
+.mc-de-q-r {
+  color: var(--mc-cor);
+  font-weight: 700;
+  padding: 0 .38rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--mc-cor) 30%, transparent);
 }
-
-/* A PERGUNTA NÃO TEM ESPÓLIO PRÓPRIO. Ela é container: XP e moedas
-   moram na missão que ela gera, e mostrá-los aqui prometeria duas vezes
-   a mesma recompensa. */
-.mc-condicional .mc-recompensa { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .mc-cond-via { animation: none; }

@@ -660,47 +660,52 @@ const MissaoCard = {
          + gerir + extinguir;
   },
 
-  /* O CORPO DA PERGUNTA. Os dois caminhos, lado a lado.
+  /* O CORPO DA PERGUNTA — e SÓ a pergunta.
 
-     Cada um mostra TRÊS coisas, e a ordem importa: a resposta ("Sim"),
-     a missão que ela gera ("Comer mamão de manhã") e o espólio dela.
-     Sem a do meio, o hunter escolhe às cegas; sem a última, não sabe o
-     que está em jogo. */
+     A PRIMEIRA VERSÃO PÔS OS DOIS RAMOS INTEIROS AQUI DENTRO (título da
+     missão que geram, janela, espólio) e o cartão dobrou de altura. O
+     Arquiteto reprovou em uma frase: "está muito grande, a lógica não é
+     essa".
+
+     A lógica é: o cartão PERGUNTA. Respondida, a missão aparece ABAIXO
+     dele, como cartão de missão de verdade — com horário, prazo, botões,
+     tudo — e um fio visual liga um ao outro. Prever o conteúdo dos dois
+     ramos aqui era mostrar duas vezes a mesma coisa, e a primeira vez
+     num formato que não é o de missão.
+
+     Sobra o essencial: a pergunta e duas respostas curtas. */
   _corpoCondicional(m, chave) {
     const c = this._condPayload(m);
     if (!c) return '';
     const escolhido = this._condRespondida(m);
 
     const via = (letra, r) => {
-      const feito = escolhido === letra;
-      const morto = escolhido && !feito;
-      const espolio = (r.xp || r.moedas)
-        ? `<span class="mc-cond-espolio">`
-          + (r.xp ? `${this._glifoXp()}<b>${r.xp}</b>` : '')
-          + (r.moedas ? `${this._glifoMoeda()}<b>${r.moedas}</b>` : '')
-          + `</span>`
-        : '';
-      const janela = r.janela
-        ? `<span class="mc-cond-janela">${this._g('ampulheta', 10)} ${this._esc(r.janela)}</span>` : '';
-      const cls = 'mc-cond-via-btn' + (feito ? ' escolhida' : '') + (morto ? ' descartada' : '');
-      const tag = escolhido ? 'div' : 'button';
-      const attr = escolhido ? '' :
-        ` type="button" data-mc-acao="cond-ramo" data-mc-ramo="${letra}" data-mc-id="${chave}"`;
-      return `<${tag} class="${cls}"${attr}>
-        <span class="mc-cond-resposta">${feito ? this._g('concluida', 11) + ' ' : ''}${this._esc(r.txt) || (letra === 'A' ? 'Sim' : 'Não')}</span>
-        ${r.titulo ? `<span class="mc-cond-gera">${this._esc(r.titulo)}</span>` : ''}
-        <span class="mc-cond-pe">${janela}${espolio}</span>
-      </${tag}>`;
+      const txt = this._esc(r.txt) || (letra === 'A' ? 'Sim' : 'Não');
+      if (escolhido) {
+        const feito = escolhido === letra;
+        return `<span class="mc-cond-eco${feito ? ' escolhida' : ' descartada'}">`
+             + `${feito ? this._g('concluida', 10) + ' ' : ''}${txt}</span>`;
+      }
+      return `<button type="button" class="mc-cond-btn"
+        data-mc-acao="cond-ramo" data-mc-ramo="${letra}" data-mc-id="${chave}"
+        title="${this._esc(r.titulo) || 'Responder'}">${txt}</button>`;
     };
 
     return `<div class="mc-cond-corpo">
-      ${c.pergunta ? `<div class="mc-cond-q">${this._esc(c.pergunta)}</div>` : ''}
-      <div class="mc-cond-vias">
-        ${via('A', c.a)}
-        <span class="mc-cond-ou" aria-hidden="true"></span>
-        ${via('B', c.b)}
-      </div>
+      ${c.pergunta ? `<span class="mc-cond-q">${this._esc(c.pergunta)}</span>` : ''}
+      <span class="mc-cond-vias">${via('A', c.a)}${via('B', c.b)}</span>
     </div>`;
+  },
+
+  /* ── O FIO QUE LIGA A MISSÃO À SUA PERGUNTA ──────────────
+     A missão gerada não é órfã: ela precisa dizer de onde veio, senão
+     aparece no Dashboard como uma tarefa que ninguém criou. O backend
+     manda `origem_pergunta` (o texto da pergunta) e `origem_resposta`
+     (o ramo). O resto é desenho. */
+  _dePergunta(m) {
+    const q = (m?.origem_pergunta || '').trim();
+    if (!q) return null;
+    return { pergunta: q, resposta: (m?.origem_resposta || '').trim() };
   },
 
   /* ══ A MISSÃO CONDICIONAL — a pergunta É o cartão ══════════
@@ -1442,6 +1447,10 @@ const MissaoCard = {
        a bifurcação no fundo e desliga o espólio do topo — a pergunta é
        container, o espólio mora na missão que ela gera. */
     const cond = this._condPayload(m) ? ' mc-condicional' : '';
+    /* A MISSÃO NASCIDA DE UMA PERGUNTA. Ganha o fio que sobe até o
+       cartão que a gerou — é a "inteligência visual" que impede ela de
+       parecer uma tarefa que ninguém criou. */
+    const filha = this._dePergunta(m) ? ' mc-de-pergunta' : '';
     const condResp = cond && this._condRespondida(m)
       ? ` mc-cond-resp-${this._condRespondida(m).toLowerCase()}` : '';
     const modoRep = repet
@@ -1449,7 +1458,7 @@ const MissaoCard = {
       : '';
 
     return `
-    <div class="mc ${st.classe}${compacto}${selado}${passiva}${repet}${modoRep}${penit}${prog}${etapaProg}${cond}${condResp}" data-mc-card="${chave}"
+    <div class="mc ${st.classe}${compacto}${selado}${passiva}${repet}${modoRep}${penit}${prog}${etapaProg}${cond}${condResp}${filha}" data-mc-card="${chave}"
          data-mc-sig="${this.assinatura(m, opts)}"
          style="--mc-cor:${cor};--mc-cor-suave:${this._alpha(cor, .14)}${
            prog ? `;--prog-carga:${this._cargaProgressiva(m).toFixed(3)}` : ''}">
@@ -1521,6 +1530,13 @@ const MissaoCard = {
               primeiro ajuste. Faltava: os botões contavam e não havia o
               que encher. */
           penit && this._alvoDe(m) !== null ? this._barraSegmentada(m, chave) : ''}
+        ${(() => {
+          const de = this._dePergunta(m);
+          return de ? `<div class="mc-de-q">${this._g('condicional', 10)}
+            <span class="mc-de-q-txt">${this._esc(de.pergunta)}</span>
+            ${de.resposta ? `<b class="mc-de-q-r">${this._esc(de.resposta)}</b>` : ''}
+          </div>` : '';
+        })()}
         ${cond ? this._corpoCondicional(m, chave) : ''}
         ${prog ? this._barraProgressiva(m) : ''}
         ${repet
