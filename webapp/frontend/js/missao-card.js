@@ -705,7 +705,12 @@ const MissaoCard = {
   _dePergunta(m) {
     const q = (m?.origem_pergunta || '').trim();
     if (!q) return null;
-    return { pergunta: q, resposta: (m?.origem_resposta || '').trim() };
+    // O RAMO importa para o desenho: o fundo da resposta continua a
+    // MESMA corrente que foi escolhida lá em cima, na mesma diagonal.
+    // Sem o ramo, cai em 'A' — direção errada é melhor que fundo vazio.
+    const r = (m?.origem_ramo || '').toUpperCase();
+    return { pergunta: q, resposta: (m?.origem_resposta || '').trim(),
+             ramo: (r === 'B' ? 'B' : 'A') };
   },
 
   /* ══ A MISSÃO CONDICIONAL — a pergunta É o cartão ══════════
@@ -1450,7 +1455,8 @@ const MissaoCard = {
     /* A MISSÃO NASCIDA DE UMA PERGUNTA. Ganha o fio que sobe até o
        cartão que a gerou — é a "inteligência visual" que impede ela de
        parecer uma tarefa que ninguém criou. */
-    const filha = this._dePergunta(m) ? ' mc-de-pergunta' : '';
+    const _de = this._dePergunta(m);
+    const filha = _de ? ` mc-de-pergunta mc-de-ramo-${_de.ramo.toLowerCase()}` : '';
     const condResp = cond && this._condRespondida(m)
       ? ` mc-cond-resp-${this._condRespondida(m).toLowerCase()}` : '';
     const modoRep = repet
@@ -1481,6 +1487,7 @@ const MissaoCard = {
         prog && (this._etapaProgressiva(m)
                  || !['CONCLUIDA', 'CANCELADA'].includes(status))
           ? '<div class="mc-prog-escada" aria-hidden="true"></div>' : ''}
+      ${filha ? '<div class="mc-de-fluxo" aria-hidden="true"></div>' : ''}
       ${cond ? `<div class="mc-cond-fluxo" aria-hidden="true">
         <i class="mc-cond-via mc-cond-via-a"></i><i class="mc-cond-via mc-cond-via-b"></i></div>` : ''}
       ${this._corrente(status)}

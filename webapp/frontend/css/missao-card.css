@@ -2442,6 +2442,80 @@
 .mc-condicional .mc-recompensa { display: none; }
 
 /* ══════════════════════════════════════════════════════════════
+   O FUNDO DA RESPOSTA — a corrente que foi escolhida desagua aqui
+   ══════════════════════════════════════════════════════════════
+
+   Podia ser qualquer trama bonita, e seria a escolha errada. A resposta
+   não é um cartão qualquer que apareceu: é a continuação de um dos dois
+   caminhos que corriam no cartão de cima. Então o fundo dela é A MESMA
+   CORRENTE, na MESMA diagonal do ramo escolhido — quem respondeu "Sim"
+   vê a corrente ascendente seguir; quem respondeu "Não", a descendente.
+   O olho liga as duas peças sem ler uma palavra.
+
+   O que muda da faixa para cá é o REGIME: lá em cima ela corria
+   indecisa, disputando; aqui ela chegou. Vem mais lenta, mais larga e
+   mais suave, com um halo na diagonal de entrada — a corrente
+   desaguando em vez de passando.
+
+   Um elemento, uma animação, como manda o resto deste arquivo. */
+.mc-de-fluxo {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  overflow: hidden;
+  opacity: .5;
+}
+.mc-de-ramo-a .mc-de-fluxo {
+  background-image:
+    repeating-linear-gradient(68deg,
+      transparent 0 34px,
+      color-mix(in srgb, var(--mc-cor) 16%, transparent) 34px 36px,
+      transparent 36px 46px,
+      color-mix(in srgb, var(--mc-cor) 8%, transparent) 46px 47px,
+      transparent 47px 78px),
+    radial-gradient(85% 120% at 0% 100%,
+      color-mix(in srgb, var(--mc-cor) 14%, transparent) 0%, transparent 68%);
+  background-size: 220px 100%, 100% 100%;
+  background-repeat: repeat, no-repeat;
+  animation: mc-de-desagua-a 13s linear infinite;
+}
+.mc-de-ramo-b .mc-de-fluxo {
+  background-image:
+    repeating-linear-gradient(112deg,
+      transparent 0 34px,
+      color-mix(in srgb, var(--mc-cor) 16%, transparent) 34px 36px,
+      transparent 36px 46px,
+      color-mix(in srgb, var(--mc-cor) 8%, transparent) 46px 47px,
+      transparent 47px 78px),
+    radial-gradient(85% 120% at 0% 0%,
+      color-mix(in srgb, var(--mc-cor) 14%, transparent) 0%, transparent 68%);
+  background-size: 220px 100%, 100% 100%;
+  background-repeat: repeat, no-repeat;
+  animation: mc-de-desagua-b 13s linear infinite;
+}
+/* O halo fica parado nos dois keyframes: ele é o ponto de chegada, e
+   ponto de chegada não anda. */
+@keyframes mc-de-desagua-a {
+  from { background-position: 0 0,     0% 100%; }
+  to   { background-position: 220px 0, 0% 100%; }
+}
+@keyframes mc-de-desagua-b {
+  from { background-position: 220px 0, 0% 0%; }
+  to   { background-position: 0 0,     0% 0%; }
+}
+/* Uma trama só, como em toda natureza especial deste arquivo. */
+.mc-de-pergunta .mc-corrente { display: none; }
+.mc-de-pergunta .mc-corpo,
+.mc-de-pergunta .mc-sigilo { position: relative; z-index: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mc-de-fluxo { animation: none; }
+}
+
+
+/* ══════════════════════════════════════════════════════════════
    RESPONDIDA, A PERGUNTA VIRA CABEÇALHO
    ══════════════════════════════════════════════════════════════
 
@@ -2491,8 +2565,12 @@
 .mc-cond-resp-b .mc-topo { display: none; }
 .mc-cond-resp-a .mc-cond-corpo,
 .mc-cond-resp-b .mc-cond-corpo {
-  padding: .42rem .95rem;
-  gap: .5rem;
+  /* APERTADO. Na primeira versão a fusão (faixa + cartão) ficava tão
+     alta quanto dois cartões, que era o problema que a faixa existia
+     para resolver. O cabeçalho é uma linha de texto: o padding só
+     precisa dar respiro para ela, não para um corpo que não existe. */
+  padding: .3rem .85rem;
+  gap: .45rem;
 }
 .mc-cond-resp-a .mc-cond-q,
 .mc-cond-resp-b .mc-cond-q {
@@ -2554,7 +2632,7 @@
   display: flex;
   align-items: center;
   gap: .35rem;
-  margin: -.15rem 1rem .35rem;
+  margin: -.3rem 1rem .3rem;
   font-size: .66rem;
   color: var(--text-muted);
   letter-spacing: .04em;
