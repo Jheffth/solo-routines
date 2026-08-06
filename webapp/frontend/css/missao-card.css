@@ -2441,6 +2441,97 @@
    sobrou visível na primeira prévia. */
 .mc-condicional .mc-recompensa { display: none; }
 
+/* ══════════════════════════════════════════════════════════════
+   RESPONDIDA, A PERGUNTA VIRA CABEÇALHO
+   ══════════════════════════════════════════════════════════════
+
+   Enquanto estava aberta ela precisava do cartão inteiro. Respondida,
+   não precisa de nada disso — e o Arquiteto viu o desperdício: sigilo,
+   chips de prioridade, rank, status, categoria, botões... tudo
+   repetido no cartão da resposta, logo abaixo. Duas vezes a mesma
+   informação, e a segunda vez é a que importa.
+
+   Então ela ENCOLHE. Some tudo o que a resposta herdou e sobra o
+   essencial: a pergunta e o caminho tomado, numa faixa fina. Ela deixa
+   de ser um cartão e vira o CABEÇALHO do cartão de baixo — que é o que
+   ela sempre foi, semanticamente: o container.
+
+   A borda inferior fica reta e o fundo desce até ela, para que a faixa
+   e o cartão da resposta leiam como uma peça só.
+
+   O EFEITO CONTINUA. A corrente escolhida segue fluindo atrás da
+   faixa: é o que impede o cabeçalho de parecer um rótulo morto. */
+.mc-condicional.mc-cond-resp-a,
+.mc-condicional.mc-cond-resp-b {
+  border-bottom-left-radius: 2px;
+  border-bottom-right-radius: 2px;
+  margin-bottom: -2px;
+  /* A entrada é uma só, curta. Como o cartão é REDESENHADO ao
+     responder (assinatura nova), não há transição de estado para
+     animar — o que dá a sensação de encolhimento é a faixa nascer
+     um pouco mais alta e assentar. */
+  animation: mc-cond-assentar .34s cubic-bezier(.22, 1, .36, 1);
+}
+@keyframes mc-cond-assentar {
+  from { transform: scaleY(1.35); opacity: .3; }
+  to   { transform: scaleY(1);    opacity: 1; }
+}
+
+/* O QUE SOME — tudo o que o cartão da resposta já diz. */
+.mc-cond-resp-a .mc-sigilo,  .mc-cond-resp-b .mc-sigilo,
+.mc-cond-resp-a .mc-chips,   .mc-cond-resp-b .mc-chips,
+.mc-cond-resp-a .mc-acoes,   .mc-cond-resp-b .mc-acoes,
+.mc-cond-resp-a .mc-titulo,  .mc-cond-resp-b .mc-titulo,
+.mc-cond-resp-a .mc-fio,     .mc-cond-resp-b .mc-fio { display: none; }
+
+/* E o que fica, apertado. */
+.mc-cond-resp-a .mc-corpo,
+.mc-cond-resp-b .mc-corpo { padding: 0; }
+.mc-cond-resp-a .mc-topo,
+.mc-cond-resp-b .mc-topo { display: none; }
+.mc-cond-resp-a .mc-cond-corpo,
+.mc-cond-resp-b .mc-cond-corpo {
+  padding: .42rem .95rem;
+  gap: .5rem;
+}
+.mc-cond-resp-a .mc-cond-q,
+.mc-cond-resp-b .mc-cond-q {
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: .01em;
+}
+/* O CAMINHO NÃO TOMADO SAI DAQUI. Numa faixa fina ele vira ruído — e
+   a decisão já está registrada pelo que ficou. */
+.mc-cond-resp-a .mc-cond-eco.descartada,
+.mc-cond-resp-b .mc-cond-eco.descartada { display: none; }
+.mc-cond-resp-a .mc-cond-eco.escolhida,
+.mc-cond-resp-b .mc-cond-eco.escolhida {
+  font-size: .76rem;
+  padding: .06rem .5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mc-cor) 14%, transparent);
+}
+
+/* A ETIQUETA DE ORIGEM SOME QUANDO O CABEÇALHO ESTÁ LOGO ACIMA.
+
+   Com a faixa colada em cima, repetir "Tem mamão em casa? · Sim"
+   dentro do filho é dizer duas vezes a mesma coisa em três centímetros.
+   Mas a etiqueta não pode sumir sempre: a lista filtra e ordena, e
+   quando os dois se separam ela vira o ÚNICO vínculo.
+
+   O seletor irmão-adjacente resolve sozinho — some se estiverem
+   grudados, volta se a ordenação os afastar. Nenhum JS precisa saber
+   disso. */
+.mc-cond-resp-a + .mc-de-pergunta .mc-de-q,
+.mc-cond-resp-b + .mc-de-pergunta .mc-de-q { display: none; }
+
+/* O cartão da resposta encosta no cabeçalho. */
+.mc-de-pergunta {
+  border-top-left-radius: 3px;
+  border-top-right-radius: 3px;
+}
+
 .mc-de-pergunta { position: relative; }
 /* O FIO VAI POR DENTRO. Fora do cartão ele some: `.mc` recorta o
    conteúdo, e um traço em `left: -9px` simplesmente não é pintado —
