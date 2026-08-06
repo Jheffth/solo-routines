@@ -164,7 +164,11 @@ def rodar():
     n = penitencia.contar(db, u.id)
     ok(n <= teto,
        f"dez falhas geram no maximo {teto} pendencias (tem {n}), nao dez")
-    p = falhar_critica("Mais uma")
+    # UM DIA AINDA NAO JULGADO. As regras novas julgam CADA DIA UMA VEZ
+    # (`_ja_julgado`), entao reusar `ontem` — ja julgado no laco acima —
+    # devolveria None e o assert mediria a trava, nao o teto. O laco vai
+    # ate ontem-9; este vai bem mais para tras.
+    p = falhar_critica("Mais uma", ontem - timedelta(days=20))
     ok(p.get("no_teto") is True, "e o Sistema DIZ que parou de contar")
     ok(p["eco"]["intensidade"] == ecos.FRIA,
        "com a voz fria: " + p["eco"]["texto"])

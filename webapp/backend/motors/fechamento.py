@@ -313,54 +313,172 @@ def fechar_vencidas(db: Session, usuario: Usuario, ate: date | None = None) -> d
 
 def _talvez_punir(db: Session, usuario: Usuario, falhas: list, hoje) -> dict | None:
     """
-    O GATILHO. Nao e qualquer falha.
+    O JULGAMENTO. Nao e "perdeu uma missao".
 
     Punicao frequente vira paisagem, e paisagem nao assusta — a obra
-    ensina isso: o Jinwoo entra na zona de punicao UMA VEZ, e o que
-    move a historia depois e o medo dela.
+    ensina isso: o Jinwoo entra na zona de punicao UMA VEZ, e o que move
+    a historia depois e o medo dela. Entao a regra e MENOS EVENTOS, MAIS
+    PESO, e o hunter tem de conseguir prever o que o pune.
 
-    Dispara em tres casos, e nenhum deles e "perdeu uma missao":
+    AS REGRAS
 
-      · uma missao CRITICA falhou       -> cobra dobrado
-      · TODAS as diarias do dia falharam -> cobra
-      · reincidencia de N dias seguidos  -> cobra
+      A · A CRITICA COBRA NA HORA, DOBRADA.
+          Unico gatilho imediato. Critica e a missao que o hunter marcou
+          como inegociavel; resposta que demora nao significa nada.
 
-    Nunca derruba o fechamento: se a punicao explodir, o dia ainda
+      B · O DIA E JULGADO UMA VEZ, QUANDO FECHA.
+          Nao a cada falha. So com o dia encerrado se sabe a proporcao
+          de diarias perdidas:
+              < limiar        -> nada. Dia imperfeito nao e dia perdido.
+              limiar a 99%    -> uma penitencia.
+              100%            -> penitencia DOBRADA. Dia abandonado.
+
+      C · REINCIDENCIA E SEVERIDADE, NAO QUANTIDADE.
+          Punido N dias seguidos, a pena do dia seguinte vem dobrada —
+          em vez de virem mais cartoes. Mesma quantidade, mais peso, que
+          e o que "nao virar paisagem" quer dizer.
+
+      D · UM JULGAMENTO POR DIA.
+          Se a critica ja cobrou de manha, o fechamento da noite nao
+          cobra de novo pelo mesmo dia.
+
+    O QUE ESTAS REGRAS SUBSTITUIRAM, e por que
+
+      · "TODAS as diarias falharam" — com nove rotinas, exigia
+        catastrofe absoluta, e era para ser o gatilho principal. Pior:
+        comparava as falhas fechadas NAQUELA CHAMADA com o total do dia,
+        dois escopos diferentes. Enquanto o app dormia entre acessos os
+        numeros batiam; com o servidor sempre de pe e o Extrato em
+        polling, cada leitura fechava uma ou duas falhas e o gatilho
+        ficou matematicamente inalcancavel. Nada quebrou na migracao de
+        servidor: mudou a frequencia de leitura, e a regra dependia dela
+        sem que isso estivesse escrito em lugar nenhum.
+
+      · "N dias seguidos com QUALQUER falha" — punia quem falhava uma
+        coisinha por tres dias, e depois disso disparava todo santo dia.
+        Facil demais de tropecar, e a punicao virava rotina.
+
+    O QUE NAO MUDOU: confissao nao pune, reerguida nao pune duas vezes,
+    falhar penitencia nao gera penitencia, e missao geral e divida (nao
+    entra no julgamento do dia — ela vence e continua la, no vermelho).
+
+    Nunca derruba o fechamento: se o julgamento explodir, o dia ainda
     fecha. Uma divida perdida e melhor que um app travado.
     """
-    if not falhas:
-        return None
     try:
         from motors import penitencia, economia as _eco
         regras = _eco.punicao_regras(db)
 
-        criticas = [f for f in falhas if f["critica"]]
-        diarias  = [f for f in falhas if f["diaria"]]
-        todas_diarias = bool(diarias) and len(diarias) == _diarias_do_dia(db, usuario, hoje)
+        # A sessao e criada com autoflush=False (database.py) e daqui para
+        # baixo tudo pergunta ao BANCO. Sem o flush, as instancias que
+        # acabaram de virar FRACASSADA ainda estao so na memoria e as
+        # contagens voltam zero — trocando um defeito por outro, mais
+        # silencioso. Custou uma rodada inteira de teste.
+        db.flush()
 
-        gatilho, dobrar = None, False
+        # ── REGRA A · a critica cobra na hora ─────────────────────
+        criticas = [f for f in (falhas or []) if f.get("critica")]
         if criticas:
-            gatilho, dobrar = "critica", True
-        elif todas_diarias:
-            gatilho = "dia_perdido"
-        elif _dias_seguidos_com_falha(db, usuario, hoje) >= regras["dias_seguidos"]:
-            gatilho = "reincidencia"
+            # O DIA JULGADO E O DIA DA FALHA, nao o de hoje. Uma missao
+            # critica com prazo de tres dias atras so e fechada agora, mas
+            # o que esta sendo julgado e AQUELE dia. Carimbar `hoje`
+            # tornaria todas as falhas antigas um unico julgamento — o
+            # hunter que sumiu uma semana pagaria por um dia so, e o teto
+            # nunca seria alcancado.
+            alvo = criticas[0]
+            dia_c = alvo.get("data") or hoje
+            if not _ja_julgado(db, usuario, dia_c):
+                return _cobrar(db, usuario, penitencia, alvo,
+                               dia_julgado=dia_c, gatilho="critica", dobrar=True)
 
-        if not gatilho:
-            return None
+        # ── REGRA B · o dia fechado e julgado uma vez ─────────────
+        # Olha para tras porque o hunter pode ter passado dias sem abrir
+        # o app. O teto (`divida_teto`) e quem impede a bola de neve —
+        # e para isso que ele existe.
+        for atras in range(1, 8):
+            dia = hoje - timedelta(days=atras)
+            if _ja_julgado(db, usuario, dia):
+                continue
+            total = _diarias_do_dia(db, usuario, dia)
+            if not total:
+                continue                      # dia sem diarias: nada a julgar
+            perdidas = _diarias_falhadas_no_dia(db, usuario, dia)
+            if perdidas * 100 < regras["limiar_dia"] * total:
+                continue                      # dia imperfeito, nao perdido
 
-        alvo = (criticas or falhas)[0]
-        r = penitencia.cobrar(db, usuario, alvo["titulo"], alvo["data"],
-                              xp_perdido=alvo["xp"], dobrar=dobrar)
-        r["gatilho"] = gatilho
-        return r
+            alvo = _uma_falha_do_dia(db, usuario, dia)
+            if not alvo:
+                continue
+            # 100% = dia abandonado, e isso e outra coisa.
+            dobrar = (perdidas == total)
+            # REGRA C · reincidencia dobra, nao multiplica.
+            if _dias_punidos_seguidos(db, usuario, dia) >= regras["dias_seguidos"]:
+                dobrar = True
+            gat = "dia_abandonado" if perdidas == total else "dia_perdido"
+            return _cobrar(db, usuario, penitencia, alvo,
+                           dia_julgado=dia, gatilho=gat, dobrar=dobrar)
+
+        return None
     except Exception as e:
         print(f"[FECHAMENTO] penitencia adiada: {e}")
         return None
 
 
+def _cobrar(db, usuario, penitencia, alvo, dia_julgado, gatilho, dobrar):
+    """
+    Chama a cobranca e carimba QUAL DIA foi julgado.
+
+    `origem_data` e o carimbo — e nao e coluna nova: ela ja existia para
+    dizer de qual fracasso a divida nasceu. E o mesmo dado. Guardar um
+    "punido_em" a parte criaria um segundo dono da mesma verdade, que
+    sai de sincronia no primeiro `revogar`.
+    """
+    r = penitencia.cobrar(db, usuario, alvo["titulo"], dia_julgado,
+                          xp_perdido=alvo.get("xp") or 0, dobrar=dobrar)
+    r["gatilho"] = gatilho
+    r["dia_julgado"] = str(dia_julgado)
+    return r
+
+
+def _ja_julgado(db: Session, usuario: Usuario, dia) -> bool:
+    """
+    Este dia ja foi julgado?
+
+    A trava da REGRA D, e tambem o que impede o polling de gerar quatro
+    cartoes por um unico dia ruim: os gatilhos B e C, uma vez
+    verdadeiros, PERMANECEM verdadeiros ate a virada.
+
+    Le a propria TarefaDia: todo tipo de pacto grava uma, inclusive o
+    TRIBUTO — que nao vira cartao jogavel, mas e persistido com status
+    CONCLUIDA.
+
+    E de proposito que `revogar` (Reerguer) reabra o dia: se o fracasso
+    foi desfeito, a penitencia dele deixou de existir e o dia volta a
+    poder ser julgado.
+    """
+    return (db.query(TarefaDia)
+              .filter(TarefaDia.usuario_id == usuario.id,
+                      TarefaDia.natureza == "PUNICAO",
+                      TarefaDia.origem_data == dia).count() > 0)
+
+
+def _uma_falha_do_dia(db: Session, usuario: Usuario, dia) -> dict | None:
+    """Uma diaria fracassada do dia, para dar nome e XP a divida."""
+    linha = (db.query(ExecucaoDia, Rotina)
+               .join(Rotina, Rotina.id == ExecucaoDia.rotina_id)
+               .filter(ExecucaoDia.usuario_id == usuario.id,
+                       ExecucaoDia.data == dia,
+                       Rotina.tipo == "DIARIA",
+                       ExecucaoDia.status == "FRACASSADA")
+               .order_by(ExecucaoDia.id).first())
+    if not linha:
+        return None
+    ed, r = linha
+    return {"titulo": r.titulo, "data": ed.data, "xp": ed.xp_perdido or 0}
+
+
 def _diarias_do_dia(db: Session, usuario: Usuario, dia) -> int:
-    """Quantas diarias existiam no dia — para saber se TODAS falharam."""
+    """Quantas diarias existiam no dia — o denominador do julgamento."""
     return (db.query(ExecucaoDia)
               .join(Rotina, Rotina.id == ExecucaoDia.rotina_id)
               .filter(ExecucaoDia.usuario_id == usuario.id,
@@ -368,23 +486,39 @@ def _diarias_do_dia(db: Session, usuario: Usuario, dia) -> int:
                       Rotina.tipo == "DIARIA").count())
 
 
-def _dias_seguidos_com_falha(db: Session, usuario: Usuario, hoje) -> int:
+def _diarias_falhadas_no_dia(db: Session, usuario: Usuario, dia) -> int:
     """
-    Quantos dias seguidos, contando de ontem para tras, tiveram falha.
+    O numerador. O par com `_diarias_do_dia` e o ponto todo: as duas
+    perguntam ao BANCO, sobre o MESMO dia, e por isso podem ser
+    comparadas. A versao anterior comparava o total do dia com a lista de
+    falhas fechadas na chamada corrente, e essa comparacao so fazia
+    sentido quando o app era lido uma vez por dia.
+    """
+    return (db.query(ExecucaoDia)
+              .join(Rotina, Rotina.id == ExecucaoDia.rotina_id)
+              .filter(ExecucaoDia.usuario_id == usuario.id,
+                      ExecucaoDia.data == dia,
+                      Rotina.tipo == "DIARIA",
+                      ExecucaoDia.status == "FRACASSADA").count())
 
-    Para em quanto a Balanca pede; contar o historico inteiro seria
-    varrer anos para responder "chegou a tres?".
+
+def _dias_punidos_seguidos(db: Session, usuario: Usuario, dia) -> int:
+    """
+    Quantos dias seguidos ANTES deste terminaram em punicao.
+
+    A regra antiga contava dias com QUALQUER falha, e por isso punia
+    quem escorregava numa coisa so por tres dias. Contar dias PUNIDOS e
+    mais justo e mais raro: e preciso ter perdido o dia inteiro tres
+    vezes seguidas — aí a reincidencia significa alguma coisa.
+
+    Para no limite pedido pela Balanca; varrer o historico inteiro para
+    responder "chegou a tres?" seria percorrer anos.
     """
     from motors import economia as _eco
     limite = _eco.punicao_regras(db)["dias_seguidos"] + 1
     n = 0
     for i in range(1, limite + 1):
-        d = hoje - timedelta(days=i)
-        houve = (db.query(ExecucaoDia)
-                   .filter(ExecucaoDia.usuario_id == usuario.id,
-                           ExecucaoDia.data == d,
-                           ExecucaoDia.status == "FRACASSADA").count())
-        if not houve:
+        if not _ja_julgado(db, usuario, dia - timedelta(days=i)):
             break
         n += 1
     return n

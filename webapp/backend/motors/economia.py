@@ -138,7 +138,8 @@ SEMENTE = [
     # Sistema PARA DE CRIAR e diz "parou de contar". Parar de contar e
     # mais ameacador que continuar, e protege quem esta num dia ruim de
     # acordar com quarenta cartoes.
-    ("punicao", "dias_seguidos",   3, "Dias seguidos com falha que disparam", 1),
+    ("punicao", "dias_seguidos",   3, "Dias PUNIDOS seguidos que dobram a pena", 1),
+    ("punicao", "limiar_dia",     50, "% de diarias falhadas que perde o dia", 2),
     ("punicao", "divida_teto",     4, "Pendencias ate o Sistema parar de criar", 2),
     ("punicao", "escala_fator",    2, "Multiplicador a cada reincidencia", 3),
     ("punicao", "decaimento_dias", 7, "Dias limpos para recuar um degrau", 4),
@@ -440,6 +441,11 @@ def punicao_regras(db=None) -> dict:
     t = tabelas(db)
     return {
         "dias_seguidos":   max(1, int(_v(t, "punicao", "dias_seguidos", 3))),
+        # A fracao do dia que o transforma em DIA PERDIDO. Antes a regra
+        # exigia TODAS as diarias -- com nove rotinas, um dia de
+        # catastrofe absoluta, e por isso o gatilho principal quase
+        # nunca disparava. Percentual e alcancavel e calibravel.
+        "limiar_dia":      max(1, min(100, int(_v(t, "punicao", "limiar_dia", 50)))),
         "divida_teto":     max(1, int(_v(t, "punicao", "divida_teto", 4))),
         "escala_fator":    max(1, int(_v(t, "punicao", "escala_fator", 2))),
         "decaimento_dias": max(1, int(_v(t, "punicao", "decaimento_dias", 7))),
