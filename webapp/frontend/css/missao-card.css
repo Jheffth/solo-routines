@@ -2294,6 +2294,180 @@
 }
 
 
+/* ══════════════════════════════════════════════════════════════
+   A MISSÃO CONDICIONAL — a pergunta É o cartão
+   ══════════════════════════════════════════════════════════════
+
+   A GRAMÁTICA É A BIFURCAÇÃO, e ela não estava ocupada. As outras
+   quatro já falam línguas próprias: a penitência VARRE (giroflex), a
+   missão ativa comum DESLIZA (chevrons), o protocolo passivo SELA, e o
+   desafio progressivo SOBE (brasas). Faltava a que diz "dois caminhos,
+   e um deles vai deixar de existir".
+
+   Duas correntes atravessam o fundo em diagonais OPOSTAS, saindo do
+   mesmo lado. Enquanto a pergunta está aberta, as duas correm — o
+   cartão está literalmente indeciso. Respondida, a que não foi
+   escolhida PARA e apaga, e só a vencedora continua fluindo. O fundo
+   passa a contar a decisão sozinho, sem depender de ler o texto.
+
+   DOIS ELEMENTOS, UMA ANIMAÇÃO CADA. A regra deste arquivo é que duas
+   animações no MESMO elemento se cancelam — não que dois elementos
+   sejam proibidos: a penitência já usa `.mc-giroflex` e
+   `.mc-giro-varredura` juntos. Aqui os dois são necessários, porque
+   cada corrente precisa parar sozinha.
+   ══════════════════════════════════════════════════════════════ */
+.mc-cond-fluxo {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  overflow: hidden;
+}
+.mc-cond-via {
+  position: absolute;
+  inset: -40% -10%;
+  display: block;
+  opacity: .5;
+  background-repeat: repeat;
+  background-size: 180px 100%;
+}
+/* A corrente sobe da esquerda para a direita. */
+.mc-cond-via-a {
+  background-image: repeating-linear-gradient(68deg,
+    transparent 0 26px,
+    color-mix(in srgb, var(--mc-cor) 22%, transparent) 26px 27px,
+    transparent 27px 34px,
+    color-mix(in srgb, var(--mc-cor) 12%, transparent) 34px 35px,
+    transparent 35px 60px);
+  animation: mc-cond-flui-a 7s linear infinite;
+}
+/* E esta DESCE. O ângulo espelhado é o que faz o fundo ler como forquilha
+   em vez de textura listrada — foi o defeito que reprovou a primeira
+   versão do fundo da progressiva. */
+.mc-cond-via-b {
+  background-image: repeating-linear-gradient(112deg,
+    transparent 0 26px,
+    color-mix(in srgb, var(--mc-cor) 22%, transparent) 26px 27px,
+    transparent 27px 34px,
+    color-mix(in srgb, var(--mc-cor) 12%, transparent) 34px 35px,
+    transparent 35px 60px);
+  animation: mc-cond-flui-b 9s linear infinite;
+}
+@keyframes mc-cond-flui-a {
+  from { background-position: 0 0; }   to { background-position: 180px 0; }
+}
+@keyframes mc-cond-flui-b {
+  from { background-position: 180px 0; } to { background-position: 0 0; }
+}
+
+/* A DECISÃO APAGA O CAMINHO NÃO TOMADO. */
+.mc-cond-resp-a .mc-cond-via-b,
+.mc-cond-resp-b .mc-cond-via-a { animation: none; opacity: .05; }
+.mc-cond-resp-a .mc-cond-via-a,
+.mc-cond-resp-b .mc-cond-via-b { opacity: .62; }
+
+/* Uma trama só: a condicional também é ATIVA e receberia os chevrons. */
+.mc-condicional .mc-corrente { display: none; }
+.mc-condicional .mc-corpo,
+.mc-condicional .mc-sigilo { position: relative; z-index: 1; }
+
+/* ── O CORPO: a pergunta e os dois caminhos ─────────────────── */
+.mc-cond-corpo { padding: .1rem 1rem .85rem; }
+.mc-cond-q {
+  font-size: .95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 .6rem;
+  letter-spacing: .01em;
+}
+.mc-cond-vias {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: stretch;
+  gap: .5rem;
+}
+/* O DIVISOR. Um fio vertical, não a palavra "ou": o cartão já tem texto
+   demais, e a forquilha do fundo já disse que são dois caminhos. */
+.mc-cond-ou {
+  width: 1px;
+  background: linear-gradient(to bottom, transparent,
+    color-mix(in srgb, var(--mc-cor) 30%, transparent), transparent);
+}
+.mc-cond-via-btn {
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+  text-align: left;
+  padding: .5rem .65rem;
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--mc-cor) 22%, transparent);
+  background: color-mix(in srgb, var(--mc-cor) 6%, transparent);
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color .16s ease, background .16s ease, transform .16s ease;
+}
+.mc-cond-via-btn:hover {
+  border-color: color-mix(in srgb, var(--mc-cor) 55%, transparent);
+  background: color-mix(in srgb, var(--mc-cor) 13%, transparent);
+  transform: translateY(-1px);
+}
+.mc-cond-resposta {
+  font-size: .82rem;
+  font-weight: 700;
+  color: var(--mc-cor);
+  letter-spacing: .02em;
+}
+/* O QUE A RESPOSTA GERA. É a linha que a versão anterior não tinha —
+   sem ela o hunter escolhe sem saber o que vai receber. */
+.mc-cond-gera {
+  font-size: .78rem;
+  color: var(--text-secondary);
+  line-height: 1.25;
+}
+.mc-cond-pe {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex-wrap: wrap;
+  margin-top: .1rem;
+}
+.mc-cond-janela,
+.mc-cond-espolio {
+  display: inline-flex;
+  align-items: center;
+  gap: .22rem;
+  font-size: .66rem;
+  color: var(--text-muted);
+}
+.mc-cond-espolio b { color: var(--text-secondary); font-weight: 700; }
+
+/* RESPONDIDA: o caminho tomado ganha corpo, o outro vira sombra —
+   fica, mas sem peso. Some seria apagar a decisão; a memória do que
+   NÃO foi escolhido é parte do registro. */
+.mc-cond-via-btn.escolhida {
+  border-color: color-mix(in srgb, var(--mc-cor) 62%, transparent);
+  background: color-mix(in srgb, var(--mc-cor) 14%, transparent);
+  cursor: default;
+}
+.mc-cond-via-btn.descartada {
+  opacity: .3;
+  filter: grayscale(.7);
+  border-style: dashed;
+  cursor: default;
+}
+
+/* A PERGUNTA NÃO TEM ESPÓLIO PRÓPRIO. Ela é container: XP e moedas
+   moram na missão que ela gera, e mostrá-los aqui prometeria duas vezes
+   a mesma recompensa. */
+.mc-condicional .mc-recompensa { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mc-cond-via { animation: none; }
+}
+
+
 /* -- OVERLAY CONDICIONAL � dialog de bifurca��o --------------------------- */
 .mc-cond-overlay {
   position: fixed;

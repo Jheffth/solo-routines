@@ -660,6 +660,114 @@ const MissaoCard = {
          + gerir + extinguir;
   },
 
+  /* O CORPO DA PERGUNTA. Os dois caminhos, lado a lado.
+
+     Cada um mostra TRÊS coisas, e a ordem importa: a resposta ("Sim"),
+     a missão que ela gera ("Comer mamão de manhã") e o espólio dela.
+     Sem a do meio, o hunter escolhe às cegas; sem a última, não sabe o
+     que está em jogo. */
+  _corpoCondicional(m, chave) {
+    const c = this._condPayload(m);
+    if (!c) return '';
+    const escolhido = this._condRespondida(m);
+
+    const via = (letra, r) => {
+      const feito = escolhido === letra;
+      const morto = escolhido && !feito;
+      const espolio = (r.xp || r.moedas)
+        ? `<span class="mc-cond-espolio">`
+          + (r.xp ? `${this._glifoXp()}<b>${r.xp}</b>` : '')
+          + (r.moedas ? `${this._glifoMoeda()}<b>${r.moedas}</b>` : '')
+          + `</span>`
+        : '';
+      const janela = r.janela
+        ? `<span class="mc-cond-janela">${this._g('ampulheta', 10)} ${this._esc(r.janela)}</span>` : '';
+      const cls = 'mc-cond-via-btn' + (feito ? ' escolhida' : '') + (morto ? ' descartada' : '');
+      const tag = escolhido ? 'div' : 'button';
+      const attr = escolhido ? '' :
+        ` type="button" data-mc-acao="cond-ramo" data-mc-ramo="${letra}" data-mc-id="${chave}"`;
+      return `<${tag} class="${cls}"${attr}>
+        <span class="mc-cond-resposta">${feito ? this._g('concluida', 11) + ' ' : ''}${this._esc(r.txt) || (letra === 'A' ? 'Sim' : 'Não')}</span>
+        ${r.titulo ? `<span class="mc-cond-gera">${this._esc(r.titulo)}</span>` : ''}
+        <span class="mc-cond-pe">${janela}${espolio}</span>
+      </${tag}>`;
+    };
+
+    return `<div class="mc-cond-corpo">
+      ${c.pergunta ? `<div class="mc-cond-q">${this._esc(c.pergunta)}</div>` : ''}
+      <div class="mc-cond-vias">
+        ${via('A', c.a)}
+        <span class="mc-cond-ou" aria-hidden="true"></span>
+        ${via('B', c.b)}
+      </div>
+    </div>`;
+  },
+
+  /* ══ A MISSÃO CONDICIONAL — a pergunta É o cartão ══════════
+
+     O QUE ESTAVA ERRADO. A pergunta vivia dentro de um modal: o cartão
+     mostrava um botão "Concluir", e só depois de clicar aparecia o
+     texto. Uma pergunta que você precisa abrir para ler não é uma
+     pergunta — é um formulário. E os ramos guardavam um `xp_bonus`,
+     um número, quando o que o Arquiteto queria era que cada resposta
+     GERASSE UMA MISSÃO.
+
+     O DESENHO CERTO, na frase dele: "o card pergunta vira o container
+     da missão, os cards de consequência carregam a missão e os
+     espólios". Três consequências diretas:
+
+       · a pergunta NÃO tem espólio próprio. Ela não é esforço, é
+         bifurcação. XP e moedas moram na missão que nasce.
+       · os dois caminhos ficam VISÍVEIS no cartão, com o que cada um
+         vai gerar. Escolher às cegas não é escolher.
+       · respondida, ela não some: vira registro de qual caminho foi
+         tomado, ao lado da missão que gerou.
+
+     PAYLOAD (em `rotina.condicional_payload`, coluna TEXT que já
+     existe — nenhuma migração):
+
+       { "pergunta": "Tem mamão em casa?",
+         "opcao_a": { "txt": "Sim",
+                      "missao": { "titulo": "Comer mamão de manhã",
+                                  "hora_inicio": "07:00", "hora_fim": "09:00",
+                                  "xp": 40, "moedas": 8 } },
+         "opcao_b": { "txt": "Não",
+                      "missao": { "titulo": "Comprar mamão e reabastecer",
+                                  "xp": 25, "moedas": 5 } } }
+
+     O leitor tolera o formato ANTIGO (`xp_bonus` sem `missao`) em vez
+     de explodir: há cartões gravados assim no banco, e um cartão que
+     não desenha some do Dashboard sem dizer por quê. */
+  _condPayload(m) {
+    if (!this._ehCondicional(m)) return null;
+    let c = {};
+    try { c = JSON.parse(m?.condicional_payload || '{}') || {}; } catch (_) { c = {}; }
+    const ramo = (k) => {
+      const o = c[k] || {};
+      const mi = o.missao || {};
+      return {
+        txt: (o.txt || '').trim(),
+        titulo: (mi.titulo || '').trim(),
+        xp: parseInt(mi.xp, 10) || 0,
+        moedas: parseInt(mi.moedas, 10) || 0,
+        janela: (mi.hora_inicio && mi.hora_fim)
+          ? `${mi.hora_inicio}–${mi.hora_fim}` : '',
+      };
+    };
+    const a = ramo('opcao_a'), b = ramo('opcao_b');
+    if (!c.pergunta && !a.txt && !b.txt) return null;
+    return { pergunta: (c.pergunta || '').trim(), a, b };
+  },
+
+  /* Qual caminho foi tomado: 'A', 'B' ou null (ainda em aberto). */
+  _condRespondida(m) {
+    const r = m?.resposta_condicional;
+    if (r === 'A' || r === 'B') return r;
+    if (m?.condicional_vitoria === true) return 'A';
+    if (m?.condicional_vitoria === false) return 'B';
+    return null;
+  },
+
   /* ── ETAPA CUMPRIDA ≠ DESAFIO CUMPRIDO ───────────────────
      Devolve {ok, alvo} quando o DIA foi cumprido mas o DESAFIO não.
 
@@ -1021,6 +1129,20 @@ const MissaoCard = {
     // Não tem fracasso automático — ao clicar "Concluir" aparece
     // o diálogo de bifurcação. Concluída, exibe o ramo escolhido.
     if (this._ehCondicional(m)) {
+      /* PAYLOAD NOVO: os dois caminhos JÁ SÃO a ação, e estão no corpo do
+         cartão. Oferecer "Concluir" aqui embaixo seria uma terceira porta
+         para a mesma decisão — e a antiga, a que abria o modal onde a
+         pergunta ficava escondida. Sobram só gerir e extinguir.
+
+         O ramo antigo continua atendendo os cartões gravados no formato
+         anterior (`xp_bonus` sem `missao`): eles ainda existem no banco, e
+         um cartão que não desenha some do Dashboard sem dizer por quê. */
+      if (this._condPayload(m)) {
+        const escolhido = this._condRespondida(m);
+        return (escolhido
+          ? `<span class="mc-selo mc-selo-etapa">${this._g('concluida', 12)} Caminho tomado</span>`
+          : '') + gerir + extinguir;
+      }
       return this._acoesCondicional(m, chave, gerir, extinguir, status, b);
     }
 
@@ -1316,12 +1438,18 @@ const MissaoCard = {
     /* ETAPA: o dia fechou, o desafio não. É esta classe que impede o
        cartão de vestir o verde de CUMPRIDA e de riscar o título. */
     const etapaProg = this._etapaProgressiva(m) ? ' mc-prog-etapa' : '';
+    /* CONDICIONAL: a pergunta é o cartão, não um modal. A classe traz
+       a bifurcação no fundo e desliga o espólio do topo — a pergunta é
+       container, o espólio mora na missão que ela gera. */
+    const cond = this._condPayload(m) ? ' mc-condicional' : '';
+    const condResp = cond && this._condRespondida(m)
+      ? ` mc-cond-resp-${this._condRespondida(m).toLowerCase()}` : '';
     const modoRep = repet
       ? (this._alvoDe(m) !== null ? ' mc-rep-modo-meta' : ' mc-rep-modo-bonus')
       : '';
 
     return `
-    <div class="mc ${st.classe}${compacto}${selado}${passiva}${repet}${modoRep}${penit}${prog}${etapaProg}" data-mc-card="${chave}"
+    <div class="mc ${st.classe}${compacto}${selado}${passiva}${repet}${modoRep}${penit}${prog}${etapaProg}${cond}${condResp}" data-mc-card="${chave}"
          data-mc-sig="${this.assinatura(m, opts)}"
          style="--mc-cor:${cor};--mc-cor-suave:${this._alpha(cor, .14)}${
            prog ? `;--prog-carga:${this._cargaProgressiva(m).toFixed(3)}` : ''}">
@@ -1344,6 +1472,8 @@ const MissaoCard = {
         prog && (this._etapaProgressiva(m)
                  || !['CONCLUIDA', 'CANCELADA'].includes(status))
           ? '<div class="mc-prog-escada" aria-hidden="true"></div>' : ''}
+      ${cond ? `<div class="mc-cond-fluxo" aria-hidden="true">
+        <i class="mc-cond-via mc-cond-via-a"></i><i class="mc-cond-via mc-cond-via-b"></i></div>` : ''}
       ${this._corrente(status)}
       ${this._sigilo(cor, m.categoria, !!penit)}
       <div class="mc-corpo">
@@ -1391,6 +1521,7 @@ const MissaoCard = {
               primeiro ajuste. Faltava: os botões contavam e não havia o
               que encher. */
           penit && this._alvoDe(m) !== null ? this._barraSegmentada(m, chave) : ''}
+        ${cond ? this._corpoCondicional(m, chave) : ''}
         ${prog ? this._barraProgressiva(m) : ''}
         ${repet
           ? (this._alvoDe(m) !== null
