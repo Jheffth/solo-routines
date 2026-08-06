@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
@@ -17,13 +17,13 @@
   <link rel="stylesheet" href="css/status-window.css">
   <link rel="stylesheet" href="css/relicario.css">
   <link rel="stylesheet" href="css/ascensao.css">
-  <link rel="stylesheet" href="css/missao-card.css">
+  <link rel="stylesheet" href="css/missao-card.css?v=5">
   <link rel="stylesheet" href="css/balanca-economia.css">
   <link rel="stylesheet" href="css/estandarte.css">
-  <link rel="stylesheet" href="css/forja-missao.css">
+  <link rel="stylesheet" href="css/forja-missao.css?v=5">
   <link rel="stylesheet" href="css/painel-admin.css">
   <link rel="stylesheet" href="css/materiais.css">
-  <link rel="stylesheet" href="css/loja.css">
+  <link rel="stylesheet" href="css/loja.css?v=frag1">
   <link rel="stylesheet" href="css/forja-testes.css">
   <link rel="stylesheet" href="css/sala-poderes.css">
   <link rel="stylesheet" href="css/badges.css">
@@ -40,7 +40,7 @@
 </head>
 <body>
 
-  <!-- Filtro de chamas vivas (turbulência animada) — usado pela aura do Arquiteto -->
+  <!-- Filtro de chamas vivas (turbulÃªncia animada) â€” usado pela aura do Arquiteto -->
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
     <defs>
       <filter id="fx-chamas" x="-60%" y="-60%" width="220%" height="220%">
@@ -51,7 +51,7 @@
         </feTurbulence>
         <feDisplacementMap in="SourceGraphic" in2="ruido" scale="42" xChannelSelector="R" yChannelSelector="G"/>
       </filter>
-      <!-- Gradiente do glifo do Sistema (usado nas placas de aquisição) -->
+      <!-- Gradiente do glifo do Sistema (usado nas placas de aquisiÃ§Ã£o) -->
       <linearGradient id="sysGlyphGrad" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0%" stop-color="#d8b4fe"/>
         <stop offset="60%" stop-color="#a855f7"/>
@@ -98,7 +98,7 @@
           </button>
         </form>
 
-        <!-- Login social. Escondido até saber quais provedores existem. -->
+        <!-- Login social. Escondido atÃ© saber quais provedores existem. -->
         <div class="oauth-bloco hidden" id="oauth-login">
           <div class="oauth-sep"><span>ou entre com</span></div>
           <div class="oauth-botoes">
@@ -132,12 +132,12 @@
           <div class="login-logo-icon registro"><span>&#128737;&#65039;</span></div>
         </div>
         <h1 class="login-title">Tornar-se Hunter</h1>
-        <p class="login-subtitle">Somente por convocação</p>
+        <p class="login-subtitle">Somente por convocaÃ§Ã£o</p>
 
-        <!-- 1. PORTÃO: o convite é a primeira e única coisa exigida de cara.
-                Sem formulário assustando ninguém. -->
+        <!-- 1. PORTÃƒO: o convite Ã© a primeira e Ãºnica coisa exigida de cara.
+                Sem formulÃ¡rio assustando ninguÃ©m. -->
         <div class="form-group">
-          <label class="form-label" for="reg-codigo">Código de Convite</label>
+          <label class="form-label" for="reg-codigo">CÃ³digo de Convite</label>
           <div class="input-icon-wrap">
             <span class="input-icon">&#128220;</span>
             <input type="text" class="input" id="reg-codigo" placeholder="SOLO-XXXX-XXXX"
@@ -147,15 +147,15 @@
           <div id="reg-codigo-status" style="font-family:var(--font-section);font-size:.7rem;margin-top:.35rem;min-height:1em"></div>
         </div>
 
-        <!-- 2. OPÇÕES: nascem travadas. Só o convite válido as destrava.
-                Mostramos apenas 3 botões — o formulário só surge se a pessoa
+        <!-- 2. OPÃ‡Ã•ES: nascem travadas. SÃ³ o convite vÃ¡lido as destrava.
+                Mostramos apenas 3 botÃµes â€” o formulÃ¡rio sÃ³ surge se a pessoa
                 escolher "e-mail". Nada de form longo assustando de cara. -->
         <div id="reg-opcoes" class="reg-travado" aria-disabled="true">
           <div class="reg-cadeado" id="reg-cadeado">
             <span>&#128274;</span> Valide um convite acima para liberar o cadastro
           </div>
 
-          <!-- Escolha do método -->
+          <!-- Escolha do mÃ©todo -->
           <div class="reg-metodos" id="reg-metodos">
             <button type="button" class="btn-oauth google hidden" data-prov="google" data-modo="registro">
               <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -176,9 +176,9 @@
             </button>
           </div>
 
-          <!-- Formulário clássico: escondido até escolher "e-mail" -->
+          <!-- FormulÃ¡rio clÃ¡ssico: escondido atÃ© escolher "e-mail" -->
           <form class="login-form hidden" id="form-registro" autocomplete="off">
-            <button type="button" class="reg-voltar" id="reg-voltar">&#8592; Escolher outro método</button>
+            <button type="button" class="reg-voltar" id="reg-voltar">&#8592; Escolher outro mÃ©todo</button>
             <div class="form-group">
               <label class="form-label" for="reg-nome">Nome Completo</label>
               <div class="input-icon-wrap">
@@ -187,7 +187,7 @@
               </div>
             </div>
             <div class="form-group">
-              <label class="form-label" for="reg-email">E-mail <span style="opacity:.6">(recuperação de senha)</span></label>
+              <label class="form-label" for="reg-email">E-mail <span style="opacity:.6">(recuperaÃ§Ã£o de senha)</span></label>
               <div class="input-icon-wrap">
                 <span class="input-icon">&#9993;&#65039;</span>
                 <input type="email" class="input" id="reg-email" placeholder="seu@email.com" autocomplete="email">
@@ -296,7 +296,7 @@
             <span>Rotinas</span>
           </a>
 
-          <!-- Missões Gerais / Tarefas -->
+          <!-- MissÃµes Gerais / Tarefas -->
           <a class="nav-item" data-page="tarefas" id="nav-tarefas" href="#">
             <span class="nav-icon">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -306,12 +306,12 @@
                 <polyline points="9 9 10 9 10 10 9 10"/>
               </svg>
             </span>
-            <span>Missões Gerais</span>
+            <span>MissÃµes Gerais</span>
           </a>
 
 
-          <!-- O PACTO. Um lugar reservado para a punição, "tal como as
-               rotinas já possuem" — no Extrato ela cumpre o papel de
+          <!-- O PACTO. Um lugar reservado para a puniÃ§Ã£o, "tal como as
+               rotinas jÃ¡ possuem" â€” no Extrato ela cumpre o papel de
                INCOMODAR; aqui, o de ser consultada. -->
           <a class="nav-item" data-page="pacto" id="nav-pacto" href="#">
             <span class="nav-icon">
@@ -401,9 +401,9 @@
             <span>Painel do Sistema</span>
           </a>
 
-          <!-- A Balança — tabelas de XP, Mana, punição e prazo.
-               Só o Arquiteto vê (app.js revela junto de Configurações).
-               Não é página: abre a própria janela, então não tem data-page. -->
+          <!-- A BalanÃ§a â€” tabelas de XP, Mana, puniÃ§Ã£o e prazo.
+               SÃ³ o Arquiteto vÃª (app.js revela junto de ConfiguraÃ§Ãµes).
+               NÃ£o Ã© pÃ¡gina: abre a prÃ³pria janela, entÃ£o nÃ£o tem data-page. -->
           <a class="nav-item hidden" id="nav-balanca" href="#">
             <span class="nav-icon">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -416,7 +416,7 @@
             <span>A Balan&#231;a</span>
           </a>
 
-          <!-- Configurações -->
+          <!-- ConfiguraÃ§Ãµes -->
           <a class="nav-item hidden" data-page="gerencial" id="nav-gerencial" href="#">
             <span class="nav-icon">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -449,7 +449,7 @@
 
         <!-- PAGE: DASHBOARD -->
         <div class="page active" id="page-dashboard">
-          <!-- ═══ PLACA DE AQUISIÇÃO DO SISTEMA ═══ -->
+          <!-- â•â•â• PLACA DE AQUISIÃ‡ÃƒO DO SISTEMA â•â•â• -->
           <div class="sys-plate">
             <div class="sys-plate-glyph">
               <svg viewBox="0 0 48 48" width="34" height="34" aria-hidden="true">
@@ -464,36 +464,36 @@
               <h1 class="sys-plate-title">STATUS</h1>
               <div class="sys-plate-sub">
                 <span id="dash-data">Hoje</span>
-                <span class="sys-plate-sep">·</span>
+                <span class="sys-plate-sep">Â·</span>
                 <span class="sys-plate-whisper" id="sys-whisper">O Sistema observa seu progresso</span>
               </div>
               <div class="sys-plate-line"></div>
             </div>
             <div class="sys-plate-actions">
               <span id="sys-dungeon-chip" class="sys-chip-dungeon" style="display:none"></span>
-              <!-- A busca mora aqui: o "+ Nova Missão" saiu porque já existe
-                   em Rotinas, Tarefas, Dungeons e no botão flutuante. -->
+              <!-- A busca mora aqui: o "+ Nova MissÃ£o" saiu porque jÃ¡ existe
+                   em Rotinas, Tarefas, Dungeons e no botÃ£o flutuante. -->
               <div class="bh-wrap" id="busca-hunters"></div>
             </div>
           </div>
-          <!-- ═══ JANELA DE STATUS DO HUNTER ═══
+          <!-- â•â•â• JANELA DE STATUS DO HUNTER â•â•â•
 
-               CONTÊINER VAZIO, de propósito. Quem desenha aqui dentro é
-               uma PEÇA, montada pelo Dashboard (js/pecas.js). A marcação
+               CONTÃŠINER VAZIO, de propÃ³sito. Quem desenha aqui dentro Ã©
+               uma PEÃ‡A, montada pelo Dashboard (js/pecas.js). A marcaÃ§Ã£o
                que morava aqui virou js/pecas/hunter-card-classico.js, e
-               está congelada em tests/gabarito-hunter-card.html para o
+               estÃ¡ congelada em tests/gabarito-hunter-card.html para o
                teste provar que nada mudou na tela.
 
-               `data-peca-padrao` é o que o slot abre por padrão. Desde a
-               ativação da V4 é ela — o Portal, campo Abissal.
+               `data-peca-padrao` Ã© o que o slot abre por padrÃ£o. Desde a
+               ativaÃ§Ã£o da V4 Ã© ela â€” o Portal, campo Abissal.
 
-               Isso NÃO é a rede de segurança. A rede é outra: a peça
+               Isso NÃƒO Ã© a rede de seguranÃ§a. A rede Ã© outra: a peÃ§a
                marcada `padrao: true` no registro, que continua sendo a
-               Janela de Status clássica. Se a V4 não carregar ou
-               estourar ao montar, é a clássica que entra. Ninguém vê um
-               retângulo vazio no lugar do próprio perfil.
+               Janela de Status clÃ¡ssica. Se a V4 nÃ£o carregar ou
+               estourar ao montar, Ã© a clÃ¡ssica que entra. NinguÃ©m vÃª um
+               retÃ¢ngulo vazio no lugar do prÃ³prio perfil.
 
-               Para voltar, sem tocar em código:
+               Para voltar, sem tocar em cÃ³digo:
                    Dashboard.usarBanner(null)
 
                O id e a classe FICAM: css/estandarte.css estiliza
@@ -504,22 +504,22 @@
                data-slot="banner" data-peca-padrao="banner-v4"></div>
           <div class="dashboard-grid">
             <div class="card col-span-2" id="card-rotinas-hoje">
-              <!-- Cabeçalho do extrato -->
+              <!-- CabeÃ§alho do extrato -->
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.85rem;flex-wrap:wrap;gap:.5rem">
                 <div style="display:flex;align-items:center;gap:.6rem">
-                  <span style="font-size:1.1rem">📋</span>
+                  <span style="font-size:1.1rem">ðŸ“‹</span>
                   <div>
-                    <h3 style="font-family:var(--font-section);font-size:.95rem;font-weight:700;color:var(--text-primary);margin:0">Extrato de Missões</h3>
+                    <h3 style="font-family:var(--font-section);font-size:.95rem;font-weight:700;color:var(--text-primary);margin:0">Extrato de MissÃµes</h3>
                     <p style="font-family:var(--font-section);font-size:.62rem;color:var(--text-muted);margin:.1rem 0 0">
-                      Dia a dia — o que foi cumprido, o que fracassou, o que ficou em aberto
+                      Dia a dia â€” o que foi cumprido, o que fracassou, o que ficou em aberto
                     </p>
                   </div>
                   <span class="chip" id="rotinas-count" style="font-size:.65rem">0</span>
                 </div>
                 <div style="display:flex;gap:.5rem;align-items:center">
-                  <!-- A Forja abre DIRETO no Dashboard — o desvio antigo
-                       (navegar até Rotinas e abrir lá) era herança do
-                       lançador aposentado. A delegação global em
+                  <!-- A Forja abre DIRETO no Dashboard â€” o desvio antigo
+                       (navegar atÃ© Rotinas e abrir lÃ¡) era heranÃ§a do
+                       lanÃ§ador aposentado. A delegaÃ§Ã£o global em
                        forja-missao.js cuida do clique; o onclick saiu. -->
                   <button id="btn-nova-rotina-dash" style="
                     font-family:var(--font-section);font-size:.65rem;padding:.25rem .75rem;border-radius:.4rem;
@@ -535,7 +535,7 @@
                     color:var(--purple-glow);cursor:pointer;transition:.2s"
                     onmouseover="this.style.background='rgba(124,58,237,.2)'"
                     onmouseout="this.style.background='rgba(124,58,237,.08)'">
-                    ⚔️ Ver Rotinas
+                    âš”ï¸ Ver Rotinas
                   </button>
                 </div>
               </div>
@@ -543,16 +543,16 @@
               <!-- Barra de filtros -->
               <div id="extrato-filtros" style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.8rem">
 
-                <!-- Período: INTERVALO DE DATAS. Cada opção vira inicio/fim na
-                     consulta ao /extrato/ — nunca mais um tipo de recorrência.
-                     Padrão TUDO: um livro-caixa abre mostrando o que existe;
+                <!-- PerÃ­odo: INTERVALO DE DATAS. Cada opÃ§Ã£o vira inicio/fim na
+                     consulta ao /extrato/ â€” nunca mais um tipo de recorrÃªncia.
+                     PadrÃ£o TUDO: um livro-caixa abre mostrando o que existe;
                      quem quiser recortar o dia, recorta. -->
                 <select id="filtro-periodo" class="sr-filtro" style="--f-cor:#7c3aed">
                   <option value="tudo" selected data-glifo="tudo">Tudo</option>
                   <option value="hoje" data-glifo="hoje">Hoje</option>
-                  <option value="7dias" data-glifo="janela7">Últimos 7 dias</option>
-                  <option value="30dias" data-glifo="janela30">Últimos 30 dias</option>
-                  <option value="mes" data-glifo="arquivo">Este mês</option>
+                  <option value="7dias" data-glifo="janela7">Ãšltimos 7 dias</option>
+                  <option value="30dias" data-glifo="janela30">Ãšltimos 30 dias</option>
+                  <option value="mes" data-glifo="arquivo">Este mÃªs</option>
                 </select>
 
                 <!-- Origem -->
@@ -565,7 +565,7 @@
                 <!-- Tipo -->
                 <select id="filtro-tipo" class="sr-filtro" style="--f-cor:#3b82f6">
                   <option value="" data-glifo="tipos">Todos os tipos</option>
-                  <option value="DIARIA" data-glifo="diaria">Diária</option>
+                  <option value="DIARIA" data-glifo="diaria">DiÃ¡ria</option>
                   <option value="SEMANAL" data-glifo="semanal">Semanal</option>
                   <option value="MENSAL" data-glifo="mensal">Mensal</option>
                   <option value="ANUAL" data-glifo="anual">Anual</option>
@@ -575,7 +575,7 @@
                 <!-- Categoria -->
                 <select id="filtro-categoria" class="sr-filtro" style="--f-cor:#06b6d4">
                   <option value="" data-glifo="categorias">Todas as categorias</option>
-                  <option value="Saúde" data-glifo="saude">Saúde</option>
+                  <option value="SaÃºde" data-glifo="saude">SaÃºde</option>
                   <option value="Trabalho" data-glifo="trabalho">Trabalho</option>
                   <option value="Estudo" data-glifo="estudo">Estudo</option>
                   <option value="Casa" data-glifo="casa">Casa</option>
@@ -586,25 +586,25 @@
                 <!-- Status -->
                 <select id="filtro-status-missao" class="sr-filtro" style="--f-cor:#a855f7">
                   <option value="" data-glifo="status">Todos os status</option>
-                  <option value="PENDENTE" data-glifo="pendente">Não Iniciada</option>
+                  <option value="PENDENTE" data-glifo="pendente">NÃ£o Iniciada</option>
                   <option value="ATIVA" data-glifo="ativa">Em Curso</option>
-                  <option value="CONCLUIDA" data-glifo="concluida">Concluída</option>
+                  <option value="CONCLUIDA" data-glifo="concluida">ConcluÃ­da</option>
                   <option value="FRACASSADA" data-glifo="fracassada">Fracassada</option>
                   <option value="CANCELADA" data-glifo="cancelada">Cancelada</option>
                 </select>
 
-                <!-- Toggle ocultar concluídas (Extrato) -->
+                <!-- Toggle ocultar concluÃ­das (Extrato) -->
                 <label id="label-ocultar-extrato" style="
                   display:flex;align-items:center;gap:.35rem;cursor:pointer;
                   font-family:var(--font-section);font-size:.68rem;color:var(--text-muted);
                   padding:.28rem .55rem;border-radius:.45rem;
                   border:1px solid rgba(100,116,139,.25);background:rgba(100,116,139,.07);
                   white-space:nowrap;user-select:none"
-                  title="Ocultar missões finalizadas">
+                  title="Ocultar missÃµes finalizadas">
                   <input type="checkbox" id="toggle-ocultar-extrato" style="accent-color:var(--purple-main);cursor:pointer">
                   <span>Ocultar conclu&#237;das</span>
                 </label>
-                <!-- Botão atualizar -->
+                <!-- BotÃ£o atualizar -->
                 <button id="btn-atualizar-extrato" title="Atualizar" style="
                   font-family:var(--font-section);font-size:.7rem;padding:.28rem .65rem;border-radius:.45rem;
                   border:1px solid rgba(16,185,129,.3);background:rgba(16,185,129,.08);
@@ -615,13 +615,13 @@
                 </button>
               </div>
 
-              <!-- Placar do período (preenchido por /extrato/resumo) -->
+              <!-- Placar do perÃ­odo (preenchido por /extrato/resumo) -->
               <div id="extrato-resumo" style="
                 display:none;gap:1rem;flex-wrap:wrap;align-items:baseline;
                 margin-bottom:.7rem;padding:.4rem .7rem;border-radius:.5rem;
                 border:1px solid rgba(124,58,237,.18);background:rgba(124,58,237,.06)"></div>
 
-              <!-- Lista de missões, agrupada por dia, com scroll -->
+              <!-- Lista de missÃµes, agrupada por dia, com scroll -->
               <div id="lista-rotinas-hoje" style="max-height:380px;overflow-y:auto;overflow-x:hidden">
                 <div class="empty-state">
                   <div class="empty-icon">&#128260;</div>
@@ -631,7 +631,7 @@
             </div>
             <div class="stat-plaques">
 
-              <!-- Placa 1: Missões Hoje — Vermelho/Rubi -->
+              <!-- Placa 1: MissÃµes Hoje â€” Vermelho/Rubi -->
               <div class="stat-plaque stat-plaque--missoes">
                 <div class="stat-plaque-accent"></div>
                 <div class="stat-plaque-icon">
@@ -651,7 +651,7 @@
                 </div>
               </div>
 
-              <!-- Placa 2: Total Concluídas — Dourado/Âmbar -->
+              <!-- Placa 2: Total ConcluÃ­das â€” Dourado/Ã‚mbar -->
               <div class="stat-plaque stat-plaque--total">
                 <div class="stat-plaque-accent"></div>
                 <div class="stat-plaque-icon">
@@ -666,7 +666,7 @@
                 </div>
               </div>
 
-              <!-- Placa 3: Rotinas Ativas — Ciano/Esmeralda -->
+              <!-- Placa 3: Rotinas Ativas â€” Ciano/Esmeralda -->
               <div class="stat-plaque stat-plaque--rotinas">
                 <div class="stat-plaque-accent"></div>
                 <div class="stat-plaque-icon">
@@ -721,8 +721,8 @@
               <h1 class="sys-plate-title">AGENDA</h1>
               <div class="sys-plate-sub">
                 <span>Regras recorrentes</span>
-                <span class="sys-plate-sep">·</span>
-                <span class="sys-plate-whisper">As missões do dia aparecem no Dashboard</span>
+                <span class="sys-plate-sep">Â·</span>
+                <span class="sys-plate-whisper">As missÃµes do dia aparecem no Dashboard</span>
               </div>
               <div class="sys-plate-line"></div>
             </div>
@@ -733,13 +733,13 @@
 
           <!-- Abas de tipo -->
           <div class="tabs" style="margin-bottom:.5rem">
-            <button class="tab-btn active" data-tipo-rotina="DIARIA">Diárias</button>
+            <button class="tab-btn active" data-tipo-rotina="DIARIA">DiÃ¡rias</button>
             <button class="tab-btn" data-tipo-rotina="SEMANAL">Semanais</button>
             <button class="tab-btn" data-tipo-rotina="MENSAL">Mensais</button>
             <button class="tab-btn" data-tipo-rotina="ANUAL">Anuais</button>
           </div>
 
-          <!-- Controles de ordenação -->
+          <!-- Controles de ordenaÃ§Ã£o -->
           <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap">
             <span style="font-family:var(--font-section);font-size:.7rem;color:var(--text-muted);
               letter-spacing:.1em;text-transform:uppercase">Ordenar:</span>
@@ -776,7 +776,7 @@
           </div>
         </div>
 
-        <!-- PAGE: TAREFAS (Missões Gerais) -->
+        <!-- PAGE: TAREFAS (MissÃµes Gerais) -->
         <div class="page hidden" id="page-tarefas">
           <div class="sys-plate">
             <div class="sys-plate-glyph">
@@ -789,20 +789,20 @@
               </svg>
             </div>
             <div class="sys-plate-texts">
-              <h1 class="sys-plate-title">MISSÕES</h1>
+              <h1 class="sys-plate-title">MISSÃ•ES</h1>
               <div class="sys-plate-sub">
-                <span>Missões avulsas</span>
-                <span class="sys-plate-sep">·</span>
-                <span class="sys-plate-whisper">Em andamento, pendentes e concluídas</span>
+                <span>MissÃµes avulsas</span>
+                <span class="sys-plate-sep">Â·</span>
+                <span class="sys-plate-whisper">Em andamento, pendentes e concluÃ­das</span>
               </div>
               <div class="sys-plate-line"></div>
             </div>
             <div class="sys-plate-actions">
               <input type="date" class="input" id="filter-data-tarefa" style="max-width:160px">
-              <button class="btn btn-primary" id="btn-nova-tarefa">+ Nova Missão</button>
+              <button class="btn btn-primary" id="btn-nova-tarefa">+ Nova MissÃ£o</button>
             </div>
           </div>
-          <!-- Barra de ordenação + toggle -->
+          <!-- Barra de ordenaÃ§Ã£o + toggle -->
           <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:1.1rem;flex-wrap:wrap">
             <span style="font-family:var(--font-section);font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);margin-right:.3rem">ORDENAR:</span>
             <button data-ordem-tarefa="PRIORIDADE" class="btn btn-sm"
@@ -820,7 +820,7 @@
               border:1px solid rgba(124,58,237,.3);background:rgba(124,58,237,.08);color:var(--purple-glow);cursor:pointer">
               Por Data
             </button>
-            <!-- Toggle ocultar concluídas — persistente -->
+            <!-- Toggle ocultar concluÃ­das â€” persistente -->
             <label style="
               display:flex;align-items:center;gap:.35rem;cursor:pointer;
               font-family:var(--font-section);font-size:.68rem;color:var(--text-muted);
@@ -839,11 +839,11 @@
 
         <!-- PAGE: DUNGEONS -->
 
-        <!-- ══ O PACTO ══════════════════════════════════════════════
-             Duas metades: as DÍVIDAS (o que o Sistema cobra agora) e o
-             PACTO (o cardápio que ele usa para cobrar). Nesta ordem —
-             quem abre esta tela abre por causa da dívida, não do
-             cardápio. -->
+        <!-- â•â• O PACTO â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+             Duas metades: as DÃVIDAS (o que o Sistema cobra agora) e o
+             PACTO (o cardÃ¡pio que ele usa para cobrar). Nesta ordem â€”
+             quem abre esta tela abre por causa da dÃ­vida, nÃ£o do
+             cardÃ¡pio. -->
         <div class="page hidden" id="page-pacto">
           <div class="sys-plate">
             <div class="sys-plate-glyph">
@@ -861,37 +861,37 @@
             <div class="sys-plate-texts">
               <h1 class="sys-plate-title">O PACTO</h1>
               <div class="sys-plate-sub">
-                <span>O que você deve ao Sistema quando falhar</span>
-                <span class="sys-plate-sep">·</span>
-                <span class="sys-plate-whisper">Ele escolhe qual cobrar. Você não.</span>
+                <span>O que vocÃª deve ao Sistema quando falhar</span>
+                <span class="sys-plate-sep">Â·</span>
+                <span class="sys-plate-whisper">Ele escolhe qual cobrar. VocÃª nÃ£o.</span>
               </div>
               <div class="sys-plate-line"></div>
             </div>
             <div class="sys-plate-actions">
-              <button class="btn" id="btn-pacto-catalogo">Adotar do catálogo</button>
-              <button class="btn btn-primary" id="btn-pacto-novo">+ Nova penitência</button>
+              <button class="btn" id="btn-pacto-catalogo">Adotar do catÃ¡logo</button>
+              <button class="btn btn-primary" id="btn-pacto-novo">+ Nova penitÃªncia</button>
             </div>
           </div>
 
-          <!-- SÓ O CARDÁPIO.
+          <!-- SÃ“ O CARDÃPIO.
 
-               A primeira versão listava aqui as dívidas em aberto e as
-               já quitadas. O Arquiteto cortou, e a correção é de
-               ARQUITETURA, não de layout:
+               A primeira versÃ£o listava aqui as dÃ­vidas em aberto e as
+               jÃ¡ quitadas. O Arquiteto cortou, e a correÃ§Ã£o Ã© de
+               ARQUITETURA, nÃ£o de layout:
 
-                 "a área do pacto é só um container, onde os pactos
-                  estarão visíveis, é igual à aba das rotinas"
+                 "a Ã¡rea do pacto Ã© sÃ³ um container, onde os pactos
+                  estarÃ£o visÃ­veis, Ã© igual Ã  aba das rotinas"
 
-               É a mesma separação que o app já faz há muito tempo:
-               ROTINA é a REGRA e vive na aba Rotinas; a OCORRÊNCIA vive
-               no Dashboard. PACTO é a regra; a PENITÊNCIA cobrada é a
-               ocorrência. Eu tinha posto ocorrência na página de regra
-               — a mesma confusão que o Extrato existe para desfazer. -->
+               Ã‰ a mesma separaÃ§Ã£o que o app jÃ¡ faz hÃ¡ muito tempo:
+               ROTINA Ã© a REGRA e vive na aba Rotinas; a OCORRÃŠNCIA vive
+               no Dashboard. PACTO Ã© a regra; a PENITÃŠNCIA cobrada Ã© a
+               ocorrÃªncia. Eu tinha posto ocorrÃªncia na pÃ¡gina de regra
+               â€” a mesma confusÃ£o que o Extrato existe para desfazer. -->
           <div id="pacto-aviso"></div>
 
           <p class="pct-nota">
-            O Sistema sorteia daqui quando você falha, sem repetir antes de
-            percorrer todas. Cada penitência <b>dobra</b> a cada vez que cai,
+            O Sistema sorteia daqui quando vocÃª falha, sem repetir antes de
+            percorrer todas. Cada penitÃªncia <b>dobra</b> a cada vez que cai,
             e <b>recua</b> a cada semana limpa.
           </p>
           <div id="pacto-lista" class="pct-lista"></div>
@@ -910,14 +910,14 @@
             <div class="sys-plate-texts">
               <h1 class="sys-plate-title">DUNGEONS</h1>
               <div class="sys-plate-sub">
-                <span>Portões de desafio</span>
-                <span class="sys-plate-sep">·</span>
-                <span class="sys-plate-whisper">Entre, cumpra as missões internas e saia com o clear</span>
+                <span>PortÃµes de desafio</span>
+                <span class="sys-plate-sep">Â·</span>
+                <span class="sys-plate-whisper">Entre, cumpra as missÃµes internas e saia com o clear</span>
               </div>
               <div class="sys-plate-line"></div>
             </div>
             <div class="sys-plate-actions">
-              <button class="btn btn-primary" id="btn-nova-dungeon">+ Forjar Portão</button>
+              <button class="btn btn-primary" id="btn-nova-dungeon">+ Forjar PortÃ£o</button>
             </div>
           </div>
           <div class="dg-grid" id="lista-dungeons">
@@ -941,13 +941,13 @@
               <h1 class="sys-plate-title">LOJA</h1>
               <div class="sys-plate-sub">
                 <span>Loja do Hunter</span>
-                <span class="sys-plate-sep">·</span>
-                <span class="sys-plate-whisper">Auras, emblemas e recompensas — troque suas Mana Coins</span>
+                <span class="sys-plate-sep">Â·</span>
+                <span class="sys-plate-whisper">Auras, emblemas e recompensas â€” troque suas Mana Coins</span>
               </div>
               <div class="sys-plate-line"></div>
             </div>
             <div class="sys-plate-actions">
-              <!-- A Forja só é desenhada se o SERVIDOR disser que este hunter pode forjar. -->
+              <!-- A Forja sÃ³ Ã© desenhada se o SERVIDOR disser que este hunter pode forjar. -->
               <span id="loja-forja-acao"></span>
               <div class="lj-carteira">
                 <svg class="lj-carteira-moeda" viewBox="0 0 24 24" fill="none"
@@ -965,7 +965,7 @@
           <div class="lj-forja hidden" id="loja-forja"></div>
 
           <!-- Abas por natureza do item. Preenchidas por Loja._pintarAbas(),
-               que também mostra a contagem de cada prateleira. -->
+               que tambÃ©m mostra a contagem de cada prateleira. -->
           <div class="lj-abas" id="loja-abas" role="tablist"></div>
 
           <div id="grid-recompensas" class="lj-grade" style="margin-top:1rem">
@@ -975,7 +975,7 @@
 
         <!-- PAGE: PERFIL -->
         <div class="page hidden" id="page-perfil">
-          <!-- ═══ PLACA DE AQUISIÇÃO ═══ -->
+          <!-- â•â•â• PLACA DE AQUISIÃ‡ÃƒO â•â•â• -->
           <div class="sys-plate">
             <div class="sys-plate-glyph">
               <svg viewBox="0 0 48 48" width="34" height="34" aria-hidden="true">
@@ -990,14 +990,14 @@
               <h1 class="sys-plate-title">HUNTER</h1>
               <div class="sys-plate-sub">
                 <span>Ficha completa</span>
-                <span class="sys-plate-sep">·</span>
-                <span class="sys-plate-whisper">Estatísticas, habilidades e relíquias</span>
+                <span class="sys-plate-sep">Â·</span>
+                <span class="sys-plate-whisper">EstatÃ­sticas, habilidades e relÃ­quias</span>
               </div>
               <div class="sys-plate-line"></div>
             </div>
             <div class="sys-plate-actions">
-              <!-- Esta ficha é a de edição. A vitrine que os outros veem é
-                   outra tela — sem este atalho, não havia como conferi-la. -->
+              <!-- Esta ficha Ã© a de ediÃ§Ã£o. A vitrine que os outros veem Ã©
+                   outra tela â€” sem este atalho, nÃ£o havia como conferi-la. -->
               <button class="hp-acao hp-acao-mini" id="btn-ver-vitrine">
                 &#128065; Ver minha vitrine
               </button>
@@ -1007,23 +1007,23 @@
           <div id="perfil-content">
 
             <!-- Hero card: span total -->
-            <!-- O MESMO banner do Dashboard. Contêiner vazio: quem desenha
-                 aqui dentro é a peça escolhida pelo hunter, e a escolha vale
+            <!-- O MESMO banner do Dashboard. ContÃªiner vazio: quem desenha
+                 aqui dentro Ã© a peÃ§a escolhida pelo hunter, e a escolha vale
                  nos dois lugares (Pecas.escolhida).
 
-                 Antes esta div recebia um segundo cartão, desenhado pelo
-                 `renderHeroCard` do perfil.js — que tinha divergido do
-                 original: nome em maiúsculas, sem relicário, sem epígrafe,
-                 e ignorando a aura cosmética equipada. -->
+                 Antes esta div recebia um segundo cartÃ£o, desenhado pelo
+                 `renderHeroCard` do perfil.js â€” que tinha divergido do
+                 original: nome em maiÃºsculas, sem relicÃ¡rio, sem epÃ­grafe,
+                 e ignorando a aura cosmÃ©tica equipada. -->
             <div class="hunter-window" id="perfil-hunter-card"
                  data-slot="banner" data-peca-padrao="banner-v4">
               <div class="loading-spinner-wrap"><div class="loading-spinner"></div></div>
             </div>
 
-            <!-- Formulário de edição: span total -->
+            <!-- FormulÃ¡rio de ediÃ§Ã£o: span total -->
             <div id="perfil-form-edicao"></div>
 
-            <!-- Gráficos: grid 2 colunas -->
+            <!-- GrÃ¡ficos: grid 2 colunas -->
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:1.5rem">
 
               <!-- Radar de habilidades -->
@@ -1039,7 +1039,7 @@
               <!-- XP mensal -->
               <div class="card">
                 <h3 style="font-family:var(--font-section);margin-bottom:1rem">
-                  &#128200; Evolução de XP (12 Meses)
+                  &#128200; EvoluÃ§Ã£o de XP (12 Meses)
                 </h3>
                 <div class="chart-container" style="height:300px">
                   <canvas id="chart-xp-mensal"></canvas>
@@ -1068,7 +1068,7 @@
           </div>
         </div>
 
-        <!-- PAGE: HUNTER (perfil público) -->
+        <!-- PAGE: HUNTER (perfil pÃºblico) -->
         <div class="page hidden" id="page-hunter">
           <div id="hunter-publico-conteudo"></div>
         </div>
@@ -1089,13 +1089,13 @@
               <h1 class="sys-plate-title">MATERIAIS</h1>
               <div class="sys-plate-sub">
                 <span>Casa de Trocas</span>
-                <span class="sys-plate-sep">·</span>
-                <span class="sys-plate-whisper">Envie emblemas e relíquias a outros hunters</span>
+                <span class="sys-plate-sep">Â·</span>
+                <span class="sys-plate-whisper">Envie emblemas e relÃ­quias a outros hunters</span>
               </div>
               <div class="sys-plate-line"></div>
             </div>
             <div class="sys-plate-actions">
-              <button class="btn btn-primary" id="btn-materiais-refresh">↻ Atualizar</button>
+              <button class="btn btn-primary" id="btn-materiais-refresh">â†» Atualizar</button>
             </div>
           </div>
           <div id="materiais-conteudo"></div>
@@ -1117,13 +1117,13 @@
               <h1 class="sys-plate-title">SISTEMA</h1>
               <div class="sys-plate-sub">
                 <span>Painel do Sistema</span>
-                <span class="sys-plate-sep">·</span>
-                <span class="sys-plate-whisper">Hunters, emblemas e privilégios do Portão</span>
+                <span class="sys-plate-sep">Â·</span>
+                <span class="sys-plate-whisper">Hunters, emblemas e privilÃ©gios do PortÃ£o</span>
               </div>
               <div class="sys-plate-line"></div>
             </div>
             <div class="sys-plate-actions">
-              <button class="btn btn-primary" id="btn-sistema-refresh">↻ Atualizar</button>
+              <button class="btn btn-primary" id="btn-sistema-refresh">â†» Atualizar</button>
             </div>
           </div>
           <div id="painel-admin-conteudo"></div>
@@ -1145,13 +1145,13 @@
               <h1 class="sys-plate-title">CONTROLE</h1>
               <div class="sys-plate-sub">
                 <span>Painel Administrativo</span>
-                <span class="sys-plate-sep">·</span>
+                <span class="sys-plate-sep">Â·</span>
                 <span class="sys-plate-whisper">Controle total do sistema Solo Routines</span>
               </div>
               <div class="sys-plate-line"></div>
             </div>
             <div class="sys-plate-actions">
-              <button class="btn btn-primary" id="btn-gerencial-refresh">↻ Atualizar</button>
+              <button class="btn btn-primary" id="btn-gerencial-refresh">â†» Atualizar</button>
             </div>
           </div>
           <div class="grid-4 mb-2" id="gerencial-stats"></div>
@@ -1284,7 +1284,7 @@
             SOLO
           </div>
           <div style="font-family:var(--font-section); font-size:0.75rem; color:#9ca3af; letter-spacing:1px; max-width:400px; line-height:1.6;">
-            SISTEMA TÁTICO DE PRODUTIVIDADE S-RANK<br>FORJADO PARA CAÇADORES DE ELITE
+            SISTEMA TÃTICO DE PRODUTIVIDADE S-RANK<br>FORJADO PARA CAÃ‡ADORES DE ELITE
           </div>
           <div style="width:100%; max-width:600px; height:1px; background:linear-gradient(90deg, transparent, rgba(168,85,247,0.3), transparent); margin:1rem 0;"></div>
           <div style="font-family:var(--font-section); font-size:0.65rem; color:#6b7280; letter-spacing:2px; text-transform:uppercase;">
@@ -1294,9 +1294,9 @@
 
       </div>
 
-      <!-- O botão flutuante foi removido: cobria os cristais de status em
-           telas estreitas e duplicava caminhos que já existem em cada
-           página (Nova Rotina, Nova Missão, Forjar Portão). -->
+      <!-- O botÃ£o flutuante foi removido: cobria os cristais de status em
+           telas estreitas e duplicava caminhos que jÃ¡ existem em cada
+           pÃ¡gina (Nova Rotina, Nova MissÃ£o, Forjar PortÃ£o). -->
 
     </div>
   </div>
@@ -1304,9 +1304,9 @@
   <!-- BACKDROP -->
   <div class="window-backdrop" id="window-backdrop"></div>
 
-  <!-- O lançador antigo (lancador.js + #lancador-window) foi aposentado.
-       Quem forja missões agora é a ForjaMissao (js/forja-missao.js), que
-       cria o próprio backdrop e responde aos botões por delegação global. -->
+  <!-- O lanÃ§ador antigo (lancador.js + #lancador-window) foi aposentado.
+       Quem forja missÃµes agora Ã© a ForjaMissao (js/forja-missao.js), que
+       cria o prÃ³prio backdrop e responde aos botÃµes por delegaÃ§Ã£o global. -->
 
 
   <!-- MODAL: CONFIRMACAO -->
@@ -1340,7 +1340,7 @@
     </div>
   </div>
 
-  <!-- Conquistas: cerimônia e selos são criados dinamicamente pelo ConquistaFX (animations.js) -->
+  <!-- Conquistas: cerimÃ´nia e selos sÃ£o criados dinamicamente pelo ConquistaFX (animations.js) -->
 
   <!-- XP FLOAT -->
   <div id="xp-float" style="
@@ -1361,14 +1361,14 @@
   <!-- O alfabeto visual do Sistema. Carrega ANTES de todos que desenham. -->
   <script src="js/glifos.js"></script>
   <script src="js/eco.js"></script>
-  <!-- O registro das peças. Não desenha nada: só precisa existir antes
-       que alguma peça tente se registrar. -->
+  <!-- O registro das peÃ§as. NÃ£o desenha nada: sÃ³ precisa existir antes
+       que alguma peÃ§a tente se registrar. -->
   <script src="js/pecas.js"></script>
-  <script src="js/missao-card.js"></script>
-  <script src="js/forja-missao.js"></script>
+  <script src="js/missao-card.js?v=5"></script>
+  <script src="js/forja-missao.js?v=5"></script>
   <script src="js/animations.js"></script>
   <script src="js/auras.js"></script>
-  <!-- Insígnias com arte própria: carregam ANTES do console para estar no registry -->
+  <!-- InsÃ­gnias com arte prÃ³pria: carregam ANTES do console para estar no registry -->
   <script src="js/badges/mono-evelynn.js"></script>
   <script src="js/badges/jh3ffth.js"></script>
   <script src="js/badges/nexus-social.js"></script>
@@ -1382,16 +1382,16 @@
   <script src="js/badges/dominio-lancado.js"></script>
   <script src="js/gemas.js"></script>
   <script src="js/escudos-img.js"></script>
-  <!-- O vocabulário de desenho dos banners: hexágonos, barras de XP,
-       gemas, tecidos. Funções puras — entra dado, sai HTML. Carrega
-       ANTES da Vitrine e das peças, que são suas duas clientes. -->
+  <!-- O vocabulÃ¡rio de desenho dos banners: hexÃ¡gonos, barras de XP,
+       gemas, tecidos. FunÃ§Ãµes puras â€” entra dado, sai HTML. Carrega
+       ANTES da Vitrine e das peÃ§as, que sÃ£o suas duas clientes. -->
   <script src="js/banners-arte.js"></script>
   <script src="js/estandarte.js"></script>
-  <!-- As peças. Registram-se na carga e ficam à disposição; nenhuma
-       desenha nada até um hospedeiro pedir. A "classico" é a PADRÃO
-       da família banner — a rede de segurança de todas as outras.
+  <!-- As peÃ§as. Registram-se na carga e ficam Ã  disposiÃ§Ã£o; nenhuma
+       desenha nada atÃ© um hospedeiro pedir. A "classico" Ã© a PADRÃƒO
+       da famÃ­lia banner â€” a rede de seguranÃ§a de todas as outras.
        Carregam DEPOIS de banners-arte.js e das bibliotecas de desenho,
-       que é de quem elas dependem. -->
+       que Ã© de quem elas dependem. -->
   <script src="js/pecas/hunter-card-classico.js"></script>
   <script src="js/pecas/banner-v4.js"></script>
   <script src="js/balanca-economia.js"></script>
@@ -1409,11 +1409,12 @@
   <script src="js/pages/dashboard.js"></script>
   <script src="js/pages/rotinas.js"></script>
   <script src="js/pages/tarefas.js"></script>
+  <script src="js/pages/progressivas.js"></script>
   <script src="js/pages/pacto.js"></script>
   <script src="js/pages/dungeons.js"></script>
   <script src="js/pages/dungeon-interior.js"></script>
   <script src="js/pages/dungeon-score.js"></script>
-  <script src="js/pages/loja.js"></script>
+  <script src="js/pages/loja.js?v=frag2"></script>
   <script src="js/pages/perfil.js"></script>
   <script src="js/pages/gerencial.js"></script>
   <script src="js/pages/painel-admin.js"></script>
@@ -1424,7 +1425,7 @@
   <script src="js/app.js"></script>
   <script src="js/version.js"></script>
   <script>
-    // Injeta a insígnia Solo real (gerada pelo SoloFX) no login após todos os scripts carregarem
+    // Injeta a insÃ­gnia Solo real (gerada pelo SoloFX) no login apÃ³s todos os scripts carregarem
     document.addEventListener('DOMContentLoaded', () => {
       const slot = document.getElementById('login-insignia');
       if (slot && window.SoloFX && SoloFX._svgMedalhaSolo) {
@@ -1435,8 +1436,8 @@
       }
     });
   </script>
-<!-- FOOTER DE VERSÃO -->
-<footer id="version-footer" aria-label="Versão do sistema" style="
+<!-- FOOTER DE VERSÃƒO -->
+<footer id="version-footer" aria-label="VersÃ£o do sistema" style="
   position:fixed;
   bottom:0; left:0; right:0;
   z-index:50;
@@ -1467,7 +1468,7 @@
   onmouseleave="this.style.opacity='.55'"
   title="Clique para ver o changelog"
   onclick="document.getElementById('version-changelog-modal')&&document.getElementById('version-changelog-modal').classList.toggle('hidden')">
-    <span style="color:var(--purple-main,#7c3aed);font-size:.75rem">◈</span>
+    <span style="color:var(--purple-main,#7c3aed);font-size:.75rem">â—ˆ</span>
     <span id="version-text" style="color:var(--text-secondary,#94a3b8);font-weight:600;">carregando...</span>
     <span id="version-env" style="
       font-size:.52rem;
@@ -1481,3 +1482,6 @@
 </footer>
 </body>
 </html>
+
+
+

@@ -16,7 +16,7 @@
    seria cobrada duas vezes.
    ============================================================ */
 
-const Rotinas = {
+const Progressivas = {
   _tipoAtivo:   'DIARIA',
   _lista:       [],
   _ordem:       'PRIORIDADE',
@@ -31,9 +31,8 @@ const Rotinas = {
     const u = typeof Auth !== 'undefined' ? Auth.getUsuario() : null;
     this._isArquiteto = u?.nivel_acesso === 'Arquiteto';
     this._carregarOrdem();
-    await this.carregarPorTipo(this._tipoAtivo);
-    this._bindTabs();
-    this._bindBotaoNova();
+    await this.loadList();
+        this._bindBotaoNova();
     this._bindOrdenacao();
   },
 
@@ -55,10 +54,9 @@ const Rotinas = {
   },
 
   // ── Carrega as regras de um tipo ───────────────────────────
-  async carregarPorTipo(tipo) {
-    this._tipoAtivo = tipo;
+  async loadList() {
     this.destruir();
-    const cont = document.getElementById('lista-rotinas');
+    const cont = document.getElementById('lista-progressivas');
     if (!cont) return;
     
     const htmlAtual = cont.innerHTML.trim();
@@ -68,8 +66,8 @@ const Rotinas = {
     }
 
     try {
-      const lista = await API.get(`/rotinas/?tipo=${tipo}`);
-      this._lista = (lista || []).filter(r => !r.eh_progressiva);
+      const lista = await API.get(`/rotinas/`);
+      this._lista = (lista || []).filter(r => r.eh_progressiva);
       this.renderLista(this._ordenarLista(this._lista));
     } catch (err) {
       console.error('[Rotinas]', err);
@@ -80,21 +78,21 @@ const Rotinas = {
 
   // ── Render da lista (MissaoCard em modo agenda) ────────────
   renderLista(lista) {
-    const cont = document.getElementById('lista-rotinas');
+    const cont = document.getElementById('lista-progressivas');
     if (!cont) return;
 
     if (!lista.length) {
       cont.innerHTML = `
         <div class="empty-state">
           <div class="empty-icon">&#128260;</div>
-          <div>Nenhuma regra ${this._rotuloTipo()} registrada</div>
+          <div>Nenhum Desafio Progressivo registrado</div>
           <div style="font-size:.78rem;color:var(--text-muted);max-width:34rem;margin:.4rem auto .9rem;line-height:1.5">
             Uma rotina é a regra que gera missões todo dia devido.
             Registre a regra aqui; cumpri-la é assunto do Dashboard.
           </div>
-          <button class="btn btn-primary btn-sm" id="btn-nova-rotina-empty">+ Criar primeira rotina</button>
+          <button class="btn btn-primary btn-sm" id="btn-nova-progressiva-empty">+ Criar primeira rotina</button>
         </div>`;
-      document.getElementById('btn-nova-rotina-empty')
+      document.getElementById('btn-nova-progressiva-empty')
         ?.addEventListener('click', () => this.abrirFormulario());
       return;
     }
@@ -146,10 +144,7 @@ const Rotinas = {
       </div>`;
   },
 
-  _rotuloTipo() {
-    return ({ DIARIA: 'diária', SEMANAL: 'semanal', MENSAL: 'mensal', ANUAL: 'anual' })[this._tipoAtivo]
-      || String(this._tipoAtivo).toLowerCase();
-  },
+  
 
   /* Suspender/reativar o card já resolve sozinho: ele chama a API, muda o
      campo "ativo" no objeto cacheado — que é o MESMO objeto desta lista — e
@@ -162,7 +157,7 @@ const Rotinas = {
         this.renderLista(this._ordenarLista(this._lista));
       return;
     }
-    this.carregarPorTipo(this._tipoAtivo);
+    this.loadList();
   },
 
   // ── Exclusão da regra (o card delega, a página confirma) ───
@@ -223,22 +218,10 @@ const Rotinas = {
   },
 
   // ── Abas de tipo ───────────────────────────────────────────
-  _bindTabs() {
-    const tabs = document.querySelectorAll('[data-tipo-rotina], .rotina-tab');
-    tabs.forEach(tab => {
-      if (tab._rotinaTabBound) return;
-      tab._rotinaTabBound = true;
-      tab.addEventListener('click', () => {
-        tabs.forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        const tipo = tab.dataset.tipoRotina || tab.dataset.tipo;
-        if (tipo) this.carregarPorTipo(tipo);
-      });
-    });
-  },
+  
 
   _bindBotaoNova() {
-    const btn = document.getElementById('btn-nova-rotina');
+    const btn = document.getElementById('btn-nova-progressiva');
     if (!btn) return;
     // .btn-primary não existe globalmente no projeto — estilo inline mesmo
     Object.assign(btn.style, {
@@ -315,4 +298,4 @@ const Rotinas = {
 // para cá. Hoje isso funciona por escopo léxico entre scripts clássicos —
 // frágil demais para um contrato entre telas: se este arquivo virar módulo,
 // o roteamento quebraria em silêncio. Tornar a ponte explícita custa 1 linha.
-window.Rotinas = Rotinas;
+window.Progressivas = Progressivas;

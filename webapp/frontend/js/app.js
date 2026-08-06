@@ -196,6 +196,8 @@ const App = {
         case 'perfil':    await Perfil.carregar();    break;
         case 'rotinas':   await Rotinas.carregar();   break;
         case 'tarefas':   await Tarefas.carregar();   break;
+      case 'progressivas': await Progressivas.carregar(); break;
+        case 'progressivas': await Progressivas.carregar(); break;
         case 'pacto':     await Pacto.carregar();     break;
         case 'dungeons':  await Dungeons.carregar();  break;
         case 'loja':      await Loja.carregar();      break;
@@ -218,6 +220,9 @@ const App = {
     // Limpa recursos da página anterior (timers, etc.)
     if (this.currentPage === 'rotinas' && page !== 'rotinas') {
       if (typeof Rotinas !== 'undefined') Rotinas.destruir();
+    }
+    if (this.currentPage === 'progressivas' && page !== 'progressivas') {
+      if (typeof Progressivas !== 'undefined') Progressivas.destruir();
     }
     // Tarefas ficava de fora desta limpeza: ao sair da guia, o timer global
     // de prazo do MissaoCard continuava girando sobre cartões que já não
@@ -259,6 +264,8 @@ const App = {
       case 'dashboard': await Dashboard.carregar(); break;
       case 'rotinas':   await Rotinas.carregar();   break;
       case 'tarefas':   await Tarefas.carregar();   break;
+      case 'progressivas': await Progressivas.carregar(); break;
+        case 'progressivas': await Progressivas.carregar(); break;
       // O PACTO FALTAVA AQUI, e so aqui.
       //
       // Ele estava em `atualizarPaginaAtual()` — a funcao de REFRESH — e
