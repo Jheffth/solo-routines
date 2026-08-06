@@ -660,6 +660,39 @@ const MissaoCard = {
          + gerir + extinguir;
   },
 
+  /* ── ETAPA CUMPRIDA ≠ DESAFIO CUMPRIDO ───────────────────
+     Devolve {ok, alvo} quando o DIA foi cumprido mas o DESAFIO não.
+
+     O cartão dizia "Missão cumprida", pintava a borda de verde e
+     riscava o título no dia 1 de 30. Três afirmações erradas de uma
+     vez, e a pior é o verde: a regra do projeto é que verde pertence a
+     missão CUMPRIDA. Gastá-lo numa etapa esvazia o dia em que os 30
+     dias realmente fecharem — que é o único momento em que o desafio
+     tem algo a comemorar.
+
+     `alvo` ausente (desafio sem meta declarada) devolve null: sem
+     denominador não há etapa, e aí CONCLUÍDA é conclusão mesmo. */
+  _etapaProgressiva(m) {
+    if (!this._ehProgressiva(m)) return null;
+    const st = (m?.status_hoje || m?.status || '').toUpperCase();
+    if (st !== 'CONCLUIDA') return null;
+    const alvo = parseInt(m?.dias_progressivos_alvo, 10);
+    const ok = parseInt(m?.dias_progressivos_ok, 10) || 0;
+    if (!alvo || alvo <= 0 || ok >= alvo) return null;   // fechou de verdade
+    return { ok, alvo };
+  },
+
+  /* O SELO DA ETAPA. Marca miúda de conferido — não troféu.
+
+     Diz as duas coisas que o hunter precisa saber e que o selo verde
+     escondia: QUANTO do desafio já está de pé, e que ele VOLTA. Um
+     cartão que só dizia "cumprida" dava a entender que aquilo tinha
+     acabado ali. */
+  _seloEtapa({ ok, alvo }) {
+    return `<span class="mc-selo mc-selo-etapa" title="Dia cumprido. O desafio continua: faltam ${alvo - ok} de ${alvo}.">`
+         + `${this._g('concluida', 12)} Dia ${ok} de ${alvo} · volta amanhã</span>`;
+  },
+
   /* ── A CARGA DO DESAFIO ─────────────────────────────────
      Quanto da corrente já foi construída, de 0 a 1.
 
@@ -863,7 +896,13 @@ const MissaoCard = {
   },
 
   /* ── Desfecho em selo (usado quando não há ação possível) ── */
-  _selo(status) {
+  _selo(status, m) {
+    /* ETAPA ANTES DE DESFECHO. Uma progressiva no dia 1 de 30 chega
+       aqui como CONCLUIDA, e o selo de missão cumprida seria a
+       terceira mentira do cartão (as outras duas são a borda verde e
+       o título riscado, tratadas no CSS). */
+    const etapa = this._etapaProgressiva(m);
+    if (etapa) return this._seloEtapa(etapa);
     switch (status) {
       case 'CONCLUIDA':  return `<span class="mc-selo mc-selo-ok">${this._g('concluida', 13)} Missão cumprida</span>`;
       case 'FRACASSADA': return `<span class="mc-selo mc-selo-falha">${this._g('fracassada', 13)} Prazo perdido</span>`;
@@ -892,7 +931,7 @@ const MissaoCard = {
       ? m.gerenciavel !== false
       : podeExecutar;
 
-    if (!podeExecutar && !podeGerir) return this._selo(status);
+    if (!podeExecutar && !podeGerir) return this._selo(status, m);
 
     // Extinguir: exclusivo do Arquiteto — apaga a missão e estorna
     // todo o XP/moedas que ela já concedeu. Sempre disponível.
@@ -938,7 +977,7 @@ const MissaoCard = {
     // Concluir foi substituído pelo próprio ato de contar: no META a
     // rotina fecha sozinha ao bater o alvo, no BÔNUS ela nunca fecha.
     if (this._ehRepeticao(m)) {
-      if (status === 'CONFESSADA' || status === 'CANCELADA') return this._selo(status) + gerir + extinguir;
+      if (status === 'CONFESSADA' || status === 'CANCELADA') return this._selo(status, m) + gerir + extinguir;
       return this._acoesRepeticao(m, chave, gerir, extinguir);
     }
 
@@ -1004,9 +1043,13 @@ const MissaoCard = {
                 b('cancelar', 'mc-btn-perigo', this._g('cancelada', 13) + ' Cancelar hoje') +
                 b('concluir', 'mc-btn-concluir', this._g('concluida', 13) + ' Concluir');
         break;
-      case 'CONCLUIDA':
-        acoes = `<span class="mc-selo mc-selo-ok">${this._g('concluida', 13)} Missão cumprida</span>`;
+      case 'CONCLUIDA': {
+        const etapa = this._etapaProgressiva(m);
+        acoes = etapa
+          ? this._seloEtapa(etapa)
+          : `<span class="mc-selo mc-selo-ok">${this._g('concluida', 13)} Missão cumprida</span>`;
         break;
+      }
       case 'FRACASSADA': {
         acoes = `<span class="mc-selo mc-selo-falha">${this._g('fracassada', 13)} Prazo perdido</span>`;
         // REERGUER — só faz sentido para a rotina de JANELA de HOJE que ainda
@@ -1270,12 +1313,15 @@ const MissaoCard = {
     const penit = this._ehPenitencia(m) ? ' mc-penitencia' : '';
     // PROGRESSIVA na raiz
     const prog = this._ehProgressiva(m) ? ' mc-progressiva' : '';
+    /* ETAPA: o dia fechou, o desafio não. É esta classe que impede o
+       cartão de vestir o verde de CUMPRIDA e de riscar o título. */
+    const etapaProg = this._etapaProgressiva(m) ? ' mc-prog-etapa' : '';
     const modoRep = repet
       ? (this._alvoDe(m) !== null ? ' mc-rep-modo-meta' : ' mc-rep-modo-bonus')
       : '';
 
     return `
-    <div class="mc ${st.classe}${compacto}${selado}${passiva}${repet}${modoRep}${penit}${prog}" data-mc-card="${chave}"
+    <div class="mc ${st.classe}${compacto}${selado}${passiva}${repet}${modoRep}${penit}${prog}${etapaProg}" data-mc-card="${chave}"
          data-mc-sig="${this.assinatura(m, opts)}"
          style="--mc-cor:${cor};--mc-cor-suave:${this._alpha(cor, .14)}${
            prog ? `;--prog-carga:${this._cargaProgressiva(m).toFixed(3)}` : ''}">
@@ -1295,7 +1341,8 @@ const MissaoCard = {
             fica (partida, parada) porque o cartão precisa mostrar o que
             foi perdido; concluído, sai — o desafio virou história e a
             insígnia é que fala. */
-        prog && !['CONCLUIDA', 'CANCELADA'].includes(status)
+        prog && (this._etapaProgressiva(m)
+                 || !['CONCLUIDA', 'CANCELADA'].includes(status))
           ? '<div class="mc-prog-escada" aria-hidden="true"></div>' : ''}
       ${this._corrente(status)}
       ${this._sigilo(cor, m.categoria, !!penit)}

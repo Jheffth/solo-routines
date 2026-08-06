@@ -93,8 +93,65 @@ ok(temEscada(MC.html(missao({ status: 'PENDENTE', status_hoje: 'PENDENTE' }), {}
 ok(temEscada(MC.html(missao({ status: 'FRACASSADA', status_hoje: 'FRACASSADA' }), {})),
    'FRACASSADA MANTÉM a escada: a derrota da progressiva é definitiva ' +
    '(FRACASSADA_FATAL, sem Reerguer) e o cartão precisa mostrar o que ruiu');
-ok(!temEscada(MC.html(missao({ status: 'CONCLUIDA', status_hoje: 'CONCLUIDA' }), {})),
-   'CONCLUIDA não — virou história');
+/* CONCLUIDA DEIXOU DE SER UMA RESPOSTA SÓ.
+
+   Antes, CONCLUIDA tirava a escada — "virou história". Estava errado
+   para o dia 1 de 30: o desafio não virou história nenhuma, só o dia
+   dele acabou. O Arquiteto viu no cartão real ("a missão só conclui
+   quando eu cumprir ela totalmente") e a regra passou a depender do
+   PLACAR, não do status. */
+ok(temEscada(MC.html(missao({ status: 'CONCLUIDA', status_hoje: 'CONCLUIDA',
+                              dias_progressivos_ok: 1 }), {})),
+   'CONCLUIDA no dia 1 de 30 MANTÉM a escada — é etapa, não desfecho');
+ok(!temEscada(MC.html(missao({ status: 'CONCLUIDA', status_hoje: 'CONCLUIDA',
+                              dias_progressivos_ok: 30 }), {})),
+   'CONCLUIDA em 30 de 30 tira — aí sim virou história');
+
+console.log('\n-- etapa cumprida não é desafio cumprido --');
+const etapa = m => MC._etapaProgressiva(m);
+ok(etapa(missao({ status: 'CONCLUIDA', status_hoje: 'CONCLUIDA',
+                  dias_progressivos_ok: 1 })), 'dia 1 de 30 é etapa');
+ok(!etapa(missao({ status: 'CONCLUIDA', status_hoje: 'CONCLUIDA',
+                   dias_progressivos_ok: 30 })), 'dia 30 de 30 NÃO é etapa');
+ok(!etapa(missao({ status: 'ATIVA', status_hoje: 'ATIVA' })),
+   'missão ainda em curso não é etapa');
+ok(!etapa(missao({ status: 'CONCLUIDA', status_hoje: 'CONCLUIDA',
+                   dias_progressivos_alvo: null })),
+   'sem alvo declarado não há etapa — CONCLUÍDA é conclusão mesmo');
+ok(!etapa({ status: 'CONCLUIDA' }), 'missão comum concluída não é etapa');
+
+const hEtapa = MC.html(missao({ status: 'CONCLUIDA', status_hoje: 'CONCLUIDA',
+                                dias_progressivos_ok: 1 }), {});
+const hFim = MC.html(missao({ status: 'CONCLUIDA', status_hoje: 'CONCLUIDA',
+                              dias_progressivos_ok: 30 }), {});
+ok(/mc-prog-etapa/.test(hEtapa) && !/mc-prog-etapa/.test(hFim),
+   'só a etapa carrega a classe que desarma o verde');
+ok(!/Missão cumprida/.test(hEtapa),
+   'a etapa NÃO diz "Missão cumprida" — era a mentira do cartão');
+ok(/Dia 1 de 30/.test(hEtapa) && /volta amanhã/.test(hEtapa),
+   'ela diz quanto do desafio está de pé e que ele volta');
+ok(/Missão cumprida/.test(hFim),
+   'e o desfecho de verdade mantém o selo de sempre');
+
+/* O VERDE É O ATIVO QUE SE PROTEGE AQUI. A regra do projeto reserva
+   verde para missão CUMPRIDA; gastá-lo numa etapa esvazia o dia em que
+   os 30 dias fecharem. O assert olha a CASCATA: `.mc.st-concluida` dá
+   o verde, e a regra de etapa tem de vir DEPOIS e ser mais específica
+   (2 classes vs 1), senão ela perde e o cartão fica verde do mesmo
+   jeito — foi exatamente assim que a penitência custou dois "corrigido"
+   falsos neste projeto. */
+const iVerde = CSS_LIMPO.indexOf('.mc.st-concluida {');
+const iEtapa = CSS_LIMPO.indexOf('.mc.st-concluida.mc-prog-etapa {');
+ok(iVerde >= 0 && iEtapa > iVerde,
+   'a regra da etapa vem depois da regra verde na cascata');
+ok(/\.mc\.st-concluida\.mc-prog-etapa\s*\{[^}]*border-left-color:\s*var\(--mc-cor\)/
+     .test(CSS_LIMPO),
+   'e troca a borda verde pela cor do próprio desafio');
+ok(/\.mc\.st-concluida\.mc-prog-etapa\s+\.mc-titulo\s*\{[^}]*text-decoration:\s*none/
+     .test(CSS_LIMPO),
+   'o título não é riscado: a linha volta amanhã e por mais 29 dias');
+
+console.log('\n-- (retomando) os estados do elemento --');
 ok(!temEscada(MC.html(missao({ status: 'CANCELADA', status_hoje: 'CANCELADA' }), {})),
    'CANCELADA não');
 ok(!temEscada(comum), 'e missão comum nunca tem');

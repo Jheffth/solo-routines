@@ -2221,6 +2221,63 @@
   background-position: 0 -51px, 0 -36px, 0 -25px, 50% 150%;
 }
 
+/* ══════════════════════════════════════════════════════════════
+   ETAPA CUMPRIDA ≠ DESAFIO CUMPRIDO
+   ══════════════════════════════════════════════════════════════
+
+   No dia 1 de 30 o cartão vestia tudo o que `st-concluida` dá: borda
+   verde, fundo esverdeado, título riscado, selo "Missão cumprida". O
+   Arquiteto viu e resumiu: a missão só conclui quando for cumprida
+   TOTALMENTE.
+
+   O VERDE É O QUE MAIS IMPORTA AQUI. A regra do projeto, escrita em
+   `missao-card.js`, é que verde pertence a missão CUMPRIDA. Gastá-lo
+   numa etapa não é só impreciso — esvazia o dia em que os 30 dias
+   fecharem de verdade, que é a única vez em que este cartão tem algo a
+   comemorar. Guardar o verde é o que faz ele valer alguma coisa.
+
+   O que fica no lugar é a cor do próprio desafio (`--mc-cor`) e uma
+   marca miúda de conferido. E as brasas continuam subindo: o desafio
+   não parou, só o dia dele acabou.
+
+   NÃO se usa `filter: grayscale` nem `opacity` baixa aqui, que é como
+   as lápides deste arquivo são tratadas. Etapa cumprida é vitória do
+   dia — apagar o cartão diria o oposto do que aconteceu. */
+.mc.st-concluida.mc-prog-etapa {
+  border-left-color: var(--mc-cor);
+  background: linear-gradient(145deg,
+    color-mix(in srgb, var(--mc-cor) 7%, #06060d), #06060d);
+}
+/* O TÍTULO NÃO É RISCADO. Riscar diz "isto acabou, esqueça"; a linha
+   volta amanhã e por mais 29 dias. */
+.mc.st-concluida.mc-prog-etapa .mc-titulo {
+  color: var(--text-primary);
+  text-decoration: none;
+}
+.mc.st-concluida.mc-prog-etapa .mc-sigilo {
+  border-color: color-mix(in srgb, var(--mc-cor) 40%, transparent);
+}
+
+/* O SELO DA ETAPA — marca de conferido, não troféu.
+   Fica na cor do desafio, e menor que o `.mc-selo-ok`: a diferença de
+   peso entre "dia cumprido" e "desafio cumprido" tem de ser visível
+   sem ler o texto. */
+.mc-selo-etapa {
+  color: var(--mc-cor);
+  border: 1px solid color-mix(in srgb, var(--mc-cor) 32%, transparent);
+  background: color-mix(in srgb, var(--mc-cor) 9%, transparent);
+  font-size: .68rem;
+  letter-spacing: .04em;
+}
+.mc-selo-etapa svg { opacity: .85; }
+
+/* AS BRASAS SEGUEM SUBINDO, mais baixas. O dia acabou, o desafio não —
+   apagá-las de vez leria como desafio encerrado, que é justamente o que
+   este bloco existe para desmentir. */
+.mc.st-concluida.mc-prog-etapa .mc-prog-escada {
+  opacity: calc(.22 + var(--prog-carga, 0) * .3);
+}
+
 /* PENITÊNCIA VENCE. Uma penitência pode nascer progressiva; se as duas
    tramas aparecerem juntas o cartão vira ruído. A dívida é a emergência
    do momento — o giroflex fala primeiro. */
