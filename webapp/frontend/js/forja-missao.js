@@ -18,8 +18,16 @@ const ForjaMissao = {
 
   /* ── Catálogos (a cor vive aqui e propaga para tudo) ───── */
   TIPOS: [
-    { id: 'ROTINA', ico: 'rotina',  txt: 'Rotina Recorrente', sub: 'repete no ciclo' },
-    { id: 'TAREFA', ico: 'avulsa',  txt: 'Tarefa Avulsa',     sub: 'uma única vez'  },
+    /* Cada tipo tem sua própria cor de identidade — drive a borda e o fio
+       do modal independentemente da cor de prioridade (--fm-cor), que
+       comanda os elementos internos. Sem isso, ROTINA e TAREFA ficavam
+       com o mesmo neon violeta, e só o PACTO se distinguia. */
+    { id: 'ROTINA', ico: 'rotina',  txt: 'Rotina Recorrente', sub: 'repete no ciclo',
+      cor: '#0ea5e9' },   // sky-500 — ciclo, recorrência, água
+    { id: 'TAREFA', ico: 'avulsa',  txt: 'Tarefa Avulsa',     sub: 'uma única vez',
+      cor: '#f59e0b' },   // amber-400 — urgência, farol, avulso
+    { id: 'PROGRESSIVA', ico: 'alvo', txt: 'Desafio Prog.', sub: 'n dias sem falhar',
+      cor: '#a855f7' },   // purple-500 — desafio, persistência
     /* O PACTO NÃO É UMA MISSÃO — é o preço de falhar numa. Ele mora
        aqui porque é aqui que o hunter vem quando quer criar alguma
        coisa, e mandá-lo a outra tela para escrever a própria punição
@@ -30,7 +38,7 @@ const ForjaMissao = {
        Dashboard. Regra e ocorrência separadas, como Rotina e
        ExecuçãoDia. */
     { id: 'PACTO',  ico: 'caveira', txt: 'Pacto',             sub: 'o preço de falhar',
-      cor: '#ff0a3c' },
+      cor: '#ff0a3c' },   // crimson — perigo, dívida, sangue
   ],
 
   /* Os quatro tipos de penitência. O texto aqui descreve o GESTO, não a
@@ -63,12 +71,14 @@ const ForjaMissao = {
      que ele PODE usar. Agora o bloco aparece sempre (em rotina) e é a
      opção PASSIVA que some — a permissão é por item, não por bloco. */
   NATUREZAS: [
-    { id: 'ATIVA',     ico: 'ativa',     txt: 'Ativa',     cor: '#8b5cf6',
+    { id: 'ATIVA',       ico: 'ativa',       txt: 'Ativa',        cor: '#8b5cf6',
       sub: 'você cumpre' },
-    { id: 'REPETICAO', ico: 'repeticao', txt: 'Repetições', cor: '#0ea5e9',
+    { id: 'REPETICAO',   ico: 'repeticao',   txt: 'Repetições',   cor: '#0ea5e9',
       sub: 'você acumula' },
-    { id: 'PASSIVA',   ico: 'passiva',   txt: 'Passiva',   cor: '#6366f1',
+    { id: 'PASSIVA',     ico: 'passiva',     txt: 'Passiva',      cor: '#6366f1',
       sub: 'você mantém', premium: true },
+    { id: 'CONDICIONAL', ico: 'condicional', txt: 'Condicional',  cor: '#f59e0b',
+      sub: 'bifurca ao fim', premium: true },
   ],
   _naturezas() {
     return this.NATUREZAS.filter(n => !n.premium || this._podeEspeciais);
@@ -168,7 +178,7 @@ const ForjaMissao = {
 
     const hoje = this._dataLocal();
     this._estado = {
-      tipo: ['TAREFA', 'PACTO'].includes(opts.tipo) ? opts.tipo : 'ROTINA',
+      tipo: ['TAREFA', 'PACTO', 'PROGRESSIVA'].includes(opts.tipo) ? opts.tipo : 'ROTINA',
       titulo: '', frequencia: 'DIARIA',
       prioridade: 'MEDIA', dificuldade: 'NORMAL', categoria: 'Pessoal',
       janela: false, hora_inicio: '', hora_fim: '',
@@ -229,16 +239,19 @@ const ForjaMissao = {
   _repintarNaturezas() {
     const alvo = document.querySelector('#fm-bloco-natureza .fm-opcoes');
     if (!alvo || !this._podeEspeciais) return;
-    if (alvo.querySelector('[data-fm-valor="PASSIVA"]')) return;
-    const o = this.NATUREZAS.find(n => n.id === 'PASSIVA');
-    alvo.insertAdjacentHTML('beforeend', `
-      <div class="fm-op ${this._estado.natureza === o.id ? 'sel' : ''}"
-           style="--op-cor:${o.cor}"
-           data-fm-campo="natureza" data-fm-valor="${o.id}">
-        <span class="ico">${this._ico(o.ico)}</span>
-        <span class="txt">${o.txt}</span>
-        <span class="sub">${o.sub}</span>
-      </div>`);
+    // Injeta PASSIVA e CONDICIONAL se ainda não estão
+    const premium = this.NATUREZAS.filter(n => n.premium);
+    premium.forEach(o => {
+      if (alvo.querySelector(`[data-fm-valor="${o.id}"]`)) return;
+      alvo.insertAdjacentHTML('beforeend', `
+        <div class="fm-op ${this._estado.natureza === o.id ? 'sel' : ''}"
+             style="--op-cor:${o.cor}"
+             data-fm-campo="natureza" data-fm-valor="${o.id}">
+          <span class="ico">${this._ico(o.ico)}</span>
+          <span class="txt">${o.txt}</span>
+          <span class="sub">${o.sub}</span>
+        </div>`);
+    });
   },
 
   /* "Criar contador" cria de verdade, e so na hora de salvar.
@@ -507,6 +520,33 @@ const ForjaMissao = {
   _carregarEdicao(ed, tipoForcado) {
     const e = this._estado;
 
+    /* A BIFURCAÇÃO VOLTA PARA O FORMULÁRIO.
+
+       Nada hidratava estes campos: abrir uma condicional para editar
+       mostrava o formulário em branco e salvar SOBRESCREVIA o payload
+       com vazio. O defeito não dava erro — o Arquiteto perderia a
+       bifurcação inteira só por ter corrigido o título.
+
+       Lê o formato novo (`missao` dentro de cada opção) e tolera o
+       antigo (`xp_bonus` solto): há perguntas gravadas assim, e um
+       formulário que explode ao abrir é pior que um campo vazio. */
+    try {
+      const c = JSON.parse(ed.condicional_payload || '{}') || {};
+      if (c.pergunta || c.opcao_a || c.opcao_b) {
+        e._cond_pergunta = c.pergunta || '';
+        for (const L of ['a', 'b']) {
+          const o = c['opcao_' + L] || {};
+          const m = o.missao || {};
+          e['_cond_' + L + '_txt']    = o.txt || '';
+          e['_cond_' + L + '_titulo'] = m.titulo || '';
+          e['_cond_' + L + '_ini']    = m.hora_inicio || '';
+          e['_cond_' + L + '_fim']    = m.hora_fim || '';
+          e['_cond_' + L + '_xp']     = (m.xp ?? (L === 'a' ? 40 : 25));
+          e['_cond_' + L + '_mo']     = (m.moedas ?? (L === 'a' ? 8 : 5));
+        }
+      }
+    } catch (_) { /* payload estragado: formulário limpo, sem derrubar a tela */ }
+
     /* O PACTO PRIMEIRO — e não por gosto de ordem.
 
        COLISÃO DE NOMES, já paga: o campo `tipo` significa coisas
@@ -578,6 +618,11 @@ const ForjaMissao = {
         e.janela = true;
         e.hora_inicio = ed.hora_inicio || '';
         e.hora_fim = ed.hora_fim || '';
+      }
+      if (ed.eh_progressiva) {
+        e.tipo = 'PROGRESSIVA';
+        e.eh_progressiva = true;
+        e.dias_progressivos_alvo = ed.dias_progressivos_alvo || '';
       }
     }
   },
@@ -769,7 +814,126 @@ const ForjaMissao = {
               </div>
             </div>
 
+            <!-- PROGRESSIVA — o adjetivo ortogonal. Aparece em ATIVA e PASSIVA.
+                 Uma progressiva exige N dias consecutivos sem falhar.
+                 Qualquer fracasso encerra a missão com FRACASSADA_FATAL. -->
+            <div class="fm-bloco fm-full" id="fm-bloco-progressiva" style="display:none">
+              <div class="fm-rotulo">${gl('progressiva', 14)} Desafio Progressivo</div>
+              <div class="fm-progressiva-wrap">
+                <div class="fm-prog-dias" id="fm-prog-dias">
+                  <label class="fm-rep-campo">
+                    <span class="fm-rep-lbl">Quantos dias consecutivos?</span>
+                    <input type="number" min="2" max="365" class="fm-input fm-input-mini"
+                           id="fm-prog-alvo" value="${e.dias_progressivos_alvo || ''}"
+                           placeholder="30">
+                  </label>
+                  <div class="fm-prog-aviso">
+                    <span class="ico">!</span> <b>Sem segunda chance.</b> Falhar <i>um único dia</i> encerra
+                    o desafio permanentemente. É exatamente essa dureza que o torna valioso.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- CONDICIONAL — a bifurcação. Só para CONDICIONAL. -->
+            <div class="fm-bloco fm-full" id="fm-bloco-condicional"
+                 ${e.natureza === 'CONDICIONAL' ? '' : 'style="display:none"'}>
+              <div class="fm-rotulo">${gl('condicional', 14)} Bifurcação</div>
+              <div class="fm-cond-wrap">
+                <label class="fm-rep-campo fm-full">
+                  <span class="fm-rep-lbl">Pergunta ao concluir</span>
+                  <input type="text" class="fm-input" id="fm-cond-pergunta"
+                         placeholder="Conseguiu evitar açúcar hoje?"
+                         value="${e._cond_pergunta || ''}">
+                </label>
+                <div class="fm-cond-opcoes">
+                  <div class="fm-cond-op" id="fm-cond-opcao-a">
+                    <div class="fm-cond-op-titulo"><span class="ico">✓</span> Se a resposta for…</div>
+                    <label class="fm-rep-campo">
+                      <span class="fm-rep-lbl">Resposta</span>
+                      <input type="text" class="fm-input" id="fm-cond-a-txt"
+                             placeholder="Sim" value="${e._cond_a_txt || ''}">
+                    </label>
+                    <label class="fm-rep-campo fm-full">
+                      <span class="fm-rep-lbl">Missão que nasce</span>
+                      <input type="text" class="fm-input" id="fm-cond-a-titulo"
+                             placeholder="Comer mamão de manhã" value="${e._cond_a_titulo || ''}">
+                    </label>
+                    <div class="fm-cond-linha">
+                      <label class="fm-rep-campo">
+                        <span class="fm-rep-lbl">Início</span>
+                        <input type="time" class="fm-input fm-input-mini" id="fm-cond-a-ini"
+                               value="${e._cond_a_ini || ''}">
+                      </label>
+                      <label class="fm-rep-campo">
+                        <span class="fm-rep-lbl">Fim</span>
+                        <input type="time" class="fm-input fm-input-mini" id="fm-cond-a-fim"
+                               value="${e._cond_a_fim || ''}">
+                      </label>
+                      <label class="fm-rep-campo">
+                        <span class="fm-rep-lbl">XP</span>
+                        <input type="number" class="fm-input fm-input-mini" id="fm-cond-a-xp"
+                               value="${e._cond_a_xp ?? 40}" min="0" max="9999">
+                      </label>
+                      <label class="fm-rep-campo">
+                        <span class="fm-rep-lbl">Moedas</span>
+                        <input type="number" class="fm-input fm-input-mini" id="fm-cond-a-mo"
+                               value="${e._cond_a_mo ?? 8}" min="0" max="9999">
+                      </label>
+                    </div>
+                  </div>
+                  <div class="fm-cond-op" id="fm-cond-opcao-b">
+                    <div class="fm-cond-op-titulo"><span class="ico">↺</span> Se a resposta for…</div>
+                    <label class="fm-rep-campo">
+                      <span class="fm-rep-lbl">Resposta</span>
+                      <input type="text" class="fm-input" id="fm-cond-b-txt"
+                             placeholder="Não" value="${e._cond_b_txt || ''}">
+                    </label>
+                    <label class="fm-rep-campo fm-full">
+                      <span class="fm-rep-lbl">Missão que nasce</span>
+                      <input type="text" class="fm-input" id="fm-cond-b-titulo"
+                             placeholder="Comprar mamão e reabastecer" value="${e._cond_b_titulo || ''}">
+                    </label>
+                    <div class="fm-cond-linha">
+                      <label class="fm-rep-campo">
+                        <span class="fm-rep-lbl">Início</span>
+                        <input type="time" class="fm-input fm-input-mini" id="fm-cond-b-ini"
+                               value="${e._cond_b_ini || ''}">
+                      </label>
+                      <label class="fm-rep-campo">
+                        <span class="fm-rep-lbl">Fim</span>
+                        <input type="time" class="fm-input fm-input-mini" id="fm-cond-b-fim"
+                               value="${e._cond_b_fim || ''}">
+                      </label>
+                      <label class="fm-rep-campo">
+                        <span class="fm-rep-lbl">XP</span>
+                        <input type="number" class="fm-input fm-input-mini" id="fm-cond-b-xp"
+                               value="${e._cond_b_xp ?? 40}" min="0" max="9999">
+                      </label>
+                      <label class="fm-rep-campo">
+                        <span class="fm-rep-lbl">Moedas</span>
+                        <input type="number" class="fm-input fm-input-mini" id="fm-cond-b-mo"
+                               value="${e._cond_b_mo ?? 8}" min="0" max="9999">
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                <div class="fm-prog-aviso">
+                  💡 A pergunta é só o <b>container</b> — ela não dá XP.
+                  Cada resposta <b>cria a missão</b> que você descreveu ali, com o
+                  espólio dela, e o cartão nasce logo abaixo da pergunta.
+                
+                  <br>💡 No título e na descrição você pode usar
+                  <b>{n}</b> (o dia em jogo), <b>{alvo}</b> (o total) e
+                  <b>{restam}</b>. Eles são resolvidos na hora de mostrar o
+                  cartão, então o texto acompanha a corrente em vez de
+                  congelar no dia 1.
+                </div>
+              </div>
+            </div>
+
             <div class="fm-bloco fm-full" id="fm-bloco-data" ${e.tipo === 'TAREFA' ? '' : 'style="display:none"'}>
+
               <div class="fm-rotulo">${gl("agendada", 12)} Para quando?</div>
               <div class="fm-quando">
                 <input type="date" class="fm-input fm-input-curto"
@@ -1137,11 +1301,17 @@ const ForjaMissao = {
     // (ele não acontece — ele espera), não tem prioridade nem
     // dificuldade (quem escolhe é o Sistema, sorteando), e sobretudo
     // não tem recompensa: ele cobra, não paga.
-    mostra('fm-bloco-freq',      !pacto && !tarefa);
+    mostra('fm-bloco-freq',      !pacto && !tarefa && e.tipo !== 'PROGRESSIVA');
     mostra('fm-bloco-data',      !pacto && tarefa);
     mostra('fm-bloco-prazo',     !pacto && tarefa);
     mostra('fm-bloco-natureza',  !pacto && this._blocoNaturezaLiberado !== false);
-    mostra('fm-bloco-repeticao', !pacto && e.natureza === 'REPETICAO');
+    mostra('fm-bloco-repeticao',   !pacto && e.natureza === 'REPETICAO');
+    
+    // Progressiva: é o próprio tipo agora.
+    mostra('fm-bloco-progressiva', e.tipo === 'PROGRESSIVA');
+    
+    // Condicional: bloco de config da bifurcação
+    mostra('fm-bloco-condicional', !pacto && !tarefa && e.natureza === 'CONDICIONAL');
     mostra('fm-bloco-prior',     !pacto);
     mostra('fm-bloco-dific',     !pacto);
     mostra('fm-bloco-categoria', !pacto);
@@ -1303,8 +1473,12 @@ const ForjaMissao = {
        disso existe num pacto, e deixá-la seguir escreveria "+120 XP" ao
        lado de uma penitência. */
     if (e.tipo === 'PACTO') {
-      document.getElementById('fm-modal')
-        ?.style.setProperty('--fm-cor', this._pactoTipo().cor);
+      const pactoTipoCor = this._pactoTipo().cor;
+      const modal = document.getElementById('fm-modal');
+      modal?.style.setProperty('--fm-cor', pactoTipoCor);
+      // O PACTO sempre tem borda crimson — identidade do tipo, não do sub-tipo.
+      modal?.style.setProperty('--fm-tipo-cor',
+        this.TIPOS.find(t => t.id === 'PACTO')?.cor || '#ff0a3c');
       const ver = (id, on) => {
         const el = document.getElementById(id);
         if (el) el.style.display = on ? '' : 'none';
@@ -1348,8 +1522,12 @@ const ForjaMissao = {
     por('fm-v-pen',   pen ? '−' + pen.toLocaleString('pt-BR') : '0');
     por('fm-v-prazo', this._fmtPrazo(prazo));
 
-    // A cor da prioridade comanda o modal inteiro
-    document.getElementById('fm-modal')?.style.setProperty('--fm-cor', pri.cor);
+    // A cor da prioridade comanda os elementos INTERNOS do modal.
+    // A cor do TIPO comanda a borda e o fio — a identidade da janela.
+    const modal = document.getElementById('fm-modal');
+    modal?.style.setProperty('--fm-cor', pri.cor);
+    modal?.style.setProperty('--fm-tipo-cor',
+      this.TIPOS.find(t => t.id === e.tipo)?.cor || '#8b5cf6');
 
     // Prévia: usa o COMPONENTE REAL do cartão
     const previa = document.getElementById('fm-previa');
@@ -1397,10 +1575,35 @@ const ForjaMissao = {
              clique vale um XP pequeno, com teto diário. <b>Não conta para a
              sequência e não pune</b> — é bônus, não cobrança.
              <i>Ex.: quantos copos de água eu bebi.</i>`,
+        CONDICIONAL: `${this._gl('condicional', 12)} <b>Bifurcação:</b> ao concluir
+           o dia, o app te pergunta se você cumpriu a condição. Escolha
+           <b>Ramo A</b> (cumpriu → XP cheio) ou <b>Ramo B</b> (não cumpriu → XP
+           reduzido). <i>A missão é sempre concluída — a diferença é a honestidade.</i>`,
         ATIVA: `${this._gl('ativa', 12)} <b>Missão normal:</b> você precisa iniciar e
            concluir. Passar do prazo é fracasso.`,
       };
       nota.innerHTML = NOTAS[e.natureza] || NOTAS.ATIVA;
+
+      // Wiring do toggle progressiva (não depende de re-render completo)
+      const progToggle = document.getElementById('fm-prog-toggle');
+      if (progToggle && !progToggle._wired) {
+        progToggle._wired = true;
+        progToggle.addEventListener('change', () => {
+          this._estado.eh_progressiva = progToggle.checked;
+          const dias = document.getElementById('fm-prog-dias');
+          if (dias) {
+            dias.style.display = progToggle.checked ? '' : 'none';
+            if (progToggle.checked) {
+              // Rola para mostrar o painel e foca o input de dias
+              setTimeout(() => {
+                dias.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                const inp = document.getElementById('fm-prog-alvo');
+                if (inp) inp.focus();
+              }, 50);
+            }
+          }
+        });
+      }
     }
 
     this._notaQuando(e);
@@ -1523,12 +1726,13 @@ const ForjaMissao = {
     if (btn) btn.disabled = true;
     try {
       let salvo = null;
-      if (e.tipo === 'ROTINA') {
+      if (e.tipo === 'ROTINA' || e.tipo === 'PROGRESSIVA') {
+        const freq = e.tipo === 'PROGRESSIVA' ? 'DIARIA' : e.frequencia;
         const payload = {
           titulo: e.titulo.trim(),
           descricao: e.descricao || null,
-          tipo: e.frequencia,
-          dias_semana: e.frequencia === 'SEMANAL' ? e.dias_semana : null,
+          tipo: freq,
+          dias_semana: freq === 'SEMANAL' ? e.dias_semana : null,
           dia_mes:     e.frequencia === 'MENSAL'  ? parseInt(e.dia_mes, 10) : null,
           mes_dia:     e.frequencia === 'ANUAL'   ? e.mes_dia : null,
           categoria: e.categoria,
@@ -1544,16 +1748,71 @@ const ForjaMissao = {
 
         if (e.natureza === 'REPETICAO') {
           const meta = e.rep_modo === 'META';
-          // O {n} e resolvido AQUI, uma vez, e o titulo salvo ja vai
-          // pronto. Guardar a sintaxe obrigaria o Extrato, a busca, o bot
-          // e a futura guilda a conhece-la.
           payload.alvo_repeticoes = meta ? parseInt(e.alvo_repeticoes, 10) : null;
           payload.titulo = this._resolverTitulo(payload.titulo,
                                                 payload.alvo_repeticoes);
           payload.contador_id = await this._resolverContador();
         }
+
+        // PROGRESSIVA — lê os campos agora, na hora de salvar.
+        // Os campos vivem no DOM (não no estado) para não depender de re-render.
+        if (e.tipo === 'PROGRESSIVA') {
+          const alvo = parseInt(document.getElementById('fm-prog-alvo')?.value, 10);
+          if (!(alvo >= 2)) {
+            SoloDialog?.toast?.('Desafio progressivo: informe quantos dias consecutivos (mínimo 2).', 'error');
+            if (btn) btn.disabled = false; return;
+          }
+          payload.eh_progressiva         = true;
+          payload.dias_progressivos_alvo = alvo;
+        }
+
+        /* CONDICIONAL — cada ramo carrega uma MISSÃO, não um número.
+
+           A versão anterior pedia "Bônus de XP" nos dois lados e o
+           servidor apenas somava esse número ao concluir a pergunta.
+           Nada nascia. O desenho é outro: o cartão pergunta é o
+           container, e cada resposta INSTANCIA a missão que o Arquiteto
+           deixou pronta — com título, janela e espólio próprios.
+
+           Por isso o espólio saiu da pergunta e mora aqui dentro: a
+           pergunta não é esforço, é bifurcação. */
+        if (e.natureza === 'CONDICIONAL') {
+          const v = (id) => (document.getElementById('fm-cond-' + id)?.value || '').trim();
+          const n = (id, pad) => {
+            const x = parseInt(document.getElementById('fm-cond-' + id)?.value, 10);
+            return isNaN(x) ? pad : Math.max(0, x);
+          };
+          const pergunta = v('pergunta');
+          const ramo = (L) => {
+            const m = { titulo: v(L + '-titulo'), xp: n(L + '-xp', 40),
+                        moedas: n(L + '-mo', 8) };
+            const i = v(L + '-ini'), f = v(L + '-fim');
+            // JANELA SÓ COM OS DOIS LADOS. Meia janela ("das 07:00 até
+            // nunca") faria `prazos.da_rotina` inventar um fim, e a
+            // missão nasceria com prazo que ninguém pediu.
+            if (i && f) { m.hora_inicio = i; m.hora_fim = f; }
+            return { txt: v(L + '-txt'), missao: m };
+          };
+          const a = ramo('a'), b = ramo('b');
+          if (!pergunta || !a.txt || !b.txt) {
+            SoloDialog?.toast?.('Preencha a pergunta e as duas respostas.', 'error');
+            if (btn) btn.disabled = false; return;
+          }
+          if (!a.missao.titulo || !b.missao.titulo) {
+            SoloDialog?.toast?.('Cada resposta precisa gerar uma missão — dê um título aos dois lados.', 'error');
+            if (btn) btn.disabled = false; return;
+          }
+          payload.condicional_payload = JSON.stringify(
+            { pergunta, opcao_a: a, opcao_b: b });
+          // A PERGUNTA NÃO PAGA. O espólio está nos ramos, e prometer
+          // dos dois lados pagaria duas vezes o mesmo ato.
+          payload.xp_recompensa = 0;
+          payload.moedas_recompensa = 0;
+        }
+
         salvo = this._editId ? await API.rotinas.atualizar(this._editId, payload)
                              : await API.rotinas.criar(payload);
+
       } else {
         const payload = {
           titulo: e.titulo.trim(),

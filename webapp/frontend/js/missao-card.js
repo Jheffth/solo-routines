@@ -778,6 +778,37 @@ const MissaoCard = {
     return null;
   },
 
+  /* ── {n} NO TÍTULO DA PROGRESSIVA ────────────────────────
+     "Acordar às 06:30 — dia {n} de {alvo}" → "dia 7 de 30".
+
+     O token é o MESMO do Pacto (`motors/pactos.py`), e de propósito:
+     dois tokens diferentes para a mesma ideia — "o número que muda" —
+     seria uma segunda gramática para o Arquiteto decorar.
+
+     A SUBSTITUIÇÃO ACONTECE AQUI, NA LEITURA, e não ao gravar. Se o
+     título fosse resolvido no banco, ele congelaria no dia 1 e o
+     desafio inteiro diria "dia 1 de 30" até o fim — foi exatamente o
+     cuidado tomado no Pacto, cujo `{n}` fica no título para poder
+     escalar. Guardar o token é o que mantém o texto vivo.
+
+     QUAL DIA É {n}: o que está EM JOGO. Enquanto a corrente tem 6 dias
+     e hoje não fechou, hoje é o 7º — a missão diz "dia 7", que é o que
+     o hunter está tentando. Cumprido, o placar vira 7 e o texto
+     continua dizendo 7. Sem esse deslocamento o cartão pediria o "dia
+     6" que já foi vencido ontem. */
+  _tokensProg(txt, m) {
+    if (!txt || txt.indexOf('{') < 0 || !this._ehProgressiva(m)) return txt;
+    const ok = parseInt(m?.dias_progressivos_ok, 10) || 0;
+    const alvo = parseInt(m?.dias_progressivos_alvo, 10) || 0;
+    const fechou = this._etapaProgressiva(m)
+      || ['CONCLUIDA'].includes((m?.status_hoje || m?.status || '').toUpperCase());
+    const n = fechou ? ok : ok + 1;
+    return String(txt)
+      .replace(/\{n\}/g, String(alvo ? Math.min(n, alvo) : n))
+      .replace(/\{alvo\}/g, String(alvo || ''))
+      .replace(/\{restam\}/g, String(alvo ? Math.max(0, alvo - ok) : ''));
+  },
+
   /* ── ETAPA CUMPRIDA ≠ DESAFIO CUMPRIDO ───────────────────
      Devolve {ok, alvo} quando o DIA foi cumprido mas o DESAFIO não.
 
@@ -1508,7 +1539,13 @@ const MissaoCard = {
                custa ZERO altura, porque divide a linha que o titulo ja
                ocupava. -->
           ${prog ? `<span class="mc-selo-prog" style="color: var(--mc-cor); font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.125rem; display: block;">Desafio Progressivo</span>` : (penit ? `<span class="mc-selo-pen">${'Penitência'}</span>` : '')}
-          <div class="mc-titulo" title="${this._esc(m.titulo)}">${this._esc(m.titulo) || 'Missão'}</div>
+          ${(() => {
+            // O título passa pelo resolvedor de tokens: {n}, {alvo} e
+            // {restam} só significam algo com o placar em mãos, e o
+            // placar só existe aqui.
+            const t = this._tokensProg(m.titulo, m);
+            return `<div class="mc-titulo" title="${this._esc(t)}">${this._esc(t) || 'Missão'}</div>`;
+          })()}
           ${compacto ? '' : recompensa}
         </div>
 

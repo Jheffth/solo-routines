@@ -85,7 +85,10 @@ vm.runInContext(ler('js', 'forja-missao.js'), ctx);
 const F = vm.runInContext('ForjaMissao', ctx);
 
 console.log('\n-- o PACTO existe como tipo --');
-ok(F.TIPOS.length === 3, 'três tipos na Forja');
+/* ERAM TRÊS; a PROGRESSIVA entrou depois e o assert ficou para trás,
+   vermelho, avisando de uma mudança que já tinha sido aprovada. Prender
+   o número exato é o certo — é assim que um tipo somem por acidente. */
+ok(F.TIPOS.length === 4, `quatro tipos na Forja (${F.TIPOS.map(t => t.id).join(', ')})`);
 const tp = F.TIPOS.find(t => t.id === 'PACTO');
 ok(!!tp, 'PACTO está no catálogo de tipos');
 ok(tp && tp.ico === 'caveira', 'usa o glifo da caveira — o mesmo da penitência');
@@ -249,7 +252,15 @@ console.log('\n-- a TRANSICAO Rotina -> Pacto (onde o bug morava) --');
   w.Glifos = { rico: () => '<svg></svg>', linha: () => '<svg></svg>' };
   w.SoloDialog = { toast() {} };
   w.MissaoCard = { cachear() {}, html: () => '<div/>' };
-  vm.runInContext(ler('js', 'forja-missao.js'), vm.createContext(w));
+  /* Node 22 não expõe mais os globais quando se passa o `window` do
+     jsdom para `createContext` — o script morre em "window is not
+     defined" e o resto do arquivo some do relatório sem medir nada.
+     Quem devolve um contexto com os globais ligados é
+     `getInternalVMContext`. Mesmo defeito, mesma correção que
+     `teste_penitencia_card.js`. */
+  vm.runInContext(ler('js', 'forja-missao.js'),
+    typeof dom.getInternalVMContext === 'function'
+      ? dom.getInternalVMContext() : vm.createContext(w));
 
   const FJ = w.ForjaMissao, D = w.document;
   const botao = () => D.querySelector('[data-fm-salvar]');
