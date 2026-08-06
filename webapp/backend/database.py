@@ -117,7 +117,39 @@ class Rotina(Base):
     # continua sendo DIARIA/SEMANAL/MENSAL/ANUAL, continua vivendo em
     # ExecucaoDia e continua aparecendo no extrato como qualquer outra.
     # Só o desfecho do prazo muda de lado (motors/fechamento.py).
-    natureza         = Column(String(20), default="ATIVA")   # ATIVA | PASSIVA
+    natureza         = Column(String(20), default="ATIVA")   # ATIVA | PASSIVA | REPETICAO | CONDICIONAL
+
+    # ── PROGRESSIVA — o desafio de dias consecutivos ────────────────────
+    #
+    # ATIVA: o hunter cumpre X dias SEM FALHAR. Qualquer fracasso encerra
+    # a missão como FRACASSADA_FATAL — sem reerguer, sem segunda chance.
+    #
+    # PASSIVA: como "Sem gastos banais durante 30 dias" — o hunter só age
+    # para CONFESSAR. Cada dia que passa sem confissão conta como mantido.
+    # Confessou → FRACASSADA_FATAL e missão encerrada.
+    #
+    # Não é uma natureza — é um ADJETIVO. Uma progressiva pode ser ATIVA
+    # ou PASSIVA, DIARIA ou SEMANAL. O que muda é apenas a régua de derrota:
+    # em vez de "não cumpriu hoje", é "não cumpriu e a corrente acabou".
+    #
+    # `dias_progressivos_ok` rastreia os dias já cumpridos e cresce no
+    # `concluir` de cada instância. É gravado na ROTINA (não na instância)
+    # porque o progresso pertence ao desafio inteiro, não ao dia.
+    eh_progressiva          = Column(Boolean, default=False, nullable=False, server_default="0")
+    dias_progressivos_alvo  = Column(Integer, nullable=True)   # meta (ex: 30 dias)
+    dias_progressivos_ok    = Column(Integer, default=0, server_default="0")  # cumpridos
+
+    # ── CONDICIONAL — a bifurcação ───────────────────────────────────────
+    #
+    # JSON com a estrutura do desvio:
+    #   { "pergunta": "Conseguiu evitar açúcar?",
+    #     "opcao_a":  { "txt": "Sim", "xp_bonus": 0, "titulo_vitoria": "" },
+    #     "opcao_b":  { "txt": "Não (confissão)", "xp_bonus": -50, "titulo_vitoria": "" } }
+    #
+    # A missão é concluída de qualquer forma — o que muda é qual ramo de XP
+    # e qual mensagem o hunter recebe. Não há punição automática: o design
+    # explícito é "honestidade sem punição dupla" (a passiva já pune).
+    condicional_payload     = Column(Text, nullable=True)  # JSON ou None
 
     # Controle
     ativo            = Column(Boolean, default=True)
@@ -211,6 +243,12 @@ class ExecucaoDia(Base):
     # Ela merece campo próprio porque não é fracasso nem conclusão: é a
     # terceira coisa, e o extrato precisa saber diferenciar as três.
     confessada_em = Column(DateTime, nullable=True)
+
+    # ── CONDICIONAL — qual ramo o hunter escolheu ────────────────────────
+    # "A" = cumpriu a condição / "B" = não cumpriu (confissão leve).
+    # None = missão não é condicional, ou ainda não respondida.
+    resposta_condicional = Column(String(1), nullable=True)  # "A" | "B" | None
+    condicional_vitoria  = Column(Boolean, nullable=True)    # True=ramo A, False=ramo B
 
     # ── REPETIÇÃO — a contagem DESTE DIA ────────────────────────────────
     # `repeticoes` é o registro, e ele NÃO tem teto: limitar o registro
@@ -323,6 +361,18 @@ class TarefaDia(Base):
     origem_titulo       = Column(String(200), nullable=True)
     origem_data         = Column(Date, nullable=True)
     xp_a_reparar        = Column(Integer, nullable=False, default=0, server_default="0")
+    # ── NASCIDA DE UMA PERGUNTA ──────────────────────────────────────────
+    # JSON: {"pergunta": "...", "resposta": "Sim", "ramo": "A"}
+    #
+    # UMA coluna e nao tres. Os tres valores nascem juntos, morrem juntos e
+    # nunca sao consultados separadamente — sao um fato so ("esta missao
+    # veio daquela pergunta, por este caminho"). Tres colunas seriam tres
+    # migracoes e tres chances de uma delas ficar para tras.
+    #
+    # O serializador as devolve achatadas (origem_pergunta/resposta/ramo)
+    # porque e assim que o cartao le, e o cartao nao tem por que saber que
+    # do outro lado e um JSON.
+    origem_condicional  = Column(Text, nullable=True)
 
     usuario          = relationship("Usuario", back_populates="tarefas")
     execucoes        = relationship("Execucao", back_populates="tarefa", lazy="dynamic")
@@ -1029,3 +1079,33 @@ def criar_tabelas():
     except Exception as e:
         if "already exists" not in str(e).lower() and "duplicate column" not in str(e).lower():
             print(f"[DB MIGRATE WARNING] visivel: {e}")
+
+    # Missões progressivas (adjetivo ortogonal — vale para ATIVA e PASSIVA)
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE rotinas ADD COLUMN eh_progressiva BOOLEAN DEFAULT false"))
+    except Exception as e:
+        if "already exists" not in str(e).lower() and "duplicate column" not in str(e).lower():
+            print(f"[DB MIGRATE WARNING] eh_progressiva: {e}")
+
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE rotinas ADD COLUMN dias_progressivos_alvo INTEGER"))
+    except Exception as e:
+        if "already exists" not in str(e).lower() and "duplicate column" not in str(e).lower():
+            print(f"[DB MIGRATE WARNING] dias_progressivos_alvo: {e}")
+
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE rotinas ADD COLUMN dias_progressivos_ok INTEGER DEFAULT 0"))
+    except Exception as e:
+        if "already exists" not in str(e).lower() and "duplicate column" not in str(e).lower():
+            print(f"[DB MIGRATE WARNING] dias_progressivos_ok: {e}")
+
+    # Missão condicional — payload JSON da bifurcação
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE rotinas ADD COLUMN condicional_payload TEXT"))
+    except Exception as e:
+        if "already exists" not in str(e).lower() and "duplicate column" not in str(e).lower():
+            print(f"[DB MIGRATE WARNING] condicional_payload: {e}")

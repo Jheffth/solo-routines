@@ -113,13 +113,38 @@ def _liquidar(db: Session, usuario: Usuario, rotina: Rotina, hoje: date,
     ed.concluida_em  = tempo.agora()
     ed.xp_ganho      = resultado.get("xp_ganho", 0) if isinstance(resultado, dict) else 0
     ed.moedas_ganhas = resultado.get("moedas_ganhas", 0) if isinstance(resultado, dict) else 0
+
+    # PROGRESSIVA ATIVA: dia concluído = +1 na corrente do desafio.
+    # A lógica vive aqui (na conclusão), nunca no fechamento: a passiva
+    # conta pelo SILENCIO (día que passou sem confissão); a ativa conta
+    # pelo ATO (o hunter clicou Concluir). Dois momentos diferentes.
+    if getattr(rotina, "eh_progressiva", False) and rotina.natureza != especiais.PASSIVA:
+        try:
+            rotina.dias_progressivos_ok = (rotina.dias_progressivos_ok or 0) + 1
+            alvo = rotina.dias_progressivos_alvo or 0
+            if alvo and rotina.dias_progressivos_ok >= alvo:
+                # VITÓRIA DO DESAFIO. A rotina se conclui de forma permanente.
+                rotina.ativo        = False
+                rotina.status       = "CONCLUIDA"
+                rotina.concluida_em = ed.concluida_em
+        except Exception as exc:
+            print(f"[EXECUCOES] ⚠ progressiva ativa {rotina.id}: {exc}")
+
     try:
         db.commit()
     except Exception:
         db.rollback()
-    # ──────────────────────────────────────────────────────
+    # ─────────────────────────────────────────────────────
 
-    return ({"rotina_id": rotina.id, "resultado": resultado, "liquidacao": liq},
+    return ({"rotina_id": rotina.id, "resultado": resultado, "liquidacao": liq,
+             # O frontend precisa saber se a corrente está encerrada (vitoriosa
+             # ou fatal) para mostrar a tela de encerrament sem recarregar.
+             "progressiva": {
+                 "ok": rotina.dias_progressivos_ok if getattr(rotina, "eh_progressiva", False) else None,
+                 "alvo": rotina.dias_progressivos_alvo,
+                 "concluida": rotina.status == "CONCLUIDA" and not rotina.ativo,
+             } if getattr(rotina, "eh_progressiva", False) else None,
+             },
             resultado)
 
 
@@ -163,6 +188,12 @@ def reerguer(
     if ed.data != tempo.hoje():
         raise HTTPException(400, "Só a missão de hoje pode ser reerguida — "
                                  "à meia-noite ela é substituída pela de amanhã.")
+    # UMA PROGRESSIVA NÃO PODE SER REERGUIDA. A dureza do desafio é
+    # exatamente o que o torna valioso: falhou um dia, a corrente acabou.
+    # Oferecer reerguer quebraria a promessa que o hunter fez consigo mesmo.
+    if getattr(rotina, "eh_progressiva", False):
+        raise HTTPException(400, "Missões progressivas não podem ser reerguidas. "
+                                 "A corrente exige que todos os dias sejam cumpridos.")
     # Só faz sentido para quem perdeu uma JANELA. Uma rotina de dia inteiro
     # que fracassou já viveu o dia inteiro; não há resto de dia para devolver.
     if not prazos.da_rotina(rotina, ed.data)["janela"]:
@@ -291,6 +322,14 @@ def confessar(
     ed.moedas_ganhas = 0
     ed.xp_perdido    = liq["penalidade"]
 
+    # PROGRESSIVA PASSIVA: confessar encerra o desafio definitivamente.
+    # Não há reerguer, não há segunda chance — é esta dureza que dá
+    # significado a cada dia que passou sem confissão.
+    eh_fatal = False
+    if getattr(rotina, "eh_progressiva", False):
+        especiais.aplicar_fatal_failure(db, rotina, tempo.agora())
+        eh_fatal = True
+
     # O nível pode ter caído com o estorno; devolve-o ao lugar certo.
     try:
         from motors.gamificacao import recalcular_nivel
@@ -307,8 +346,181 @@ def confessar(
         "estornado_xp": estorno_xp,
         "estornado_moedas": estorno_mc,
         "streak_atual": usuario.streak_atual,
-        "mensagem": (f"Confissão registrada. −{liq['penalidade']} XP "
-                     f"(metade da punição). Sua sequência continua intacta."),
+        "fatal_failure": eh_fatal,
+        "mensagem": (
+            "DESAFIO ENCERRADO. A corrente foi quebrada." if eh_fatal
+            else f"Confissão registrada. −{liq['penalidade']} XP "
+                 f"(metade da punição). Sua sequência continua intacta."
+        ),
+    }
+
+
+class ResponderCondicicionalRequest(BaseModel):
+    # Novo formato (frontend manda rotina_id + vitoria)
+    rotina_id:   Optional[int]  = None
+    vitoria:     Optional[bool] = None
+    # Formato legado (execucao_id + ramo)
+    execucao_id: Optional[int]  = None
+    ramo:        Optional[str]  = None   # "A" ou "B"
+
+
+@router.post("/responder")
+def responder_condicional(
+    payload: ResponderCondicicionalRequest,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_atual),
+):
+    """
+    O DESVIO DA MISSÃO CONDICIONAL.
+
+    A missão condicional não tem fracasso automático — ela tem uma PERGUNTA.
+    Ao concluir, o hunter escolhe o ramo que corresponde ao que aconteceu:
+
+      Ramo A → cumpriu a condição (XP integral, ou bônus)
+      Ramo B → não cumpriu, mas admite (XP reduzido, sem punição dupla)
+
+    AMBOS OS RAMOS CONCLUEM A MISSÃO. A diferença é o quanto cada honestidade
+    recebe. Isso encoraja o registro real em vez do silêncio conveniente.
+
+    Aceita dois formatos:
+      • Novo:   { rotina_id, vitoria: bool }   — frontend manda após dialog
+      • Legado: { execucao_id, ramo: "A"|"B" } — retrocompat
+    """
+    # Resolve ramo a partir de qualquer dos dois formatos
+    if payload.vitoria is not None:
+        ramo = "A" if payload.vitoria else "B"
+    elif payload.ramo:
+        ramo = (payload.ramo or "A").upper()
+    else:
+        raise HTTPException(400, "Informe 'vitoria' (bool) ou 'ramo' (A/B).")
+
+    if ramo not in ("A", "B"):
+        raise HTTPException(400, "Ramo deve ser 'A' ou 'B'.")
+
+    # Resolve ExecucaoDia
+    if payload.rotina_id:
+        hoje = tempo.hoje()
+        ed = db.query(ExecucaoDia).filter(
+            ExecucaoDia.rotina_id  == payload.rotina_id,
+            ExecucaoDia.usuario_id == usuario.id,
+            ExecucaoDia.data       == hoje,
+        ).first()
+        if not ed:
+            raise HTTPException(404, "Execução de hoje não encontrada para esta rotina.")
+        rotina = db.query(Rotina).filter(Rotina.id == payload.rotina_id).first()
+    elif payload.execucao_id:
+        ed = db.query(ExecucaoDia).filter(
+            ExecucaoDia.id         == payload.execucao_id,
+            ExecucaoDia.usuario_id == usuario.id,
+        ).first()
+        if not ed:
+            raise HTTPException(404, "Execução não encontrada")
+        rotina = db.query(Rotina).filter(Rotina.id == ed.rotina_id).first()
+    else:
+        raise HTTPException(400, "Informe rotina_id ou execucao_id.")
+
+    if not rotina:
+        raise HTTPException(404, "Rotina não encontrada")
+
+    if not especiais.eh_condicional(getattr(rotina, "natureza", None)):
+        raise HTTPException(400, "Esta missão não é condicional.")
+
+
+    if ed.status in ("CONCLUIDA", "FRACASSADA", "CONFESSADA", "CANCELADA"):
+        raise HTTPException(400, "Esta execução já foi encerrada.")
+
+    # Lê o payload da condição para aplicar o bônus do ramo escolhido.
+    import json as _json
+    cond = {}
+    try:
+        cond = _json.loads(rotina.condicional_payload or "{}") if rotina.condicional_payload else {}
+    except Exception:
+        pass
+
+    chave = "opcao_a" if ramo == "A" else "opcao_b"
+    opcao = cond.get(chave) or {}
+
+    # ══ O RAMO GERA UMA MISSÃO ═════════════════════════════════════
+    #
+    # ERA AQUI QUE A FUNCIONALIDADE FALTAVA. A versão anterior lia um
+    # `xp_bonus` — um número — e concluía a própria pergunta com XP
+    # somado. Nunca criava nada. O pedido do Arquiteto era outro:
+    # "o card pergunta vira o container da missão, os cards de
+    # consequência carregam a missão e os espólios".
+    #
+    # Então responder INSTANCIA a missão que o ramo carrega. A pergunta
+    # não paga XP nenhum: ela não é esforço, é bifurcação — pagar aqui
+    # e de novo na missão gerada seria recompensar duas vezes o mesmo
+    # ato.
+    #
+    # A missão nasce como TarefaDia de HOJE (avulsa). Se um dia ela
+    # precisar ser recorrente, o lugar é criar uma Rotina a partir do
+    # mesmo payload — o formato já comporta, e por isso `missao` é um
+    # objeto e não campos soltos.
+    spec = opcao.get("missao") or {}
+    gerada = None
+    if spec.get("titulo"):
+        gerada = TarefaDia(
+            titulo=str(spec["titulo"])[:200],
+            descricao=(spec.get("descricao") or None),
+            data_prevista=tempo.hoje(),
+            prioridade=(spec.get("prioridade") or rotina.prioridade or "MEDIA"),
+            categoria=(spec.get("categoria") or rotina.categoria or "Pessoal"),
+            status="PENDENTE",
+            usuario_id=usuario.id,
+            xp_recompensa=max(0, int(spec.get("xp") or 0)),
+            moedas_recompensa=max(0, int(spec.get("moedas") or 0)),
+            penalidade_xp=max(0, int(spec.get("penalidade_xp") or 0)),
+            hora_inicio=(spec.get("hora_inicio") or None),
+            hora_limite=(spec.get("hora_fim") or None),
+            prazo_minutos=(int(spec["prazo_minutos"])
+                           if spec.get("prazo_minutos") else None),
+        )
+        # O carimbo de origem, num JSON só. É o que faz o cartão desenhar
+        # o fio até a pergunta em vez de aparecer como tarefa órfã.
+        gerada.origem_condicional = _json.dumps({
+            "pergunta": (cond.get("pergunta") or "")[:200],
+            "resposta": (opcao.get("txt") or "")[:60],
+            "ramo": ramo,
+        }, ensure_ascii=False)
+        db.add(gerada)
+        db.flush()
+
+    xp_bonus = 0
+
+    # Conclusão normal pelo liquidar, depois ajuste de bônus.
+    # A missão é SEMPRE concluída — a condicional não pune, bifurca.
+    # A PERGUNTA NÃO PAGA. O espólio mora na missão gerada — está no
+    # cartão, e prometer dos dois lados seria pagar duas vezes o mesmo
+    # ato. Mantemos a chamada porque ela também registra o evento no
+    # extrato; o que zera é o valor.
+    resultado = aplicar_xp(
+        db=db, usuario=usuario,
+        xp_base=0 if gerada else max(0, (rotina.xp_recompensa or 0) + xp_bonus),
+        moedas=0 if gerada else (rotina.moedas_recompensa or 0),
+        hoje=ed.data or tempo.hoje(),
+        rotina_id=rotina.id,
+        observacao=f"Missão condicional (ramo {ramo}): {rotina.titulo}",
+    )
+
+    ed.status               = "CONCLUIDA"
+    ed.concluida_em         = tempo.agora()
+    ed.xp_ganho             = (resultado or {}).get("xp_ganho", 0)
+    ed.moedas_ganhas        = (resultado or {}).get("moedas_ganhas", 0)
+    ed.resposta_condicional = ramo
+    ed.condicional_vitoria  = (ramo == "A")
+
+    db.commit()
+
+    return {
+        "ok": True,
+        "execucao_id": ed.id,
+        "ramo": ramo,
+        "xp_ganho": ed.xp_ganho,
+        "xp_bonus": xp_bonus,
+        "gerada": ({"id": gerada.id, "titulo": gerada.titulo} if gerada else None),
+        "mensagem": opcao.get("txt", f"Ramo {ramo} registrado."),
+        "resultado": resultado,
     }
 
 

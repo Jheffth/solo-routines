@@ -19,6 +19,7 @@ Aqui as duas fontes viram uma coisa só:
 Como os dois IDs vêm de sequências diferentes, um `uid` ("r123"/"g45") dá ao
 frontend uma chave única sem que precise saber de onde a missão veio.
 """
+import json
 from datetime import date, datetime, timedelta
 from motors import tempo, prazos
 from typing import Optional
@@ -69,6 +70,9 @@ def _duracao(inicio, fim) -> int | None:
 def _missao_de_rotina(ed: ExecucaoDia, r: Rotina, hoje: date) -> dict:
     """ExecucaoDia + a rotina-mãe → a forma canônica de missão."""
     return {
+        # Rotina nunca nasce de pergunta, mas emite as chaves para que as
+        # duas origens tenham a mesma forma (ver `_origem_condicional`).
+        **_origem_condicional(None),
         "uid":        f"r{ed.id}",
         "id":         ed.id,               # identidade da OCORRÊNCIA
         "origem":     "rotina",
@@ -116,6 +120,12 @@ def _missao_de_rotina(ed: ExecucaoDia, r: Rotina, hoje: date) -> dict:
         # o botão vira Confessar, o desfecho do prazo é vitória, e o tom do
         # cronômetro é de vigília, não de corrida.
         "natureza": getattr(r, "natureza", "ATIVA") or "ATIVA",
+        
+        # MISSÃO PROGRESSIVA
+        "eh_progressiva": getattr(r, "eh_progressiva", False) or False,
+        "dias_progressivos_alvo": getattr(r, "dias_progressivos_alvo", None),
+        "dias_progressivos_ok": getattr(r, "dias_progressivos_ok", 0) or 0,
+
         "confessada_em": ed.confessada_em.isoformat()
                          if getattr(ed, "confessada_em", None) else None,
 
@@ -191,12 +201,62 @@ def _penitencia(fonte) -> dict:
     }
 
 
+def _origem_condicional(t: TarefaDia) -> dict:
+    """
+    ACHATA o carimbo de origem para o formato que o cartão lê.
+
+    No banco os três valores moram num JSON só (`origem_condicional`):
+    nascem juntos, morrem juntos e nunca são consultados separadamente.
+    Do lado do cartão eles são três campos, porque é assim que o desenho
+    os usa — e o cartão não tem por que saber que do outro lado é JSON.
+
+    Nunca explode: carimbo malformado devolve vazio, e a missão aparece
+    sem o fio. Uma missão sem fio ainda é uma missão; uma exceção aqui
+    derrubaria o Extrato inteiro por causa de uma linha estragada.
+    """
+    VAZIO = {"origem_pergunta": None, "origem_resposta": None, "origem_ramo": None}
+
+    # AS TRES CHAVES SAIREM SEMPRE nao e detalhe: `test_extrato` exige que
+    # missao de rotina e missao geral tenham a MESMA FORMA, porque as duas
+    # alimentam o mesmo cartao. Emiti-las so na geral fez as duas formas
+    # divergirem — e o cartao passaria a receber `undefined` de um lado e
+    # valor do outro, que e como um campo "as vezes existe" nasce.
+    cru = getattr(t, "origem_condicional", None)
+    if not cru:
+        return dict(VAZIO)
+    try:
+        d = json.loads(cru) or {}
+    except Exception:
+        # Carimbo estragado devolve vazio em vez de explodir: uma missao
+        # sem fio ainda e uma missao, mas uma excecao aqui derrubaria o
+        # Extrato inteiro por causa de uma linha.
+        return dict(VAZIO)
+    if not d.get("pergunta"):
+        return dict(VAZIO)
+    return {
+        "origem_pergunta": d.get("pergunta"),
+        "origem_resposta": d.get("resposta") or "",
+        "origem_ramo":     (d.get("ramo") or "A").upper(),
+    }
+
+
 def _missao_geral(t: TarefaDia, hoje: date) -> dict:
     """TarefaDia → a mesma forma canônica. Uso único, sem regra-mãe."""
     status = t.status or "PENDENTE"
     if status == "ATRASADA":          # vocabulário antigo → o do extrato
         status = "FRACASSADA"
     return {
+        **_origem_condicional(t),
+        # MISSAO GERAL NUNCA E PROGRESSIVA, mas emite os campos assim
+        # mesmo. `test_extrato` exige que as duas origens tenham a MESMA
+        # forma, porque as duas alimentam o mesmo cartao — e esta divergencia
+        # existia desde que a progressiva foi criada, com o assert vermelho
+        # servindo de aviso que ninguem leu. Ausencia de campo e diferente de
+        # campo falso: do lado do JS, `undefined` e `false` seguem caminhos
+        # diferentes no `_ehProgressiva`.
+        "eh_progressiva":          False,
+        "dias_progressivos_ok":    None,
+        "dias_progressivos_alvo":  None,
         "uid":        f"g{t.id}",
         "id":         t.id,
         "origem":     "geral",

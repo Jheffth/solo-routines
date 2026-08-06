@@ -101,6 +101,7 @@ COLUNAS = [
     ("tarefas_dia",  "origem_titulo",      "VARCHAR(200)",                "VARCHAR(200)"),
     ("tarefas_dia",  "origem_data",        "DATE",                        "DATE"),
     ("tarefas_dia",  "xp_a_reparar",       "INTEGER NOT NULL DEFAULT 0",  "INTEGER NOT NULL DEFAULT 0"),
+    ("tarefas_dia",  "origem_condicional", "TEXT",                        "TEXT"),
 
     # ── FRAGMENTOS DO MONARCA — Moeda Premium ────────────────────────
     # As 5 novas tabelas (planos, assinaturas, pacotes_fragmentos,
@@ -131,6 +132,21 @@ COLUNAS = [
     ("execucao_dia", "repeticoes",         "INTEGER NOT NULL DEFAULT 0",  "INTEGER NOT NULL DEFAULT 0"),
     ("execucao_dia", "xp_repeticao_pago",  "INTEGER NOT NULL DEFAULT 0",  "INTEGER NOT NULL DEFAULT 0"),
     ("execucao_dia", "ultima_repeticao_em","DATETIME",                    "TIMESTAMP"),
+
+    # ── MISSÕES PROGRESSIVAS — adjetivo ortogonal (ATIVA ou PASSIVA) ─────
+    # Uma progressiva tem um ALVO de dias consecutivos. Fracassar UM único
+    # dia mata o desafio para sempre (aplicar_fatal_failure). O contador
+    # `dias_progressivos_ok` cresce a cada dia mantido e zera ao falhar.
+    ("rotinas", "eh_progressiva",         "BOOLEAN NOT NULL DEFAULT 0",  "BOOLEAN NOT NULL DEFAULT FALSE"),
+    ("rotinas", "dias_progressivos_alvo",  "INTEGER",                     "INTEGER"),
+    ("rotinas", "dias_progressivos_ok",    "INTEGER NOT NULL DEFAULT 0",  "INTEGER NOT NULL DEFAULT 0"),
+
+    # ── MISSÃO CONDICIONAL — bifurcação ao concluir ───────────────────────
+    # Ao concluir, o hunter escolhe entre ramo A (cumpriu) e ramo B (não cumpriu).
+    # O JSON tem: { "pergunta": "...", "opcao_a": { txt, xp_bonus }, "opcao_b": {...} }
+    ("rotinas",     "condicional_payload",  "TEXT",                        "TEXT"),
+    ("execucao_dia","resposta_condicional", "VARCHAR(1)",                  "VARCHAR(1)"),
+    ("execucao_dia","condicional_vitoria",  "BOOLEAN",                     "BOOLEAN"),
 ]
 
 
