@@ -25,6 +25,7 @@
 const Loja = {
   _itens: [],
   _moedas: 0,
+  _fragmentos: 0,
   _aba: 'todos',
 
   /* Abas por natureza do item. `tipos:null` = todas. */
@@ -73,6 +74,7 @@ const Loja = {
     try {
       const me = await API.auth.me();
       this._moedas = me?.moedas ?? 0;
+      this._fragmentos = me?.fragmentos ?? 0;
       this._pintarCarteira();
     } catch (_) { /* a carteira é enfeite: nunca derruba a vitrine */ }
   },
@@ -80,6 +82,22 @@ const Loja = {
   _pintarCarteira() {
     const el = document.getElementById('loja-moedas');
     if (el) el.textContent = (this._moedas || 0).toLocaleString('pt-BR');
+    
+    let elFrag = document.getElementById('loja-fragmentos');
+    if (!elFrag && el) {
+       const wrapper = el.parentElement;
+       if (wrapper) {
+         wrapper.insertAdjacentHTML('afterend', `
+            <div class="lj-carteira frag">
+              <span style="font-size:1.15rem; filter: drop-shadow(0 0 6px rgba(96,165,250,0.5));">💎</span>
+              <span class="lj-carteira-valor" id="loja-fragmentos">${(this._fragmentos || 0).toLocaleString('pt-BR')}</span>
+              <span class="lj-carteira-lbl">Fragmentos</span>
+            </div>
+         `);
+       }
+    } else if (elFrag) {
+       elFrag.textContent = (this._fragmentos || 0).toLocaleString('pt-BR');
+    }
   },
 
   async carregarItens() {
@@ -217,7 +235,7 @@ const Loja = {
     if (i.possui)           { rotulo = 'Adquirido';    motivo = 'Você já possui este item'; }
     else if (i.esgotado)    { rotulo = 'Esgotado';     motivo = 'Sem unidades restantes'; }
     else if (!i.tem_nivel)  { rotulo = `Nível ${i.nivel_minimo}`; motivo = `Exige nível ${i.nivel_minimo}`; }
-    else if (!i.pode_pagar) { rotulo = 'Sem saldo';    motivo = 'Mana Coins insuficientes'; }
+    else if (!i.pode_pagar) { rotulo = 'Sem saldo';    motivo = 'Saldo insuficiente'; }
 
     const chips = [];
     if (!i.tem_nivel && !i.possui)
@@ -252,7 +270,10 @@ const Loja = {
 
       <div class="lj-rodape">
         <span class="lj-preco ${!i.pode_pagar && !i.possui ? 'sem-saldo' : ''}">
-          ${this._moeda(16)}${(i.custo_moedas || 0).toLocaleString('pt-BR')}
+          ${(i.custo_fragmentos || 0) > 0 
+              ? `<span style="color:#60a5fa; margin-right:4px;">💎</span>${(i.custo_fragmentos).toLocaleString('pt-BR')}`
+              : `${this._moeda(16)}${(i.custo_moedas || 0).toLocaleString('pt-BR')}`
+          }
         </span>
         <button class="lj-btn" data-lj-comprar="${i.id}"
                 ${travado ? 'disabled' : ''}
@@ -303,14 +324,20 @@ const Loja = {
   /* ── Compra ──────────────────────────────────────────────── */
   async confirmarCompra(item, btn) {
     const nome = item.titulo || 'Item';
-    const saldoDepois = (this._moedas || 0) - (item.custo_moedas || 0);
+    const ehFragmento = (item.custo_fragmentos || 0) > 0;
+    const custo = ehFragmento ? item.custo_fragmentos : (item.custo_moedas || 0);
+    const meuSaldo = ehFragmento ? (this._fragmentos || 0) : (this._moedas || 0);
+    const moedaStr = ehFragmento ? '💎 Fragmentos' : 'Mana Coins';
+    const corMoeda = ehFragmento ? '#60a5fa' : '#fbbf24';
+
+    const saldoDepois = meuSaldo - custo;
     const extra = item.unico
       ? '<br><span style="color:#c084fc;font-size:.82rem">Cosmético permanente — fica seu para sempre.</span>'
       : '';
 
     const pergunta =
       `Adquirir <strong>${this._esc(nome)}</strong>?<br><br>` +
-      `Custo: <strong style="color:#fbbf24">${(item.custo_moedas || 0).toLocaleString('pt-BR')} Mana Coins</strong><br>` +
+      `Custo: <strong style="color:${corMoeda}">${custo.toLocaleString('pt-BR')} ${moedaStr}</strong><br>` +
       `Saldo depois: <strong>${saldoDepois.toLocaleString('pt-BR')}</strong>${extra}`;
 
     const ok = (typeof SoloDialog !== 'undefined')
@@ -324,8 +351,9 @@ const Loja = {
     if (btn) { btn.disabled = true; btn.textContent = '...'; }
     try {
       const resp = await API.post(`/recompensas/${item.id}/resgatar`, {});
-      if (resp && resp.moedas_restantes !== undefined) {
-        this._moedas = resp.moedas_restantes;
+      if (resp) {
+        if (resp.moedas_restantes !== undefined) this._moedas = resp.moedas_restantes;
+        if (resp.fragmentos_restantes !== undefined) this._fragmentos = resp.fragmentos_restantes;
         this._pintarCarteira();
       }
       // A cerimônia do cosmético é disparada pela camada de API, através do
@@ -350,7 +378,7 @@ const Loja = {
   _rascunhoVazio() {
     return {
       titulo: '', descricao: '', icone: '🎁', categoria: 'Lazer',
-      custo_moedas: 100, nivel_minimo: 1, estoque: -1,
+      custo_moedas: 100, custo_fragmentos: 0, nivel_minimo: 1, estoque: -1,
       tipo: 'externa', payload: null,
       _editando: null,          // id quando é edição, null quando é criação
     };
@@ -369,6 +397,7 @@ const Loja = {
     this._rascunho = item
       ? { titulo: item.titulo, descricao: item.descricao || '', icone: item.icone || '🎁',
           categoria: item.categoria || 'Lazer', custo_moedas: item.custo_moedas || 0,
+          custo_fragmentos: item.custo_fragmentos || 0,
           nivel_minimo: item.nivel_minimo || 1, estoque: item.estoque ?? -1,
           tipo: item.tipo || 'externa', payload: item.payload || null,
           _editando: item.id }
@@ -436,17 +465,21 @@ const Loja = {
 
           <div class="lj-forja-linha">
             <div class="lj-campo">
-              <label class="lj-campo-lbl" for="lj-f-preco">Preço (Mana Coins)</label>
+              <label class="lj-campo-lbl" for="lj-f-preco">Moedas</label>
               <input class="lj-in" id="lj-f-preco" type="number" min="0" value="${d.custo_moedas}">
             </div>
             <div class="lj-campo">
-              <label class="lj-campo-lbl" for="lj-f-nivel">Nível mínimo</label>
-              <input class="lj-in" id="lj-f-nivel" type="number" min="0" value="${d.nivel_minimo}">
+              <label class="lj-campo-lbl" for="lj-f-frag">Fragmentos 💎</label>
+              <input class="lj-in" id="lj-f-frag" type="number" min="0" value="${d.custo_fragmentos || 0}">
             </div>
             <div class="lj-campo">
+              <label class="lj-campo-lbl" for="lj-f-nivel">Nível Mínimo</label>
+              <input class="lj-in" id="lj-f-nivel" type="number" min="0" value="${d.nivel_minimo}">
+            </div>
+            <div class="lj-campo" style="flex:0.7">
               <label class="lj-campo-lbl" for="lj-f-estoque">Estoque</label>
               <input class="lj-in" id="lj-f-estoque" type="number" min="-1" value="${d.estoque}">
-              <span class="lj-campo-dica">−1 = ilimitado</span>
+              <span class="lj-campo-dica">−1 = inf</span>
             </div>
           </div>
 
@@ -499,7 +532,7 @@ const Loja = {
       });
     });
 
-    ['lj-f-titulo', 'lj-f-desc', 'lj-f-preco', 'lj-f-nivel',
+    ['lj-f-titulo', 'lj-f-desc', 'lj-f-preco', 'lj-f-frag', 'lj-f-nivel',
      'lj-f-estoque', 'lj-f-icone', 'lj-f-cat'].forEach(id => {
       document.getElementById(id)?.addEventListener('input', () => {
         this._colher();
@@ -526,6 +559,7 @@ const Loja = {
     d.icone     = v('lj-f-icone')   ?? d.icone;
     d.categoria = v('lj-f-cat')     ?? d.categoria;
     d.custo_moedas = n('lj-f-preco',   d.custo_moedas);
+    d.custo_fragmentos = n('lj-f-frag', d.custo_fragmentos);
     d.nivel_minimo = n('lj-f-nivel',   d.nivel_minimo);
     d.estoque      = n('lj-f-estoque', d.estoque);
   },
@@ -591,6 +625,7 @@ const Loja = {
       icone: d.icone,
       categoria: d.categoria,
       custo_moedas: d.custo_moedas,
+      custo_fragmentos: d.custo_fragmentos || 0,
       nivel_minimo: d.nivel_minimo,
       estoque: d.estoque,
       ilimitado: d.estoque < 0,
@@ -660,6 +695,7 @@ const Loja = {
       icone: d.icone || '🎁',
       categoria: d.categoria || 'Lazer',
       custo_moedas: d.custo_moedas,
+      custo_fragmentos: d.custo_fragmentos || 0,
       nivel_minimo: d.nivel_minimo,
       estoque: d.estoque,
       tipo: d.tipo,

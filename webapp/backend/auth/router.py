@@ -240,6 +240,7 @@ def me(usuario: Usuario = Depends(get_usuario_atual)):
         "nivel_atual": usuario.nivel_atual,
         "xp_proximo_nivel": usuario.xp_proximo_nivel,
         "moedas": usuario.moedas,
+        "fragmentos": _saldo_fragmentos(usuario.id),
         "streak_atual": usuario.streak_atual,
         "streak_max": usuario.streak_max,
         "nivel_acesso": usuario.nivel_acesso,
@@ -247,6 +248,15 @@ def me(usuario: Usuario = Depends(get_usuario_atual)):
         "ultimo_acesso": usuario.ultimo_acesso,
         "aura_id": getattr(usuario, "aura_id", None),
     }
+
+def _saldo_fragmentos(usuario_id: int) -> int:
+    try:
+        from database import SessionLocal
+        from motors.fragmentos import FragmentosLedger
+        with SessionLocal() as db:
+            return FragmentosLedger.saldo(db, usuario_id)
+    except:
+        return 0
 
 
 @router.post("/logout")

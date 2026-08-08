@@ -52,6 +52,11 @@ class RotinaCreate(BaseModel):
     # era a unica porta do app por onde o hunter mandava um preco, e o
     # Arquiteto cortou a raiz em vez de clampar a folha.
     intervalo_min_seg: Optional[int]       = None
+    # PROGRESSIVA: desafio de dias consecutivos sem falhar.
+    eh_progressiva:         Optional[bool] = None
+    dias_progressivos_alvo: Optional[int]  = None
+    # CONDICIONAL: JSON { pergunta, opcao_a: {txt, xp_bonus}, opcao_b: {txt, xp_bonus} }
+    condicional_payload:    Optional[str]  = None
 
 
 class RotinaUpdate(BaseModel):
@@ -76,6 +81,9 @@ class RotinaUpdate(BaseModel):
     alvo_repeticoes:   Optional[int]       = None
     contador_id:       Optional[int]       = None
     intervalo_min_seg: Optional[int]       = None
+    eh_progressiva:         Optional[bool] = None
+    dias_progressivos_alvo: Optional[int]  = None
+    condicional_payload:    Optional[str]  = None
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -144,15 +152,7 @@ def _rotina_to_dict(r: Rotina, exec_dia: "ExecucaoDia | None" = None,
         "hora_fim":         getattr(r, "hora_fim",    None),
         "alvo_repeticoes":  getattr(r, "alvo_repeticoes", None),
         "contador_id":      getattr(r, "contador_id", None),
-        # O XP por clique vem da Balanca, entao ele NAO viaja por missao.
-        # Devolve-lo daqui faria o cartao acreditar num numero gravado que
-        # nao manda em nada — segunda verdade de novo.
-        "ativo":            r.ativo,
-        "ultima_execucao":  r.ultima_execucao.isoformat() if r.ultima_execucao else None,
-        "criado_em":        r.criado_em.isoformat() if r.criado_em else None,
-        "usuario_id":       r.usuario_id,
-
-        # Dados diários (ExecucaoDia)
+        # O XP por clique vem da Balanca, entao ele NAO viaja por miss        # Dados diários (ExecucaoDia)
         "exec_dia_id":      ed.id            if ed else None,
         "status_hoje":      status_hoje,
         "iniciada_em":      ed.iniciada_em.isoformat()   if ed and ed.iniciada_em   else None,
@@ -163,9 +163,18 @@ def _rotina_to_dict(r: Rotina, exec_dia: "ExecucaoDia | None" = None,
         "xp_ganho_hoje":    ed.xp_ganho      if ed else 0,
         "xp_perdido_hoje":  ed.xp_perdido    if ed else 0,
         "moedas_hoje":      ed.moedas_ganhas if ed else 0,
-        # A CONTAGEM DO DIA. Sem ela o cartao de repeticao nasce em 0 a cada
+        # A CONTAGEM DO DIA. Sem ela o cartão de repeticao nasce em 0 a cada
         # recarga, e o hunter perde o que fez ao trocar de aba.
         "repeticoes":       (ed.repeticoes if ed else 0) or 0,
+        # Condicional — ramo escolhido hoje + payload template
+        "resposta_condicional": getattr(ed, "resposta_condicional", None) if ed else None,
+        "condicional_vitoria":  getattr(ed, "condicional_vitoria",  None) if ed else None,
+        "condicional_payload":  getattr(r, "condicional_payload",   None),
+
+        # Progressiva — corrente do desafio (na rotina, não no dia)
+        "eh_progressiva":         getattr(r, "eh_progressiva",         False),
+        "dias_progressivos_alvo": getattr(r, "dias_progressivos_alvo", None),
+        "dias_progressivos_ok":   getattr(r, "dias_progressivos_ok",   0),
 
         # Retrocompat com exec_hoje (Execucao histórica)
         "exec_hoje": {
@@ -175,6 +184,13 @@ def _rotina_to_dict(r: Rotina, exec_dia: "ExecucaoDia | None" = None,
             "bonus_streak":   exec_hoje.bonus_streak    if exec_hoje else 0,
             "criado_em":      exec_hoje.criado_em.isoformat() if exec_hoje and exec_hoje.criado_em else None,
         } if (exec_hoje or ed) else None,
+
+        # Metadados estáticos da rotina
+        "ativo":           r.ativo,
+        "status":          getattr(r, "status", "ATIVA"),
+        "ultima_execucao": r.ultima_execucao.isoformat() if r.ultima_execucao else None,
+        "criado_em":       r.criado_em.isoformat() if r.criado_em else None,
+        "usuario_id":      r.usuario_id,
     }
 
 
@@ -380,6 +396,19 @@ def criar_rotina(
         except Exception: rotina.contador_id = None
         try: rotina.intervalo_min_seg = max(0, int(payload.intervalo_min_seg or 0)) or None
         except Exception: rotina.intervalo_min_seg = None
+
+    # PROGRESSIVA — o adjetivo ortogonal. Qualquer natureza pode ser progressiva.
+    if payload.eh_progressiva:
+        try:
+            rotina.eh_progressiva = True
+            rotina.dias_progressivos_alvo = int(payload.dias_progressivos_alvo or 0) or None
+            rotina.dias_progressivos_ok   = 0  # desafio começa do zero
+        except Exception: pass
+
+    # CONDICIONAL — payload JSON validado pela tela, guardado bruto.
+    if natureza == especiais.CONDICIONAL and payload.condicional_payload:
+        try: rotina.condicional_payload = payload.condicional_payload
+        except Exception: pass
 
     db.add(rotina)
     db.commit()

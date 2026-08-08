@@ -11,6 +11,7 @@ from database import get_db, Recompensa, RecompensaUsuario, Usuario
 from auth.router import get_usuario_atual
 from motors import loja_efeitos, cosmeticos
 from motors.celebracao import anexar
+from motors import fragmentos
 
 router = APIRouter(prefix="/recompensas", tags=["recompensas"])
 
@@ -47,6 +48,7 @@ class RecompensaCreate(BaseModel):
     icone: str = "🎁"
     categoria: str = "Lazer"
     custo_moedas: int = 100
+    custo_fragmentos: int = 0
     custo_xp: int = 0
     nivel_minimo: int = 1
     estoque: int = -1
@@ -60,6 +62,7 @@ class RecompensaUpdate(BaseModel):
     icone: Optional[str] = None
     categoria: Optional[str] = None
     custo_moedas: Optional[int] = None
+    custo_fragmentos: Optional[int] = None
     nivel_minimo: Optional[int] = None
     estoque: Optional[int] = None
     ativo: Optional[bool] = None
@@ -84,7 +87,15 @@ def _recompensa_to_dict(r: Recompensa, usuario: Usuario = None, db: Session = No
             RecompensaUsuario.recompensa_id == r.id,
         ).first() is not None
         possui     = loja_efeitos.ja_possui(db, usuario.id, r)
-        pode_pagar = (usuario.moedas or 0) >= (r.custo_moedas or 0)
+        
+        saldo_moedas = usuario.moedas or 0
+        saldo_frag = fragmentos.saldo(db, usuario.id) if (r.custo_fragmentos and r.custo_fragmentos > 0) else 0
+        pode_pagar = True
+        if r.custo_moedas and r.custo_moedas > 0 and saldo_moedas < r.custo_moedas:
+            pode_pagar = False
+        if r.custo_fragmentos and r.custo_fragmentos > 0 and saldo_frag < r.custo_fragmentos:
+            pode_pagar = False
+            
         tem_nivel  = (usuario.nivel_atual or 1) >= (r.nivel_minimo or 0)
 
     # -1 significa ILIMITADO (é o padrão do modelo). A vitrine antiga tratava
@@ -100,6 +111,7 @@ def _recompensa_to_dict(r: Recompensa, usuario: Usuario = None, db: Session = No
         "icone":        r.icone,
         "categoria":    r.categoria,
         "custo_moedas": r.custo_moedas,
+        "custo_fragmentos": r.custo_fragmentos,
         "custo_xp":     r.custo_xp,
         "nivel_minimo": r.nivel_minimo,
         "estoque":      r.estoque,
@@ -187,8 +199,14 @@ def resgatar_recompensa(
     if usuario.xp_total < r.custo_xp:
         raise HTTPException(400, f"XP insuficiente. Necessário: {r.custo_xp} XP")
 
-    if usuario.moedas < r.custo_moedas:
-        raise HTTPException(400, f"Mana Coins insuficientes. Necessário: {r.custo_moedas} 💰")
+    if r.custo_moedas and r.custo_moedas > 0:
+        if usuario.moedas < r.custo_moedas:
+            raise HTTPException(400, f"Mana Coins insuficientes. Necessário: {r.custo_moedas} 💰")
+
+    if r.custo_fragmentos and r.custo_fragmentos > 0:
+        saldo_frag = fragmentos.saldo(db, usuario.id)
+        if saldo_frag < r.custo_fragmentos:
+            raise HTTPException(400, f"Fragmentos insuficientes. Necessário: {r.custo_fragmentos} 💎")
 
     # -1 = ilimitado; só 0 é esgotado de verdade.
     if r.estoque is not None and r.estoque == 0:
@@ -204,7 +222,11 @@ def resgatar_recompensa(
         db.rollback()
         raise HTTPException(400, str(e))
 
-    usuario.moedas -= r.custo_moedas
+    if r.custo_moedas and r.custo_moedas > 0:
+        usuario.moedas -= r.custo_moedas
+
+    if r.custo_fragmentos and r.custo_fragmentos > 0:
+        fragmentos.debitar(db, usuario, r.custo_fragmentos, motivo="gasto_loja", referencia_id=r.id)
     if r.estoque is not None and r.estoque > 0:
         r.estoque -= 1
 
@@ -215,6 +237,7 @@ def resgatar_recompensa(
         "ok": True,
         "msg": f"🎉 '{r.titulo}' resgatado!",
         "moedas_restantes": usuario.moedas,
+        "fragmentos_restantes": fragmentos.saldo(db, usuario.id),
         "tipo": (getattr(r, "tipo", None) or "externa"),
     }
     # Cosmético comprado merece a mesma cerimônia de um presenteado: comprar

@@ -52,6 +52,19 @@
   color: var(--text-muted);
 }
 
+.lj-carteira.frag {
+  background: linear-gradient(135deg, rgba(96,165,250,.16), rgba(96,165,250,.05));
+  border-color: rgba(96,165,250,0.4);
+}
+.lj-carteira.frag .lj-carteira-valor {
+  color: #60a5fa;
+  text-shadow: 0 0 14px rgba(96,165,250,.5);
+}
+.lj-carteira.frag .lj-carteira-lbl {
+  color: #93c5fd;
+  opacity: 0.8;
+}
+
 /* ── Abas por tipo ────────────────────────────────────────── */
 .lj-abas {
   display: flex;

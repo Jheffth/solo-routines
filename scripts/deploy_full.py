@@ -100,7 +100,7 @@ def main():
 
     sftp.close()
 
-    print(f"\n{'─'*60}")
+    print(f"\n{'-'*60}")
     if erros:
         print(f"[AVISO] {len(erros)} arquivo(s) falharam: {erros}")
     else:

@@ -45,21 +45,49 @@ AS NATUREZAS
            É um protocolo: "sem cafeína após as 16h", corrido até as 05:00.
            Quem quebra vai ao cartão e CONFESSA — não há como verificar, e é
            justamente por isso que confessar precisa ser barato (economia.py).
+
+  CONDICIONAL  a missão tem uma PERGUNTA. Ao concluir o dia, o hunter
+           escolhe entre dois ramos (A ou B). A missão sempre é concluída —
+           o que muda é o ajuste de XP e a mensagem de retorno.
+
+           Diferente da PASSIVA: a condicional não inverte o desfecho —
+           ela bifurca. "Fiz o treino? → A (cheio) | B (incompleto)".
+           O ramo B não é derrota: é honestidade recompensada de forma menor.
+
+O ADJETIVO PROGRESSIVA
+
+  Qualquer natureza pode ser PROGRESSIVA (campo `eh_progressiva = True`).
+  Uma missão progressiva tem um ALVO DE DIAS CONSECUTIVOS. Falhar um único
+  dia encerra a missão com status FRACASSADA_FATAL — sem reerguer, sem
+  segunda chance.
+
+  PASSIVA PROGRESSIVA: "Sem gastos banais por 30 dias". O hunter só age para
+  CONFESSAR. Cada dia sem confissão = +1 dia progressivo. Confessar mata
+  a missão.
+
+  O que o `fechamento.py` precisa para decidir o fatal failure:
+    - r.eh_progressiva == True
+    - ed.status == "FRACASSADA"  (ou CONFESSADA na passiva)
+    → marcar r.ativo = False, r.status = "FRACASSADA_FATAL"
 """
 from auth.router import NIVEIS_ADMIN
 
 # Naturezas conhecidas. "ATIVA" é o padrão de todo o app até aqui.
-ATIVA = "ATIVA"
-PASSIVA = "PASSIVA"
-REPETICAO = "REPETICAO"
+ATIVA      = "ATIVA"
+PASSIVA    = "PASSIVA"
+REPETICAO  = "REPETICAO"
+CONDICIONAL = "CONDICIONAL"
 # PUNICAO nao e criada pelo hunter: nasce do fechamento do dia. Por isso
 # ela esta em NATUREZAS (o cartao precisa reconhece-la) e NAO no
 # lancador — `pode_criar` a recusa de proposito, ver abaixo.
-PUNICAO = "PUNICAO"
-NATUREZAS = (ATIVA, PASSIVA, REPETICAO, PUNICAO)
+PUNICAO    = "PUNICAO"
+NATUREZAS  = (ATIVA, PASSIVA, REPETICAO, CONDICIONAL, PUNICAO)
 
-# Naturezas que exigem permissão para serem criadas. ATIVA é de todos.
-PREMIUM = (PASSIVA,)
+# Naturezas que exigem permissão para serem criadas. ATIVA e REPETICAO
+# são de todos. CONDICIONAL é premium: a bifurcação precisa de payload
+# validado, e liberar para usuários comuns antes de ter validação robusta
+# é risco desnecessário.
+PREMIUM = (PASSIVA, CONDICIONAL)
 
 # Quem pode forjar missão especial. Mesma tupla que já define a Staff em
 # auth/router.py — importada, não copiada, para não haver duas verdades.
@@ -75,6 +103,10 @@ def normalizar(valor) -> str:
 
 def eh_premium(natureza) -> bool:
     return normalizar(natureza) in PREMIUM
+
+
+def eh_condicional(natureza) -> bool:
+    return normalizar(natureza) == CONDICIONAL
 
 
 def pode_criar(usuario, natureza) -> bool:
@@ -104,7 +136,28 @@ def permissao(usuario) -> dict:
     liberado = (getattr(usuario, "nivel_acesso", "") or "") in FORJADORES_ESPECIAIS
     return {
         "pode_especiais": liberado,
-        "naturezas": list(NATUREZAS) if liberado else [ATIVA],
+        "naturezas": list(NATUREZAS) if liberado else [ATIVA, REPETICAO],
         "motivo": None if liberado
                   else "Missões especiais são exclusivas da Staff por enquanto.",
     }
+
+
+def aplicar_fatal_failure(db, rotina, agora) -> None:
+    """
+    Mata a missão progressiva de forma permanente.
+
+    Chamado por `fechamento.py` quando uma missão com `eh_progressiva=True`
+    falha em qualquer dia. Não há segunda chance — é exatamente o que torna
+    o desafio progressivo difícil e valioso.
+
+    O status FRACASSADA_FATAL não é um status de ExecucaoDia: ele vive na
+    ROTINA, porque a missão inteira (não só o dia) terminou. Novas
+    instâncias diárias não serão criadas pelo gerador.
+    """
+    try:
+        rotina.ativo   = False
+        rotina.status  = "FRACASSADA_FATAL"
+        import motors.tempo as tempo
+        rotina.cancelada_em = agora
+    except Exception as exc:
+        print(f"[ESPECIAIS] ⚠ fatal_failure({rotina.id}): {exc}")
