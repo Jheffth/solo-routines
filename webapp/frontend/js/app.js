@@ -196,7 +196,6 @@ const App = {
         case 'perfil':    await Perfil.carregar();    break;
         case 'rotinas':   await Rotinas.carregar();   break;
         case 'tarefas':   await Tarefas.carregar();   break;
-      case 'progressivas': await Progressivas.carregar(); break;
         case 'progressivas': await Progressivas.carregar(); break;
         case 'pacto':     await Pacto.carregar();     break;
         case 'dungeons':  await Dungeons.carregar();  break;
@@ -264,7 +263,6 @@ const App = {
       case 'dashboard': await Dashboard.carregar(); break;
       case 'rotinas':   await Rotinas.carregar();   break;
       case 'tarefas':   await Tarefas.carregar();   break;
-      case 'progressivas': await Progressivas.carregar(); break;
         case 'progressivas': await Progressivas.carregar(); break;
       // O PACTO FALTAVA AQUI, e so aqui.
       //
