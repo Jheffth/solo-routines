@@ -18,30 +18,68 @@ REMOTE_BASE = '/root/app'
 LOCAL_BASE  = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # raiz do projeto
 
 # Arquivos a enviar (relativos à raiz do projeto)
-ARQUIVOS = [
-    # Backend — Python
-    'webapp/backend/database.py',
-    'webapp/backend/motors/migracao.py',
-    'webapp/backend/motors/especiais.py',
-    'webapp/backend/motors/fechamento.py',
-    'webapp/backend/routers/execucoes.py',
-    'webapp/backend/routers/rotinas.py',
-    'webapp/backend/routers/recompensas.py',
-    'webapp/backend/auth/router.py',
-    # Frontend — JS
-    'webapp/frontend/js/forja-missao.js',
-    'webapp/frontend/js/missao-card.js',
-    'webapp/frontend/js/pages/loja.js',
-    'webapp/frontend/js/pages/progressivas.js',
-    'webapp/frontend/js/pages/rotinas.js',
-    'webapp/frontend/js/app.js',
-    # Frontend — CSS
-    'webapp/frontend/css/forja-missao.css',
-    'webapp/frontend/css/missao-card.css',
-    'webapp/frontend/css/loja.css',
-    # HTML
-    'webapp/frontend/index.html',
-]
+import subprocess
+
+def get_tracked_files():
+    try:
+        # Pega todos os arquivos rastreados pelo git
+        result = subprocess.run(['git', 'ls-files', 'webapp/'], capture_output=True, text=True, check=True)
+        files = result.stdout.splitlines()
+        # Filtra pastas ou arquivos indesejados se precisar, mas o git ls-files ja e bem limpo
+        return [f for f in files if os.path.isfile(os.path.join(LOCAL_BASE, f.replace('/', os.sep)))]
+    except Exception as e:
+        print(f"[ERRO] Falha ao obter arquivos do git: {e}")
+        sys.exit(1)
+
+def conferir_arvore():
+    """
+    AVISA quando ha mudanca salva mas NAO COMMITADA.
+
+    `git ls-files` lista o que esta VERSIONADO. Um arquivo editado e nao
+    commitado sobe com o conteudo do disco (o SFTP le o disco), mas um
+    arquivo NOVO e nao commitado nao sobe de jeito nenhum -- e o script
+    imprime "enviados com sucesso" do mesmo jeito.
+
+    Foi assim que a correcao das punicoes ficou dias sem chegar a
+    producao enquanto todos os testes passavam localmente: deploy que
+    diz sucesso e nao leva tudo e pior que deploy que falha, porque
+    ninguem vai investigar.
+    """
+    try:
+        sujo = subprocess.run(['git', 'status', '--porcelain'],
+                              capture_output=True, text=True).stdout.strip()
+        novos = [l[3:] for l in sujo.splitlines()
+                 if l.startswith('??') and l[3:].startswith('webapp/')]
+        mods = [l[3:] for l in sujo.splitlines()
+                if not l.startswith('??') and l[3:].startswith('webapp/')]
+        if novos:
+            print("\n[AVISO] Arquivos NOVOS e nao commitados em webapp/ NAO SERAO ENVIADOS:")
+            for f in novos[:15]:
+                print(f"         - {f}")
+            print("         Commite antes, ou eles ficam so na sua maquina.\n")
+        if mods:
+            print(f"[NOTA] {len(mods)} arquivo(s) modificado(s) e nao commitado(s) "
+                  f"serao enviados como estao no disco.\n")
+    except Exception:
+        pass
+
+
+def commit_atual():
+    """O commit que esta subindo — gravado no servidor para conferencia."""
+    try:
+        h = subprocess.run(['git', 'rev-parse', '--short', 'HEAD'],
+                           capture_output=True, text=True).stdout.strip()
+        m = subprocess.run(['git', 'log', '-1', '--pretty=%s'],
+                           capture_output=True, text=True).stdout.strip()
+        return f"{h} {m}"
+    except Exception:
+        return "desconhecido"
+
+
+conferir_arvore()
+COMMIT = commit_atual()
+print(f"[DEPLOY] Enviando commit: {COMMIT}")
+ARQUIVOS = get_tracked_files()
 
 
 def sftp_upload(sftp, local_path, remote_path):
@@ -104,6 +142,16 @@ def main():
     if erros:
         print(f"[AVISO] {len(erros)} arquivo(s) falharam: {erros}")
     else:
+        # CARIMBO. Sem ele, "o servidor esta com o codigo novo?" so se
+        # responde por fe. Com ele, um `cat` no servidor responde.
+        try:
+            import io as _io
+            carimbo = _io.BytesIO(
+                f"{COMMIT}\n{len(ARQUIVOS)} arquivos\n".encode("utf-8"))
+            sftp.putfo(carimbo, posixpath.join(REMOTE_BASE, "VERSAO_DEPLOY.txt"))
+            print(f"[OK] Carimbo gravado: {COMMIT}")
+        except Exception as e:
+            print(f"[AVISO] nao consegui gravar o carimbo: {e}")
         print(f"[OK] Todos os {len(ARQUIVOS)} arquivo(s) enviados com sucesso.")
 
     print("\n[*] Reiniciando container Docker no servidor...")
