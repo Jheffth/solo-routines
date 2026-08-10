@@ -175,15 +175,29 @@ def diag():
                   "critica": (r.prioridade or "").upper() == "CRITICA",
                   "diaria": (r.tipo or "").upper() == "DIARIA"}
                  for ed, r in falhas_hoje]
-        total_diarias = fechamento._diarias_do_dia(db, u, hoje)
-        seguidos = fechamento._dias_seguidos_com_falha(db, u, hoje)
-        print(f"\n  gatilho HOJE ({hoje}):")
-        print(f"    falhas de hoje        : {len(lista)}")
-        print(f"    delas CRÍTICAS        : {sum(1 for f in lista if f['critica'])}")
-        print(f"    diárias falhadas/total: "
-              f"{sum(1 for f in lista if f['diaria'])} / {total_diarias}")
-        print(f"    dias seguidos c/ falha: {seguidos} "
-              f"(precisa {regras['dias_seguidos']})")
+        # AS REGRAS MUDARAM e este bloco ficou para trás — ele chamava
+        # `_dias_seguidos_com_falha`, que deixou de existir quando o
+        # gatilho passou a contar DIAS PUNIDOS em vez de dias com falha.
+        # O script explodiu no meio do relatório. Diagnóstico que quebra
+        # ao mudar o que ele diagnostica é pior que nenhum: some
+        # justamente quando é mais necessário.
+        print(f"\n  julgamento dos últimos dias (regras novas):")
+        print(f"    limiar do dia perdido : {regras['limiar_dia']}% das diárias")
+        for atras in range(0, 5):
+            dia = hoje - timedelta(days=atras)
+            total = fechamento._diarias_do_dia(db, u, dia)
+            perdidas = fechamento._diarias_falhadas_no_dia(db, u, dia)
+            julgado = fechamento._ja_julgado(db, u, dia)
+            if not total:
+                print(f"    {dia}  sem diárias — nada a julgar")
+                continue
+            pct = perdidas * 100 // total
+            veredito = ("JÁ JULGADO" if julgado
+                        else ("PERDIDO" if pct >= regras['limiar_dia'] else "ok"))
+            print(f"    {dia}  {perdidas}/{total} perdidas ({pct}%)  → {veredito}")
+        seguidos = fechamento._dias_punidos_seguidos(db, u, hoje)
+        print(f"    dias PUNIDOS seguidos : {seguidos} "
+              f"(a partir de {regras['dias_seguidos']} a pena dobra)")
 
         # ══ 4. A EXCEÇÃO ENGOLIDA ═══════════════════════════════════
         # `_talvez_punir` tem `except Exception: print(); return None`.
