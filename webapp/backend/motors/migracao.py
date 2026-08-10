@@ -257,16 +257,46 @@ def verificar_schema() -> list:
     Retorna a lista de pendências (vazia = tudo certo).
     Serve de alarme no startup: melhor gritar do que falhar em silêncio.
     """
-    from database import engine
+    from database import engine, Base
     pendencias = []
     try:
         insp = inspect(engine)
         tabelas = set(insp.get_table_names())
-        for tabela, coluna, _s, _p in COLUNAS:
-            if tabela in tabelas:
-                cols = {c["name"] for c in insp.get_columns(tabela)}
-                if coluna not in cols:
-                    pendencias.append(f"{tabela}.{coluna}")
+
+        # ── OS MODELOS, NAO A LISTA ──────────────────────────────────
+        #
+        # ESTA FUNCAO CONFERIA `COLUNAS` CONTRA O BANCO. Ou seja: o alarme
+        # usava a MESMA lista que ele deveria fiscalizar. Uma coluna
+        # adicionada ao modelo e esquecida em `COLUNAS` passava por aqui
+        # sem um pio -- e depois derrubava toda consulta aquela tabela.
+        #
+        # Foi exatamente o que aconteceu com `tarefas_dia.origem_condicional`:
+        # a aba Missoes Gerais ficou VAZIA (nao "com erro", vazia), e o
+        # startup declarou schema em dia.
+        #
+        # Quem manda e o modelo: se o SQLAlchemy vai pedir a coluna numa
+        # consulta, ela tem de existir. A lista `COLUNAS` continua sendo o
+        # que a migracao SABE CRIAR; esta funcao passa a ser o que o banco
+        # PRECISA TER. Sao perguntas diferentes, e confundi-las foi o
+        # defeito.
+        cache = {}
+        for mapper in Base.registry.mappers:
+            tabela = mapper.class_.__tablename__
+            if tabela not in tabelas:
+                pendencias.append(f"{tabela} (tabela inteira)")
+                continue
+            if tabela not in cache:
+                cache[tabela] = {c["name"] for c in insp.get_columns(tabela)}
+            for col in mapper.columns:
+                if col.key not in cache[tabela]:
+                    # `sabe_criar` separa "falta e a migracao resolve no
+                    # proximo boot" de "falta e NINGUEM vai criar" -- o
+                    # segundo so se conserta escrevendo a linha em COLUNAS.
+                    sabe_criar = any(t == tabela and c == col.key
+                                     for (t, c, *_r) in COLUNAS)
+                    pendencias.append(
+                        f"{tabela}.{col.key}"
+                        + ("" if sabe_criar else "  [SEM LINHA EM COLUNAS]"))
     except Exception as e:
         pendencias.append(f"(falha ao inspecionar: {e})")
     return pendencias

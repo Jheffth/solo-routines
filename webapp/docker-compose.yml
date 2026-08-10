@@ -1,0 +1,26 @@
+name: solo-app
+
+services:
+  api:
+    build: .
+    container_name: solo_routines
+    restart: always
+    environment:
+      # Conexão com o banco gerado na Fase 2
+      - DATABASE_URL=postgresql://admin:Db_Solo_2026!@solo_db:5432/solo_routines_db
+      # Chave segura para gerar sessões e JWT
+      - SECRET_KEY=k2_Sol0_R0utin3s_!Producao_Segura_2026!_X9
+      - AMBIENTE=production
+      - CORS_ORIGINS=https://soloroutines.duckdns.org
+      - OAUTH_REDIRECT_BASE=https://soloroutines.duckdns.org
+    volumes:
+      - solo_uploads:/app/backend/uploads
+    networks:
+      - solo-network
+
+networks:
+  solo-network:
+    external: true
+
+volumes:
+  solo_uploads:
