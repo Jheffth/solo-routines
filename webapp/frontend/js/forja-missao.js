@@ -1111,8 +1111,24 @@ const ForjaMissao = {
           this._trocarTipo();
         }
         if (op.dataset.fmCampo === 'natureza') {
+          /* AQUI ESTAVA O DEFEITO, e ele é a profecia do comentário de
+             `_trocarTipo()`: "UMA função, e não condições espalhadas
+             pelos handlers — nove `if` soltos garantem que um dia um
+             deles fique para trás."
+
+             Ficou. Esta linha era `mostra('fm-bloco-repeticao', rep)` e
+             mais nada. Quando a CONDICIONAL nasceu, ganhou o seu bloco
+             em `_trocarTipo()` — que só roda ao trocar o TIPO. Trocar a
+             NATUREZA para Condicional deixava o bloco escondido, e a
+             validação do envio exigia campos que ninguém tinha como
+             ver: "Preencha a pergunta e as duas respostas" numa tela
+             sem pergunta nem respostas.
+
+             A correção não é acrescentar um décimo `mostra` — seria
+             repetir o erro e esperar o próximo. É chamar a função que
+             já sabe decidir a visibilidade de TODOS os blocos. */
+          this._trocarTipo();
           const rep = this._estado.natureza === 'REPETICAO';
-          mostra('fm-bloco-repeticao', rep);
           if (rep) {
             // A lista só é buscada quando ela vai aparecer. Consultar na
             // abertura seria uma requisição em toda missão criada, e a
