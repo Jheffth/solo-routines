@@ -130,6 +130,138 @@
   box-shadow: 0 0 30px rgba(124,58,237,.7);
 }
 
+/* ══════════════════════════════════════════════════════════════
+   FORJAR — o botão de criar rotina ou missão
+   ══════════════════════════════════════════════════════════════
+
+   O QUE ELE NÃO É: um botão flutuante. Já houve um, e ele foi retirado
+   por dois motivos escritos no index.html — cobria os cristais de
+   status em telas estreitas e duplicava caminhos que cada página já
+   tinha. Trazê-lo de volta seria repetir um erro documentado. O
+   destaque vem do TAMANHO e da FORMA, não de sobrepor conteúdo.
+
+   A FORMA É UMA PÍLULA COM UM MEDALHÃO. O círculo do `+` é o que dá o
+   peso visual que o Arquiteto pediu; o rótulo ao lado é o que impede o
+   ícone de virar adivinhação. Um círculo puro, sem texto, obrigaria a
+   pessoa a descobrir o que ele faz — e "criar rotina" e "criar missão"
+   são coisas diferentes que um `+` sozinho não distingue.
+
+   ELE CRESCE COM A TELA. `clamp()` em vez de tamanho fixo: num monitor
+   grande o botão precisa acompanhar, senão vira um detalhe perdido num
+   canto — foi exatamente a queixa. E no celular ele ocupa a largura
+   toda, que é o formato mais fácil de acertar com o polegar.
+   ══════════════════════════════════════════════════════════════ */
+.btn-forjar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: .7rem;
+  padding: .38rem 1.4rem .38rem .4rem;
+  border-radius: 999px;
+  font-family: var(--font-section);
+  font-size: clamp(.78rem, .68rem + .18vw, .95rem);
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #fff;
+  background: linear-gradient(135deg, var(--purple-main), #4c1d95);
+  border: 1px solid var(--purple-glow);
+  box-shadow: 0 6px 22px rgba(124,58,237,.42),
+              inset 0 1px 0 rgba(255,255,255,.16);
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform .22s ease, box-shadow .22s ease;
+}
+
+/* O MEDALHÃO. É ele que dá a "circularidade" pedida sem custar a
+   clareza do rótulo. */
+.btn-forjar-mais {
+  display: grid;
+  place-items: center;
+  width:  clamp(30px, 26px + 1vw, 42px);
+  height: clamp(30px, 26px + 1vw, 42px);
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: rgba(255,255,255,.15);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.22);
+  font-size: clamp(1.05rem, .9rem + .4vw, 1.4rem);
+  font-weight: 400;
+  line-height: 1;
+  transition: transform .3s cubic-bezier(.34,1.56,.64,1), background .22s ease;
+}
+
+/* O mesmo lustro que a `.sys-btn-missao` já usa — os dois botões vivem
+   na mesma placa e não deviam brilhar de jeitos diferentes. */
+.btn-forjar::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,.28) 50%, transparent 60%);
+  transform: translateX(-120%);
+  transition: transform .6s ease;
+  pointer-events: none;
+}
+.btn-forjar:hover::after { transform: translateX(120%); }
+.btn-forjar:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 32px rgba(124,58,237,.68),
+              inset 0 1px 0 rgba(255,255,255,.2);
+}
+/* O `+` gira um quarto de volta: vira um sinal de "abre", e devolve um
+   retorno físico ao toque sem mover o botão inteiro. */
+.btn-forjar:hover .btn-forjar-mais {
+  transform: rotate(90deg);
+  background: rgba(255,255,255,.26);
+}
+.btn-forjar:active { transform: translateY(0); }
+.btn-forjar:focus-visible {
+  outline: 2px solid var(--purple-glow);
+  outline-offset: 3px;
+}
+
+/* A VARIANTE COMPACTA, para o cabeçalho do Extrato no Dashboard.
+
+   Lá o botão divide uma barra estreita com o título do cartão e um
+   segundo botão. A pílula em tamanho cheio esmagaria o título — mas
+   voltar ao retângulo miúdo de antes faria a ação principal daquele
+   cartão parecer um detalhe. Então é o MESMO botão, na mesma língua,
+   numa escala que cabe: quem já viu o grande reconhece o pequeno. */
+.btn-forjar.compacto {
+  gap: .45rem;
+  padding: .22rem .85rem .22rem .24rem;
+  font-size: .68rem;
+  letter-spacing: .06em;
+  box-shadow: 0 3px 12px rgba(124,58,237,.32),
+              inset 0 1px 0 rgba(255,255,255,.14);
+}
+.btn-forjar.compacto .btn-forjar-mais {
+  width: 22px; height: 22px;
+  font-size: .95rem;
+}
+.btn-forjar.compacto:hover {
+  box-shadow: 0 6px 18px rgba(124,58,237,.6),
+              inset 0 1px 0 rgba(255,255,255,.18);
+}
+
+/* ── CELULAR: largura inteira ─────────────────────────────────
+   A placa põe o botão numa linha com o filtro de data. Numa tela
+   estreita os dois espremidos ficam pequenos demais para o polegar —
+   então a linha quebra e o botão toma a largura toda, que é o alvo
+   mais fácil que existe. */
+@media (max-width: 640px) {
+  .sys-plate-actions { flex-wrap: wrap; width: 100%; }
+  .sys-plate-actions .btn-forjar {
+    width: 100%;
+    justify-content: center;
+    padding: .42rem 1.2rem .42rem .42rem;
+  }
+  .sys-plate-actions .input[type="date"] { flex: 1 1 auto; max-width: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-forjar, .btn-forjar-mais, .btn-forjar::after { transition: none; }
+  .btn-forjar:hover .btn-forjar-mais { transform: none; }
+}
+
 /* chip: dungeon aberta agora */
 .sys-chip-dungeon {
   font-family: var(--font-section);
