@@ -33,6 +33,17 @@ const RAIZ = path.join(__dirname, '..', '..');   // webapp/
 const EXTS = new Set(['.html', '.js', '.css', '.json', '.md', '.py']);
 const PULAR = new Set(['node_modules', '.git', 'venv', '.venv', '__pycache__']);
 
+/* SCRIPTS DESCARTÁVEIS não são código entregue.
+   `fix_*.py` e `migrar_*.py` estão no .gitignore justamente por serem
+   de uso único — não são versionados nem enviados no deploy. Um deles
+   (`fix_encoding2.py`, sobra do próprio incidente de encoding) tem
+   mojibake escrito de propósito num comentário, e mantinha este
+   relatório permanentemente vermelho.
+
+   Teste que acusa o que não é entregue vira ruído, e ruído se ignora —
+   que é o começo do caminho para o vermelho legítimo passar batido. */
+const DESCARTAVEL = /^(fix|migrar)_.*\.py$/;
+
 /* Ã/Â colado num byte de continuação. Palavra nenhuma faz isso. */
 const MOJIBAKE = /[ÃÂ][-¿]|ðŸ|ï»¿/;
 
@@ -46,6 +57,7 @@ function varrer(dir) {
     const st = fs.statSync(p);
     if (st.isDirectory()) { varrer(p); continue; }
     if (!EXTS.has(path.extname(nome))) continue;
+    if (DESCARTAVEL.test(nome)) continue;
     /* O PRÓPRIO TESTE CONTÉM AS ASSINATURAS — elas estão no comentário
        de cima, como exemplo. Sem esta linha ele se acusa e o relatório
        nunca fica limpo, que é a forma mais rápida de um teste virar

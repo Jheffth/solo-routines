@@ -1731,6 +1731,24 @@ const MissaoCard = {
         if (!m) return;
         const p = this._prazo(m);
         if (!p) return;
+
+        /* ── O PRAZO ACABOU DE VENCER ─────────────────────────
+           O relógio andava, mas ninguém era avisado quando ele cruzava
+           o zero. O cartão passava a mostrar "Atraso 10:32" e continuava
+           oferecendo os mesmos botões — enquanto o servidor, na primeira
+           leitura seguinte, já tinha marcado FRACASSADA. A tela e a
+           verdade divergiam até alguém dar F5.
+
+           Quem decide o desfecho é o servidor (é ele que aplica a
+           penalidade e pode disparar a penitência). Então aqui não se
+           decide nada: só se avisa que a página precisa perguntar de
+           novo. Uma vez por cartão — `_venceuAvisado` existe para o
+           aviso não virar um pedido por segundo. */
+        if (p.classe === 'vencido' && !this._venceuAvisado.has(el.dataset.mcPrazo)) {
+          this._venceuAvisado.add(el.dataset.mcPrazo);
+          this.avisarDesatualizado('prazo-venceu');
+        }
+
         el.querySelector('[data-mc-timer]').textContent = p.texto;
         el.classList.toggle('urgente', p.classe === 'urgente');
         el.classList.toggle('vencido', p.classe === 'vencido');
@@ -1781,9 +1799,35 @@ const MissaoCard = {
     }, 1000);
   },
 
+  /* Cartões cujo vencimento já foi anunciado. Sem este registro, o
+     aviso sairia a cada tique — um pedido por segundo ao servidor. */
+  _venceuAvisado: new Set(),
+
+  /* ── "A TELA NÃO É MAIS A VERDADE" ────────────────────────
+     Um aviso, não uma ordem. Quem decide o que fazer é a página (só
+     ela sabe se está no Dashboard ou nas Rotinas, e o que custa
+     recarregar). Aqui só se anuncia que vale perguntar de novo.
+
+     Três coisas disparam isto, e as três tinham o mesmo sintoma —
+     "precisa apertar F5":
+
+       · o prazo de um cartão venceu na tela aberta
+       · uma ação foi concluída (a ordem da lista mudou)
+       · a aba voltou a ficar visível depois de um tempo fora
+         (a última é ouvida no app.js, não aqui)
+  */
+  avisarDesatualizado(motivo) {
+    try {
+      window.dispatchEvent(new CustomEvent('sr:desatualizado', { detail: { motivo } }));
+    } catch (_) { /* navegador antigo: sem aviso, mas nada quebra */ }
+  },
+
   /* Encerra o timer de prazo na hora (a página chama ao sair da tela). */
   pararTimer() {
     if (this._timer) { clearInterval(this._timer); this._timer = null; }
+    // A tela vai embora; o registro de avisos também. Guardá-lo faria o
+    // cartão voltar mudo depois de vencer numa visita anterior.
+    this._venceuAvisado.clear();
   },
 
   /* ── Cache (alimenta timer, ações e diálogos) ────────────
@@ -1932,6 +1976,18 @@ const MissaoCard = {
       }  // fim do switch(acao)
       this._absorver(chave, acao, resp);
       this.repintar(chave);
+
+      /* A REPINTURA CIRÚRGICA ACERTA O CARTÃO E NÃO A LISTA.
+
+         Repintar no lugar é deliberado — é o que faz o botão virar sem
+         a lista piscar. Mas a POSIÇÃO do cartão continua a antiga: uma
+         missão iniciada não subia para o topo, e o Arquiteto tinha de
+         apertar F5 para vê-la no lugar certo.
+
+         O aviso resolve sem desfazer a virtude: o cartão muda na hora,
+         e a reordenação chega logo atrás, com o atraso que o app.js
+         aplica. Primeiro a resposta, depois o acerto da estante. */
+      this.avisarDesatualizado('acao:' + acao);
 
       if (this._onMudou) await this._onMudou(resp, acao, id, chave);
     } catch (err) {

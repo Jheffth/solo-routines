@@ -131,6 +131,10 @@ const App = {
 
     // 12. Recompensa recebida → atualiza a página atual sozinha
     this._bindRecompensa();
+
+    // 13. Sincronia: prazo que vence, ação feita, aba que volta do
+    //     celular. A tela aberta deixa de ser uma fotografia velha.
+    this._bindSincronia();
   },
 
   /* Badges recebidas fora da sessão (registro/presente) são celebradas
@@ -188,6 +192,82 @@ const App = {
     });
   },
 
+  /* ══ SINCRONIA — a aba aberta deixa de mentir ═══════════════
+
+     TRÊS SINTOMAS, UMA CAUSA. O Arquiteto relatou:
+
+       · a missão iniciada não subia para o topo sem F5
+       · concluir no celular não aparecia no computador
+       · e o mais grave: o prazo acabava e a tela seguia
+         oferecendo os botões de uma missão que já fracassou
+
+     Os três são a mesma coisa — a página desenha uma fotografia e
+     nunca mais pergunta se o mundo mudou. Um app de rotinas fica
+     ABERTO por horas, em mais de um aparelho; a fotografia envelhece
+     enquanto o hunter olha para ela.
+
+     TRÊS GATILHOS, e cada um cobre o que os outros não cobrem:
+
+       1. `sr:desatualizado` — o cartão avisou (prazo venceu, ação
+          feita). Preciso e imediato.
+       2. A ABA VOLTOU — resolve o celular. Ninguém fica olhando as
+          duas telas ao mesmo tempo: quando você volta ao computador,
+          é aí que a divergência aparece, e é aí que ela some.
+       3. A RONDA — a rede de segurança para o que nenhum dos dois
+          previu (outra aba, o cron do servidor, um dia que virou).
+
+     POR QUE UMA RONDA LENTA. Um minuto é bastante para um app cujo
+     menor evento é uma missão concluída, e é pouco o bastante para
+     não pesar. E ela só corre com a aba VISÍVEL: uma aba esquecida a
+     noite inteira não deve conversar com o servidor 480 vezes.
+
+     `atualizarPaginaAtual` já engole os próprios erros e é silenciosa
+     por contrato — por isso pode ser chamada assim, sem cerimônia. */
+  _bindSincronia() {
+    if (this._sincroniaBound) return;
+    this._sincroniaBound = true;
+
+    // Um debounce só para os três gatilhos: três avisos quase
+    // simultâneos (concluir uma missão dispara ação + recompensa)
+    // viram UMA recarga, não três.
+    /* NÃO RECARREGAR POR BAIXO DE UM DIÁLOGO ABERTO.
+
+       O lançador guarda o que está sendo digitado no seu próprio
+       estado, e a lista atrás dele não é inofensiva: recarregar
+       enquanto o Arquiteto preenche uma missão pode fechar a tela por
+       baixo dele e levar junto o que ele escreveu. Uma sincronia que
+       custa um formulário perdido é pior que uma tela desatualizada —
+       ela só adia, e a próxima ronda chega em um minuto. */
+    const ocupado = () =>
+      document.getElementById('fm-backdrop')?.classList.contains('on') ||
+      document.querySelector('.mc-cond-overlay, .sr-dialog-backdrop.on');
+
+    const pedir = (ms = 500) => {
+      clearTimeout(this._sincTimer);
+      this._sincTimer = setTimeout(() => {
+        if (ocupado()) return;
+        this.atualizarPaginaAtual();
+      }, ms);
+    };
+
+    // 1 · o cartão avisou
+    window.addEventListener('sr:desatualizado', () => pedir(500));
+
+    // 2 · a aba voltou. O limite de 15s evita recarregar quando o
+    //     hunter só trocou de janela por um instante.
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) { this._ocultaDesde = Date.now(); return; }
+      const fora = Date.now() - (this._ocultaDesde || Date.now());
+      if (fora > 15000) pedir(0);
+    });
+
+    // 3 · a ronda
+    clearInterval(this._sincRonda);
+    this._sincRonda = setInterval(() => {
+      if (!document.hidden && !ocupado()) this.atualizarPaginaAtual();
+    }, 60000);
+  },
+
   /* Recarrega os dados da página em foco (útil após ganhos de XP) */
   async atualizarPaginaAtual() {
     try {
@@ -210,7 +290,21 @@ const App = {
           rankEl.textContent = `${u.classe || 'E-Rank'} — Nv.${u.nivel_atual || 1}`;
         }
       }
-    } catch (_) { /* silencioso: atualização é cortesia, não pode quebrar nada */ }
+    } catch (e) {
+      /* SILENCIOSO NA TELA, NÃO NO CONSOLE.
+
+         Continua sendo cortesia: nenhum toast, nenhuma tela quebrada.
+         Mas engolir sem deixar rastro foi o que impediu de descobrir
+         POR QUE a sincronia "não funcionou" — o erro acontecia, era
+         descartado, e do lado de fora parecia que nada tinha sido
+         chamado. É o mesmo defeito que a penitência tinha no backend, e
+         me custou sessões lá.
+
+         Um `console` não incomoda ninguém e responde a pergunta na
+         primeira vez que ela for feita. */
+      console.warn('[APP] atualizarPaginaAtual falhou em',
+                   this.currentPage, '→', e);
+    }
   },
 
   async navigate(page) {
