@@ -10,6 +10,7 @@ from sqlalchemy import func, or_
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import date, datetime
+from motors import meta as motor_meta
 from motors import tempo
 from motors import economia, especiais
 
@@ -57,6 +58,15 @@ class RotinaCreate(BaseModel):
     dias_progressivos_alvo: Optional[int]  = None
     # CONDICIONAL: JSON { pergunta, opcao_a: {txt, xp_bonus}, opcao_b: {txt, xp_bonus} }
     condicional_payload:    Optional[str]  = None
+    # META — o alvo numérico. `meta_modo` NÃO vem do cliente: quem decide
+    # é `motors/meta.py` a partir da espécie, e deixar o cliente mandar
+    # abriria caminho para uma meta de peso configurada como acúmulo —
+    # exatamente o absurdo que o modo existe para impedir.
+    meta_alvo:      Optional[float] = None
+    meta_unidade:   Optional[str]   = None
+    meta_especie:   Optional[str]   = None
+    meta_inicial:   Optional[float] = None
+    meta_passo:     Optional[float] = None
 
 
 class RotinaUpdate(BaseModel):
@@ -84,6 +94,15 @@ class RotinaUpdate(BaseModel):
     eh_progressiva:         Optional[bool] = None
     dias_progressivos_alvo: Optional[int]  = None
     condicional_payload:    Optional[str]  = None
+    # META — o alvo numérico. `meta_modo` NÃO vem do cliente: quem decide
+    # é `motors/meta.py` a partir da espécie, e deixar o cliente mandar
+    # abriria caminho para uma meta de peso configurada como acúmulo —
+    # exatamente o absurdo que o modo existe para impedir.
+    meta_alvo:      Optional[float] = None
+    meta_unidade:   Optional[str]   = None
+    meta_especie:   Optional[str]   = None
+    meta_inicial:   Optional[float] = None
+    meta_passo:     Optional[float] = None
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -170,6 +189,12 @@ def _rotina_to_dict(r: Rotina, exec_dia: "ExecucaoDia | None" = None,
         "resposta_condicional": getattr(ed, "resposta_condicional", None) if ed else None,
         "condicional_vitoria":  getattr(ed, "condicional_vitoria",  None) if ed else None,
         "condicional_payload":  getattr(r, "condicional_payload",   None),
+        "meta_alvo":       getattr(r, "meta_alvo", None),
+        "meta_unidade":    getattr(r, "meta_unidade", None),
+        "meta_especie":    getattr(r, "meta_especie", None),
+        "meta_modo":       getattr(r, "meta_modo", None),
+        "meta_inicial":    getattr(r, "meta_inicial", None),
+        "meta_passo":      getattr(r, "meta_passo", None),
 
         # Progressiva — corrente do desafio (na rotina, não no dia)
         "eh_progressiva":         getattr(r, "eh_progressiva",         False),
@@ -404,6 +429,46 @@ def criar_rotina(
             rotina.dias_progressivos_alvo = int(payload.dias_progressivos_alvo or 0) or None
             rotina.dias_progressivos_ok   = 0  # desafio começa do zero
         except Exception: pass
+
+    # META — o alvo numérico. O MODO É DECIDIDO AQUI, não pelo cliente:
+    # `motors/meta.py` sabe que PESO mede e o resto acumula, e aceitar a
+    # escolha do cliente abriria caminho para uma meta de peso
+    # configurada como acúmulo — o absurdo de somar pesagens, que é
+    # justamente o que o modo existe para impedir.
+    if natureza == especiais.META:
+        try:
+            alvo = float(payload.meta_alvo) if payload.meta_alvo is not None else None
+        except (TypeError, ValueError):
+            alvo = None
+        if not alvo:
+            raise HTTPException(400, "Uma meta precisa de um alvo — sem ele "
+                                     "a missão não teria como ser cumprida.")
+        esp = (payload.meta_especie or motor_meta.ESPECIE_PADRAO).upper()
+        if esp not in motor_meta.ESPECIES:
+            esp = motor_meta.ESPECIE_PADRAO
+        modo = motor_meta.especie(esp)["modo_padrao"]
+        try:
+            inicial = (float(payload.meta_inicial)
+                       if payload.meta_inicial is not None else None)
+        except (TypeError, ValueError):
+            inicial = None
+        # SEM PONTO DE PARTIDA, A MEDIÇÃO NÃO TEM DE ONDE MEDIR. Recusar
+        # é melhor que aceitar e devolver 0% para sempre — uma barra que
+        # nunca anda parece defeito, e seria.
+        if modo == motor_meta.MEDICAO and inicial is None:
+            raise HTTPException(400, "Diga em quanto você está hoje — sem o "
+                                     "ponto de partida não há como medir o "
+                                     "progresso.")
+        rotina.meta_alvo    = alvo
+        rotina.meta_especie = esp
+        rotina.meta_modo    = modo
+        rotina.meta_inicial = inicial
+        rotina.meta_unidade = (payload.meta_unidade or "").strip() or None
+        try:
+            rotina.meta_passo = (float(payload.meta_passo)
+                                 if payload.meta_passo else None)
+        except (TypeError, ValueError):
+            rotina.meta_passo = None
 
     # CONDICIONAL — payload JSON validado pela tela, guardado bruto.
     if natureza == especiais.CONDICIONAL and payload.condicional_payload:

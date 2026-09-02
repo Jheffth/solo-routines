@@ -178,6 +178,29 @@ def formatar(valor, chave_especie=None, unidade=None) -> str:
     return f"{un} {texto}" if un in ("R$", "US$", "€", "$") else f"{texto} {un}"
 
 
+def leitura(atual, inicial=None, modo_meta=ACUMULO) -> float:
+    """
+    O valor CORRENTE de uma meta — e a correção de um absurdo.
+
+    O acumulador nasce em zero. No ACÚMULO isso é a verdade: ninguém
+    ganhou nada ainda. Na MEDIÇÃO é mentira, e mentira que se vê: uma
+    meta "chegar a 78 kg" partindo de 85 aparecia como `0,0 kg` e
+    **100% cumprida** no instante em que era criada — porque zero está
+    do lado de lá do alvo, e a fração estourava para 1.
+
+    Enquanto não houve pesagem, o valor corrente É O PONTO DE PARTIDA.
+
+    ZERO CONTA COMO "AINDA NÃO MEDIDO", e isso é seguro justamente
+    porque é MEDIÇÃO: peso, gordura, pressão. Nenhuma delas vale zero
+    numa pessoa viva. No ACÚMULO, onde zero é um valor legítimo, esta
+    função não faz nada.
+    """
+    atual = float(atual or 0)
+    if modo_meta == MEDICAO and atual == 0 and inicial is not None:
+        return float(inicial)
+    return atual
+
+
 def progresso(atual, alvo, inicial=None, modo_meta=ACUMULO) -> float:
     """
     A fração cumprida, de 0 a 1 — o número que enche a barra e o cartão.

@@ -388,6 +388,91 @@ const MissaoCard = {
     return (m?.natureza || 'ATIVA').toUpperCase() === 'PUNICAO';
   },
 
+  /* ── META — a missão que se cumpre chegando a um número ───
+     Confia no `eh_meta` que o backend calcula, e não em ler a natureza
+     aqui: lá a resposta já leva em conta que meta SEM ALVO não é meta
+     operável, e duplicar essa regra em JS criaria a segunda verdade. */
+  _ehMeta(m) {
+    return !!m?.eh_meta;
+  },
+
+  /* O corpo da meta: o placar, a barra e o campo de somar.
+
+     POR QUE UM CAMPO E NÃO UM BOTÃO "+1". O passo da meta é livre —
+     32,59, depois 31,78 — e é isso que a separa da repetição, cujo
+     `_mover` é chamado com passo fixo. Um botão de incremento aqui
+     pediria cem toques para R$ 100.
+
+     E POR QUE O LIVRO APARECE. Os últimos valores ficam à vista como
+     fichas: é o que mostra o dia acontecendo, e é onde mora o desfazer
+     — digitar 3259 no lugar de 32,59 é o erro mais provável desta tela,
+     e a saída tem que estar do lado do erro. */
+  _corpoMeta(m, chave) {
+    if (!this._ehMeta(m)) return '';
+    const pct = Math.max(0, Math.min(1, m.meta_progresso || 0)) * 100;
+    const medicao = (m.meta_modo || '') === 'MEDICAO';
+    const passo = m.meta_passo || 1;
+    const encerrada = ['CONCLUIDA', 'CANCELADA', 'FRACASSADA']
+      .includes((m.status_hoje || m.status || '').toUpperCase());
+
+    /* Atalhos. Na MEDIÇÃO eles não existem: ninguém "soma meio quilo" a
+       uma pesagem — a balança diz o número, e sugerir incrementos ali
+       convidaria justamente a conta errada que o modo existe para
+       impedir. */
+    const atalhos = (encerrada || medicao) ? '' :
+      [1, 2, 4].map(k => {
+        const v = +(passo * k).toFixed(m.meta_casas ?? 2);
+        return `<button type="button" class="mc-meta-chip"
+          data-mc-acao="meta-somar" data-mc-valor="${v}" data-mc-id="${chave}"
+          >+${this._esc(this._numMeta(v, m))}</button>`;
+      }).join('');
+
+    const aportes = (m.meta_aportes || []).slice(0, 5).map((a, i) => `
+      <span class="mc-meta-ficha${i === 0 ? ' recente' : ''}">
+        ${a.valor > 0 && !medicao ? '+' : ''}${this._esc(this._numMeta(a.valor, m))}
+      </span>`).join('');
+
+    return `<div class="mc-meta">
+      <div class="mc-meta-placar">
+        <b class="mc-meta-atual">${this._esc(m.meta_texto || '0')}</b>
+        <span class="mc-meta-de">de</span>
+        <span class="mc-meta-alvo">${this._esc(m.meta_alvo_texto || '')}</span>
+        <span class="mc-meta-pct">${pct.toFixed(0)}%</span>
+      </div>
+
+      <div class="mc-meta-trilha" title="${pct.toFixed(1)}%">
+        <div class="mc-meta-fill" style="width:${pct}%"></div>
+      </div>
+
+      ${encerrada ? '' : `<div class="mc-meta-entrada">
+        <input type="text" inputmode="${m.meta_teclado || 'decimal'}"
+               class="mc-meta-input" data-mc-meta-input="${chave}"
+               placeholder="${medicao ? 'Nova medição' : 'Somar valor'}"
+               aria-label="${medicao ? 'Nova medição' : 'Valor a somar'}">
+        <button type="button" class="mc-meta-ok" data-mc-acao="meta-somar"
+                data-mc-id="${chave}">${medicao ? 'Registrar' : 'Somar'}</button>
+        ${atalhos}
+      </div>`}
+
+      ${aportes ? `<div class="mc-meta-livro">
+        <span class="mc-meta-livro-rot">${medicao ? 'Medições' : 'Lançados'}</span>
+        ${aportes}
+        ${encerrada ? '' : `<button type="button" class="mc-meta-desfazer"
+           data-mc-acao="meta-desfazer" data-mc-id="${chave}"
+           title="Apagar o último valor">${this._g('menos', 11)} desfazer</button>`}
+      </div>` : ''}
+    </div>`;
+  },
+
+  /* O número solto, sem unidade — para as fichas e os atalhos, onde
+     repetir "R$" cinco vezes seria ruído. As casas vêm do backend
+     (`meta_casas`) para a tabela de espécies não existir duas vezes. */
+  _numMeta(v, m) {
+    const casas = m?.meta_casas ?? 2;
+    return Number(v || 0).toLocaleString('pt-BR',
+      { minimumFractionDigits: casas, maximumFractionDigits: casas });
+  },
+
   _ehProgressiva(m) {
     return !!m?.eh_progressiva;
   },
@@ -1482,6 +1567,7 @@ const MissaoCard = {
     /* CONDICIONAL: a pergunta é o cartão, não um modal. A classe traz
        a bifurcação no fundo e desliga o espólio do topo — a pergunta é
        container, o espólio mora na missão que ela gera. */
+    const meta = this._ehMeta(m) ? ' mc-meta-card' : '';
     const cond = this._condPayload(m) ? ' mc-condicional' : '';
     /* A MISSÃO NASCIDA DE UMA PERGUNTA. Ganha o fio que sobe até o
        cartão que a gerou — é a "inteligência visual" que impede ela de
@@ -1495,10 +1581,11 @@ const MissaoCard = {
       : '';
 
     return `
-    <div class="mc ${st.classe}${compacto}${selado}${passiva}${repet}${modoRep}${penit}${prog}${etapaProg}${cond}${condResp}${filha}" data-mc-card="${chave}"
+    <div class="mc ${st.classe}${compacto}${selado}${passiva}${repet}${modoRep}${penit}${prog}${etapaProg}${cond}${condResp}${filha}${meta}" data-mc-card="${chave}"
          data-mc-sig="${this.assinatura(m, opts)}"
          style="--mc-cor:${cor};--mc-cor-suave:${this._alpha(cor, .14)}${
-           prog ? `;--prog-carga:${this._cargaProgressiva(m).toFixed(3)}` : ''}">
+           prog ? `;--prog-carga:${this._cargaProgressiva(m).toFixed(3)}` : ''}${
+           meta ? `;--meta-pct:${(Math.max(0, Math.min(1, m.meta_progresso || 0)) * 100).toFixed(2)}%` : ''}">
       <div class="mc-fio"></div>
       ${repet ? this._contagem(m, chave) : (passiva ? this._vigilia(m, chave) : '')}
       ${penit ? `<div class="mc-giroflex" aria-hidden="true">
@@ -1518,6 +1605,7 @@ const MissaoCard = {
         prog && (this._etapaProgressiva(m)
                  || !['CONCLUIDA', 'CANCELADA'].includes(status))
           ? '<div class="mc-prog-escada" aria-hidden="true"></div>' : ''}
+      ${meta ? '<div class="mc-meta-nivel" aria-hidden="true"><i></i></div>' : ''}
       ${filha ? '<div class="mc-de-fluxo" aria-hidden="true"></div>' : ''}
       ${cond ? `<div class="mc-cond-fluxo" aria-hidden="true">
         <i class="mc-cond-via mc-cond-via-a"></i><i class="mc-cond-via mc-cond-via-b"></i></div>` : ''}
@@ -1582,6 +1670,7 @@ const MissaoCard = {
           </div>` : '';
         })()}
         ${cond ? this._corpoCondicional(m, chave) : ''}
+        ${meta ? this._corpoMeta(m, chave) : ''}
         ${prog ? this._barraProgressiva(m) : ''}
         ${repet
           ? (this._alvoDe(m) !== null
@@ -1882,6 +1971,8 @@ const MissaoCard = {
     if (acao === 'confessar') return this._confessar(chave, btn);
     if (acao === 'repetir' || acao === 'desfazer-rep')
       return this._repetir(chave, btn, acao === 'repetir' ? +1 : -1);
+    if (acao === 'meta-somar' || acao === 'meta-desfazer')
+      return this._meta(chave, btn, acao === 'meta-somar');
     if (this._demo) return this._demoTransicao(acao, chave);
 
     // Trava de segurança: origem "rotina" sem rotina_id significa que a lista
@@ -2090,6 +2181,96 @@ const MissaoCard = {
 
      O DEMO NÃO CHAMA A API. Na Forja o cartão é amostra: contar
      de verdade ali criaria XP a partir de uma vitrine. */
+  /* ── SOMAR (ou MEDIR) NA META ─────────────────────────────
+
+     SEM PALPITE OTIMISTA, ao contrário da repetição.
+
+     Lá, o passo é +1 e o cliente sabe o resultado antes de perguntar.
+     Aqui não sabe: a conta depende do MODO, e o modo mora no servidor —
+     no acúmulo o valor soma, na medição ele substitui. Adivinhar aqui
+     duplicaria a regra que `motors/meta.py` existe para concentrar, e o
+     dia em que as duas divergissem o cartão mostraria um número e o
+     banco guardaria outro.
+
+     Então o fluxo é: manda, espera, e desenha o que voltou. */
+  async _meta(chave, btn, somando) {
+    const { m, id, tarefa } = this._rota(chave);
+    if (!Number.isFinite(Number(id))) {
+      SoloDialog?.toast?.('Não consegui identificar a missão — recarregue a lista.', 'error');
+      return;
+    }
+
+    let valor = null;
+    if (somando) {
+      // Atalho (+50) ou o que estiver digitado no campo.
+      const doBotao = btn?.dataset?.mcValor;
+      const campo = document.querySelector(`[data-mc-meta-input="${chave}"]`);
+      const cru = doBotao != null ? doBotao : (campo?.value || '');
+      valor = this._lerNumero(cru);
+      if (valor === null) {
+        SoloDialog?.toast?.('Digite um valor.', 'error');
+        campo?.focus();
+        return;
+      }
+    }
+
+    btn.disabled = true;
+    try {
+      const resp = somando
+        ? await API.post('/execucoes/meta/registrar',
+            tarefa ? { tarefa_id: id, valor } : { rotina_id: id, valor })
+        : await API.post('/execucoes/meta/desfazer',
+            tarefa ? { tarefa_id: id } : { rotina_id: id });
+
+      // O SERVIDOR É A VERDADE — os mesmos campos que o extrato manda.
+      Object.assign(m, {
+        meta_atual: resp.meta_atual, meta_progresso: resp.meta_progresso,
+        meta_texto: resp.meta_texto, meta_alvo_texto: resp.meta_alvo_texto,
+        meta_aportes: resp.meta_aportes,
+      });
+      if (resp.status) { m.status = resp.status; m.status_hoje = resp.status; }
+      this.repintar(chave);
+
+      if (resp.meta_cumprida) {
+        const card = document.querySelector(`[data-mc-card="${chave}"]`);
+        const g = resp.resultado || {};
+        if (typeof missionComplete === 'function' && card)
+          missionComplete(card, g.xp_ganho || 0, g.moedas_ganhas || 0);
+      }
+      // Reabrir é notícia: o hunter precisa saber que o desfazer não só
+      // mexeu no número — ele desfez a conclusão e devolveu o XP.
+      if (resp.reabriu) SoloDialog?.toast?.('Missão reaberta e XP devolvido.', 'info');
+
+      this.avisarDesatualizado('meta');
+      if (this._onMudou) await this._onMudou(resp, somando ? 'meta-somar' : 'meta-desfazer', id, chave);
+    } catch (err) {
+      SoloDialog?.toast?.(err.message || String(err), 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  },
+
+  /* "32,59", "32.59", "R$ 32,59" e "1.234,50" — todos viram número.
+
+     O TECLADO DO CELULAR NÃO OBEDECE. Mesmo com `inputmode="decimal"`,
+     o separador que aparece depende do teclado instalado, e o hunter
+     pode digitar ponto onde o app espera vírgula. Recusar o valor por
+     causa disso seria culpá-lo por uma escolha que não é dele.
+
+     A regra: o ÚLTIMO separador é o decimal. "1.234,50" e "1,234.50"
+     chegam ambos a 1234.5, e "32.59" a 32,59 — que é o que qualquer um
+     quis dizer nos três casos. */
+  _lerNumero(cru) {
+    let t = String(cru ?? '').trim().replace(/[^\d.,+-]/g, '');
+    if (!t) return null;
+    const ult = Math.max(t.lastIndexOf(','), t.lastIndexOf('.'));
+    if (ult >= 0) {
+      t = t.slice(0, ult).replace(/[.,]/g, '') + '.' + t.slice(ult + 1).replace(/[.,]/g, '');
+    }
+    const n = parseFloat(t);
+    return Number.isFinite(n) ? n : null;
+  },
+
   async _repetir(chave, btn, passo) {
     // A MISSAO GERAL conta na propria tarefa; a rotina, na execucao do
     // dia. Quem sabe disso e o servidor — daqui so sai QUAL das duas.

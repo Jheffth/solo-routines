@@ -2295,6 +2295,238 @@
 
 
 /* ══════════════════════════════════════════════════════════════
+   A META — o cartão VIRA o medidor
+   ══════════════════════════════════════════════════════════════
+
+   A GRAMÁTICA É O ENCHIMENTO, e ela estava livre. As outras cinco já
+   falam: a penitência VARRE (giroflex), a missão ativa DESLIZA
+   (chevrons), o protocolo passivo SELA, o desafio progressivo SOBE
+   (brasas) e a condicional BIFURCA (duas correntes).
+
+   Aqui o fundo sobe até a altura exata da fração cumprida. Não é uma
+   barra desenhada DENTRO do cartão — é o cartão inteiro sendo o
+   recipiente. Ao bater 64%, 64% da altura está cheia, e isso se lê de
+   relance, de longe, sem número e sem legenda.
+
+   `--meta-pct` vem do JS já limitado a 0–100%. A barra fina continua
+   existindo por cima: o enchimento dá a sensação, a barra dá a
+   precisão, e as duas juntas atendem quem olha rápido e quem confere.
+
+   NA LINHA D'ÁGUA HÁ BRILHO. Sem ele o preenchimento vira um retângulo
+   mais claro e some no fundo escuro; com ele, o olho encontra o nível
+   imediatamente. É a única parte animada — e devagar, porque o dado
+   muda quando o hunter digita, não sozinho.
+   ══════════════════════════════════════════════════════════════ */
+.mc-meta-nivel {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  overflow: hidden;
+}
+.mc-meta-nivel > i {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: var(--meta-pct, 0%);
+  display: block;
+  background: linear-gradient(to top,
+    color-mix(in srgb, var(--mc-cor) 26%, transparent) 0%,
+    color-mix(in srgb, var(--mc-cor) 12%, transparent) 62%,
+    color-mix(in srgb, var(--mc-cor) 18%, transparent) 100%);
+  /* A subida é animada porque o nível MUDA na frente do hunter, logo
+     depois de ele somar um valor. Saltar seria perder o único momento
+     em que o cartão responde ao que ele acabou de fazer. */
+  transition: height .55s cubic-bezier(.22, 1, .36, 1);
+}
+/* A LINHA D'ÁGUA. */
+.mc-meta-nivel > i::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 2px;
+  background: linear-gradient(90deg,
+    transparent, color-mix(in srgb, var(--mc-cor) 90%, transparent), transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--mc-cor) 70%, transparent);
+  animation: mc-meta-onda 4.5s ease-in-out infinite;
+}
+@keyframes mc-meta-onda {
+  0%, 100% { opacity: .55; transform: translateY(0); }
+  50%      { opacity: 1;   transform: translateY(-1px); }
+}
+
+/* Uma trama só: a meta também é ATIVA e receberia os chevrons. */
+.mc-meta-card .mc-corrente { display: none; }
+.mc-meta-card .mc-corpo,
+.mc-meta-card .mc-sigilo { position: relative; z-index: 1; }
+
+/* ── O PLACAR ───────────────────────────────────────────────── */
+.mc-meta { padding: .15rem 1rem .8rem; }
+
+.mc-meta-placar {
+  display: flex;
+  align-items: baseline;
+  gap: .4rem;
+  flex-wrap: wrap;
+  margin-bottom: .4rem;
+}
+.mc-meta-atual {
+  font-family: var(--font-section);
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--mc-cor);
+  letter-spacing: .01em;
+}
+.mc-meta-de   { font-size: .7rem; color: var(--text-muted); }
+.mc-meta-alvo { font-size: .8rem; color: var(--text-secondary); font-weight: 600; }
+.mc-meta-pct {
+  margin-left: auto;
+  font-family: var(--font-section);
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+/* A BARRA É CONTÍNUA, não segmentada. A repetição usa segmentos porque
+   cada um é um evento contável; cem segmentos para cem reais seriam
+   ilegíveis, e para R$ 12,50 não haveria segmento que servisse. */
+.mc-meta-trilha {
+  height: 6px;
+  border-radius: 99px;
+  background: rgba(255,255,255,.07);
+  overflow: hidden;
+}
+.mc-meta-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--mc-cor) 60%, transparent), var(--mc-cor));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--mc-cor) 55%, transparent);
+  transition: width .55s cubic-bezier(.22, 1, .36, 1);
+}
+
+/* ── A ENTRADA ──────────────────────────────────────────────── */
+.mc-meta-entrada {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  flex-wrap: wrap;
+  margin-top: .6rem;
+}
+.mc-meta-input {
+  flex: 1 1 8rem;
+  min-width: 0;
+  padding: .42rem .7rem;
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--mc-cor) 28%, transparent);
+  background: rgba(0,0,0,.35);
+  color: var(--text-primary);
+  font-family: var(--font-section);
+  font-size: .88rem;
+  font-weight: 600;
+}
+.mc-meta-input:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--mc-cor) 70%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--mc-cor) 16%, transparent);
+}
+.mc-meta-ok {
+  padding: .42rem 1rem;
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--mc-cor) 50%, transparent);
+  background: color-mix(in srgb, var(--mc-cor) 22%, transparent);
+  color: #fff;
+  font-family: var(--font-section);
+  font-size: .74rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background .16s ease;
+}
+.mc-meta-ok:hover { background: color-mix(in srgb, var(--mc-cor) 40%, transparent); }
+
+/* Atalhos: o caso comum num toque só. */
+.mc-meta-chip {
+  padding: .34rem .6rem;
+  border-radius: 99px;
+  border: 1px dashed color-mix(in srgb, var(--mc-cor) 32%, transparent);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-section);
+  font-size: .7rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .16s ease;
+}
+.mc-meta-chip:hover {
+  border-style: solid;
+  color: var(--mc-cor);
+  background: color-mix(in srgb, var(--mc-cor) 12%, transparent);
+}
+
+/* ── O LIVRO ────────────────────────────────────────────────── */
+.mc-meta-livro {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  flex-wrap: wrap;
+  margin-top: .5rem;
+}
+.mc-meta-livro-rot {
+  font-family: var(--font-section);
+  font-size: .6rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-right: .1rem;
+}
+.mc-meta-ficha {
+  padding: .16rem .5rem;
+  border-radius: 6px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.08);
+  font-family: var(--font-section);
+  font-size: .68rem;
+  color: var(--text-secondary);
+}
+/* O mais recente em destaque: é o candidato a ser desfeito, e olhar
+   para ele antes de clicar em "desfazer" é o que evita apagar o valor
+   errado. */
+.mc-meta-ficha.recente {
+  color: var(--mc-cor);
+  border-color: color-mix(in srgb, var(--mc-cor) 38%, transparent);
+  background: color-mix(in srgb, var(--mc-cor) 10%, transparent);
+}
+.mc-meta-desfazer {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: .2rem;
+  padding: .16rem .5rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-section);
+  font-size: .64rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.mc-meta-desfazer:hover {
+  color: var(--red-crit, #ef4444);
+  border-color: rgba(239,68,68,.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mc-meta-nivel > i,
+  .mc-meta-fill { transition: none; }
+  .mc-meta-nivel > i::after { animation: none; }
+}
+
+
+/* ══════════════════════════════════════════════════════════════
    A MISSÃO CONDICIONAL — a pergunta É o cartão
    ══════════════════════════════════════════════════════════════
 

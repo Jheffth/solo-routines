@@ -150,6 +150,17 @@ def rodar():
     ok(M.modo(r.meta_modo, r.meta_especie) == M.MEDICAO,
        "PESO nasce em modo MEDIÇÃO sem ninguém precisar dizer")
 
+    # ANTES DA PRIMEIRA PESAGEM o corrente é o PONTO DE PARTIDA, não zero.
+    # Sem isso a meta nascia dizendo "0,0 kg" e "100% cumprida" — zero
+    # está do lado de lá do alvo e a fração estourava para 1. Foi um
+    # defeito que só apareceu ao OLHAR a resposta do extrato.
+    ok(abs(M.leitura(0, 85.0, M.MEDICAO) - 85.0) < 1e-9,
+       "sem pesagem, o corrente é o ponto de partida (85 kg), não zero")
+    ok(M.progresso(M.leitura(0, 85.0, M.MEDICAO), 78, 85, M.MEDICAO) == 0.0,
+       "e o progresso nasce em 0%, não em 100%")
+    ok(M.leitura(0, None, M.ACUMULO) == 0.0,
+       "no ACÚMULO o zero continua sendo zero — lá ele é legítimo")
+
     a = ex.meta_registrar(Reg(r.id, 82.4), db=db, usuario=u)
     b = ex.meta_registrar(Reg(r.id, 82.1), db=db, usuario=u)
     ok(abs(b["meta_atual"] - 82.1) < 1e-9,

@@ -957,7 +957,7 @@ def _corpo_meta(regra, acumulador, aportes, extra=None) -> dict:
                            getattr(regra, "meta_especie", None))
     alvo = getattr(regra, "meta_alvo", None)
     ini  = getattr(regra, "meta_inicial", None)
-    atual = float(getattr(acumulador, "meta_atual", 0) or 0)
+    atual = motor_meta.leitura(getattr(acumulador, "meta_atual", 0), ini, modo)
     esp = getattr(regra, "meta_especie", None)
     un  = motor_meta.unidade_de(regra)
     corpo = {

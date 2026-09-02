@@ -22,6 +22,7 @@ frontend uma chave única sem que precise saber de onde a missão veio.
 import json
 from datetime import date, datetime, timedelta
 from motors import tempo, prazos
+from motors import meta as motor_meta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -65,6 +66,65 @@ def _duracao(inicio, fim) -> int | None:
         return None
     segundos = int((fim - inicio).total_seconds())
     return segundos if segundos >= 0 else None
+
+
+def _campos_meta(regra, acumulador) -> dict:
+    """
+    Os campos da META, prontos para o cartão desenhar.
+
+    A REGRA e o ACUMULADOR nem sempre são o mesmo objeto: na rotina, a
+    regra é a Rotina e o acumulado mora no ExecucaoDia do dia; na missão
+    geral, a TarefaDia é os dois. Quem chama já resolve isso e passa os
+    dois — aqui só se lê.
+
+    AS CHAVES SAEM SEMPRE, mesmo em missão que não é meta. `test_extrato`
+    exige que as duas origens tenham a MESMA forma, porque as duas
+    alimentam o mesmo cartão — e um campo "às vezes existe" é como o JS
+    passa a receber `undefined` de um lado e valor do outro.
+
+    O TEXTO JÁ VEM FORMATADO do backend. "R$ 1.234,50" e "82,2 kg" saem
+    do mesmo lugar para o cartão, o extrato, o Eco e o Telegram, e nenhum
+    deles precisa saber quantas casas tem um quilograma.
+    """
+    VAZIO = {
+        "eh_meta": False, "meta_alvo": None, "meta_atual": None,
+        "meta_inicial": None, "meta_especie": None, "meta_modo": None,
+        "meta_unidade": None, "meta_passo": None, "meta_progresso": None,
+        "meta_texto": None, "meta_alvo_texto": None, "meta_casas": None,
+        "meta_teclado": None,
+    }
+    if not motor_meta.eh_meta_valida(regra):
+        return dict(VAZIO)
+
+    modo  = motor_meta.modo(getattr(regra, "meta_modo", None),
+                            getattr(regra, "meta_especie", None))
+    esp   = getattr(regra, "meta_especie", None)
+    e     = motor_meta.especie(esp)
+    un    = motor_meta.unidade_de(regra)
+    alvo  = getattr(regra, "meta_alvo", None)
+    ini   = getattr(regra, "meta_inicial", None)
+    # Sem medição ainda, o corrente É o ponto de partida (ver
+    # `motor_meta.leitura`): zero apareceria como 100% cumprida.
+    atual = motor_meta.leitura(getattr(acumulador, "meta_atual", 0), ini, modo)
+    return {
+        "eh_meta":         True,
+        "meta_alvo":       alvo,
+        "meta_atual":      atual,
+        "meta_inicial":    ini,
+        "meta_especie":    (esp or motor_meta.ESPECIE_PADRAO),
+        "meta_modo":       modo,
+        "meta_unidade":    un,
+        "meta_passo":      getattr(regra, "meta_passo", None) or e["passo"],
+        "meta_progresso":  motor_meta.progresso(atual, alvo, ini, modo),
+        "meta_texto":      motor_meta.formatar(atual, esp, un),
+        "meta_alvo_texto": motor_meta.formatar(alvo, esp, un),
+        # O cartão precisa saber arredondar o que o hunter digita e qual
+        # teclado pedir no celular — decimal para dinheiro, numérico para
+        # contagem. Mandar daqui evita a tabela de espécies existir duas
+        # vezes, uma em cada linguagem.
+        "meta_casas":      e["casas"],
+        "meta_teclado":    e["teclado"],
+    }
 
 
 def _missao_de_rotina(ed: ExecucaoDia, r: Rotina, hoje: date) -> dict:
@@ -132,6 +192,7 @@ def _missao_de_rotina(ed: ExecucaoDia, r: Rotina, hoje: date) -> dict:
         # ROTINA DE REPETICOES. A contagem e do DIA, entao vem da
         # instancia diaria — nao da rotina, que so guarda o alvo.
         **_repeticao(r, getattr(ed, "repeticoes", 0)),
+        **_campos_meta(r, ed),
         # Sempre nulos aqui — penitencia so nasce como missao geral —
         # mas PRESENTES, para as duas origens terem a mesma forma.
         **_penitencia(ed),
@@ -308,6 +369,7 @@ def _missao_geral(t: TarefaDia, hoje: date) -> dict:
         "confessada_em": t.confessada_em.isoformat()
                          if getattr(t, "confessada_em", None) else None,
         **_repeticao(t, getattr(t, "repeticoes", 0)),
+        **_campos_meta(t, t),
         **_penitencia(t),
 
         # PENITENCIA E SEMPRE EDITAVEL. Ela tem `data_prevista` igual ao dia

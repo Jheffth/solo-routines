@@ -75,11 +75,52 @@ const ForjaMissao = {
       sub: 'você cumpre' },
     { id: 'REPETICAO',   ico: 'repeticao',   txt: 'Repetições',   cor: '#0ea5e9',
       sub: 'você acumula' },
+    /* META × REPETIÇÃO — a diferença cabe no `sub`, e precisa caber.
+       A repetição conta EVENTOS, sempre de um em um. A meta acumula
+       QUANTIDADE, com passo livre e casas decimais: R$ 32,59 não é uma
+       repetição de nada. Sem essa distinção no rótulo, as duas parecem
+       a mesma coisa e o hunter escolhe a errada — foi o que aconteceu
+       com "ganhar 100 reais", que tentou ser condicional. */
+    { id: 'META',        ico: 'meta',        txt: 'Meta',         cor: '#22c55e',
+      sub: 'você soma até o alvo' },
     { id: 'PASSIVA',     ico: 'passiva',     txt: 'Passiva',      cor: '#6366f1',
       sub: 'você mantém', premium: true },
     { id: 'CONDICIONAL', ico: 'condicional', txt: 'Condicional',  cor: '#f59e0b',
       sub: 'bifurca ao fim', premium: true },
   ],
+  /* AS ESPÉCIES DE META. Espelham `motors/meta.py` — o backend continua
+     sendo a verdade (é ele que formata "R$ 1.234,50" e decide as casas);
+     aqui ficam só o rótulo, o ícone e o palpite de alvo, que são coisas
+     de tela. O `modo` NÃO é escolhido pelo hunter: PESO nasce MEDIÇÃO e
+     o resto ACÚMULO, e é o servidor quem sabe disso. */
+  ESPECIES_META: [
+    { id: 'VALOR',     txt: 'Valor',     un: 'R$',  ex: '100',  ico: '💰' },
+    { id: 'TEMPO',     txt: 'Tempo',     un: 'min', ex: '90',   ico: '⏱' },
+    { id: 'PESO',      txt: 'Peso',      un: 'kg',  ex: '78',   ico: '⚖' },
+    { id: 'DISTANCIA', txt: 'Distância', un: 'km',  ex: '5',    ico: '🏃' },
+    { id: 'CONTAGEM',  txt: 'Contagem',  un: 'un',  ex: '40',   ico: '#'  },
+    { id: 'LIVRE',     txt: 'Outra',     un: '',    ex: '10',   ico: '✳'  },
+  ],
+  _especieMeta(id) {
+    return this.ESPECIES_META.find(x => x.id === (id || 'VALOR')) || this.ESPECIES_META[0];
+  },
+  /* Só o PESO mede. É a regra de `motors/meta.py`, repetida aqui apenas
+     para MOSTRAR/ESCONDER o campo de ponto de partida — nenhuma conta é
+     feita no cliente. */
+  _metaMede(id) { return (id || '') === 'PESO'; },
+
+  /* "32,59", "32.59" e "1.234,50" — o último separador é o decimal.
+     Mesma regra do cartão (`_lerNumero` em missao-card.js): o teclado do
+     celular decide o separador, e não o app. */
+  _numeroBR(cru) {
+    let t = String(cru ?? '').trim().replace(/[^\d.,+-]/g, '');
+    if (!t) return null;
+    const u = Math.max(t.lastIndexOf(','), t.lastIndexOf('.'));
+    if (u >= 0) t = t.slice(0, u).replace(/[.,]/g, '') + '.' + t.slice(u + 1).replace(/[.,]/g, '');
+    const n = parseFloat(t);
+    return Number.isFinite(n) ? n : null;
+  },
+
   _naturezas() {
     return this.NATUREZAS.filter(n => !n.premium || this._podeEspeciais);
   },
@@ -194,6 +235,11 @@ const ForjaMissao = {
          reincidência pediria 256 flexões — e uma punição impossível
          deixa de ser punição e vira motivo para fechar o app. */
       pct_tipo: 'QUANTITATIVA', pct_base: 1, pct_teto: 32, pct_unidade: '',
+      /* META. `meta_especie` nasce em VALOR porque foi o caso que
+         originou a funcionalidade ("ganhar 100 reais"); os demais campos
+         nascem vazios de propósito — um alvo sugerido viraria alvo
+         aceito sem ninguém pensar nele. */
+      meta_especie: 'VALOR', meta_alvo: '', meta_unidade: '', meta_inicial: '',
     };
 
     if (ed) this._carregarEdicao(ed, opts.tipo);
@@ -520,6 +566,16 @@ const ForjaMissao = {
   _carregarEdicao(ed, tipoForcado) {
     const e = this._estado;
 
+    /* A META volta para o formulário. Mesma razão da bifurcação logo
+       abaixo: sem hidratar, abrir para editar mostraria os campos em
+       branco e salvar apagaria o alvo. */
+    if ((ed.natureza || '').toUpperCase() === 'META') {
+      e.meta_alvo     = ed.meta_alvo ?? '';
+      e.meta_unidade  = ed.meta_unidade ?? '';
+      e.meta_especie  = ed.meta_especie || 'VALOR';
+      e.meta_inicial  = ed.meta_inicial ?? '';
+    }
+
     /* A BIFURCAÇÃO VOLTA PARA O FORMULÁRIO.
 
        Nada hidratava estes campos: abrir uma condicional para editar
@@ -835,6 +891,43 @@ const ForjaMissao = {
               </div>
             </div>
 
+            <!-- META — o alvo numérico. Só para META. -->
+            <div class="fm-bloco fm-full" id="fm-bloco-meta"
+                 ${e.natureza === 'META' ? '' : 'style="display:none"'}>
+              <div class="fm-rotulo">${gl("repeticao", 14)} O que você vai medir</div>
+              ${grupo('meta_especie', this.ESPECIES_META.map(x => ({
+                  id: x.id, ico: null, txt: x.txt, sub: x.un || 'sua unidade',
+                  cor: '#22c55e' })), 3)}
+
+              <div class="fm-rep-linha">
+                <label class="fm-rep-campo">
+                  <span class="fm-rep-lbl">Alvo</span>
+                  <input type="text" inputmode="decimal" class="fm-input fm-input-mini"
+                         id="fm-meta-alvo" value="${e.meta_alvo ?? ''}"
+                         placeholder="${this._especieMeta(e.meta_especie).ex}">
+                </label>
+                <label class="fm-rep-campo">
+                  <span class="fm-rep-lbl">Unidade</span>
+                  <input type="text" class="fm-input fm-input-mini" maxlength="12"
+                         id="fm-meta-unidade" value="${e.meta_unidade ?? ''}"
+                         placeholder="${this._especieMeta(e.meta_especie).un || 'livre'}">
+                </label>
+                <label class="fm-rep-campo" id="fm-meta-inicial-campo"
+                       ${this._metaMede(e.meta_especie) ? '' : 'style="display:none"'}>
+                  <span class="fm-rep-lbl">Hoje você está em</span>
+                  <input type="text" inputmode="decimal" class="fm-input fm-input-mini"
+                         id="fm-meta-inicial" value="${e.meta_inicial ?? ''}"
+                         placeholder="85">
+                </label>
+              </div>
+
+              <div class="fm-prog-aviso" id="fm-meta-aviso">
+                💡 Você digita os valores no cartão e ele soma —
+                <code>32,59</code>, depois <code>31,78</code>. O XP cai
+                quando o alvo é alcançado, não a cada valor.
+              </div>
+            </div>
+
             <!-- CONDICIONAL — a bifurcação. Só para CONDICIONAL. -->
             <div class="fm-bloco fm-full" id="fm-bloco-condicional"
                  ${e.natureza === 'CONDICIONAL' ? '' : 'style="display:none"'}>
@@ -1137,6 +1230,17 @@ const ForjaMissao = {
             else this._pintarContadores();
           }
         }
+        if (op.dataset.fmCampo === 'meta_especie') {
+          // Só a MEDIÇÃO precisa de ponto de partida, e só o PESO mede.
+          // Pedir "onde você está hoje" para uma meta de dinheiro seria
+          // uma pergunta sem resposta.
+          mostra('fm-meta-inicial-campo', this._metaMede(this._estado.meta_especie));
+          const esp = this._especieMeta(this._estado.meta_especie);
+          const alvo = document.getElementById('fm-meta-alvo');
+          const un   = document.getElementById('fm-meta-unidade');
+          if (alvo) alvo.placeholder = esp.ex;
+          if (un)   un.placeholder   = esp.un || 'livre';
+        }
         if (op.dataset.fmCampo === 'pct_tipo') {
           /* Cada tipo tem números que fazem sentido. Trocar de "contar"
              para "cronometrar" mantendo base 1 e teto 32 daria "1 minuto,
@@ -1328,6 +1432,7 @@ const ForjaMissao = {
     
     // Condicional: bloco de config da bifurcação
     mostra('fm-bloco-condicional', !pacto && !tarefa && e.natureza === 'CONDICIONAL');
+    mostra('fm-bloco-meta',        !pacto && e.natureza === 'META');
     mostra('fm-bloco-prior',     !pacto);
     mostra('fm-bloco-dific',     !pacto);
     mostra('fm-bloco-categoria', !pacto);
@@ -1792,6 +1897,29 @@ const ForjaMissao = {
 
            Por isso o espólio saiu da pergunta e mora aqui dentro: a
            pergunta não é esforço, é bifurcação. */
+        /* META — o alvo e a espécie. O MODO não vai daqui: quem decide
+           é o servidor, a partir da espécie. Mandar o modo do cliente
+           permitiria uma meta de peso configurada como acúmulo, que é o
+           absurdo de somar pesagens. */
+        if (e.natureza === 'META') {
+          const nAlvo = this._numeroBR(document.getElementById('fm-meta-alvo')?.value);
+          if (nAlvo === null || nAlvo === 0) {
+            SoloDialog?.toast?.('Diga o alvo da meta — 100, 5, 78…', 'error');
+            if (btn) btn.disabled = false; return;
+          }
+          payload.meta_alvo    = nAlvo;
+          payload.meta_especie = e.meta_especie || 'VALOR';
+          payload.meta_unidade = (document.getElementById('fm-meta-unidade')?.value || '').trim() || null;
+          if (this._metaMede(e.meta_especie)) {
+            const ini = this._numeroBR(document.getElementById('fm-meta-inicial')?.value);
+            if (ini === null) {
+              SoloDialog?.toast?.('Diga em quanto você está hoje — sem isso não há como medir o progresso.', 'error');
+              if (btn) btn.disabled = false; return;
+            }
+            payload.meta_inicial = ini;
+          }
+        }
+
         if (e.natureza === 'CONDICIONAL') {
           const v = (id) => (document.getElementById('fm-cond-' + id)?.value || '').trim();
           const n = (id, pad) => {
