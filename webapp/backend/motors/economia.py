@@ -140,6 +140,7 @@ SEMENTE = [
     # acordar com quarenta cartoes.
     ("punicao", "dias_seguidos",   3, "Dias PUNIDOS seguidos que dobram a pena", 1),
     ("punicao", "limiar_dia",     50, "% de diarias falhadas que perde o dia", 2),
+    ("punicao", "abate_por_missao", 1, "Quanto cada missao cumprida abate da penitencia", 3),
     ("punicao", "divida_teto",     4, "Pendencias ate o Sistema parar de criar", 2),
     ("punicao", "escala_fator",    2, "Multiplicador a cada reincidencia", 3),
     ("punicao", "decaimento_dias", 7, "Dias limpos para recuar um degrau", 4),
@@ -446,6 +447,9 @@ def punicao_regras(db=None) -> dict:
         # catastrofe absoluta, e por isso o gatilho principal quase
         # nunca disparava. Percentual e alcancavel e calibravel.
         "limiar_dia":      max(1, min(100, int(_v(t, "punicao", "limiar_dia", 50)))),
+        # Quanto cada missão cumprida tira da barra da penitência. Zero
+        # desliga a mecânica inteira sem tocar em código.
+        "abate_por_missao": max(0, int(_v(t, "punicao", "abate_por_missao", 1))),
         "divida_teto":     max(1, int(_v(t, "punicao", "divida_teto", 4))),
         "escala_fator":    max(1, int(_v(t, "punicao", "escala_fator", 2))),
         "decaimento_dias": max(1, int(_v(t, "punicao", "decaimento_dias", 7))),

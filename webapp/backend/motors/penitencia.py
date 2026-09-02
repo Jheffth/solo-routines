@@ -225,6 +225,50 @@ def revogar(db, usuario_id: int, missao_titulo: str, missao_data: date) -> int:
     return len(achadas)
 
 
+def abater(db, usuario, quanto: int = 1) -> dict | None:
+    """
+    CUMPRIR O DEVER ABATE A DÍVIDA — um pouco.
+
+    Toda missão concluída tira um pedaço da barra da penitência mais
+    antiga em aberto. A ideia é do Arquiteto e é boa: quem voltou aos
+    trilhos já está pagando de alguma forma, e um Sistema que só aceita
+    o pagamento na moeda exata da punição empurra quem falhou para longe
+    — justamente no momento em que ele voltou.
+
+    DUAS REGRAS QUE FAZEM ISTO NÃO VIRAR ESCAPATÓRIA
+
+    1. NUNCA FECHA A ÚLTIMA UNIDADE. O abatimento reduz até faltar UMA,
+       e para. O passo final é sempre um ato do hunter — se cumprir
+       missões quitasse a penitência sozinha, a penitência deixaria de
+       ser uma coisa a fazer e viraria um número que some.
+
+    2. SÓ ABATE O QUE TEM BARRA. Penitência QUANTITATIVA ("faça 40
+       flexões") tem alvo e progresso. TEMPORAL, RESTRITIVA e TRIBUTO
+       não têm barra que se possa mover pela metade — cumprir metade de
+       "sem doce até as 18h" não significa nada. Elas são deixadas em
+       paz, e isso é uma decisão, não um esquecimento.
+
+    Abate a MAIS ANTIGA: é a que mais pesa no teto e a que o hunter
+    carrega há mais tempo.
+    """
+    if quanto <= 0:
+        return None
+    for t in pendentes(db, usuario.id):
+        alvo = int(getattr(t, "alvo_repeticoes", 0) or 0)
+        if alvo <= 1:
+            continue                     # sem barra, ou barra de um passo só
+        feitas = int(getattr(t, "repeticoes", 0) or 0)
+        teto = alvo - 1                  # a regra 1, em uma linha
+        if feitas >= teto:
+            continue                     # já está a um passo do fim
+        novo = min(teto, feitas + quanto)
+        t.repeticoes = novo
+        return {"tarefa_id": t.id, "titulo": t.titulo,
+                "de": feitas, "para": novo, "alvo": alvo,
+                "restam": alvo - novo}
+    return None
+
+
 def quitar(db, usuario, tarefa: TarefaDia) -> dict:
     """
     A divida foi paga. Devolve a fracao de XP e cala o Eco em tom bom.

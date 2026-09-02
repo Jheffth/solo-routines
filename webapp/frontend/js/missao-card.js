@@ -2068,6 +2068,23 @@ const MissaoCard = {
       this._absorver(chave, acao, resp);
       this.repintar(chave);
 
+      /* O ABATIMENTO PRECISA SER VISTO PARA EXISTIR.
+
+         Concluir uma missão tira um pedaço da barra da penitência mais
+         antiga. Sem este aviso, a mecânica acontece em silêncio: o
+         hunter só notaria abrindo a penitência e reparando que o número
+         mudou — ou seja, quase nunca. Uma recompensa que ninguém percebe
+         não recompensa nada.
+
+         O texto diz o que FALTA, não o que foi abatido: "faltam 6 de 10"
+         é a informação que muda o comportamento; "+1" é contabilidade. */
+      const ab = resp?.abate_penitencia;
+      if (ab) {
+        SoloDialog?.toast?.(
+          `Dívida abatida — ${this._esc(ab.titulo)}: faltam ${ab.restam} de ${ab.alvo}.`,
+          'info');
+      }
+
       /* A REPINTURA CIRÚRGICA ACERTA O CARTÃO E NÃO A LISTA.
 
          Repintar no lugar é deliberado — é o que faz o botão virar sem

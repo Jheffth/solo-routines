@@ -116,6 +116,24 @@ def _liquidar(db: Session, usuario: Usuario, rotina: Rotina, hoje: date,
     ed.xp_ganho      = resultado.get("xp_ganho", 0) if isinstance(resultado, dict) else 0
     ed.moedas_ganhas = resultado.get("moedas_ganhas", 0) if isinstance(resultado, dict) else 0
 
+    # ── CUMPRIR O DEVER ABATE A DÍVIDA ───────────────────────────────
+    # Uma missão concluída tira um pedaço da barra da penitência mais
+    # antiga em aberto — mas nunca a última unidade (ver
+    # `penitencia.abater`). Quem voltou aos trilhos já está pagando de
+    # alguma forma.
+    #
+    # NUNCA DERRUBA A CONCLUSÃO: o abatimento é cortesia, e uma cortesia
+    # que quebra o ato principal é pior que não existir. Mesmo cuidado
+    # que `_talvez_punir` tem no fechamento.
+    abate = None
+    try:
+        from motors import penitencia as _pen
+        _n = economia.punicao_regras(db).get("abate_por_missao", 0)
+        if _n:
+            abate = _pen.abater(db, usuario, _n)
+    except Exception as exc:
+        print(f"[EXECUCOES] ⚠ abatimento adiado: {exc}")
+
     # PROGRESSIVA ATIVA: dia concluído = +1 na corrente do desafio.
     # A lógica vive aqui (na conclusão), nunca no fechamento: a passiva
     # conta pelo SILENCIO (día que passou sem confissão); a ativa conta
@@ -139,6 +157,7 @@ def _liquidar(db: Session, usuario: Usuario, rotina: Rotina, hoje: date,
     # ─────────────────────────────────────────────────────
 
     return ({"rotina_id": rotina.id, "resultado": resultado, "liquidacao": liq,
+             "abate_penitencia": abate,
              # O frontend precisa saber se a corrente está encerrada (vitoriosa
              # ou fatal) para mostrar a tela de encerrament sem recarregar.
              "progressiva": {

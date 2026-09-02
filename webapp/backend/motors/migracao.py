@@ -122,6 +122,7 @@ COLUNAS = [
     ("tarefas_dia",  "meta_especie",       "VARCHAR(12)",                 "VARCHAR(12)"),
     ("tarefas_dia",  "meta_modo",          "VARCHAR(10)",                 "VARCHAR(10)"),
     ("tarefas_dia",  "meta_inicial",       "REAL",                        "DOUBLE PRECISION"),
+    ("tarefas_dia",  "cancelada_em",       "DATETIME",                    "TIMESTAMP"),
 
     # ── FRAGMENTOS DO MONARCA — Moeda Premium ────────────────────────
     # As 5 novas tabelas (planos, assinaturas, pacotes_fragmentos,

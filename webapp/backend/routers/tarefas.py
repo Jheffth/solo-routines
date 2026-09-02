@@ -354,8 +354,29 @@ def concluir_tarefa(
         usuario.xp_atual = max(0, (usuario.xp_atual or 0) - liq["penalidade"])
         db.commit()
 
+    # ── CUMPRIR O DEVER ABATE A DÍVIDA ───────────────────────────────
+    # O mesmo abatimento da rotina (`_liquidar`, em execucoes.py): cada
+    # missão concluída tira um pedaço da barra da penitência mais antiga
+    # em aberto, sem nunca fechar a última unidade.
+    #
+    # A PENITÊNCIA NÃO ABATE A SI MESMA. Cumprir uma penitência já a
+    # quita pelo caminho de `penitencia.quitar`; deixá-la abater a
+    # seguinte transformaria a dívida numa fila que se paga sozinha.
+    abate = None
+    if especiais.normalizar(getattr(t, "natureza", None)) != especiais.PUNICAO:
+        try:
+            from motors import penitencia as _pen
+            _n = economia.punicao_regras(db).get("abate_por_missao", 0)
+            if _n:
+                abate = _pen.abater(db, usuario, _n)
+                if abate:
+                    db.commit()
+        except Exception as exc:
+            print(f"[TAREFAS] ⚠ abatimento adiado: {exc}")
+
     return anexar(
-        {"tarefa": _tarefa_to_dict(t), "resultado": resultado, "liquidacao": liq},
+        {"tarefa": _tarefa_to_dict(t), "resultado": resultado, "liquidacao": liq,
+         "abate_penitencia": abate},
         resultado,
     )
 
@@ -420,6 +441,32 @@ def deletar_tarefa(
         if u:
             u.xp_total = max(0, (u.xp_total    or 0) - (t.xp_recompensa    or 0))
             u.moedas   = max(0, (u.moedas       or 0) - (t.moedas_recompensa or 0))
+
+    # ══ A PENITÊNCIA NÃO É APAGADA — ELA É ENCERRADA ═════════════════
+    #
+    # APAGAR ERA O DEFEITO. `_ja_julgado` (motors/fechamento) pergunta se
+    # existe uma TarefaDia de PUNICAO com `origem_data` naquele dia. É
+    # essa linha que diz "este dia já foi julgado". Sumindo com ela, o
+    # dia voltava a ser julgável — e o fechamento seguinte mandava uma
+    # penitência NOVA pela MESMA falha. O Arquiteto perdoava e o Sistema
+    # cobrava de novo, para sempre.
+    #
+    # Encerrar em vez de apagar resolve os dois lados de uma vez: sai das
+    # pendentes (CANCELADA está fora do filtro de `penitencia.pendentes`,
+    # então o teto libera na hora) e o dia continua constando como
+    # julgado. É o mesmo desfecho de "quitar", só que sem reparação —
+    # perdão não paga XP.
+    #
+    # E o registro sobrevive: quem olhar o extrato de aquele dia vê que
+    # houve punição e que ela foi extinta, em vez de um dia falho sem
+    # consequência aparente.
+    if especiais.normalizar(getattr(t, "natureza", None)) == especiais.PUNICAO:
+        t.status = "CANCELADA"
+        t.cancelada_em = tempo.agora()
+        db.commit()
+        return {"ok": True, "extinguido": extinguir, "encerrada": True,
+                "motivo": "Penitência extinta pelo Arquiteto — o dia segue "
+                          "julgado, e o Sistema não cobra de novo."}
 
     db.delete(t)
     db.commit()

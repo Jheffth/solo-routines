@@ -389,6 +389,12 @@ class TarefaDia(Base):
     xp_repeticao_pago   = Column(Integer, nullable=False, default=0, server_default="0")
     ultima_repeticao_em = Column(DateTime, nullable=True)
     confessada_em       = Column(DateTime, nullable=True)    # "quebrei o protocolo"
+    # Quando a missão foi encerrada sem ser cumprida. O ExecucaoDia já
+    # tinha; a TarefaDia não, e passou a precisar quando a penitência
+    # extinta pelo Arquiteto deixou de ser APAGADA para ser ENCERRADA —
+    # sem a linha, o dia voltava a ser julgável e o Sistema mandava outra
+    # penitência pela mesma falha.
+    cancelada_em        = Column(DateTime, nullable=True)
 
     # ══ PENITENCIA ══════════════════════════════════════════════════
     # Nasce do fechamento do dia, nao do lancador. `pacto_id` diz de
