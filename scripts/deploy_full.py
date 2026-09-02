@@ -136,7 +136,6 @@ def main():
             print(f"  [ERRO] {rel_path}: {e}")
             erros.append(rel_path)
 
-    sftp.close()
 
     print(f"\n{'-'*60}")
     if erros:
@@ -154,6 +153,7 @@ def main():
             print(f"[AVISO] nao consegui gravar o carimbo: {e}")
         print(f"[OK] Todos os {len(ARQUIVOS)} arquivo(s) enviados com sucesso.")
 
+    sftp.close()
     print("\n[*] Reiniciando container Docker no servidor...")
     cmd = "cd /root/app/webapp && docker compose up -d --build api 2>&1 | tail -20"
     stdin, stdout, stderr = ssh.exec_command(cmd, timeout=300)
