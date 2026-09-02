@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="css/animations.css">
   <link rel="stylesheet" href="css/windows.css">
   <link rel="stylesheet" href="css/components.css">
-  <link rel="stylesheet" href="css/pages.css">
+  <link rel="stylesheet" href="css/pages.css?v=7">
   <link rel="stylesheet" href="css/dungeon.css">
   <link rel="stylesheet" href="css/status-window.css">
   <link rel="stylesheet" href="css/relicario.css">
@@ -67,13 +67,63 @@
     <!-- TELA DE LOGIN -->
     <div id="login-screen">
       <div class="login-mist"></div>
+      <div class="auth-tela">
+
+        <!-- A COLUNA DA MARCA. Some no celular (ver pages.css): numa
+             tela estreita ela empurraria o botão Entrar para baixo da
+             dobra, e quem abre no celular já decidiu entrar. -->
+        <aside class="auth-marca">
+          <div class="auth-marca-insignia js-insignia-solo" id="login-insignia"></div>
+          <h2 class="auth-marca-titulo">Solo Routines</h2>
+          <p class="auth-marca-assinatura">Sistema de Missões</p>
+
+          <!-- OS TRÊS PILARES, no lugar dos cartões de venda do Turno.
+               Aqui não há ninguém a convencer: entra-se por convocação.
+               Então eles não vendem o software — declaram as regras a
+               quem já foi chamado. -->
+          <div class="auth-pilares">
+            <div class="auth-pilar">
+              <span class="auth-pilar-icone">&#9876;&#65039;</span>
+              <span class="auth-pilar-texto">
+                <strong>Missões</strong>
+                A rotina vira desafio, com prazo, dificuldade e recompensa.
+              </span>
+            </div>
+            <div class="auth-pilar">
+              <span class="auth-pilar-icone">&#9760;&#65039;</span>
+              <span class="auth-pilar-texto">
+                <strong>Penitência</strong>
+                Falhar tem preço. O Sistema cobra o que você mesmo firmou em pacto.
+              </span>
+            </div>
+            <div class="auth-pilar">
+              <span class="auth-pilar-icone">&#10024;</span>
+              <span class="auth-pilar-texto">
+                <strong>Ascensão</strong>
+                XP, ranks e insígnias — o progresso que se vê e não se compra.
+              </span>
+            </div>
+          </div>
+        </aside>
+
+        <main class="auth-painel">
       <div class="login-card">
-        <div class="login-logo-wrap" style="display:flex;justify-content:center;align-items:center;margin-bottom:.5rem">
-          <div id="login-insignia" style="display:flex;align-items:center;justify-content:center;line-height:0"></div>
+        <!-- Só no celular, onde a coluna da marca não aparece. -->
+        <div class="auth-logo-topo js-insignia-solo"></div>
+
+        <!-- AS ABAS SÃO OS LINKS QUE JÁ EXISTIAM, com outra roupa.
+             `link-ir-registro` continua sendo o mesmo id que o app.js
+             liga a `_mostrarRegistro()`. Trocar a troca de telas por
+             abas de verdade exigiria reescrever o fluxo de
+             autenticação — a aparência é a do Turno, a mecânica é a que
+             já se sabe boa. -->
+        <div class="auth-abas" role="tablist">
+          <span class="auth-aba ativa" role="tab" aria-selected="true">Entrar</span>
+          <a href="#" id="link-ir-registro" class="auth-aba" role="tab" aria-selected="false">Criar Conta</a>
         </div>
-        <h1 class="login-title">Solo Routines</h1>
-        <p class="login-subtitle">Sistema de Missoes</p>
-        <p class="login-desc">Prove seu valor. Evolua todos os dias.<br>O sistema te observa, Hunter.</p>
+
+        <h1 class="login-title">Bem-vindo, Hunter</h1>
+        <p class="login-desc">Prove seu valor. Evolua todos os dias.<br>O sistema te observa.</p>
         <form class="login-form" id="form-login" autocomplete="off">
           <div class="form-group">
             <label class="form-label" for="login-usuario">Login de Hunter</label>
@@ -118,21 +168,66 @@
           </div>
         </div>
 
-        <div class="login-links">
-          <a href="#" id="link-ir-registro" class="login-link">Criar conta de Hunter</a>
-        </div>
+        <!-- O LINK DO RODAPÉ SAIU, e não por descuido. Ele tinha o mesmo
+             id da aba (`link-ir-registro`), e id repetido não é só
+             desleixo: `getElementById` devolve o PRIMEIRO, então o
+             segundo nasceria morto — um link visível que não faz nada.
+             Ter os dois exigiria trocar a ligação do app.js de id para
+             classe; a aba já é o controle, e um controle basta. -->
+      </div>
+        </main>
       </div>
     </div>
 
     <!-- TELA DE REGISTRO -->
     <div id="registro-screen" class="hidden">
       <div class="login-mist"></div>
+      <div class="auth-tela">
+
+        <!-- A MESMA coluna da marca da tela de login. É o que faz as
+             duas parecerem uma tela só com duas abas, em vez de dois
+             lugares diferentes do app. -->
+        <aside class="auth-marca">
+          <div class="auth-marca-insignia js-insignia-solo"></div>
+          <h2 class="auth-marca-titulo">Solo Routines</h2>
+          <p class="auth-marca-assinatura">Somente por convocação</p>
+
+          <div class="auth-pilares">
+            <div class="auth-pilar">
+              <span class="auth-pilar-icone">&#9876;&#65039;</span>
+              <span class="auth-pilar-texto">
+                <strong>Missões</strong>
+                A rotina vira desafio, com prazo, dificuldade e recompensa.
+              </span>
+            </div>
+            <div class="auth-pilar">
+              <span class="auth-pilar-icone">&#9760;&#65039;</span>
+              <span class="auth-pilar-texto">
+                <strong>Penitência</strong>
+                Falhar tem preço. O Sistema cobra o que você mesmo firmou em pacto.
+              </span>
+            </div>
+            <div class="auth-pilar">
+              <span class="auth-pilar-icone">&#10024;</span>
+              <span class="auth-pilar-texto">
+                <strong>Ascensão</strong>
+                XP, ranks e insígnias — o progresso que se vê e não se compra.
+              </span>
+            </div>
+          </div>
+        </aside>
+
+        <main class="auth-painel">
       <div class="login-card">
-        <div class="login-logo-wrap">
-          <div class="login-logo-icon registro"><span>&#128737;&#65039;</span></div>
+        <div class="auth-logo-topo js-insignia-solo"></div>
+
+        <div class="auth-abas" role="tablist">
+          <a href="#" id="link-ir-login" class="auth-aba" role="tab" aria-selected="false">Entrar</a>
+          <span class="auth-aba ativa" role="tab" aria-selected="true">Criar Conta</span>
         </div>
+
         <h1 class="login-title">Tornar-se Hunter</h1>
-        <p class="login-subtitle">Somente por convocação</p>
+        <p class="login-desc">Seu perfil é seu, e a convocação é intransferível.</p>
 
         <!-- 1. PORTÃO: o convite é a primeira e única coisa exigida de cara.
                 Sem formulário assustando ninguém. -->
@@ -227,9 +322,12 @@
           </form>
         </div>
 
-        <div class="login-links">
-          <a href="#" id="link-ir-login" class="login-link">Ja sou Hunter - Entrar</a>
-        </div>
+        <!-- O link do rodapé virou a aba "Entrar", lá em cima. Mesmo id,
+             mesma ligação no app.js — só mudou de lugar e de roupa.
+             Mantê-lo aqui TAMBÉM repetiria o id, e o segundo elemento
+             nasceria morto. -->
+      </div>
+        </main>
       </div>
     </div>
 
@@ -1364,7 +1462,7 @@
   <!-- O registro das peças. Não desenha nada: só precisa existir antes
        que alguma peça tente se registrar. -->
   <script src="js/pecas.js"></script>
-  <script src="js/missao-card.js?v=6"></script>
+  <script src="js/missao-card.js?v=7"></script>
   <script src="js/forja-missao.js?v=6"></script>
   <script src="js/animations.js"></script>
   <script src="js/auras.js"></script>
@@ -1422,18 +1520,27 @@
   <script src="js/pages/sala-poderes.js"></script>
   <script src="js/pages/hunter-publico.js"></script>
   <script src="js/busca-hunters.js"></script>
-  <script src="js/app.js?v=6"></script>
+  <script src="js/app.js?v=7"></script>
   <script src="js/version.js"></script>
   <script>
-    // Injeta a insígnia Solo real (gerada pelo SoloFX) no login após todos os scripts carregarem
+    /* A INSÍGNIA, EM TODOS OS LUGARES QUE A PEDEM.
+
+       Era `getElementById('login-insignia')` — um só. Com a entrada em
+       duas colunas ela aparece em QUATRO pontos: a coluna da marca do
+       login e a do registro, mais as duas versões pequenas que só o
+       celular vê. Um id não serve para isso (id é único por definição),
+       então quem manda agora é a classe `js-insignia-solo`.
+
+       O id continua na primeira, para quem já dependia dele. */
     document.addEventListener('DOMContentLoaded', () => {
-      const slot = document.getElementById('login-insignia');
-      if (slot && window.SoloFX && SoloFX._svgMedalhaSolo) {
+      if (!window.SoloFX || !SoloFX._svgMedalhaSolo) return;
+      document.querySelectorAll('.js-insignia-solo').forEach(slot => {
         slot.innerHTML = SoloFX._svgMedalhaSolo(90);
-        // Aplica o glow externo via filter no SVG injetado
+        // O glow externo. O CSS do celular reduz o SVG para 64px; o
+        // brilho acompanha porque é filtro, não medida fixa.
         const svg = slot.querySelector('svg');
         if (svg) svg.style.filter = 'drop-shadow(0 0 18px rgba(168,85,247,0.85)) drop-shadow(0 0 45px rgba(168,85,247,0.4))';
-      }
+      });
     });
   </script>
 <!-- FOOTER DE VERSÃO -->

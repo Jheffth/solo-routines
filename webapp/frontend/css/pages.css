@@ -3,21 +3,266 @@
    Estilos especificos de cada pagina + responsivo + heatmap
    ============================================================ */
 
+/* ══════════════════════════════════════════════════════════════
+   A ENTRADA — duas colunas, no desenho do TURNO
+   ══════════════════════════════════════════════════════════════
+
+   A ESTRUTURA VEIO DO PROJETO TURNO, a pedido do Arquiteto: marca à
+   esquerda, formulários à direita, abas [Entrar | Criar Conta] no topo
+   do painel. O que NÃO veio foi a pele — lá o acento é ouro sobre
+   obsidiana; aqui continua o roxo do Sistema, a insígnia girando e a
+   névoa que já existiam.
+
+   NO CELULAR A COLUNA DA MARCA SAI DE CENA e a insígnia reaparece
+   pequena no topo do formulário. Esconder é melhor que espremer: numa
+   tela de 390px, uma versão comprimida dos três pilares empurraria o
+   botão "Entrar" para baixo da dobra — e quem abre o app no celular já
+   decidiu entrar.
+
+   AS ABAS NÃO SÃO COMPONENTE NOVO. Elas são os dois links que já
+   existiam (`link-ir-registro` e `link-ir-login`), com outra roupa. O
+   `app.js` já os liga a `_mostrarRegistro()` e `_mostrarLogin()`, e
+   essa troca de telas está em uso há tempo. Fazer uma aba de verdade
+   exigiria reescrever o fluxo de autenticação — trocar o que funciona
+   por algo equivalente, só que não testado. A aparência é a do Turno; a
+   mecânica continua a que já se sabe boa.
+   ══════════════════════════════════════════════════════════════ */
+
+/* A moldura de duas colunas. */
+.auth-tela {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* ── A COLUNA DA MARCA ─────────────────────────────────────── */
+.auth-marca {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 3.5rem 3rem;
+  text-align: center;
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 30%, rgba(124,58,237,.18) 0%, transparent 65%),
+    rgba(8, 6, 18, .55);
+  border-right: 1px solid rgba(124,58,237,.28);
+  overflow: hidden;
+}
+
+/* A AURA por trás da insígnia. No Turno é dourada; aqui é a mesma cor
+   do glow que a medalha já emite, para as duas lerem como uma luz só. */
+.auth-marca::before {
+  content: "";
+  position: absolute;
+  width: 560px; height: 560px;
+  top: 26%; left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(124,58,237,.30) 0%, transparent 70%);
+  filter: blur(50px);
+  pointer-events: none;
+}
+
+/* A trama de pontos. Discreta o bastante para ser textura, não padrão. */
+.auth-marca::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(168,85,247,.18) 1px, transparent 1px);
+  background-size: 30px 30px;
+  opacity: .55;
+  pointer-events: none;
+}
+
+.auth-marca > * { position: relative; z-index: 1; }
+
+.auth-marca-insignia {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.auth-marca-titulo {
+  font-family: var(--font-title);
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  margin: 0;
+  background: linear-gradient(135deg, #ffffff 30%, #c084fc 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.auth-marca-assinatura {
+  font-family: var(--font-section);
+  font-size: .78rem;
+  color: #c084fc;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  margin: -.8rem 0 .2rem;
+}
+
+/* ── OS TRÊS PILARES ───────────────────────────────────────── */
+.auth-pilares {
+  display: flex;
+  flex-direction: column;
+  gap: .8rem;
+  margin-top: .5rem;
+  text-align: left;
+  max-width: 400px;
+  width: 100%;
+}
+
+.auth-pilar {
+  display: flex;
+  align-items: center;
+  gap: .9rem;
+  padding: .8rem 1rem;
+  background: rgba(124,58,237,.06);
+  border: 1px solid rgba(124,58,237,.25);
+  border-radius: 12px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: border-color .18s ease, transform .18s ease, background .18s ease;
+}
+.auth-pilar:hover {
+  border-color: rgba(168,85,247,.6);
+  background: rgba(124,58,237,.12);
+  transform: translateX(4px);
+}
+
+.auth-pilar-icone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px; height: 38px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: rgba(124,58,237,.16);
+  color: #c084fc;
+  font-size: 1.05rem;
+}
+
+.auth-pilar-texto {
+  font-family: var(--font-body);
+  font-size: .78rem;
+  color: #94a3b8;
+  line-height: 1.35;
+}
+.auth-pilar-texto strong {
+  display: block;
+  font-family: var(--font-section);
+  font-size: .82rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #ffffff;
+  margin-bottom: .15rem;
+}
+
+/* ── O PAINEL ──────────────────────────────────────────────── */
+.auth-painel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 2rem;
+}
+
+/* A insígnia pequena, só no celular (onde a coluna da marca some). */
+.auth-logo-topo { display: none; }
+
+/* ── AS ABAS ───────────────────────────────────────────────── */
+.auth-abas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 5px;
+  margin: 0 0 1.5rem;
+  background: rgba(124,58,237,.07);
+  border: 1px solid rgba(124,58,237,.28);
+  border-radius: 14px;
+}
+
+.auth-aba {
+  display: block;
+  padding: .7rem 1rem;
+  font-family: var(--font-section);
+  font-size: .78rem;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  text-align: center;
+  text-decoration: none;
+  color: #94a3b8;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: color .18s ease, background .18s ease, border-color .18s ease;
+}
+.auth-aba:hover { color: #e2e8f0; }
+
+/* A aba da tela em que se está. Não é link — é onde você já está, e
+   por isso não tem cursor de mão nem hover. */
+.auth-aba.ativa {
+  color: #ffffff;
+  background: rgba(8, 6, 18, .85);
+  border-color: rgba(168,85,247,.55);
+  box-shadow: 0 4px 14px rgba(124,58,237,.25);
+  cursor: default;
+}
+
+/* ── CELULAR ───────────────────────────────────────────────── */
+@media (max-width: 920px) {
+  .auth-tela { grid-template-columns: 1fr; }
+  .auth-marca { display: none; }
+  .auth-painel { padding: 2rem 1.1rem; align-items: flex-start; }
+  .auth-logo-topo {
+    display: flex;
+    justify-content: center;
+    line-height: 0;
+    margin: 0 0 1.1rem;
+  }
+  /* A mesma medalha, menor. Injetar uma segunda em outro tamanho
+     duplicaria o SVG inteiro por causa de 26 pixels. */
+  .auth-logo-topo svg { width: 64px; height: 64px; }
+}
+
 /* ─── LOGIN SCREEN ─── */
 #login-screen,
 #registro-screen {
   position: fixed;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  /* ERA `flex` CENTRALIZADO, para um cartão só no meio da tela. Com as
+     duas colunas o cartão deixou de ser o conteúdo — a moldura
+     (`.auth-tela`) é, e ela precisa OCUPAR a tela inteira. Centralizar e
+     dar padding aqui a encolheria, e a coluna da marca ficaria uma
+     faixa flutuando no meio do nada.
+
+     A centralização não sumiu: mudou de lugar. Quem centraliza o
+     formulário agora é `.auth-painel`, dentro da sua metade. */
+  display: block;
   z-index: 100;
   background:
     radial-gradient(ellipse 80% 60% at 50% 0%, rgba(124,58,237,.35) 0%, transparent 60%),
     radial-gradient(ellipse 50% 40% at 80% 80%, rgba(6,182,212,.12) 0%, transparent 50%),
     var(--bg-deep);
-  padding: 1rem;
+  padding: 0;
   overflow-y: auto;
+}
+/* O cartão perde a largura de "tela inteira" e vira a caixa do painel:
+   440px é a mesma medida que o Turno usa, e a que já estava aqui. */
+.auth-painel .login-card {
+  margin: 0;
+  max-width: 440px;
 }
 .login-mist {
   position: fixed;
