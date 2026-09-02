@@ -46,6 +46,22 @@ AS NATUREZAS
            Quem quebra vai ao cartão e CONFESSA — não há como verificar, e é
            justamente por isso que confessar precisa ser barato (economia.py).
 
+  META     a missão tem um ALVO NUMÉRICO e uma unidade. "Ganhar 100 reais
+           no turno da manhã", "correr 5 km", "ler 40 páginas". O hunter
+           SOMA VALORES ao longo do dia — 35, depois 50, depois 15 — até
+           alcançar o alvo.
+
+           POR QUE NÃO É REPETIÇÃO, que também conta até uma meta: a
+           repetição conta EVENTOS, e o passo dela é fixo em +1 (ver
+           `_mover` em routers/execucoes.py). Para R$ 100 seriam cem
+           cliques, e R$ 12,50 não caberia num contador inteiro. A meta
+           acumula QUANTIDADE, com passo livre e casas decimais.
+
+           O XP só é pago ao ALCANÇAR o alvo. Pagar por valor somado
+           faria "ganhar 1000 reais" render mais XP que qualquer missão
+           do app — a meta é uma coisa só: ou foi cumprida, ou não foi.
+           E meia meta é fracasso, como em qualquer missão daqui.
+
   CONDICIONAL  a missão tem uma PERGUNTA. Ao concluir o dia, o hunter
            escolhe entre dois ramos (A ou B). A missão sempre é concluída —
            o que muda é o ajuste de XP e a mensagem de retorno.
@@ -76,12 +92,13 @@ from auth.router import NIVEIS_ADMIN
 ATIVA      = "ATIVA"
 PASSIVA    = "PASSIVA"
 REPETICAO  = "REPETICAO"
+META       = "META"
 CONDICIONAL = "CONDICIONAL"
 # PUNICAO nao e criada pelo hunter: nasce do fechamento do dia. Por isso
 # ela esta em NATUREZAS (o cartao precisa reconhece-la) e NAO no
 # lancador — `pode_criar` a recusa de proposito, ver abaixo.
 PUNICAO    = "PUNICAO"
-NATUREZAS  = (ATIVA, PASSIVA, REPETICAO, CONDICIONAL, PUNICAO)
+NATUREZAS  = (ATIVA, PASSIVA, REPETICAO, META, CONDICIONAL, PUNICAO)
 
 # Naturezas que exigem permissão para serem criadas. ATIVA e REPETICAO
 # são de todos. CONDICIONAL é premium: a bifurcação precisa de payload
@@ -107,6 +124,10 @@ def eh_premium(natureza) -> bool:
 
 def eh_condicional(natureza) -> bool:
     return normalizar(natureza) == CONDICIONAL
+
+
+def eh_meta(natureza) -> bool:
+    return normalizar(natureza) == META
 
 
 def pode_criar(usuario, natureza) -> bool:

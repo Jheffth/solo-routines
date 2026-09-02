@@ -8,8 +8,10 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import date, datetime, timedelta
 from motors import tempo, prazos, economia, especiais
+from motors import meta as motor_meta
 
-from database import get_db, Rotina, Execucao, ExecucaoDia, TarefaDia, Usuario
+from database import (get_db, Rotina, Execucao, ExecucaoDia, TarefaDia,
+                      Usuario, MetaAporte)
 from auth.router import get_usuario_atual
 from motors.gamificacao import calcular_xp_rotina, aplicar_xp
 from motors.celebracao import anexar
@@ -890,3 +892,258 @@ def _mover_tarefa(db: Session, usuario: Usuario, tarefa_id: int, passo: int) -> 
         "resultado":      resultado,
     }
     return anexar(corpo, resultado) if resultado else corpo
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  META — a missão que se cumpre chegando a um NÚMERO
+# ══════════════════════════════════════════════════════════════════════
+#
+# O hunter REGISTRA VALORES ao longo do dia — 32,59, depois 31,78 — e o
+# cartão soma. Ou, no modo MEDIÇÃO, ele registra pesagens e vale a
+# última. Quem sabe qual das duas contas fazer é `motors/meta.py`; aqui
+# só se obedece.
+#
+# CADA VALOR VIRA UMA LINHA em `meta_aportes`, e não apenas um `+=` no
+# saldo. É o que permite desfazer o `3259` digitado no lugar de `32,59`
+# sem inventar um aporte negativo de correção — e é o que guarda a curva
+# de peso, que o saldo apaga a cada nova leitura.
+
+class MetaRegistrarRequest(BaseModel):
+    # Um dos dois, como no resto do arquivo: a rotina tem instância
+    # diária, a missão geral guarda a contagem em si mesma.
+    rotina_id: Optional[int] = None
+    tarefa_id: Optional[int] = None
+    valor: float
+    nota: Optional[str] = None
+
+
+class MetaDesfazerRequest(BaseModel):
+    rotina_id: Optional[int] = None
+    tarefa_id: Optional[int] = None
+
+
+def _alvo_de_meta(db: Session, usuario: Usuario, rotina_id, tarefa_id):
+    """
+    Devolve (regra, acumulador) — os dois objetos que a meta precisa.
+
+    A REGRA (alvo, espécie, modo, inicial) e o ACUMULADOR (onde o saldo
+    mora) NEM SEMPRE SÃO O MESMO OBJETO: na rotina, a regra é a Rotina e
+    o acumulador é o ExecucaoDia de hoje; na missão geral, a TarefaDia é
+    os dois. Separar isso aqui evita um `if` em cada uso mais abaixo.
+    """
+    if rotina_id:
+        rotina = db.query(Rotina).filter(
+            Rotina.id == rotina_id, Rotina.usuario_id == usuario.id,
+            Rotina.ativo == True).first()
+        if not rotina:
+            raise HTTPException(404, "Rotina não encontrada")
+        if not motor_meta.eh_meta_valida(rotina):
+            raise HTTPException(400, "Esta rotina não é uma missão de meta")
+        return rotina, _execucao_do_dia(db, usuario, rotina, tempo.hoje())
+
+    t = db.query(TarefaDia).filter(
+        TarefaDia.id == tarefa_id, TarefaDia.usuario_id == usuario.id).first()
+    if not t:
+        raise HTTPException(404, "Missão não encontrada")
+    if not motor_meta.eh_meta_valida(t):
+        raise HTTPException(400, "Esta missão não é uma missão de meta")
+    return t, t
+
+
+def _corpo_meta(regra, acumulador, aportes, extra=None) -> dict:
+    """A resposta única dos dois endpoints — para o cartão não ter de
+    montar a mesma leitura de dois jeitos."""
+    modo = motor_meta.modo(getattr(regra, "meta_modo", None),
+                           getattr(regra, "meta_especie", None))
+    alvo = getattr(regra, "meta_alvo", None)
+    ini  = getattr(regra, "meta_inicial", None)
+    atual = float(getattr(acumulador, "meta_atual", 0) or 0)
+    esp = getattr(regra, "meta_especie", None)
+    un  = motor_meta.unidade_de(regra)
+    corpo = {
+        "meta_atual":      atual,
+        "meta_alvo":       alvo,
+        "meta_inicial":    ini,
+        "meta_modo":       modo,
+        "meta_especie":    esp,
+        "meta_unidade":    un,
+        "meta_progresso":  motor_meta.progresso(atual, alvo, ini, modo),
+        "meta_alcancada":  motor_meta.alcancada(atual, alvo, ini, modo),
+        "meta_texto":      motor_meta.formatar(atual, esp, un),
+        "meta_alvo_texto": motor_meta.formatar(alvo, esp, un),
+        "meta_aportes":    aportes,
+        "status":          getattr(acumulador, "status", None),
+    }
+    if extra:
+        corpo.update(extra)
+    return corpo
+
+
+def _aportes_de(db: Session, acumulador, limite: int = 12) -> list:
+    """Os últimos lançamentos, do mais novo para o mais velho."""
+    q = db.query(MetaAporte)
+    if isinstance(acumulador, ExecucaoDia):
+        q = q.filter(MetaAporte.execucao_id == acumulador.id)
+    else:
+        q = q.filter(MetaAporte.tarefa_id == acumulador.id)
+    linhas = q.order_by(MetaAporte.id.desc()).limit(limite).all()
+    return [{"id": a.id, "valor": a.valor, "saldo": a.saldo,
+             "nota": a.nota,
+             "em": a.criado_em.isoformat() if a.criado_em else None}
+            for a in linhas]
+
+
+@router.post("/meta/registrar")
+def meta_registrar(payload: MetaRegistrarRequest,
+                   db: Session = Depends(get_db),
+                   usuario: Usuario = Depends(get_usuario_atual)):
+    """Registra um valor na meta de hoje."""
+    if not payload.rotina_id and not payload.tarefa_id:
+        raise HTTPException(400, "Informe rotina_id ou tarefa_id")
+
+    regra, acum = _alvo_de_meta(db, usuario, payload.rotina_id, payload.tarefa_id)
+
+    if getattr(acum, "status", None) in ("CANCELADA", "FRACASSADA"):
+        raise HTTPException(400, "Esta missão já foi encerrada.")
+
+    modo = motor_meta.modo(getattr(regra, "meta_modo", None),
+                           getattr(regra, "meta_especie", None))
+    antes = float(getattr(acum, "meta_atual", 0) or 0)
+    depois = motor_meta.aplicar(antes, payload.valor, modo)
+
+    acum.meta_atual = depois
+    if hasattr(acum, "ultima_meta_em"):
+        acum.ultima_meta_em = tempo.agora()
+
+    aporte = MetaAporte(
+        usuario_id=usuario.id,
+        execucao_id=acum.id if isinstance(acum, ExecucaoDia) else None,
+        tarefa_id=acum.id if isinstance(acum, TarefaDia) else None,
+        valor=float(payload.valor), saldo=depois,
+        nota=(payload.nota or None),
+    )
+    db.add(aporte)
+    db.flush()
+
+    # ── O ALVO FOI ALCANÇADO? ────────────────────────────────────────
+    # O XP só cai aqui — nunca por valor somado. Pagar durante o caminho
+    # faria "ganhar 1000 reais" render mais XP que qualquer missão do
+    # app; a meta é uma coisa só. E o `status` é a trava: desfazer e
+    # refazer não paga duas vezes.
+    alvo = getattr(regra, "meta_alvo", None)
+    ini  = getattr(regra, "meta_inicial", None)
+    bateu = motor_meta.alcancada(depois, alvo, ini, modo)
+    resultado = None
+    concluiu = False
+
+    if bateu and getattr(acum, "status", None) != "CONCLUIDA":
+        concluiu = True
+        if isinstance(acum, ExecucaoDia):
+            _, resultado = _liquidar(
+                db, usuario, regra, tempo.hoje(),
+                observacao=f"{regra.titulo} — meta alcançada")
+        else:
+            acum.status = "CONCLUIDA"
+            acum.concluida_em = tempo.agora()
+            resultado = aplicar_xp(
+                db=db, usuario=usuario,
+                xp_base=max(0, int(getattr(regra, "xp_recompensa", 0) or 0)),
+                moedas=int(getattr(regra, "moedas_recompensa", 0) or 0),
+                hoje=tempo.hoje(),
+                observacao=f"{regra.titulo} — meta alcançada",
+            )
+            db.commit()
+    else:
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+
+    corpo = _corpo_meta(regra, acum, _aportes_de(db, acum),
+                        {"registrado": float(payload.valor),
+                         "meta_cumprida": concluiu,
+                         "resultado": resultado})
+    return anexar(corpo, resultado) if resultado else corpo
+
+
+@router.post("/meta/desfazer")
+def meta_desfazer(payload: MetaDesfazerRequest,
+                  db: Session = Depends(get_db),
+                  usuario: Usuario = Depends(get_usuario_atual)):
+    """
+    Apaga o ÚLTIMO valor registrado.
+
+    O saldo novo não é recalculado somando tudo de novo: é o `saldo` que
+    o aporte anterior guardou. Isso vale para os dois modos sem um `if`
+    — no acúmulo o saldo anterior é a soma sem a última parcela, e na
+    medição é literalmente a leitura anterior.
+
+    Sem aporte anterior, volta ao começo: zero no acúmulo, o ponto de
+    partida na medição.
+    """
+    if not payload.rotina_id and not payload.tarefa_id:
+        raise HTTPException(400, "Informe rotina_id ou tarefa_id")
+
+    regra, acum = _alvo_de_meta(db, usuario, payload.rotina_id, payload.tarefa_id)
+
+    q = db.query(MetaAporte)
+    if isinstance(acum, ExecucaoDia):
+        q = q.filter(MetaAporte.execucao_id == acum.id)
+    else:
+        q = q.filter(MetaAporte.tarefa_id == acum.id)
+    ultimo = q.order_by(MetaAporte.id.desc()).first()
+    if not ultimo:
+        raise HTTPException(400, "Não há nada para desfazer.")
+
+    anterior = (q.filter(MetaAporte.id < ultimo.id)
+                 .order_by(MetaAporte.id.desc()).first())
+    modo = motor_meta.modo(getattr(regra, "meta_modo", None),
+                           getattr(regra, "meta_especie", None))
+    if anterior:
+        acum.meta_atual = float(anterior.saldo)
+    else:
+        acum.meta_atual = (float(getattr(regra, "meta_inicial", 0) or 0)
+                           if modo == motor_meta.MEDICAO else 0.0)
+
+    # ── DESFAZER TAMBÉM REABRE A MISSÃO, quando é o caso ─────────────
+    #
+    # O TESTE ENCONTROU ISTO, e é o caminho mais provável do defeito
+    # real: digitar `3259` no lugar de `32,59` estoura o alvo na hora, a
+    # missão conclui e o XP cai. Sem esta parte, desfazer devolvia o
+    # saldo e deixava a missão CONCLUÍDA com XP pago por um valor que
+    # não existiu — o cartão diria "cumprida" sobre um erro de digitação.
+    #
+    # A devolução do XP segue o que a repetição já faz no caminho de
+    # `xp_delta < 0`: subtrai do total e do atual, com piso em zero.
+    #
+    # DEVOLVE-SE O QUE A MISSÃO PAGOU, E SÓ ISSO. Medindo, o XP do
+    # usuário subiu 2426 enquanto `ed.xp_ganho` guardou 126 — a
+    # diferença foram CONQUISTAS que o crédito disparou pelo caminho.
+    # Elas ficam. Revogar uma conquista significaria tirar insígnia e
+    # aura já celebradas por causa de um erro de digitação, e isso é uma
+    # mentira maior que a imprecisão de alguns pontos. Nível também não
+    # se mexe, pelo mesmo motivo: rebaixar alguém num `desfazer` seria
+    # pior que deixar o número um pouco alto.
+    reabriu = False
+    if getattr(acum, "status", None) == "CONCLUIDA" and not motor_meta.alcancada(
+            acum.meta_atual, getattr(regra, "meta_alvo", None),
+            getattr(regra, "meta_inicial", None), modo):
+        reabriu = True
+        xp_devolver = int(getattr(acum, "xp_ganho", 0) or 0)
+        mo_devolver = int(getattr(acum, "moedas_ganhas", 0) or 0)
+        if xp_devolver:
+            usuario.xp_total = max(0, (usuario.xp_total or 0) - xp_devolver)
+            usuario.xp_atual = max(0, (usuario.xp_atual or 0) - xp_devolver)
+        if mo_devolver:
+            usuario.moedas = max(0, (usuario.moedas or 0) - mo_devolver)
+        acum.status = "ATIVA"
+        acum.concluida_em = None
+        acum.xp_ganho = 0
+        acum.moedas_ganhas = 0
+
+    db.delete(ultimo)
+    db.commit()
+
+    return _corpo_meta(regra, acum, _aportes_de(db, acum),
+                       {"desfeito": float(ultimo.valor), "reabriu": reabriu})

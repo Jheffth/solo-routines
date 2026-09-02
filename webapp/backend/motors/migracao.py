@@ -103,6 +103,26 @@ COLUNAS = [
     ("tarefas_dia",  "xp_a_reparar",       "INTEGER NOT NULL DEFAULT 0",  "INTEGER NOT NULL DEFAULT 0"),
     ("tarefas_dia",  "origem_condicional", "TEXT",                        "TEXT"),
 
+    # ── META — alvo numérico com unidade ──────────────────────────────────
+    # DOUBLE PRECISION no Postgres, REAL no SQLite: a meta tem casas
+    # decimais (R$ 12,50) e por isso NAO cabe nas colunas inteiras que a
+    # repeticao usa.
+    ("rotinas",      "meta_alvo",          "REAL",                        "DOUBLE PRECISION"),
+    ("rotinas",      "meta_unidade",       "VARCHAR(12)",                 "VARCHAR(12)"),
+    ("rotinas",      "meta_passo",         "REAL",                        "DOUBLE PRECISION"),
+    ("tarefas_dia",  "meta_alvo",          "REAL",                        "DOUBLE PRECISION"),
+    ("tarefas_dia",  "meta_unidade",       "VARCHAR(12)",                 "VARCHAR(12)"),
+    ("tarefas_dia",  "meta_passo",         "REAL",                        "DOUBLE PRECISION"),
+    ("tarefas_dia",  "meta_atual",         "REAL NOT NULL DEFAULT 0",     "DOUBLE PRECISION NOT NULL DEFAULT 0"),
+    ("execucao_dia", "meta_atual",         "REAL NOT NULL DEFAULT 0",     "DOUBLE PRECISION NOT NULL DEFAULT 0"),
+    ("execucao_dia", "ultima_meta_em",     "DATETIME",                    "TIMESTAMP"),
+    ("rotinas",      "meta_especie",       "VARCHAR(12)",                 "VARCHAR(12)"),
+    ("rotinas",      "meta_modo",          "VARCHAR(10)",                 "VARCHAR(10)"),
+    ("rotinas",      "meta_inicial",       "REAL",                        "DOUBLE PRECISION"),
+    ("tarefas_dia",  "meta_especie",       "VARCHAR(12)",                 "VARCHAR(12)"),
+    ("tarefas_dia",  "meta_modo",          "VARCHAR(10)",                 "VARCHAR(10)"),
+    ("tarefas_dia",  "meta_inicial",       "REAL",                        "DOUBLE PRECISION"),
+
     # ── FRAGMENTOS DO MONARCA — Moeda Premium ────────────────────────
     # As 5 novas tabelas (planos, assinaturas, pacotes_fragmentos,
     # pagamentos, fragmentos_ledger) são criadas pelo criar_tabelas()

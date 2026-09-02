@@ -170,6 +170,26 @@ class Rotina(Base):
     # Duas naturezas separadas dariam duas máquinas de estado e dois lugares
     # para o fechamento decidir o mesmo. Uma coluna nula resolve.
     alvo_repeticoes  = Column(Integer, nullable=True)
+
+    # ── META — o alvo numérico ───────────────────────────────────────────
+    #
+    # "Ganhar 100 reais no turno da manhã", "correr 5 km", "ler 40 páginas".
+    #
+    # POR QUE NÃO REAPROVEITEI `alvo_repeticoes`, que também é um alvo: a
+    # repetição conta EVENTOS num passo fixo de +1, e num campo Integer.
+    # A meta acumula QUANTIDADE, com passo livre e casas decimais — R$
+    # 12,50 não cabe num contador de flexões. Enfiar dinheiro na coluna
+    # feita para contar repetições é o tipo de atalho que cobra juros.
+    meta_alvo     = Column(Float, nullable=True)     # 100.0
+    meta_unidade  = Column(String(12), nullable=True)  # "R$", "km", "págs"
+    meta_especie  = Column(String(12), nullable=True)  # VALOR|TEMPO|PESO|DISTANCIA|CONTAGEM|LIVRE
+    meta_modo     = Column(String(10), nullable=True)  # ACUMULO | MEDICAO
+    # Só a MEDIÇÃO usa: o ponto de partida da jornada (85 kg rumo a 78).
+    # Sem ele não há de onde medir, e o progresso não teria referência.
+    meta_inicial  = Column(Float, nullable=True)
+    # Um botão de atalho no cartão, para o caso comum ser um toque só.
+    meta_passo    = Column(Float, nullable=True)     # 50.0
+
     contador_id      = Column(Integer, ForeignKey("contadores.id"), nullable=True, index=True)
     # Só no BÔNUS. O que a rotina DECLARA por clique — o quanto ela paga de
     # verdade passa pelos tetos da Balança (motors/economia.py), porque sem
@@ -274,6 +294,13 @@ class ExecucaoDia(Base):
     xp_repeticao_pago   = Column(Integer, nullable=False, default=0, server_default="0")
     ultima_repeticao_em = Column(DateTime, nullable=True)
 
+    # ── META — o acumulado DESTE dia ─────────────────────────────────────
+    # O alvo mora na Rotina (é a regra); o acumulado mora aqui (é o dia).
+    # Guardá-lo na Rotina faria a meta de ontem contaminar a de hoje — e a
+    # meta é diária, como a rotina que a carrega.
+    meta_atual          = Column(Float, nullable=False, default=0, server_default="0")
+    ultima_meta_em      = Column(DateTime, nullable=True)
+
     # Uma rotina só pode ter UMA instância por dia. Sem isto, duas requisições
     # simultâneas (ou o job + o app abrindo junto) criavam missões duplicadas
     # para o mesmo dia — e o extrato mostraria "Carregar Dolphin" duas vezes
@@ -340,6 +367,17 @@ class TarefaDia(Base):
     natureza            = Column(String(20), default="ATIVA")
     hora_inicio         = Column(String(5), nullable=True)   # janela da passiva
     alvo_repeticoes     = Column(Integer, nullable=True)
+
+    # ── META (ver o bloco em Rotina) ─────────────────────────────────────
+    # A missão geral guarda o acumulado nela mesma; a rotina guarda no
+    # ExecucaoDia do dia, porque cada dia tem a sua meta.
+    meta_alvo     = Column(Float, nullable=True)
+    meta_unidade  = Column(String(12), nullable=True)
+    meta_passo    = Column(Float, nullable=True)
+    meta_especie  = Column(String(12), nullable=True)
+    meta_modo     = Column(String(10), nullable=True)
+    meta_inicial  = Column(Float, nullable=True)
+    meta_atual    = Column(Float, nullable=False, default=0, server_default="0")
     contador_id         = Column(Integer, ForeignKey("contadores.id"), nullable=True, index=True)
     # SEM `xp_por_repeticao`. Ele existiu por cinco commits e nunca
     # deveria ter existido: guardava, por missao, um preco que so a
@@ -759,6 +797,42 @@ class Contador(Base):
     # que já foi feito. Apagar de verdade destrói história de anos, e por
     # isso pede confirmação que diga o número.
     arquivado_em = Column(DateTime, nullable=True)
+
+
+class MetaAporte(Base):
+    """
+    CADA VALOR REGISTRADO NUMA META — o livro, não só o saldo.
+
+    POR QUE UMA TABELA, e não apenas somar em `meta_atual`
+
+    O saldo sozinho é irreversível. Digitar `3259` no lugar de `32,59` é
+    o erro mais provável desta tela inteira, e sem o livro a única saída
+    seria somar `-3226,41` à mão — uma correção que ninguém acerta de
+    primeira e que deixa o extrato mentindo.
+
+    E há o que só o livro conta: no ACÚMULO, "32,59 depois 31,78 depois
+    40" mostra o dia acontecendo; na MEDIÇÃO, a sequência de pesagens É a
+    curva de peso — o dado mais valioso da meta, e que o saldo apaga a
+    cada nova leitura.
+
+    Aponta para UM dos dois lados, nunca para os dois: a rotina guarda o
+    dia no ExecucaoDia, a missão geral guarda em si mesma. É o mesmo
+    desenho que `RepetirRequest` já usa nos routers.
+    """
+    __tablename__ = "meta_aportes"
+
+    id           = Column(Integer, primary_key=True, index=True)
+    usuario_id   = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    execucao_id  = Column(Integer, ForeignKey("execucao_dia.id"), nullable=True, index=True)
+    tarefa_id    = Column(Integer, ForeignKey("tarefas_dia.id"), nullable=True, index=True)
+
+    valor        = Column(Float, nullable=False)
+    # O acumulado DEPOIS deste aporte. Guardar o saldo do momento evita
+    # recalcular a série inteira para mostrar o histórico — e preserva a
+    # verdade histórica se o modo da meta for editado depois.
+    saldo        = Column(Float, nullable=False, default=0)
+    nota         = Column(String(120), nullable=True)
+    criado_em    = Column(DateTime, default=datetime.utcnow, index=True)
 
 
 # ==============================================================================
