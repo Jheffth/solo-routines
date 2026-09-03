@@ -2418,16 +2418,30 @@ const MissaoCard = {
      disponível, NÃO se gasta a Mana do hunter por conta própria. */
   async _reerguer(chave, btn) {
     const m = this._cache?.[chave] || {};
-    const confirmado = (typeof SoloDialog !== 'undefined' && SoloDialog.confirmar)
-      ? await SoloDialog.confirmar({
-          titulo: 'Reerguer a missão?',
-          texto: `"${m.titulo}" perdeu a janela de hoje. Reerguer custa Mana e `
-               + 'devolve a missão até as 23:59 — mas ela não paga XP nem Mana '
-               + 'ao ser concluída. O ganho é ter feito.',
-          confirmar: 'Pagar e reerguer',
-          cancelar: 'Deixar como está',
-        })
-      : false;
+    /* ESTE BOTÃO NÃO FAZIA NADA, e não fazia em silêncio.
+
+       A chamada era `SoloDialog.confirmar({...})` — um método que NÃO
+       EXISTE. O que `js/dialog.js` expõe é `confirm(msg, opts)`, com a
+       mensagem como primeiro argumento. E a guarda `&& SoloDialog.
+       confirmar` transformava a ausência em `false`, caindo direto no
+       `if (!confirmado) return`.
+
+       Resultado: clicar em Reerguer não abria diálogo, não chamava a
+       API, não mostrava erro. Nada. O Arquiteto perdeu uma meta que
+       estava em 95 de 100 e descobriu que a segunda chance era um botão
+       morto. O backend estava certo o tempo todo.
+
+       O mesmo defeito estava em `_confessar`, logo abaixo — as duas
+       únicas chamadas de `confirmar` do arquivo, contra uma de `confirm`
+       em `_extinguir` que sempre funcionou. Um `?.` a mais teria
+       escondido isto para sempre; foi a guarda que o escondeu por meses. */
+    const confirmado = await SoloDialog.confirm(
+      `<b>"${this._esc(m.titulo)}"</b> perdeu a janela de hoje.<br><br>` +
+      'Reerguer custa Mana e devolve a missão até as 23:59 — mas ela ' +
+      '<b>não paga XP nem Mana</b> ao ser concluída. O ganho é ter feito.',
+      { titulo: 'Reerguer a missão?', tipo: 'warn', icon: '↺',
+        btnOk: 'Pagar e reerguer', btnCancel: 'Deixar como está' }
+    );
     if (!confirmado) return;
 
     btn.disabled = true;
@@ -2454,18 +2468,16 @@ const MissaoCard = {
   async _confessar(chave, btn) {
     const m = this._cache?.[chave] || {};
     const jaEncerrada = (m.status || '') === 'CONCLUIDA';
-    const confirmado = (typeof SoloDialog !== 'undefined' && SoloDialog.confirmar)
-      ? await SoloDialog.confirmar({
-          titulo: 'Confessar?',
-          texto: `"${m.titulo}" — você quebrou o protocolo. Confessar custa `
-               + 'metade da punição e NÃO quebra sua sequência. '
-               + (jaEncerrada
-                   ? 'Como ela já havia sido encerrada, a recompensa recebida será devolvida.'
-                   : 'Ninguém além de você saberia — e é por isso que isto vale.'),
-          confirmar: 'Confessar',
-          cancelar: 'Deixar como está',
-        })
-      : false;
+    // Mesmo defeito do Reerguer, mesma correção: `confirmar` não existe.
+    const confirmado = await SoloDialog.confirm(
+      `<b>"${this._esc(m.titulo)}"</b> — você quebrou o protocolo.<br><br>` +
+      'Confessar custa metade da punição e <b>não quebra sua sequência</b>. ' +
+      (jaEncerrada
+        ? 'Como ela já havia sido encerrada, a recompensa recebida será devolvida.'
+        : 'Ninguém além de você saberia — e é por isso que isto vale.'),
+      { titulo: 'Confessar?', tipo: 'warn', icon: '⚑',
+        btnOk: 'Confessar', btnCancel: 'Deixar como está' }
+    );
     if (!confirmado) return;
 
     btn.disabled = true;

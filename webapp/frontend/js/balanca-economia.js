@@ -250,17 +250,18 @@ const BalancaEconomia = {
   },
 
   async _restaurar() {
-    // Destrutivo: confirma. `SoloDialog` é const de topo, não vive em window —
-    // e sem diálogo disponível a resposta é NÃO, nunca "prossiga assim mesmo".
-    const ok = (typeof SoloDialog !== 'undefined' && SoloDialog.confirmar)
-      ? await SoloDialog.confirmar({
-          titulo: 'Restaurar a semente?',
-          texto: 'Todos os valores voltam ao que o código traz de fábrica. '
-               + 'As missões já criadas não mudam — só as próximas.',
-          confirmar: 'Restaurar tudo',
-          cancelar: 'Cancelar',
-        })
-      : false;
+    /* Destrutivo: confirma. A intenção do "sem diálogo, a resposta é NÃO"
+       era boa e o efeito foi outro: o método chamado era `confirmar`, que
+       NÃO EXISTE — `js/dialog.js` expõe `confirm(msg, opts)`. A guarda
+       transformava a ausência em `false` e o botão Restaurar não fazia
+       nada, calado. Mesmo defeito de Reerguer e Confessar em
+       missao-card.js, encontrado no rastro deles. */
+    const ok = await SoloDialog.confirm(
+      'Todos os valores voltam ao que o código traz de fábrica.<br><br>' +
+      'As missões já criadas <b>não mudam</b> — só as próximas.',
+      { titulo: 'Restaurar a semente?', tipo: 'warn', icon: '⚖',
+        btnOk: 'Restaurar tudo', btnCancel: 'Cancelar' }
+    );
     if (!ok) return;
     try {
       await API.post('/economia/restaurar', {});
