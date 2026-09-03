@@ -16,10 +16,13 @@ de dano tinha quatro elos, e cada um deles estava certo sozinho:
      (`ativo=False`, `status=FRACASSADA_FATAL`) — e progressiva não pode
      ser reerguida (routers/execucoes.py).
 
-Para uma rotina comum o elo 1 custa um pouco de XP. Para a progressiva é
-capital. Por isso a correção é uma EXCEÇÃO ESTREITA, e não a revogação da
-decisão do elo 1: no dia em que nasce, a progressiva só ganha instância se
-ainda houver tempo de cumpri-la.
+A correção nasceu ESTREITA — só para a progressiva, onde o prejuízo era
+capital — porque o elo 1 vinha marcado no código como decisão do
+Arquiteto ("quem cria decide"). Ele reviu depois, com o caso de uma
+rotina das 06:00 às 08:00 criada às 20:00: nascer derrotado é defeito em
+QUALQUER rotina, e a "decisão" só se sustentava porque o dano era
+pequeno. Hoje a regra vale para todas — no dia em que nasce, a rotina só
+ganha instância se ainda houver tempo de cumpri-la.
 
 O QUE OS ASSERTS COBREM — e por que cada um precisa existir:
 
@@ -28,8 +31,9 @@ O QUE OS ASSERTS COBREM — e por que cada um precisa existir:
     provaria nada. Ele insere à mão a instância que o código antigo criava.
   · progressiva nascendo com a janela vencida NÃO ganha instância hoje
   · progressiva nascendo com a janela por vir GANHA (não se corta demais)
-  · rotina COMUM na mesma situação continua ganhando — a decisão do
-    Arquiteto sobre rotina comum não foi tocada de carona
+  · rotina COMUM na mesma situação TAMBÉM não ganha (a regra foi
+    estendida a todas por decisão do Arquiteto), mas a nascida ONTEM
+    ganha — o alívio é do dia do nascimento, não uma anistia
   · progressiva nascida ONTEM ganha instância hoje mesmo com janela
     vencida — do segundo dia em diante o rigor é o ponto do desafio
   · progressiva SEM janela (dia inteiro) nasce viva a qualquer hora
@@ -137,6 +141,7 @@ def rodar():
     prog_porvir = cria("Prog · janela por vir", PORVIR_I, PORVIR_F, True)
     comum_venc = cria("Comum · janela vencida", VENC_I, VENC_F, False)
     prog_ontem = cria("Prog · nascida ontem", VENC_I, VENC_F, True, dias_atras=1)
+    comum_ontem = cria("Comum · nascida ontem", VENC_I, VENC_F, False, dias_atras=1)
     prog_livre = cria("Prog · dia inteiro", None, None, True)
 
     fechamento.materializar(db, u.id, hoje)
@@ -152,12 +157,33 @@ def rodar():
     else:
         print(f"  [--]  janela 'por vir' omitida: às {agora:%H:%M} ela cairia "
               f"na madrugada e viraria outro caso")
-    ok(instancias(comum_venc) == 1,
-       "a ROTINA COMUM na mesma situação continua ganhando instância — a "
-       "decisão do Arquiteto ('quem cria decide') não foi revogada de carona")
+    # ESTE ASSERT DIZIA O CONTRÁRIO, e a mudança é a história de uma
+    # decisão revista pelo Arquiteto.
+    #
+    # Quando a progressiva foi corrigida, `materializar` trazia um
+    # comentário afirmando que gerar a instância de hoje mesmo fora da
+    # janela era decisão dele ("quem cria decide"). Respeitei, e abri
+    # exceção só para a progressiva, onde o prejuízo era fatal. Escrevi
+    # aqui, com todas as letras, que a regra da rotina comum não tinha
+    # sido revogada "de carona".
+    #
+    # Ele reviu depois, com o caso concreto: criar às 20:00 uma rotina
+    # das 06:00 às 08:00 punha no Dashboard uma derrota de hoje que
+    # ninguém teve como evitar. A "decisão" só se sustentava porque o
+    # dano era pequeno — não porque fazia sentido.
+    #
+    # Agora NENHUMA rotina nasce fracassada. O assert inverteu, e o
+    # comentário fica para que a próxima pessoa saiba que a inversão foi
+    # deliberada, não um teste que alguém afrouxou para passar.
+    ok(instancias(comum_venc) == 0,
+       "a rotina COMUM também não nasce fracassada — criada às 20:00 com "
+       "janela 06:00–08:00, a primeira cobrança é amanhã")
     ok(instancias(prog_ontem) == 1,
        "progressiva nascida ONTEM ganha a instância de hoje mesmo com a "
        "janela vencida — teve o dia todo; do 2º dia em diante o rigor é o ponto")
+    ok(instancias(comum_ontem) == 1,
+       "e a comum nascida ONTEM também ganha — o alívio é só do dia do "
+       "nascimento, não uma anistia permanente")
     ok(instancias(prog_livre) == 1,
        "progressiva SEM janela (dia inteiro) nasce viva a qualquer hora")
 

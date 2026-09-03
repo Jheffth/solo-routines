@@ -98,33 +98,36 @@ def materializar(db: Session, usuario_id: int, ate: date | None = None) -> int:
     agora = tempo.agora()
 
     for r in rotinas:
-        # Uma rotina criada hoje à noite não deve gerar a missão de hoje se
-        # a janela dela já passou? Deve sim — quem cria decide. O que não
-        # pode é gerar dias ANTERIORES ao próprio nascimento.
         nascimento = tempo.dia_de_utc(r.criado_em) or hoje
+        # Nunca gerar dias ANTERIORES ao próprio nascimento: seria
+        # inventar derrotas de dias que a rotina não existia.
         if nascimento > hoje:
             continue
 
-        # ── A PROGRESSIVA É A EXCEÇÃO, e por uma razão de gravidade ──
+        # ── NENHUMA ROTINA NASCE FRACASSADA ──────────────────────────
         #
-        # Para uma rotina comum, nascer com a janela já vencida custa um
-        # pouco de XP e mais nada — por isso a decisão acima é razoável.
-        # Para uma PROGRESSIVA é fatal: o dia vence, `fechar_vencidas`
-        # marca FRACASSADA, e `aplicar_fatal_failure` desliga o desafio
-        # PARA SEMPRE. Progressiva não pode ser reerguida.
+        # No DIA EM QUE ELA NASCE, a rotina só ganha instância se ainda
+        # houver tempo de cumpri-la. Criar às 20:00 uma rotina das 06:00
+        # às 08:00 não coloca no Dashboard uma derrota de hoje — a
+        # primeira cobrança é amanhã, com o dia inteiro pela frente.
         #
-        # O Arquiteto criou um desafio com janela das 06:20 às 06:40 e ele
-        # nasceu morto no Dashboard, sem que houvesse um instante em que
-        # fosse possível cumpri-lo. Um desafio que morre antes da largada
-        # não é dureza, é defeito.
+        # ISTO CONTRARIA UMA DECISÃO ESCRITA AQUI, e de propósito. O
+        # comentário anterior dizia: "deve gerar sim — quem cria decide".
+        # Eu o mantive por respeito a uma decisão que julguei do
+        # Arquiteto, e abri exceção só para a PROGRESSIVA, onde o
+        # prejuízo era fatal (o desafio morria para sempre, sem reerguer).
         #
-        # A regra: no DIA EM QUE ELA NASCE, a progressiva só ganha
-        # instância se ainda houver tempo de cumpri-la. Caso contrário a
-        # corrente começa amanhã, inteira. Dos dias seguintes em diante o
-        # rigor volta ao normal — aí o hunter teve o dia todo para agir.
-        if getattr(r, "eh_progressiva", False) and nascimento == hoje:
-            if prazos.da_rotina(r, hoje)["fim"] <= agora:
-                continue
+        # O Arquiteto reviu: nascer derrotado é defeito em QUALQUER
+        # rotina. E ele tem razão — a "decisão" só se sustentava porque o
+        # dano era pequeno, não porque fazia sentido. Ninguém cria uma
+        # rotina para começar perdendo, e uma derrota que o hunter não
+        # teve como evitar não ensina nada: só suja o extrato, cobra XP e
+        # empurra o dia para o gatilho da penitência.
+        #
+        # Dos dias seguintes em diante o rigor volta inteiro — aí ele
+        # teve o dia todo para agir.
+        if nascimento == hoje and prazos.da_rotina(r, hoje)["fim"] <= agora:
+            continue
 
         if rotina_devida_em(r, hoje) and r.id not in existentes:
             db.add(ExecucaoDia(
