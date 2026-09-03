@@ -392,10 +392,26 @@ def _talvez_punir(db: Session, usuario: Usuario, falhas: list, hoje) -> dict | N
                                dia_julgado=dia_c, gatilho="critica", dobrar=True)
 
         # ── REGRA B · o dia fechado e julgado uma vez ─────────────
-        # Olha para tras porque o hunter pode ter passado dias sem abrir
-        # o app. O teto (`divida_teto`) e quem impede a bola de neve —
-        # e para isso que ele existe.
-        for atras in range(1, 8):
+        #
+        # SO O DIA QUE ACABOU DE FECHAR. Nao ha varredura para tras, e a
+        # ausencia dela e a correcao de um defeito que eu mesmo criei.
+        #
+        # A versao anterior olhava sete dias, "porque o hunter pode ter
+        # passado dias sem abrir o app". Parecia zeloso e era uma
+        # armadilha: com o teto cheio, os dias antigos nao julgados
+        # viravam uma FILA. Cada penitencia quitada ou extinta liberava
+        # uma vaga, a fila avancava, e uma penitencia nova aparecia no
+        # lugar. O Arquiteto extinguia uma e nascia outra -- ele leu como
+        # "a punicao volta", e a impressao estava certa mesmo que a
+        # penitencia fosse outra. Uma divida que se reabastece ao ser
+        # paga nao e divida, e assinatura.
+        #
+        # Dia que fechou sem ser julgado FICA SEM SER JULGADO. O cron das
+        # 00h05 julga cada dia no dia dele; se ele nao rodou, o dia
+        # passou. Perder uma punicao vale muito mais barato que cobrar
+        # uma que nunca termina -- e a reincidencia (dias PUNIDOS
+        # seguidos) continua pegando quem falha cronicamente.
+        for atras in (1,):
             dia = hoje - timedelta(days=atras)
             if _ja_julgado(db, usuario, dia):
                 continue
