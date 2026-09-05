@@ -464,6 +464,23 @@ const MissaoCard = {
     </div>`;
   },
 
+  /* O QUE FALTA, no lugar do botão de concluir.
+
+     Um botão desabilitado diria "não pode" sem dizer por quê, e o
+     hunter ficaria procurando o que fez de errado. O selo responde
+     antes da pergunta: faltam R$ 62,00. O caminho para fechar a missão
+     está logo acima, no campo de somar. */
+  _seloFaltaMeta(m) {
+    const falta = Math.max(0, (m.meta_alvo || 0) - (m.meta_atual || 0));
+    const medicao = (m.meta_modo || '') === 'MEDICAO';
+    return `<span class="mc-selo mc-selo-etapa"
+      title="A meta se conclui ao alcançar o alvo. Registre os valores acima.">`
+      + `${this._g('ampulheta', 12)} `
+      + (medicao ? 'Registre a medição para fechar'
+                 : `Faltam ${this._esc(this._numMeta(falta, m))}`)
+      + '</span>';
+  },
+
   /* O número solto, sem unidade — para as fichas e os atalhos, onde
      repetir "R$" cinco vezes seria ruído. As casas vêm do backend
      (`meta_casas`) para a tabela de espécies não existir duas vezes. */
@@ -1279,9 +1296,23 @@ const MissaoCard = {
                 b('cancelar', 'mc-btn-neutro', this._g('cancelada', 13), 'title="Cancelar hoje"');
         break;
       case 'ATIVA':
+        /* A META NÃO TEM BOTÃO DE CONCLUIR, e a ausência é a
+           funcionalidade.
+
+           O Arquiteto digitou 38 no campo, clicou em Concluir em vez de
+           Somar, e a missão fechou zerada — sem os 38 e longe dos 100.
+           Um clique errado apagou a meta do dia.
+
+           Concluir uma meta é dizer "cheguei lá", e quem sabe se chegou
+           é o número. O botão fica no lugar de um selo que mostra o que
+           falta, para o cartão explicar em vez de só recusar. O servidor
+           também recusa (execucoes.py e tarefas.py) — esconder o botão
+           evita o acidente, mas só a trava lá impede a chamada direta. */
         acoes = b('pausar', 'mc-btn-neutro', this._g('pausada', 13) + ' Pausar') +
                 b('cancelar', 'mc-btn-perigo', this._g('cancelada', 13) + ' Cancelar hoje') +
-                b('concluir', 'mc-btn-concluir', this._g('concluida', 13) + ' Concluir');
+                (this._ehMeta(m) ? this._seloFaltaMeta(m)
+                                 : b('concluir', 'mc-btn-concluir',
+                                     this._g('concluida', 13) + ' Concluir'));
         break;
       case 'CONFESSADA':
         acoes = `<span class="mc-selo mc-selo-confessado">${this._g('confessada', 13)} Confessada</span>`;
@@ -1289,7 +1320,9 @@ const MissaoCard = {
       case 'PAUSADA':
         acoes = b('retomar', 'mc-btn-iniciar', this._g('ativa', 12) + ' Retomar') +
                 b('cancelar', 'mc-btn-perigo', this._g('cancelada', 13) + ' Cancelar hoje') +
-                b('concluir', 'mc-btn-concluir', this._g('concluida', 13) + ' Concluir');
+                (this._ehMeta(m) ? this._seloFaltaMeta(m)
+                                 : b('concluir', 'mc-btn-concluir',
+                                     this._g('concluida', 13) + ' Concluir'));
         break;
       case 'CONCLUIDA': {
         const etapa = this._etapaProgressiva(m);

@@ -329,6 +329,27 @@ def concluir_tarefa(
         db.commit()
         return anexar({"tarefa": _tarefa_to_dict(t), **r}, None)
 
+    # ── UMA META NÃO SE CONCLUI POR DECLARAÇÃO ───────────────────────
+    # Mesma trava de `concluir_rotina` (execucoes.py), pelo mesmo motivo:
+    # concluir uma meta é dizer "cheguei lá", e quem sabe se chegou é o
+    # número. O caminho legítimo é registrar valores até o alvo — e é
+    # `meta_registrar` que fecha a missão quando ele é alcançado.
+    from motors import meta as motor_meta
+    if motor_meta.eh_meta_valida(t):
+        modo_m = motor_meta.modo(getattr(t, "meta_modo", None),
+                                 getattr(t, "meta_especie", None))
+        atual_m = motor_meta.leitura(getattr(t, "meta_atual", 0),
+                                     getattr(t, "meta_inicial", None), modo_m)
+        if not motor_meta.alcancada(atual_m, t.meta_alvo,
+                                    getattr(t, "meta_inicial", None), modo_m):
+            esp = getattr(t, "meta_especie", None)
+            un = motor_meta.unidade_de(t)
+            raise HTTPException(400,
+                f"Esta é uma missão de meta: ela se conclui ao alcançar o "
+                f"alvo. Você está em {motor_meta.formatar(atual_m, esp, un)} "
+                f"de {motor_meta.formatar(t.meta_alvo, esp, un)} — registre "
+                f"os valores para chegar lá.")
+
     # O prazo da missão geral conta desde a INTENÇÃO (quando foi criada), não
     # desde o play. Quem cria uma missão de 30 minutos às 14:00 tem até 14:30,
     # tenha começado ou não. Concluir depois disso continua valendo a pena

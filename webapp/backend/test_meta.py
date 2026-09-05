@@ -198,6 +198,42 @@ def rodar():
     y = ex.meta_registrar(Reg(r.id, 70.2), db=db, usuario=u)
     ok(y["meta_cumprida"] is True, "ficar ACIMA cumpre quando o alvo é maior")
 
+    # ══ 3B. A META NÃO SE CONCLUI POR DECLARAÇÃO ═════════════════════
+    #
+    # O Arquiteto digitou 38 no campo, clicou em CONCLUIR em vez de
+    # SOMAR, e a missão fechou zerada — sem os 38 e longe dos 100. Um
+    # clique errado apagou a meta do dia.
+    #
+    # A trava mora no ROUTER, não só no cartão: esconder o botão evita o
+    # acidente, mas qualquer chamada direta continuaria fechando a meta.
+    print("\n-- concluir só vale se o alvo foi alcançado --")
+    limpar()
+    r = cria("Ganhar 100 reais", 100.0, "VALOR")
+
+    class Conc:
+        def __init__(s, rid):
+            s.rotina_id, s.data_execucao, s.observacao = rid, None, None
+
+    ex.meta_registrar(Reg(r.id, 38), db=db, usuario=u)
+    try:
+        ex.concluir_rotina(Conc(r.id), db=db, usuario=u)
+        ok(False, "concluir com 38 de 100 deveria ser RECUSADO")
+    except Exception as e:
+        ok("meta" in str(e).lower() and "38" in str(e),
+           f"recusa e diz onde você está: …{str(e)[-58:]}")
+
+    ed_chk = db.query(ExecucaoDia).filter_by(rotina_id=r.id, data=hoje).first()
+    ok(ed_chk.status != "CONCLUIDA",
+       "e a missão continua aberta — o clique errado não a encerra")
+    ok(abs(float(ed_chk.meta_atual or 0) - 38.0) < 1e-9,
+       "nem zera o que já havia sido registrado (38 continuam lá)")
+
+    # E o caminho legítimo continua fechando.
+    ex.meta_registrar(Reg(r.id, 62), db=db, usuario=u)
+    db.refresh(ed_chk)
+    ok(ed_chk.status == "CONCLUIDA",
+       "alcançar o alvo fecha normalmente — a trava não emperrou o certo")
+
     # ══ 4. AS RECUSAS ════════════════════════════════════════════════
     print("\n-- o que o router recusa --")
     limpar()

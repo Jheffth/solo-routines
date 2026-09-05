@@ -51,6 +51,41 @@ def concluir_rotina(
     if ja_executou:
         raise HTTPException(400, "Esta rotina já foi concluída hoje!")
 
+    # ── UMA META NÃO SE CONCLUI POR DECLARAÇÃO ───────────────────────
+    #
+    # O Arquiteto digitou 38 no campo, clicou em CONCLUIR em vez de
+    # SOMAR, e a missão fechou — zerada, sem os 38, e sem ter chegado
+    # perto dos 100. Um clique errado apagou a meta do dia.
+    #
+    # A regra dele, e ela é a certa: "a missão só pode ser concluída
+    # caso a meta seja atingida; a única forma de terminar sem cumprir é
+    # o tempo acabar". Concluir uma meta é dizer "cheguei lá" — e quem
+    # sabe se chegou é o número, não o botão.
+    #
+    # A TRAVA MORA AQUI, e não só no cartão: esconder o botão resolve o
+    # acidente, mas qualquer chamada direta ao endpoint continuaria
+    # fechando a meta. `_liquidar` NÃO é tocado — é ele que fecha a meta
+    # quando o alvo é alcançado, e é o caminho legítimo.
+    if motor_meta.eh_meta_valida(rotina):
+        ed_meta = db.query(ExecucaoDia).filter(
+            ExecucaoDia.rotina_id == rotina.id,
+            ExecucaoDia.usuario_id == usuario.id,
+            ExecucaoDia.data == hoje).first()
+        modo_m = motor_meta.modo(getattr(rotina, "meta_modo", None),
+                                 getattr(rotina, "meta_especie", None))
+        atual_m = motor_meta.leitura(
+            getattr(ed_meta, "meta_atual", 0) if ed_meta else 0,
+            getattr(rotina, "meta_inicial", None), modo_m)
+        if not motor_meta.alcancada(atual_m, rotina.meta_alvo,
+                                    getattr(rotina, "meta_inicial", None), modo_m):
+            esp = getattr(rotina, "meta_especie", None)
+            un = motor_meta.unidade_de(rotina)
+            raise HTTPException(400,
+                f"Esta é uma missão de meta: ela se conclui ao alcançar o "
+                f"alvo. Você está em {motor_meta.formatar(atual_m, esp, un)} "
+                f"de {motor_meta.formatar(rotina.meta_alvo, esp, un)} — "
+                f"registre os valores para chegar lá.")
+
     return anexar(*_liquidar(db, usuario, rotina, hoje, payload.observacao))
 
 
