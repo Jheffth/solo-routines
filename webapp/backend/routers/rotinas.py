@@ -674,7 +674,29 @@ def cancelar_rotina(
     db:    Session   = Depends(get_db),
     usuario: Usuario = Depends(get_usuario_atual),
 ):
-    """Cancela o dia de hoje (ATIVA → CANCELADA)."""
+    """RECUSA: o Sistema não deixa desistir. Ver o bloco abaixo."""
+    # ── NÃO HÁ COMO DESISTIR ─────────────────────────────────────────
+    #
+    # "Cancelar hoje" era desistir com um clique. O Arquiteto foi
+    # direto: o Sistema não foi feito para deixar desistir. Uma missão
+    # termina de três jeitos — cumprida, vencida pelo tempo, ou extinta
+    # pelo Arquiteto. Não há um quarto.
+    #
+    # As saídas legítimas continuam de pé, e cada uma cobra alguma
+    # coisa: PAUSAR (o dia segue correndo), CONFESSAR (a passiva, com
+    # preço), REERGUER (paga Mana) e EXTINGUIR (poder do Arquiteto,
+    # irreversível). O que deixou de existir foi a saída GRÁTIS.
+    #
+    # A ROTA CONTINUA VIVA, e de propósito: `retomar` precisa dela para
+    # trazer de volta o que já foi cancelado antes desta regra. Recusar
+    # aqui, em vez de apagar o endpoint, também dá uma resposta clara a
+    # quem chamar direto — 404 diria "não existe", e existe: é proibido.
+    raise HTTPException(
+        400,
+        "O Sistema não aceita desistência. Uma missão termina cumprida, "
+        "vencida pelo tempo, ou extinta pelo Arquiteto — se ela não faz "
+        "mais sentido, extinga-a; se o dia apertou, pause.")
+
     r = db.query(Rotina).filter(
         Rotina.id == rotina_id, Rotina.usuario_id == usuario.id
     ).first()

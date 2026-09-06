@@ -1291,9 +1291,22 @@ const MissaoCard = {
 
     let acoes;
     switch (status) {
+        /* NÃO HÁ COMO DESISTIR, e isso é o Sistema.
+
+           "Cancelar hoje" era desistir com um clique, e o Arquiteto foi
+           direto: o Sistema não foi feito para deixar desistir. Uma
+           missão termina de três jeitos — cumprida, vencida pelo tempo,
+           ou extinta pelo Arquiteto. Não há um quarto.
+
+           As saídas legítimas continuam todas de pé, e cada uma custa
+           alguma coisa: PAUSAR (o dia continua correndo), CONFESSAR (a
+           passiva, com preço), REERGUER (paga Mana) e EXTINGUIR (poder
+           do Arquiteto, irreversível). O que sumiu foi a saída GRÁTIS.
+
+           O botão saiu do cartão E o endpoint recusa (rotinas.py e
+           tarefas.py): esconder resolveria a tentação, não a porta. */
       case 'PENDENTE':
-        acoes = b('iniciar', 'mc-btn-iniciar', this._g('ativa', 13) + ' Iniciar Missão') +
-                b('cancelar', 'mc-btn-neutro', this._g('cancelada', 13), 'title="Cancelar hoje"');
+        acoes = b('iniciar', 'mc-btn-iniciar', this._g('ativa', 13) + ' Iniciar Missão');
         break;
       case 'ATIVA':
         /* A META NÃO TEM BOTÃO DE CONCLUIR, e a ausência é a
@@ -1309,7 +1322,6 @@ const MissaoCard = {
            também recusa (execucoes.py e tarefas.py) — esconder o botão
            evita o acidente, mas só a trava lá impede a chamada direta. */
         acoes = b('pausar', 'mc-btn-neutro', this._g('pausada', 13) + ' Pausar') +
-                b('cancelar', 'mc-btn-perigo', this._g('cancelada', 13) + ' Cancelar hoje') +
                 (this._ehMeta(m) ? this._seloFaltaMeta(m)
                                  : b('concluir', 'mc-btn-concluir',
                                      this._g('concluida', 13) + ' Concluir'));
@@ -1319,7 +1331,6 @@ const MissaoCard = {
         break;
       case 'PAUSADA':
         acoes = b('retomar', 'mc-btn-iniciar', this._g('ativa', 12) + ' Retomar') +
-                b('cancelar', 'mc-btn-perigo', this._g('cancelada', 13) + ' Cancelar hoje') +
                 (this._ehMeta(m) ? this._seloFaltaMeta(m)
                                  : b('concluir', 'mc-btn-concluir',
                                      this._g('concluida', 13) + ' Concluir'));
@@ -1387,11 +1398,10 @@ const MissaoCard = {
       ? b('pausar',   'mc-btn-neutro',   this._g('pausada', 13) + ' Pausar') : '';
     const retomar  = status === 'PAUSADA'
       ? b('retomar',  'mc-btn-iniciar',  this._g('ativa', 12) + ' Retomar') : '';
-    const cancelar = (status !== 'PENDENTE')
-      ? b('cancelar', 'mc-btn-perigo',   this._g('cancelada', 13) + ' Cancelar') : '';
-    // Cancela via botão padrão se pendente
-    const cancelarPendente = (status === 'PENDENTE')
-      ? b('cancelar', 'mc-btn-neutro',   this._g('cancelada', 13), 'title="Cancelar hoje"') : '';
+    // Sem desistência aqui também — ver a nota em `_acoes`. As duas
+    // constantes permanecem vazias para não mexer na montagem abaixo.
+    const cancelar = '';
+    const cancelarPendente = '';
     // Botão de concluir — abre o diálogo condicional
     const concluir = `<button class="mc-btn mc-btn-concluir" data-mc-acao="responder"
                               data-mc-id="${chave}" title="Bifurcar a missão condicional">
