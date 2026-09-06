@@ -55,10 +55,45 @@ def calcular_xp_rotina(tipo: str) -> tuple[int, int]:
     )
 
 
+STREAK_POR_DIA = 0.05      # +5% de XP por dia seguido
+STREAK_TETO    = 2.0       # e para de crescer no dobro
+
+
+def multiplicador_streak(streak: int) -> float:
+    """
+    Quanto o streak multiplica o XP. +5% ao dia, teto no dobro (20 dias).
+
+    ISTO FOI EXTRAÍDO DE `calcular_bonus_streak` para virar fonte única.
+    A regra estava viva — cobrando e pagando — e não aparecia em lugar
+    nenhum da tela: o hunter jogava com uma tabela de preços que não
+    podia ler. Agora o dashboard a exibe, e exibe LENDO DAQUI.
+
+    Se a Balança um dia calibrar esses números, a placa acompanha
+    sozinha. Duplicar o cálculo no router era o jeito garantido de a
+    tela mentir sobre o XP seis meses depois.
+    """
+    return min(1.0 + max(0, streak or 0) * STREAK_POR_DIA, STREAK_TETO)
+
+
+def dias_ate_o_teto_do_streak(streak: int) -> int:
+    """
+    Quantos dias seguidos faltam para o multiplicador parar de crescer.
+
+    Contado a partir da própria função acima — não de uma divisão feita
+    à mão — para que os dois números nunca discordem na tela.
+    """
+    s = max(0, streak or 0)
+    if multiplicador_streak(s) >= STREAK_TETO:
+        return 0
+    faltam = 0
+    while multiplicador_streak(s + faltam) < STREAK_TETO:
+        faltam += 1
+    return faltam
+
+
 def calcular_bonus_streak(xp_base: int, streak: int) -> int:
     """Aplica bônus de streak: até 2x com 20 dias."""
-    multiplicador = min(1.0 + streak * 0.05, 2.0)
-    return int(xp_base * multiplicador) - xp_base
+    return int(xp_base * multiplicador_streak(streak)) - xp_base
 
 
 def atualizar_streak(db: Session, usuario: Usuario, hoje: date) -> int:

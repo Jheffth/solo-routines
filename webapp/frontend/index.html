@@ -778,6 +778,44 @@
                 </div>
               </div>
 
+              <!-- A CORRENTE — o streak desenhado.
+                   Nao balanca como as placas acima de proposito: placa e
+                   sinalizacao, isto e instrumento. Coisa que se le com
+                   atencao nao pode ficar se mexendo. -->
+              <div class="sr-painel sr-corrente" id="painel-corrente" style="display:none">
+                <div class="sr-painel-topo">
+                  <span class="sr-painel-titulo">Corrente</span>
+                  <span class="sr-painel-nota" id="corrente-recorde"></span>
+                </div>
+                <div class="sr-corrente-numero">
+                  <b id="corrente-dias">0</b>
+                  <span>dias seguidos</span>
+                  <span class="sr-mult" id="corrente-mult">XP &times;1,00</span>
+                </div>
+                <div class="sr-corrente-elos" id="corrente-elos"></div>
+                <div class="sr-corrente-legenda">
+                  <span><i class="sr-elo sr-elo--ok"></i>cumprido</span>
+                  <span><i class="sr-elo sr-elo--ko"></i>quebrou</span>
+                  <span><i class="sr-elo sr-elo--vazio"></i>sem registro</span>
+                </div>
+                <div class="sr-painel-rodape" id="corrente-teto"></div>
+              </div>
+
+              <!-- A PLACA DA PENITENCIA — teto, decaimento e abate.
+                   Tres mecanicas que ja existiam e nunca tiveram mostrador. -->
+              <div class="sr-painel sr-penitencia" id="painel-penitencia" style="display:none">
+                <div class="sr-painel-topo">
+                  <span class="sr-painel-titulo">Penitencia</span>
+                  <span class="sr-painel-nota" id="pen-teto"></span>
+                </div>
+                <div class="sr-pen-numero">
+                  <b id="pen-total">0</b>
+                  <span id="pen-unidade">em aberto</span>
+                </div>
+                <div id="pen-barras"></div>
+                <div class="sr-painel-rodape" id="pen-rodape"></div>
+              </div>
+
             </div>
 
             <!-- A secao "Missoes Gerais de Hoje" foi EXTINTA. As missoes gerais agora

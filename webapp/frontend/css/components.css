@@ -1405,3 +1405,148 @@ tbody tr:hover td {
   transition: color .2s;
 }
 .cu-skip:hover { color: var(--text-secondary); }
+/* ══════════════════════════════════════════════════════════════════
+   PAINEIS DE LEITURA — a Corrente e a Penitencia
+
+   Compartilham o MATERIAL das placas (hachura diagonal, pino de
+   suporte, borda acesa) e recusam o MOVIMENTO delas.
+
+   As `.stat-plaque` balancam e pulsam porque sao sinalizacao: um
+   numero grande, visto de relance. Estes dois sao instrumentos — uma
+   corrente de 30 elos e barras de divida, coisas que se leem com
+   atencao. Texto que oscila nao se le, e a pagina ja carrega 272
+   animacoes: as duas ultimas que faltavam nao vao ser estas.
+   ══════════════════════════════════════════════════════════════════ */
+.sr-painel {
+  position: relative;
+  border-radius: 8px;
+  padding: .95rem 1.1rem;
+  border: 1px solid transparent;
+  overflow: visible;
+}
+.sr-painel::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  background-image: repeating-linear-gradient(-48deg,
+    rgba(255,255,255,.03) 0px, rgba(255,255,255,.03) 1px,
+    transparent 1px, transparent 12px);
+  pointer-events: none; z-index: 1;
+}
+/* O mesmo pino de parafuso das placas — e o que amarra os dois ao conjunto. */
+.sr-painel::after {
+  content: ''; position: absolute; left: -10px; top: 50%;
+  transform: translateY(-50%); width: 10px; height: 10px;
+  border-radius: 50%; border: 2px solid currentColor;
+  background: #0d0d1a; box-shadow: 0 0 6px currentColor;
+  opacity: .7; z-index: 5;
+}
+.sr-painel > * { position: relative; z-index: 2; }
+
+.sr-painel-topo {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: .5rem; margin-bottom: .7rem;
+}
+.sr-painel-titulo {
+  font-family: var(--font-section); font-size: .68rem; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase;
+}
+.sr-painel-nota {
+  font-family: var(--font-section); font-size: .58rem;
+  letter-spacing: .06em; color: var(--text-muted);
+}
+.sr-painel-rodape {
+  margin-top: .7rem; padding-top: .6rem;
+  border-top: 1px solid rgba(255,255,255,.07);
+  font-size: .66rem; line-height: 1.6; color: var(--text-muted);
+}
+.sr-painel-rodape b { color: var(--text-secondary); font-weight: 700; }
+
+/* ── A CORRENTE ─────────────────────────────────────────────────── */
+.sr-corrente {
+  background: linear-gradient(112deg, #0a1f16 0%, #103524 35%, #0c2a1c 70%, #081a12 100%);
+  border-color: rgba(16,185,129,.45);
+  color: #6ee7b7;
+}
+.sr-corrente-numero {
+  display: flex; align-items: baseline; gap: .45rem;
+  flex-wrap: wrap; margin-bottom: .7rem;
+}
+.sr-corrente-numero b {
+  font-family: var(--font-section); font-size: 1.5rem; line-height: 1;
+  color: #6ee7b7; text-shadow: 0 0 12px rgba(16,185,129,.55);
+}
+.sr-corrente-numero > span { font-size: .68rem; color: rgba(167,243,208,.6); }
+.sr-mult {
+  margin-left: auto; font-family: var(--font-section); font-size: .62rem;
+  font-weight: 700; letter-spacing: .05em; padding: .16rem .5rem;
+  border-radius: .3rem; background: rgba(16,185,129,.16);
+  border: 1px solid rgba(16,185,129,.4); color: #6ee7b7; white-space: nowrap;
+}
+/* No teto o multiplicador troca de cor: parou de crescer, e isso e noticia. */
+.sr-mult--teto {
+  background: rgba(245,158,11,.16); border-color: rgba(245,158,11,.5);
+  color: #fcd34d;
+}
+
+.sr-corrente-elos {
+  display: grid; grid-template-columns: repeat(30, 1fr);
+  gap: 2px; margin-bottom: .55rem;
+}
+.sr-elo { display: block; aspect-ratio: 1; border-radius: 2px; }
+.sr-elo--ok    { background: #10b981; box-shadow: 0 0 4px rgba(16,185,129,.5); }
+.sr-elo--ko    { background: #ef4444; }
+/* Cinza, NUNCA vermelho: dia sem registro nao e fracasso — antes desta
+   versao o app nao gravava nada, e pintar de vermelho seria o Sistema
+   inventando derrotas que nao aconteceram. */
+.sr-elo--vazio { background: rgba(255,255,255,.09); }
+/* O elo de HOJE ganha contorno: e o unico que ainda pode mudar. */
+.sr-elo--hoje  { outline: 1.5px solid rgba(255,255,255,.5); outline-offset: 1px; }
+
+.sr-corrente-legenda {
+  display: flex; gap: .7rem; flex-wrap: wrap;
+  font-size: .58rem; color: var(--text-muted);
+}
+.sr-corrente-legenda span { display: inline-flex; align-items: center; gap: .25rem; }
+.sr-corrente-legenda .sr-elo { width: 7px; height: 7px; aspect-ratio: auto; }
+
+/* Barra fina de progresso — serve a corrente e a penitencia. */
+.sr-trilho {
+  height: 5px; border-radius: 3px; overflow: hidden;
+  background: rgba(255,255,255,.08); margin-top: .4rem;
+}
+.sr-trilho > i { display: block; height: 100%; border-radius: 3px; }
+
+/* ── A PENITENCIA ───────────────────────────────────────────────── */
+.sr-penitencia {
+  background: linear-gradient(112deg, #200808 0%, #3a1212 35%, #290c0c 70%, #1a0808 100%);
+  border-color: rgba(239,68,68,.45);
+  color: #fca5a5;
+}
+.sr-pen-numero {
+  display: flex; align-items: baseline; gap: .45rem; margin-bottom: .8rem;
+}
+.sr-pen-numero b {
+  font-family: var(--font-section); font-size: 1.5rem; line-height: 1;
+  color: #fca5a5; text-shadow: 0 0 12px rgba(239,68,68,.55);
+}
+.sr-pen-numero > span { font-size: .68rem; color: rgba(252,165,165,.6); }
+/* Quando bate o teto, a nota do topo para de ser discreta. */
+.sr-pen-teto-batido { color: #fcd34d !important; font-weight: 700; }
+
+.sr-pen-linha { margin-bottom: .6rem; }
+.sr-pen-linha:last-child { margin-bottom: 0; }
+.sr-pen-linha-topo {
+  display: flex; justify-content: space-between; gap: .5rem;
+  font-size: .66rem; color: rgba(252,165,165,.85);
+}
+.sr-pen-linha-topo span:last-child { color: var(--text-muted); white-space: nowrap; }
+
+/* A divida sem barra (temporal, restritiva, tributo) e dita, nao desenhada:
+   "sem doce ate as 18h" nao tem meio caminho para mostrar. */
+.sr-pen-sem-barra {
+  font-size: .6rem; color: var(--text-muted); font-style: italic;
+}
+
+@media (max-width: 640px) {
+  .sr-corrente-elos { gap: 1.5px; }
+  .sr-corrente-legenda { font-size: .55rem; gap: .5rem; }
+}

@@ -2,14 +2,16 @@
 Router de Dashboard — dados consolidados para a tela principal.
 """
 from fastapi import APIRouter, Depends
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from datetime import date, timedelta
 from motors import tempo
 
 from database import (
-    get_db, Usuario, Rotina, TarefaDia, Execucao,
+    get_db, Usuario, Rotina, TarefaDia, Execucao, ExecucaoDia, Pacto,
     ConquistaUsuario, Conquista, Nivel
 )
+from motors import economia, gamificacao, penitencia
 from auth.router import get_usuario_atual
 from routers.rotinas import _eh_rotina_de_hoje
 
@@ -33,16 +35,27 @@ def dashboard_stats(
         Rotina.ativo == True,
     ).count()
 
-    # XP dos últimos 7 dias
-    xp_semana = []
-    for i in range(6, -1, -1):
-        dia = hoje - timedelta(days=i)
-        execucoes_dia = db.query(Execucao).filter(
-            Execucao.usuario_id == usuario.id,
-            Execucao.data_execucao == dia,
-        ).all()
-        xp_dia = sum(e.xp_ganho or 0 for e in execucoes_dia)
-        xp_semana.append({"data": dia.isoformat(), "xp": xp_dia})
+    # XP dos últimos 7 dias — UMA query.
+    #
+    # Eram SETE, uma por dia, e cada uma carregava as linhas inteiras
+    # (`.all()`) só para somar uma coluna. Contra o banco remoto isso
+    # eram seis idas e voltas jogadas fora a cada abertura do dashboard.
+    inicio = hoje - timedelta(days=6)
+    somas = dict(
+        db.query(Execucao.data_execucao, func.coalesce(func.sum(Execucao.xp_ganho), 0))
+          .filter(Execucao.usuario_id == usuario.id,
+                  Execucao.data_execucao >= inicio,
+                  Execucao.data_execucao <= hoje)
+          .group_by(Execucao.data_execucao)
+          .all()
+    )
+    # Os dias sem execução não voltam do GROUP BY — e o gráfico precisa
+    # deles, senão a semana encolhe e a linha mente sobre o intervalo.
+    xp_semana = [
+        {"data": (inicio + timedelta(days=i)).isoformat(),
+         "xp":   int(somas.get(inicio + timedelta(days=i), 0) or 0)}
+        for i in range(7)
+    ]
 
     return {
         "execucoes_hoje":  exec_hoje,
@@ -51,6 +64,152 @@ def dashboard_stats(
         "xp_semana":       xp_semana,
     }
 
+
+
+@router.get("/corrente")
+def corrente(
+    dias: int = 30,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_atual),
+):
+    """
+    A CORRENTE — o streak desenhado dia a dia.
+
+    POR QUE ISTO PRECISA DE UM ENDPOINT E NÃO SAI DO `streak_atual`
+
+    `Usuario.streak_atual` é UM INTEIRO. Ele sabe que a corrente tem
+    cinco elos, e não sabe nada sobre os vinte e cinco dias antes. O
+    histórico existe, mas espalhado: em `Execucao` (o que foi cumprido)
+    e em `ExecucaoDia`/`TarefaDia` (o que foi exigido). Esta função
+    junta os dois e devolve um estado por dia.
+
+    OS TRÊS ESTADOS, E POR QUE NÃO SÃO DOIS
+
+      CUMPRIDO      houve ao menos uma execução no dia
+      QUEBROU       o dia exigiu missões e nenhuma foi cumprida
+      SEM_REGISTRO  o Sistema não tem nada sobre esse dia
+
+    O terceiro não é preciosismo. Antes desta versão o app não gravava
+    o histórico, e pintar esses dias de vermelho seria o Sistema
+    inventando fracassos que nunca aconteceram — mentir sobre o passado
+    do hunter para preencher um gráfico. Dia sem registro é cinza.
+
+    A DEFINIÇÃO DE "CUMPRIDO" É EMPRESTADA, NÃO INVENTADA
+
+    Verde aqui = existe `Execucao` no dia. É exatamente a condição que
+    `gamificacao.atualizar_streak` usa para manter a corrente viva (ela
+    grava `ultima_atividade` no mesmo momento). Se eu tivesse escolhido
+    um critério mais severo — "cumpriu TODAS as do dia" — o desenho
+    contradiria o número ao lado dele, e o hunter veria uma corrente
+    quebrada sob um streak de cinco.
+    """
+    # `int(dias or 30)` estava errado: 0 é falso em Python, então dias=0
+    # virava 30 em vez de ser travado em 1. O ausente e o zero são coisas
+    # diferentes e agora são tratados como tal.
+    dias = 30 if dias is None else int(dias)
+    dias = max(1, min(365, dias))
+    hoje = tempo.hoje()
+    inicio = hoje - timedelta(days=dias - 1)
+
+    # Uma query por fonte, agrupada — não uma por dia.
+    cumpridos = {
+        d for (d,) in db.query(Execucao.data_execucao)
+                        .filter(Execucao.usuario_id == usuario.id,
+                                Execucao.data_execucao >= inicio,
+                                Execucao.data_execucao <= hoje)
+                        .distinct().all()
+    }
+    exigidos = {
+        d for (d,) in db.query(ExecucaoDia.data)
+                        .filter(ExecucaoDia.usuario_id == usuario.id,
+                                ExecucaoDia.data >= inicio,
+                                ExecucaoDia.data <= hoje)
+                        .distinct().all()
+    }
+    exigidos |= {
+        d for (d,) in db.query(TarefaDia.data_prevista)
+                        .filter(TarefaDia.usuario_id == usuario.id,
+                                TarefaDia.data_prevista >= inicio,
+                                TarefaDia.data_prevista <= hoje)
+                        .distinct().all()
+    }
+
+    linha = []
+    for i in range(dias):
+        d = inicio + timedelta(days=i)
+        if d in cumpridos:
+            estado = "CUMPRIDO"
+        elif d in exigidos:
+            estado = "QUEBROU"
+        else:
+            estado = "SEM_REGISTRO"
+        linha.append({"data": d.isoformat(), "estado": estado})
+
+    streak = usuario.streak_atual or 0
+    return {
+        "streak_atual": streak,
+        "streak_max":   usuario.streak_max or 0,
+        # Lidos do motor, nunca recalculados aqui — ver o comentário em
+        # gamificacao.multiplicador_streak.
+        "multiplicador":      round(gamificacao.multiplicador_streak(streak), 2),
+        "multiplicador_teto": gamificacao.STREAK_TETO,
+        "dias_para_o_teto":   gamificacao.dias_ate_o_teto_do_streak(streak),
+        "dias": linha,
+    }
+
+
+@router.get("/penitencia")
+def resumo_penitencia(
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_atual),
+):
+    """
+    A PLACA DA PENITÊNCIA — três mecânicas que já existiam e ninguém via.
+
+      · O TETO. `penitencia.cobrar` para de criar em `divida_teto` e
+        anuncia isso num Eco. Quem não leu o Eco nunca soube que há um
+        limite, nem o quanto falta para bater nele.
+
+      · O DECAIMENTO. `_aplicar_decaimento` devolve a severidade ao
+        normal depois de `decaimento_dias` sem quedas. O comentário do
+        motor chama isso de "o caminho de volta" — e o caminho de volta
+        estava invisível.
+
+      · O ABATE. Cumprir missão tira da barra da penitência mais antiga.
+        Foi construído e nunca teve mostrador; o hunter não via a
+        mecânica funcionando.
+
+    As BARRAS de cada dívida não vêm daqui: o extrato já entrega
+    `alvo_repeticoes` e `repeticoes` (via `_repeticao`), e o dashboard
+    já tem essa lista em memória. Pedir de novo seria uma segunda
+    vitrine do mesmo dado — o erro que já custou caro neste arquivo.
+    """
+    regras = economia.punicao_regras(db)
+    abertas = penitencia.pendentes(db, usuario.id)
+
+    # Quando o próximo degrau de decaimento cai. É a MAIOR data de
+    # última queda entre os pactos que ainda estão acima da base: só
+    # esses têm o que devolver.
+    hoje = tempo.hoje()
+    proximo_decaimento = None
+    for p in db.query(Pacto).filter(Pacto.usuario_id == usuario.id,
+                                    Pacto.ativo == True).all():
+        if not p.ultima_queda or (p.valor_atual or 0) <= (p.base or 0):
+            continue
+        faltam = regras["decaimento_dias"] - (hoje - p.ultima_queda).days
+        faltam = max(0, faltam)
+        if proximo_decaimento is None or faltam < proximo_decaimento:
+            proximo_decaimento = faltam
+
+    return {
+        "abertas":       len(abertas),
+        "teto":          regras["divida_teto"],
+        "no_teto":       len(abertas) >= regras["divida_teto"],
+        "abate_por_missao": regras["abate_por_missao"],
+        "decaimento_dias":  regras["decaimento_dias"],
+        "dias_para_decair": proximo_decaimento,
+        "tem_pacto":     penitencia.tem_pacto(db, usuario.id),
+    }
 
 
 @router.get("/")

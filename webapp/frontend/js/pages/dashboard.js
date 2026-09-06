@@ -47,11 +47,19 @@ const Dashboard = {
       // `/tarefas/hoje` saiu daqui: as missões gerais chegam pelo Extrato,
       // junto com as de rotina e com o mesmo cartão. Buscá-las de novo era
       // a segunda vitrine que fazia a mesma missão aparecer duas vezes.
-      const [perfil, conquistas, dashStats] = await Promise.allSettled([
+      /* A corrente e a penitência entram NESTE lote, não depois dele.
+         Enfileirá-las seria alongar a cascata que já atrasa o Extrato —
+         e elas não dependem de nada que esteja aqui dentro. */
+      const [perfil, conquistas, dashStats, corrente, penit] = await Promise.allSettled([
         API.auth.me(),
         API.conquistas.listar(),
         API.get('/dashboard/stats'),
+        API.get('/dashboard/corrente?dias=30'),
+        API.get('/dashboard/penitencia'),
       ]);
+
+      if (corrente.status === 'fulfilled') this.renderCorrente(corrente.value);
+      if (penit.status    === 'fulfilled') this._penitResumo = penit.value;
 
       // Perfil / personagem
       if (perfil.status === 'fulfilled' && perfil.value) {
@@ -469,10 +477,170 @@ const Dashboard = {
 
       this._renderExtrato(lista, cont);
       this._renderResumoPeriodo(janela.dias);
+      // A placa lê as barras DESTA lista, já em memória. Pedir as
+      // penitências num endpoint separado seria uma segunda vitrine do
+      // mesmo dado — o erro que já custou caro neste arquivo.
+      this.renderPenitencia(lista);
       return lista;
     } catch (err) {
       cont.innerHTML = `<div class="empty-state"><div class="empty-icon">\u26A0\uFE0F</div><div>${err.message||'Erro ao carregar'}</div></div>`;
       return [];
+    }
+  },
+
+  /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+     A CORRENTE \u2014 o streak desenhado
+
+     `streak_atual` \u00E9 um inteiro: ele sabe que a corrente tem cinco
+     elos e n\u00E3o sabe nada sobre os vinte e cinco dias anteriores. Os
+     estados v\u00EAm de `/dashboard/corrente`, que remonta o hist\u00F3rico a
+     partir das execu\u00E7\u00F5es.
+
+     O MULTIPLICADOR \u00C9 O MOTIVO DE ISTO EXISTIR. `gamificacao` d\u00E1 at\u00E9
+     2x de XP com 20 dias seguidos (+5% ao dia) \u2014 uma regra viva, que
+     cobra e paga, e que n\u00E3o aparecia em lugar nenhum da interface. O
+     hunter jogava com uma tabela de pre\u00E7os que n\u00E3o podia ler.
+
+     O n\u00FAmero vem do servidor, que o l\u00EA do motor. Recalcular `1 + n*0.05`
+     aqui faria a tela mentir sobre o XP no dia em que a Balan\u00E7a
+     calibrasse a curva.
+     \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+  renderCorrente(d) {
+    const painel = document.getElementById('painel-corrente');
+    if (!painel || !d || !Array.isArray(d.dias)) return;
+    painel.style.display = '';
+
+    const hojeISO = this._isoLocal(new Date());
+    const CLASSE = { CUMPRIDO: 'sr-elo--ok', QUEBROU: 'sr-elo--ko', SEM_REGISTRO: 'sr-elo--vazio' };
+    const TITULO = { CUMPRIDO: 'cumprido', QUEBROU: 'quebrou', SEM_REGISTRO: 'sem registro' };
+
+    const elos = document.getElementById('corrente-elos');
+    if (elos) {
+      elos.style.gridTemplateColumns = `repeat(${d.dias.length}, 1fr)`;
+      elos.innerHTML = d.dias.map(x => {
+        const cls = CLASSE[x.estado] || 'sr-elo--vazio';
+        const hoje = x.data === hojeISO ? ' sr-elo--hoje' : '';
+        return `<i class="sr-elo ${cls}${hoje}" title="${this._rotuloDia(x.data)} \u2014 ${TITULO[x.estado] || '?'}"></i>`;
+      }).join('');
+    }
+
+    const n = d.streak_atual || 0;
+    const elDias = document.getElementById('corrente-dias');
+    if (elDias) elDias.textContent = n;
+
+    const rec = document.getElementById('corrente-recorde');
+    if (rec) rec.textContent = (d.streak_max || 0) > 0 ? `recorde ${d.streak_max}` : '';
+
+    const mult = document.getElementById('corrente-mult');
+    const teto = Number(d.multiplicador_teto || 2);
+    const m    = Number(d.multiplicador || 1);
+    if (mult) {
+      mult.textContent = 'XP \u00D7' + m.toFixed(2).replace('.', ',');
+      mult.classList.toggle('sr-mult--teto', m >= teto);
+    }
+
+    const rodape = document.getElementById('corrente-teto');
+    if (rodape) {
+      const faltam = d.dias_para_o_teto;
+      if (m >= teto) {
+        rodape.innerHTML = `multiplicador no m\u00E1ximo \u2014 <b>\u00D7${teto.toFixed(2).replace('.', ',')}</b> em tudo que voc\u00EA cumprir`;
+      } else {
+        // A barra mede o quanto do CAMINHO at\u00E9 o teto j\u00E1 foi andado \u2014
+        // n\u00E3o o streak sobre um n\u00FAmero m\u00E1gico. Assim ela continua certa
+        // se a Balan\u00E7a mudar a curva.
+        const andado = Math.max(0, Math.min(100, ((m - 1) / (teto - 1)) * 100));
+        rodape.innerHTML =
+          `faltam <b>${faltam} dia${faltam === 1 ? '' : 's'}</b> para XP \u00D7${teto.toFixed(2).replace('.', ',')}` +
+          `<div class="sr-trilho"><i style="width:${andado.toFixed(1)}%;background:#10b981"></i></div>`;
+      }
+    }
+  },
+
+  /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+     A PLACA DA PENIT\u00CANCIA \u2014 tr\u00EAs mec\u00E2nicas que ningu\u00E9m via
+
+       \u00B7 O TETO. `penitencia.cobrar` para de criar em `divida_teto`.
+         Quem n\u00E3o leu o Eco nunca soube que existe um limite.
+       \u00B7 O DECAIMENTO. A severidade recua sozinha depois de alguns
+         dias sem quedas \u2014 o motor chama isso de "o caminho de volta",
+         e o caminho de volta estava invis\u00EDvel.
+       \u00B7 O ABATE. Cumprir miss\u00E3o tira da barra da d\u00EDvida mais antiga.
+         Foi constru\u00EDdo e nunca teve mostrador.
+
+     O N\u00DAMERO GRANDE CONTA D\u00CDVIDAS, N\u00C3O REPETI\u00C7\u00D5ES. Somar flex\u00F5es com
+     abdominais daria um total que n\u00E3o significa nada, e que n\u00E3o se
+     compara com o teto \u2014 que tamb\u00E9m conta d\u00EDvidas. Mesma unidade dos
+     dois lados, ou a placa vira enfeite.
+     \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+  renderPenitencia(lista) {
+    const painel = document.getElementById('painel-penitencia');
+    if (!painel) return;
+
+    const ABERTO = new Set(['PENDENTE', 'ATIVA']);
+    const dividas = (lista || []).filter(
+      m => m.natureza === 'PUNICAO' && ABERTO.has(m.status));
+    const r = this._penitResumo || {};
+
+    // Sem d\u00EDvida e sem pacto a placa some. Uma placa zerada permanente
+    // vira mob\u00EDlia: o hunter para de v\u00EA-la, e ela deixa de avisar no dia
+    // em que tiver o que avisar.
+    if (!dividas.length && !r.abertas) { painel.style.display = 'none'; return; }
+    painel.style.display = '';
+
+    const n = dividas.length || r.abertas || 0;
+    const elN = document.getElementById('pen-total');
+    if (elN) elN.textContent = n;
+    const elU = document.getElementById('pen-unidade');
+    if (elU) elU.textContent = `d\u00EDvida${n === 1 ? '' : 's'} em aberto`;
+
+    const elTeto = document.getElementById('pen-teto');
+    if (elTeto) {
+      if (r.teto) {
+        elTeto.textContent = `${n} de ${r.teto} do teto`;
+        elTeto.classList.toggle('sr-pen-teto-batido', !!r.no_teto);
+      } else { elTeto.textContent = ''; }
+    }
+
+    const barras = document.getElementById('pen-barras');
+    if (barras) {
+      barras.innerHTML = dividas.map(m => {
+        const alvo  = Number(m.alvo_repeticoes || 0);
+        const feito = Number(m.repeticoes || 0);
+        if (alvo <= 0) {
+          // TEMPORAL, RESTRITIVA e TRIBUTO n\u00E3o t\u00EAm meio caminho \u2014 cumprir
+          // metade de "sem doce at\u00E9 as 18h" n\u00E3o significa nada. Dizemos,
+          // em vez de desenhar uma barra que mentiria.
+          return `<div class="sr-pen-linha">
+            <div class="sr-pen-linha-topo"><span>${m.titulo || ''}</span></div>
+            <div class="sr-pen-sem-barra">sem meio caminho \u2014 cumpra por inteiro</div>
+          </div>`;
+        }
+        const pct = Math.max(0, Math.min(100, (feito / alvo) * 100));
+        return `<div class="sr-pen-linha">
+          <div class="sr-pen-linha-topo">
+            <span>${m.titulo || ''}</span><span>${feito} / ${alvo}</span>
+          </div>
+          <div class="sr-trilho"><i style="width:${pct.toFixed(1)}%;background:#ef4444"></i></div>
+        </div>`;
+      }).join('');
+    }
+
+    const rodape = document.getElementById('pen-rodape');
+    if (rodape) {
+      const linhas = [];
+      if (r.no_teto) {
+        linhas.push('<b>no teto</b> \u2014 o Sistema parou de criar novas');
+      }
+      if (r.abate_por_missao > 0) {
+        linhas.push(`a pr\u00F3xima miss\u00E3o cumprida abate <b>${r.abate_por_missao} repeti\u00E7\u00E3o</b>`);
+      }
+      if (r.dias_para_decair !== null && r.dias_para_decair !== undefined) {
+        linhas.push(r.dias_para_decair === 0
+          ? 'a severidade <b>recua um degrau</b> na pr\u00F3xima queda'
+          : `a severidade recua um degrau em <b>${r.dias_para_decair} dia${r.dias_para_decair === 1 ? '' : 's'}</b>`);
+      }
+      rodape.innerHTML = linhas.join('<br>');
+      rodape.style.display = linhas.length ? '' : 'none';
     }
   },
 
