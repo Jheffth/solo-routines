@@ -7,6 +7,31 @@ const Dashboard = {
   _chartXP: null,
   _dadosCarregados: false,
 
+  /* ══════════════════════════════════════════════════════════
+     EXTRATO SOB DEMANDA
+
+     O extrato é do hunter e mostra TUDO — isso não muda. O que muda
+     é quando cada dia vira nó no DOM.
+
+     Antes: os 254 registros nasciam de uma vez. Medido em produção,
+     `#lista-rotinas-hoje` tinha 14.869 nós — 78% de toda a página —
+     dentro de uma caixa de 380px. O navegador calculava layout e
+     pintura de 20.429px de conteúdo para exibir 380.
+
+     Agora: entram os dias mais recentes; ao rolar, os próximos são
+     montados. Nada é escondido nem cortado — só adiado. Rolando até
+     o fim, o hunter chega no mesmo lugar de antes.
+
+     A ROLAGEM NÃO FOI TOCADA. O container mantém o `overflow-y` e a
+     altura que sempre teve; a sentinela é observada com `root` neste
+     mesmo container, ou seja, a paginação PEGA CARONA na rolagem que
+     já existia em vez de criar outra.
+     ══════════════════════════════════════════════════════════ */
+  _DIAS_POR_LOTE: 4,     // quantos dias entram por vez
+  _diasRevelados: 4,     // quantos estão liberados agora
+  _totalDiasExtrato: 0,  // quantos existem ao todo (para saber quando parar)
+  _obsExtrato: null,     // IntersectionObserver da sentinela
+
   async carregar() {
     try {
       // Data de hoje formatada
@@ -524,6 +549,10 @@ const Dashboard = {
     if (ocultar) lista = lista.filter(m => (m.status || 'PENDENTE') !== 'CONCLUIDA');
 
     if (!lista.length) {
+      // O innerHTML abaixo leva a sentinela junto; sem soltar o observador
+      // ele ficaria apontando para um nó fora da árvore.
+      if (this._obsExtrato) { this._obsExtrato.disconnect(); this._obsExtrato = null; }
+      this._totalDiasExtrato = 0;
       // Não existe backfill: os dias anteriores a esta versão simplesmente não
       // têm registro. Sem esta explicação o extrato vazio parece defeito.
       cont.innerHTML = `
@@ -605,7 +634,20 @@ const Dashboard = {
       return b[0].localeCompare(a[0]);
     });
 
-    const htmlDias = diasOrdenados.map(([dia, itens]) => `
+    /* ── O CORTE ──────────────────────────────────────────────────
+       Só os dias já revelados viram HTML. `_totalDiasExtrato` guarda
+       quantos existem para que a sentinela saiba quando se aposentar.
+
+       As penitências pinadas NÃO entram nessa conta e nunca são
+       adiadas: dívida aberta aparece sempre, no primeiro quadro. */
+    this._totalDiasExtrato = diasOrdenados.length;
+    const semPaginacao = typeof IntersectionObserver === 'undefined';
+    const revelados = semPaginacao
+      ? diasOrdenados
+      : diasOrdenados.slice(0, Math.max(this._DIAS_POR_LOTE, this._diasRevelados));
+    const faltam = diasOrdenados.length - revelados.length;
+
+    const htmlDias = revelados.map(([dia, itens]) => `
       <section data-dia="${dia}" style="margin-bottom:.9rem">
         <header style="position:sticky;top:0;z-index:3;display:flex;align-items:baseline;
           gap:.5rem;flex-wrap:wrap;padding:.35rem .15rem;margin-bottom:.45rem;
@@ -622,6 +664,7 @@ const Dashboard = {
     const html = htmlPenitencias + htmlDias;
 
     this._reconciliar(cont, html);
+    this._sentinelaExtrato(cont, faltam);
 
     MissaoCard.montar(cont, {
       // Só os NÚMEROS do topo. Recarregar o extrato daqui seria circular:
@@ -707,9 +750,82 @@ const Dashboard = {
 
     // Se o container tinha estado vazio (empty-state) ou qualquer outra coisa
     // que não seja seção de dia, limpa esses restos.
+    //
+    // A SENTINELA É POUPADA de propósito. Ela não vem no HTML novo (não é
+    // conteúdo, é gatilho), então esta varredura a apagaria a cada repintura
+    // — e com ela o observador que carrega o resto do extrato. O hunter
+    // rolaria até o fim e o extrato simplesmente pararia de crescer.
     [...cont.children].forEach(el => {
+      if (el.hasAttribute('data-extrato-sentinela')) return;
       if (!el.matches('section[data-dia]')) el.remove();
     });
+  },
+
+  /* ── A SENTINELA ──────────────────────────────────────────────
+     Um elemento vazio no fim da lista. Quando ele entra no campo de
+     visão DA CAIXA DO EXTRATO (não da janela — `root` é o próprio
+     container), o próximo lote de dias é montado.
+
+     `rootMargin: 600px` faz o carregamento começar antes de o hunter
+     bater no fim: quando ele chega lá, os cartões já estão postos.
+
+     Por que `appendChild` do MESMO elemento em vez de recriar: mover
+     um nó existente mantém o observador vivo e evita o pisca-pisca de
+     remover e reinserir. E `unobserve` + `observe` no fim re-arma o
+     gatilho — o IntersectionObserver só avisa quando a interseção
+     MUDA, e sem isso um lote curto (que não empurra a sentinela para
+     fora da vista) travaria a lista pela metade. */
+  _sentinelaExtrato(cont, faltam) {
+    let sent = cont.querySelector(':scope > [data-extrato-sentinela]');
+
+    // Acabaram os dias: a sentinela cumpriu o papel e sai de cena.
+    if (!faltam || faltam <= 0) {
+      if (this._obsExtrato) { this._obsExtrato.disconnect(); this._obsExtrato = null; }
+      if (sent) sent.remove();
+      return;
+    }
+
+    if (typeof IntersectionObserver === 'undefined') return;   // sem suporte: já veio tudo
+
+    if (!sent) {
+      sent = document.createElement('div');
+      sent.setAttribute('data-extrato-sentinela', '');
+      sent.style.cssText = 'padding:.75rem .15rem;text-align:center;font-family:var(--font-section);font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)';
+    }
+    /* A palavra "Carregando" é EVITADA aqui de propósito: `carregarExtrato`
+       decide se mostra o estado de espera procurando esse texto no container
+       (`htmlAtual.includes('Carregando')`). Se a sentinela o contivesse, todo
+       refresh acharia que a lista está vazia e apagaria a tela do hunter. */
+    sent.textContent = `⌄ mais ${faltam} dia${faltam > 1 ? 's' : ''} no extrato`;
+    cont.appendChild(sent);   // move para o fim, sempre
+
+    if (!this._obsExtrato) {
+      this._obsExtrato = new IntersectionObserver((entradas) => {
+        if (entradas.some(e => e.isIntersecting)) this._revelarMaisDias(cont);
+      }, { root: cont, rootMargin: '600px 0px' });
+    }
+    this._obsExtrato.unobserve(sent);
+    this._obsExtrato.observe(sent);
+  },
+
+  /* Libera o próximo lote e repinta a partir da lista JÁ EM MEMÓRIA —
+     sem ida à rede. O extrato inteiro veio numa única resposta; o que
+     estava faltando era só desenhá-lo. */
+  _revelarMaisDias(cont) {
+    if (this._diasRevelados >= this._totalDiasExtrato) return;
+    this._diasRevelados += this._DIAS_POR_LOTE;
+    this._renderExtrato(this._extratoLista || [], cont);
+  },
+
+  /* Volta ao primeiro lote. Chamado quando o hunter TROCA O RECORTE
+     (filtro, ocultar concluídas) — aí a lista é outra e começar do
+     topo é o certo.
+
+     Não é chamado num refresh comum: se o hunter rolou até março e uma
+     missão termina, recolher a lista puxaria o chão dos pés dele. */
+  _reiniciarPaginacaoExtrato() {
+    this._diasRevelados = this._DIAS_POR_LOTE;
+    if (this._obsExtrato) { this._obsExtrato.disconnect(); this._obsExtrato = null; }
   },
 
   /* Marca de chegada de USO ÚNICO.
@@ -802,6 +918,7 @@ const Dashboard = {
       if (el && !el._extratoListenerAdded) {
         el.addEventListener('change', () => {
           this._marcarFiltrosAtivos();
+          this._reiniciarPaginacaoExtrato();   // recorte novo, lista nova
           this.carregarExtrato();
         });
         el._extratoListenerAdded = true;
@@ -816,6 +933,7 @@ const Dashboard = {
       toggleExtrato.checked = localStorage.getItem('sr_ocultar_concluidas_extrato') === 'true';
       toggleExtrato.addEventListener('change', () => {
         localStorage.setItem('sr_ocultar_concluidas_extrato', toggleExtrato.checked);
+        this._reiniciarPaginacaoExtrato();     // esconder concluídas muda a lista
         this.carregarExtrato();
       });
       toggleExtrato._extratoListenerAdded = true;
