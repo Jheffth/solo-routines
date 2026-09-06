@@ -104,6 +104,18 @@ class Rotina(Base):
     hora_fim         = Column(String(5), nullable=True)      # "HH:MM"
     dificuldade      = Column(String(20), default="NORMAL")  # FACIL | NORMAL | DIFICIL | LENDARIO
 
+    # O MEDIDOR DE PUNIÇÃO desta rotina — 0 a 100.
+    #
+    # Cada falha enche um tanto (prioridade × dificuldade, calibrado na
+    # Balança); cheio, dispara a penitência; quitar a penitência zera.
+    # É a barra que o Arquiteto acompanha em O Pacto.
+    #
+    # POR QUE MORA NA ROTINA E NÃO NA INSTÂNCIA DO DIA: a barra é o
+    # histórico de INSISTIR em descumprir aquela rotina. Guardá-la na
+    # ExecucaoDia a zeraria à meia-noite, e "insistir" deixaria de
+    # existir como conceito — cada dia recomeçaria do zero.
+    carga_punicao    = Column(Float, nullable=False, default=0, server_default="0")
+
     # NATUREZA — a inversão que cria a missão passiva.
     #
     #   ATIVA   (padrão): o estado natural é o FRACASSO. O hunter age para
@@ -405,6 +417,23 @@ class TarefaDia(Base):
     origem_titulo       = Column(String(200), nullable=True)
     origem_data         = Column(Date, nullable=True)
     xp_a_reparar        = Column(Integer, nullable=False, default=0, server_default="0")
+
+    # QUAL MEDIDOR ZERAR quando esta penitência for quitada.
+    #
+    # `origem_titulo` é cópia de texto, e de propósito: a rotina pode ser
+    # apagada e a dívida não pode sumir junto. Mas texto não serve para
+    # achar o medidor de volta — duas rotinas podem ter o mesmo título, e
+    # renomear uma quebraria o elo em silêncio. Então guardamos os dois: o
+    # texto para MOSTRAR (sobrevive à exclusão) e o id para AGIR (preciso
+    # enquanto a rotina existe). Nullable: penitência de missão geral, ou
+    # de rotina já apagada, simplesmente não tem medidor para zerar.
+    origem_rotina_id    = Column(Integer, nullable=True, index=True)
+
+    # PUNIÇÃO DE TESTE do Arquiteto: idêntica em tudo, marcada para poder
+    # ser varrida. Sem a marca, auditar o sistema significaria sujar o
+    # próprio histórico que se quer auditar.
+    teste               = Column(Boolean, nullable=False, default=False,
+                                 server_default="0")
     # ── NASCIDA DE UMA PERGUNTA ──────────────────────────────────────────
     # JSON: {"pergunta": "...", "resposta": "Sim", "ramo": "A"}
     #

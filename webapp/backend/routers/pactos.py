@@ -19,9 +19,9 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
 
-from database import get_db, Pacto, Usuario
+from database import get_db, Pacto, Rotina, TarefaDia, Usuario
 from auth.router import get_usuario_atual
-from motors import pactos as cat, penitencia
+from motors import pactos as cat, penitencia, medidor, economia, tempo
 
 router = APIRouter(prefix="/pactos", tags=["pactos"])
 
@@ -226,3 +226,138 @@ def remover(pacto_id: int, db: Session = Depends(get_db),
     db.commit()
     return {"ok": True, "id": p.id,
             "pendentes_preservadas": penitencia.contar(db, usuario.id)}
+
+
+# ══════════════════════════════════════════════════════════════════════
+# O MEDIDOR DE PUNIÇÃO
+#
+# A barra de cada rotina, que enche a cada descumprimento e dispara a
+# penitência ao encher. Ela EXISTE para todo hunter — é o que move o
+# gatilho —, mas só o Arquiteto a vê: para o hunter comum, saber
+# exatamente quantas falhas faltam transformaria a punição num orçamento
+# ("ainda posso falhar duas"), que é o oposto do que ela deve provocar.
+#
+# Os botões + e − são a bancada de teste do Arquiteto. Eles não simulam:
+# enchem a barra de verdade e deixam o disparo acontecer pelo caminho
+# normal, com cartão, Eco, escalonamento e teto. A única diferença é a
+# marca `teste`, que existe para poder varrer — auditar o sistema não
+# pode significar sujar o histórico que se quer auditar.
+# ══════════════════════════════════════════════════════════════════════
+
+def _exige_arquiteto(u: Usuario):
+    if (u.nivel_acesso or "") != "Arquiteto":
+        raise HTTPException(403, "Somente o Arquiteto opera o medidor")
+
+
+def _minha_rotina(db: Session, usuario: Usuario, rotina_id: int) -> Rotina:
+    r = (db.query(Rotina)
+           .filter(Rotina.id == rotina_id, Rotina.usuario_id == usuario.id)
+           .first())
+    if not r:
+        raise HTTPException(404, "Rotina não encontrada")
+    return r
+
+
+@router.get("/medidores")
+def listar_medidores(db: Session = Depends(get_db),
+                     usuario: Usuario = Depends(get_usuario_atual)):
+    """
+    As barras de todas as rotinas ativas, a mais cheia primeiro.
+
+    Aberto a qualquer hunter — é o dado dele. Quem esconde é a interface,
+    e é decisão de desenho, não de segurança: não há nada aqui que o
+    hunter não possa saber sobre si mesmo.
+    """
+    regras = economia.punicao_regras(db)
+    return {
+        "medidores": medidor.de_um_usuario(db, usuario.id),
+        # Sem isto a barra é um enfeite: é preciso dizer se encher
+        # PUNE ou apenas mede.
+        "dispara":   regras["medidor_dispara"],
+        "sou_arquiteto": (usuario.nivel_acesso or "") == "Arquiteto",
+    }
+
+
+class MedidorIn(BaseModel):
+    quanto: Optional[float] = None      # ausente = um passo daquela rotina
+
+
+@router.post("/medidores/{rotina_id}/encher")
+def encher_medidor(rotina_id: int, corpo: MedidorIn | None = None,
+                   db: Session = Depends(get_db),
+                   usuario: Usuario = Depends(get_usuario_atual)):
+    """
+    O botão +. Enche a barra e, se ela transbordar, DISPARA DE VERDADE.
+
+    É o ponto do recurso inteiro: o Arquiteto precisa ver o cartão nascer,
+    o Eco falar, o pacto escalar e o teto reagir. Uma simulação que não
+    passa pelo caminho real não prova que o caminho real funciona.
+
+    A penitência sai marcada como teste e nomeia A ROTINA CUJA BARRA
+    ENCHEU — não uma missão sorteada. O recurso existe para provar o elo
+    entre falha e punição; sortear outra missão quebraria justamente o
+    elo que se quer auditar.
+    """
+    _exige_arquiteto(usuario)
+    r = _minha_rotina(db, usuario, rotina_id)
+    passo = (corpo.quanto if corpo else None)
+    antes = medidor.carga(r)
+    res = medidor.encher(db, r, quanto=passo)
+
+    punicao = None
+    if res["transbordou"]:
+        # O mesmo caminho do fechamento: mesma função, mesmos efeitos.
+        punicao = penitencia.cobrar(
+            db, usuario, r.titulo, tempo.hoje(),
+            xp_perdido=int(r.penalidade_xp or 0),
+            dobrar=(r.prioridade or "").upper() == "CRITICA",
+            rotina_id=r.id, teste=True)
+        punicao["gatilho"] = "medidor_teste"
+
+    db.commit()
+    return {"ok": True, "medidor": medidor.leitura(r, db=db),
+            "de": antes, "punicao": punicao}
+
+
+@router.post("/medidores/{rotina_id}/esvaziar")
+def esvaziar_medidor(rotina_id: int, corpo: MedidorIn | None = None,
+                     db: Session = Depends(get_db),
+                     usuario: Usuario = Depends(get_usuario_atual)):
+    """O botão −. Sem `quanto`, zera a barra."""
+    _exige_arquiteto(usuario)
+    r = _minha_rotina(db, usuario, rotina_id)
+    res = medidor.esvaziar(db, r, quanto=(corpo.quanto if corpo else None))
+    db.commit()
+    return {"ok": True, "medidor": medidor.leitura(r, db=db), "de": res["de"]}
+
+
+@router.post("/medidores/limpar-testes")
+def limpar_testes(db: Session = Depends(get_db),
+                  usuario: Usuario = Depends(get_usuario_atual)):
+    """
+    Varre as punições de teste.
+
+    ISTO NÃO É CONVENIÊNCIA, É SEGURANÇA DA AUDITORIA. Quatro punições de
+    teste enchem o teto, e o Sistema PARA DE CRIAR punições reais — que é
+    exatamente o sintoma que o Arquiteto trouxe um dia ("as punições
+    pararam de disparar"). Sem este botão, testar o sistema o desliga.
+
+    Devolve o degrau do pacto, como faz o `revogar`: a penitência de
+    teste não chegou a valer, então não pode deixar o pacto escalado.
+    """
+    _exige_arquiteto(usuario)
+    alvos = (db.query(TarefaDia)
+               .filter(TarefaDia.usuario_id == usuario.id,
+                       TarefaDia.natureza == "PUNICAO",
+                       TarefaDia.teste == True)
+               .all())
+    fator = economia.punicao_regras(db)["escala_fator"]
+    for t in alvos:
+        p = db.query(Pacto).filter(Pacto.id == t.pacto_id).first() if t.pacto_id else None
+        if p:
+            p.valor_atual = cat.decair(p.valor_atual, p.base, p.tipo, 1, fator)
+            p.vezes_caiu = max(0, (p.vezes_caiu or 1) - 1)
+        db.delete(t)
+    db.commit()
+    return {"ok": True, "removidas": len(alvos),
+            "pendentes": penitencia.contar(db, usuario.id)}

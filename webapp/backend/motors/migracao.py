@@ -168,6 +168,16 @@ COLUNAS = [
     ("rotinas",     "condicional_payload",  "TEXT",                        "TEXT"),
     ("execucao_dia","resposta_condicional", "VARCHAR(1)",                  "VARCHAR(1)"),
     ("execucao_dia","condicional_vitoria",  "BOOLEAN",                     "BOOLEAN"),
+
+    # ── O MEDIDOR DE PUNIÇÃO ──────────────────────────────────────────────
+    # `carga_punicao` é a barra da rotina (0 a 100): enche a cada falha,
+    # dispara ao encher, zera ao quitar a penitência.
+    # `origem_rotina_id` diz qual medidor zerar — o texto de `origem_titulo`
+    # não serve para achar de volta (títulos repetem, e renomear quebraria).
+    # `teste` marca a punição criada pelo Arquiteto para auditar o sistema.
+    ("rotinas",     "carga_punicao",        "REAL NOT NULL DEFAULT 0",     "DOUBLE PRECISION NOT NULL DEFAULT 0"),
+    ("tarefas_dia", "origem_rotina_id",     "INTEGER",                     "INTEGER"),
+    ("tarefas_dia", "teste",                "BOOLEAN NOT NULL DEFAULT 0",  "BOOLEAN NOT NULL DEFAULT FALSE"),
 ]
 
 

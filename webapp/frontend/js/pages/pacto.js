@@ -48,6 +48,128 @@ const Pacto = {
     }
     this._pintar();
     this.atualizarBadge(this._pendentes);
+    this.carregarMedidores();
+  },
+
+  /* ══════════════════════════════════════════════════════════
+     A BANCADA DO ARQUITETO — os medidores de punição
+
+     Cada rotina tem uma barra que enche a cada descumprimento e
+     dispara a penitência ao encher. A barra EXISTE para todo hunter,
+     porque é ela que move o gatilho — mas só o Arquiteto a vê.
+
+     POR QUE ESCONDER DE QUEM ELA MEDE: saber que faltam duas falhas
+     transforma a punição num orçamento ("ainda posso falhar duas"),
+     que é exatamente o oposto do que ela deve provocar. O Arquiteto
+     precisa do número para auditar; o hunter precisa do medo.
+
+     QUEM DECIDE É O SERVIDOR. `sou_arquiteto` vem na resposta e é a
+     única condição para revelar. Ler o nível de acesso do lado do
+     cliente seria confiar num dado que o próprio cliente guarda.
+     ══════════════════════════════════════════════════════════ */
+  async carregarMedidores() {
+    const bancada = document.getElementById('pacto-bancada');
+    if (!bancada) return;
+    try {
+      const r = await API.get('/pactos/medidores');
+      if (!r?.sou_arquiteto) { bancada.hidden = true; return; }
+      this._medidores = r.medidores || [];
+      this._dispara   = !!r.dispara;
+      bancada.hidden = false;
+      this._pintarMedidores();
+    } catch (_) {
+      // Silêncio de propósito: a bancada é ferramenta de diagnóstico e
+      // não pode derrubar a página do Pacto se o endpoint falhar.
+      bancada.hidden = true;
+    }
+  },
+
+  _pintarMedidores() {
+    const selo = document.getElementById('medidor-estado');
+    const nota = document.getElementById('medidor-nota');
+    const btn  = document.getElementById('btn-limpar-testes');
+    if (btn) btn.hidden = false;
+
+    /* A distinção mais importante da tela. Uma barra que enche sem punir
+       e uma que pune são coisas diferentes, e confundi-las faria o
+       Arquiteto concluir que o sistema está quebrado quando ele está
+       apenas observando. */
+    if (selo) {
+      selo.textContent = this._dispara ? 'ARMADO' : 'OBSERVAÇÃO';
+      selo.className = 'pct-bancada-selo ' + (this._dispara ? 'pct-armado' : 'pct-observando');
+    }
+    if (nota) {
+      nota.innerHTML = this._dispara
+        ? 'Encher uma barra <b>dispara a penitência</b>. O gatilho do dia (Regra B) está desligado.'
+        : 'As barras <b>medem sem punir</b>. Quem pune ainda é o julgamento do dia — vire <code>punicao.medidor_dispara</code> na Balança quando os números convencerem.';
+    }
+
+    const el = document.getElementById('pacto-medidores');
+    if (!el) return;
+    if (!this._medidores.length) {
+      el.innerHTML = '<div class="pct-vazio"><div>Nenhuma rotina ativa para medir.</div></div>';
+      return;
+    }
+
+    el.innerHTML = this._medidores.map(m => {
+      const pct = Math.max(0, Math.min(100, m.carga));
+      const previsao = m.cheio
+        ? 'cheia'
+        : (m.falhas_para_encher === null ? 'não enche' : `${m.falhas_para_encher} falha${m.falhas_para_encher === 1 ? '' : 's'}`);
+      return `
+        <div class="pct-medidor${m.cheio ? ' pct-medidor--cheio' : ''}" data-rotina="${m.rotina_id}">
+          <div class="pct-medidor-topo">
+            <span class="pct-medidor-nome">${this._esc(m.titulo)}</span>
+            <span class="pct-medidor-tags">${m.prioridade} · ${m.dificuldade} · +${m.passo}/falha</span>
+          </div>
+          <div class="pct-medidor-linha">
+            <button class="pct-medidor-btn" data-med="menos" data-id="${m.rotina_id}"
+                    title="Esvaziar" aria-label="Esvaziar medidor de ${this._esc(m.titulo)}">−</button>
+            <div class="pct-medidor-trilho">
+              <i style="width:${pct}%"></i>
+              <span class="pct-medidor-num">${pct}</span>
+            </div>
+            <button class="pct-medidor-btn" data-med="mais" data-id="${m.rotina_id}"
+                    title="Encher um passo" aria-label="Encher medidor de ${this._esc(m.titulo)}">+</button>
+          </div>
+          <div class="pct-medidor-prev">${previsao} até disparar</div>
+        </div>`;
+    }).join('');
+  },
+
+  async _mexerMedidor(id, acao) {
+    const rota = acao === 'mais' ? 'encher' : 'esvaziar';
+    try {
+      const r = await API.post(`/pactos/medidores/${id}/${rota}`, {});
+      await this.carregarMedidores();
+      if (r?.punicao) {
+        /* O ponto do recurso: o Arquiteto tem de VER a punição nascer.
+           Recarregamos a página inteira do Pacto para o selo do menu e o
+           aviso de dívida reagirem — são eles que provam que o disparo
+           percorreu o caminho real, e não um atalho de teste. */
+        await this.carregar();
+        const n = (r.punicao.criadas || []).length;
+        SoloDialog?.toast?.(
+          r.punicao.no_teto
+            ? 'No teto — o Sistema recusou criar. (é o comportamento correto)'
+            : `Punição de TESTE disparada: ${n} cartão${n === 1 ? '' : 'es'}.`,
+          r.punicao.no_teto ? 'warn' : 'success');
+      }
+    } catch (err) {
+      SoloDialog?.toast?.(err.message || String(err), 'error');
+    }
+  },
+
+  async _varrerTestes() {
+    try {
+      const r = await API.post('/pactos/medidores/limpar-testes', {});
+      await this.carregar();
+      SoloDialog?.toast?.(
+        r.removidas ? `${r.removidas} punição(ões) de teste varridas.` : 'Nenhuma punição de teste.',
+        'success');
+    } catch (err) {
+      SoloDialog?.toast?.(err.message || String(err), 'error');
+    }
   },
 
   /* O selo no menu. Ele existe para a dívida ser lembrada mesmo com o
@@ -229,6 +351,17 @@ const Pacto = {
     this._ligado = true;
     document.getElementById('btn-pacto-catalogo')
       ?.addEventListener('click', () => this.abrirCatalogo());
+
+    /* Os + e − por DELEGAÇÃO: as barras são repintadas a cada ação, e
+       um listener por botão morreria junto com o innerHTML — ou, pior,
+       se acumularia a cada repintura e um clique valeria por três. */
+    document.getElementById('pacto-medidores')?.addEventListener('click', ev => {
+      const b = ev.target.closest('[data-med]');
+      if (!b) return;
+      this._mexerMedidor(b.dataset.id, b.dataset.med);
+    });
+    document.getElementById('btn-limpar-testes')
+      ?.addEventListener('click', () => this._varrerTestes());
     /* SEM listener no #btn-pacto-novo.
        Quem responde a esse botão agora é a ForjaMissao, por delegação
        global (fim de js/forja-missao.js). Manter este aqui abriria as

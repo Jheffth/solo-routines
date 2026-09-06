@@ -23,7 +23,7 @@ ela vira dívida no vermelho e só fecha quando o dia previsto passa.
 """
 import json
 from datetime import date, datetime, timedelta
-from motors import tempo, prazos, especiais
+from motors import tempo, prazos, especiais, economia
 
 from sqlalchemy.orm import Session
 
@@ -228,6 +228,9 @@ def fechar_vencidas(db: Session, usuario: Usuario, ate: date | None = None) -> d
                 "titulo": r.titulo, "data": ed.data,
                 "xp": pen, "critica": (r.prioridade or "").upper() == "CRITICA",
                 "diaria": (r.tipo or "").upper() == "DIARIA",
+                # O MEDIDOR precisa saber de QUAL rotina veio a falha —
+                # o titulo nao serve (repete, e renomear quebra o elo).
+                "rotina_id": r.id,
             })
             # FATAL FAILURE — a derrota que encerra o desafio inteiro.
             # Uma missão progressiva não tem segunda chance: fracassar UM
@@ -259,6 +262,9 @@ def fechar_vencidas(db: Session, usuario: Usuario, ate: date | None = None) -> d
             "xp": t.penalidade_xp or 0,
             "critica": (t.prioridade or "").upper() == "CRITICA",
             "diaria": False,
+            # Missao geral nao tem medidor: ela e divida, nao insistencia.
+            # Vence e continua la, no vermelho, ate ser feita.
+            "rotina_id": None,
         })
 
     # Uma subtração só, no fim: XP nunca fica negativo.
@@ -369,7 +375,7 @@ def _talvez_punir(db: Session, usuario: Usuario, falhas: list, hoje) -> dict | N
     fecha. Uma divida perdida e melhor que um app travado.
     """
     try:
-        from motors import penitencia, economia as _eco
+        from motors import penitencia, medidor, economia as _eco
         regras = _eco.punicao_regras(db)
 
         # A sessao e criada com autoflush=False (database.py) e daqui para
@@ -378,6 +384,38 @@ def _talvez_punir(db: Session, usuario: Usuario, falhas: list, hoje) -> dict | N
         # contagens voltam zero — trocando um defeito por outro, mais
         # silencioso. Custou uma rodada inteira de teste.
         db.flush()
+
+        # ── O MEDIDOR ENCHE SEMPRE ────────────────────────────────
+        #
+        # Antes de qualquer julgamento, e independente de quem pune. Com
+        # a chave desligada ele so MEDE: o Arquiteto ve as barras subindo
+        # em O Pacto e compara com o que a Regra B faz, por alguns dias,
+        # antes de trocar o gatilho. Encher sempre e o que torna essa
+        # comparacao possivel — uma barra que so comeca a existir quando
+        # a chave vira nao teria historico para comparar.
+        transbordou = _encher_medidores(db, medidor, falhas)
+
+        # ── O DISPARO PELO MEDIDOR ────────────────────────────────
+        #
+        # Substitui a Regra B, nao soma a ela. Se os dois disparassem, um
+        # dia com tres rotinas falhadas geraria tres penitencias (barras)
+        # mais uma (dia), batendo o teto de quatro num unico dia — a
+        # espiral que a REGRA 1 do penitencia.py existe para impedir.
+        if regras["medidor_dispara"]:
+            if transbordou:
+                alvo = transbordou
+                dia_m = alvo.get("data") or hoje
+                if not _ja_julgado(db, usuario, dia_m):
+                    # Barra cheia por missao critica continua dobrando: e
+                    # a mesma severidade da Regra A, agora expressa pelo
+                    # enchimento total em vez de por um `if` separado.
+                    return _cobrar(db, usuario, penitencia, alvo,
+                                   dia_julgado=dia_m, gatilho="medidor",
+                                   dobrar=bool(alvo.get("critica")))
+            # Nenhuma barra transbordou: nao ha o que julgar hoje. O
+            # `return` e o que impede as Regras A e B de cobrarem por
+            # baixo — com a chave ligada, elas nao existem mais.
+            return None
 
         # ── REGRA A · a critica cobra na hora ─────────────────────
         criticas = [f for f in (falhas or []) if f.get("critica")]
@@ -443,6 +481,44 @@ def _talvez_punir(db: Session, usuario: Usuario, falhas: list, hoje) -> dict | N
         return None
 
 
+def _encher_medidores(db, medidor, falhas) -> dict | None:
+    """
+    Enche a barra de cada rotina que falhou. Devolve a PRIMEIRA que
+    transbordou agora, ou None.
+
+    SO ROTINA TEM MEDIDOR. Missao geral e divida, nao insistencia: ela
+    vence e continua la, no vermelho, ate ser feita — nao ha "de novo"
+    para medir. Por isso a falha dela chega com `rotina_id: None`.
+
+    A CRITICA VEM PRIMEIRO na ordem de retorno. Se num mesmo fechamento
+    uma critica e uma media transbordarem, e a critica que deve nomear a
+    divida e dobrar a pena — sortear a ordem faria o mesmo dia ruim punir
+    com pesos diferentes conforme o acaso.
+
+    Nunca derruba o fechamento: medidor e mostrador, e um mostrador
+    quebrado nao pode impedir o dia de fechar.
+    """
+    from database import Rotina
+    regras = economia.enchimento_regras(db)
+    transbordos = []
+    for f in (falhas or []):
+        rid = f.get("rotina_id")
+        if not rid:
+            continue
+        r = db.query(Rotina).filter(Rotina.id == rid).first()
+        if not r:
+            continue
+        try:
+            if medidor.encher(db, r, regras=regras)["transbordou"]:
+                transbordos.append(f)
+        except Exception as e:
+            print(f"[MEDIDOR] rotina {rid} nao encheu: {e}")
+    if not transbordos:
+        return None
+    transbordos.sort(key=lambda x: 0 if x.get("critica") else 1)
+    return transbordos[0]
+
+
 def _cobrar(db, usuario, penitencia, alvo, dia_julgado, gatilho, dobrar):
     """
     Chama a cobranca e carimba QUAL DIA foi julgado.
@@ -453,7 +529,8 @@ def _cobrar(db, usuario, penitencia, alvo, dia_julgado, gatilho, dobrar):
     sai de sincronia no primeiro `revogar`.
     """
     r = penitencia.cobrar(db, usuario, alvo["titulo"], dia_julgado,
-                          xp_perdido=alvo.get("xp") or 0, dobrar=dobrar)
+                          xp_perdido=alvo.get("xp") or 0, dobrar=dobrar,
+                          rotina_id=alvo.get("rotina_id"))
     r["gatilho"] = gatilho
     r["dia_julgado"] = str(dia_julgado)
     return r
@@ -493,7 +570,12 @@ def _uma_falha_do_dia(db: Session, usuario: Usuario, dia) -> dict | None:
     if not linha:
         return None
     ed, r = linha
-    return {"titulo": r.titulo, "data": ed.data, "xp": ed.xp_perdido or 0}
+    # `rotina_id` vai junto mesmo no caminho da Regra B: a divida nascida
+    # do julgamento do dia tambem tem uma rotina de origem, e quita-la
+    # tem de zerar o medidor dela. Sem isto, o medidor so seria zerado
+    # com a chave ligada — e ficaria cheio para sempre em modo observacao.
+    return {"titulo": r.titulo, "data": ed.data, "xp": ed.xp_perdido or 0,
+            "rotina_id": r.id}
 
 
 def _diarias_do_dia(db: Session, usuario: Usuario, dia) -> int:

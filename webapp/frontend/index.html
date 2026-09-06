@@ -1036,6 +1036,23 @@
             e <b>recua</b> a cada semana limpa.
           </p>
           <div id="pacto-lista" class="pct-lista"></div>
+
+          <!-- A BANCADA DO ARQUITETO — os medidores de punicao.
+               Nasce escondida e so o `pacto.js` a revela, depois de o
+               servidor confirmar `sou_arquiteto`. O medidor EXISTE para
+               todo hunter (e o que move o gatilho), mas ver quantas
+               falhas faltam transformaria a punicao num orcamento
+               ("ainda posso falhar duas") — o oposto do que ela deve
+               provocar. -->
+          <div id="pacto-bancada" class="pct-bancada" hidden>
+            <div class="pct-bancada-topo">
+              <h3>Medidores de punição</h3>
+              <span class="pct-bancada-selo" id="medidor-estado"></span>
+              <button class="btn btn-sm" id="btn-limpar-testes" hidden>Varrer testes</button>
+            </div>
+            <p class="pct-bancada-nota" id="medidor-nota"></p>
+            <div id="pacto-medidores"></div>
+          </div>
         </div>
         <div class="page hidden" id="page-dungeons">
           <div class="sys-plate">

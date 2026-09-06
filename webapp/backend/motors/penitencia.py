@@ -27,7 +27,7 @@ AS TRES REGRAS QUE NAO PODEM SER ESQUECIDAS
 """
 from datetime import date, timedelta
 
-from database import Pacto, TarefaDia
+from database import Pacto, Rotina, TarefaDia
 from motors import ecos, economia, pactos as cat, tempo
 
 
@@ -103,7 +103,8 @@ def _sortear(db, usuario_id: int, hoje: date, regras: dict) -> Pacto | None:
 # ── A COBRANCA ───────────────────────────────────────────────────────
 
 def cobrar(db, usuario, missao_titulo: str, missao_data: date,
-           xp_perdido: int = 0, dobrar: bool = False) -> dict:
+           xp_perdido: int = 0, dobrar: bool = False,
+           rotina_id: int | None = None, teste: bool = False) -> dict:
     """
     O Sistema cobra. Devolve o que aconteceu, para o Eco falar.
 
@@ -156,6 +157,15 @@ def cobrar(db, usuario, missao_titulo: str, missao_data: date,
         t.pacto_id = p.id
         t.origem_titulo = missao_titulo
         t.origem_data = missao_data or hoje
+        # O elo com o medidor: qual barra zerar quando esta divida for
+        # quitada. `origem_titulo` continua sendo a copia que MOSTRA (e
+        # sobrevive a exclusao da rotina); o id e o que AGE.
+        t.origem_rotina_id = rotina_id
+        # PUNICAO DE TESTE do Arquiteto. Marcada, nao enfraquecida: ela
+        # cobra, escala o pacto, conta para o teto e e quitada igual. A
+        # marca existe so para poder varrer depois — auditar o sistema
+        # nao pode significar sujar o historico que se quer auditar.
+        t.teste = bool(teste)
         # A REPARACAO: ao quitar, o Sistema devolve uma fracao do que
         # tomou. Nao e lucro — devolver mais que o perdido seria pagar
         # por falhar.
@@ -214,6 +224,7 @@ def revogar(db, usuario_id: int, missao_titulo: str, missao_data: date) -> int:
                    TarefaDia.origem_data == missao_data,
                    TarefaDia.status.notin_(("CONCLUIDA", "CANCELADA"))))
     achadas = q.all()
+    from motors import medidor
     for t in achadas:
         # Devolve o degrau: a penitencia nao chegou a valer.
         p = db.query(Pacto).get(t.pacto_id) if t.pacto_id else None
@@ -221,6 +232,18 @@ def revogar(db, usuario_id: int, missao_titulo: str, missao_data: date) -> int:
             p.valor_atual = cat.decair(p.valor_atual, p.base, p.tipo, 1,
                                        economia.punicao_regras(db)["escala_fator"])
             p.vezes_caiu = max(0, (p.vezes_caiu or 1) - 1)
+        # DEVOLVE TAMBEM O QUE A FALHA ENCHEU — nao zera.
+        #
+        # Reerguer desfez UMA falha, nao a insistencia inteira. Zerar aqui
+        # daria ao Reerguer o poder de limpar semanas de descumprimento
+        # por 25 de Mana, e o medidor viraria decoracao. Entao subtraimos
+        # exatamente o passo daquela rotina: a barra volta ao ponto de
+        # antes da falha desfeita.
+        rid = getattr(t, "origem_rotina_id", None)
+        if rid:
+            r = db.query(Rotina).filter(Rotina.id == rid).first()
+            if r:
+                medidor.esvaziar(db, r, quanto=medidor.quanto_enche(r, db=db))
         db.delete(t)
     return len(achadas)
 
@@ -284,6 +307,12 @@ def quitar(db, usuario, tarefa: TarefaDia) -> dict:
 
     tarefa.status = "CONCLUIDA"
     tarefa.concluida_em = tempo.agora()
+
+    # A DIVIDA PAGA ZERA O MEDIDOR da rotina que a gerou. A contagem de
+    # insistencia recomeca do zero — quem pagou nao continua a um passo
+    # da proxima punicao pela mesma rotina.
+    from motors import medidor
+    medidor.zerar_por_penitencia(db, tarefa)
 
     restantes = max(0, contar(db, usuario.id) - 1)
     return {

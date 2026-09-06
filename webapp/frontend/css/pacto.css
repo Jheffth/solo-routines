@@ -170,3 +170,101 @@
   .pct-lista { grid-template-columns: 1fr; }
   .pct-dupla { grid-template-columns: 1fr; }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   A BANCADA DO ARQUITETO — medidores de punição
+
+   Fica no fim de O Pacto e só aparece para o Arquiteto. É bancada de
+   diagnóstico, não vitrine: nada aqui pulsa, gira ou brilha. Quem
+   audita precisa ler números, e número que se mexe não se lê.
+   ══════════════════════════════════════════════════════════════════ */
+.pct-bancada {
+  margin-top: 2rem;
+  padding-top: 1.2rem;
+  border-top: 1px dashed rgba(124,58,237,.28);
+}
+.pct-bancada-topo {
+  display: flex; align-items: center; gap: .6rem;
+  flex-wrap: wrap; margin-bottom: .35rem;
+}
+.pct-bancada-topo h3 {
+  font-family: var(--font-section); font-size: .82rem;
+  letter-spacing: .06em; margin: 0;
+}
+.pct-bancada-topo .btn { margin-left: auto; }
+
+/* ARMADO x OBSERVAÇÃO — a distinção mais importante desta tela.
+   Uma barra que enche sem punir e uma que pune são coisas diferentes;
+   confundi-las faz o Arquiteto concluir que o sistema quebrou quando
+   ele está apenas medindo. */
+.pct-bancada-selo {
+  font-family: var(--font-section); font-size: .56rem; font-weight: 700;
+  letter-spacing: .12em; padding: .16rem .5rem; border-radius: .3rem;
+}
+.pct-armado {
+  background: rgba(239,68,68,.16); border: 1px solid rgba(239,68,68,.5); color: #fca5a5;
+}
+.pct-observando {
+  background: rgba(148,163,184,.14); border: 1px solid rgba(148,163,184,.4); color: #cbd5e1;
+}
+.pct-bancada-nota {
+  font-size: .68rem; color: var(--text-muted);
+  line-height: 1.6; margin: 0 0 .9rem;
+}
+.pct-bancada-nota code {
+  font-family: var(--font-mono, monospace); font-size: .64rem;
+  background: rgba(124,58,237,.14); padding: .05rem .3rem; border-radius: .2rem;
+}
+
+.pct-medidor {
+  padding: .6rem .75rem; margin-bottom: .5rem;
+  border: 1px solid rgba(255,255,255,.07); border-radius: .5rem;
+  background: rgba(255,255,255,.02);
+}
+.pct-medidor--cheio { border-color: rgba(239,68,68,.45); background: rgba(239,68,68,.05); }
+
+.pct-medidor-topo {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: .5rem; margin-bottom: .45rem; flex-wrap: wrap;
+}
+.pct-medidor-nome { font-size: .76rem; color: var(--text-primary); }
+.pct-medidor-tags {
+  font-family: var(--font-section); font-size: .55rem;
+  letter-spacing: .06em; color: var(--text-muted); white-space: nowrap;
+}
+
+.pct-medidor-linha { display: flex; align-items: center; gap: .5rem; }
+
+/* + e − nas extremidades, como o Arquiteto pediu. 34px é o mínimo que
+   um dedo acerta sem mirar — a bancada também se usa no celular. */
+.pct-medidor-btn {
+  flex: 0 0 auto; width: 34px; height: 34px; border-radius: .4rem;
+  border: 1px solid rgba(124,58,237,.4); background: rgba(124,58,237,.1);
+  color: var(--purple-glow); font-size: 1.1rem; line-height: 1;
+  cursor: pointer; transition: background .15s, border-color .15s;
+}
+.pct-medidor-btn:hover {
+  background: rgba(124,58,237,.22); border-color: rgba(124,58,237,.7);
+}
+.pct-medidor-btn:active { transform: scale(.94); }
+
+.pct-medidor-trilho {
+  position: relative; flex: 1 1 auto; height: 22px;
+  border-radius: .3rem; overflow: hidden;
+  background: rgba(255,255,255,.06);
+}
+.pct-medidor-trilho > i {
+  display: block; height: 100%;
+  background: linear-gradient(90deg, rgba(245,158,11,.75), rgba(239,68,68,.85));
+  transition: width .25s ease;
+}
+.pct-medidor-num {
+  position: absolute; inset: 0; display: flex;
+  align-items: center; justify-content: center;
+  font-family: var(--font-section); font-size: .6rem; font-weight: 700;
+  color: #fff; text-shadow: 0 0 4px rgba(0,0,0,.9);
+}
+.pct-medidor-prev {
+  margin-top: .3rem; font-size: .58rem; color: var(--text-muted);
+  font-family: var(--font-section); letter-spacing: .05em;
+}

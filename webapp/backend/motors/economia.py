@@ -76,6 +76,34 @@ SEMENTE = [
     ("penal_prioridade", "MEDIA",   0.15, "Média",   3),
     ("penal_prioridade", "BAIXA",   0.0,  "Baixa",   4),
 
+    # ── O MEDIDOR DE PUNIÇÃO ─────────────────────────────────────────
+    # Quanto CADA falha enche a barra daquela rotina, de 0 a 100.
+    #
+    # CRÍTICA É 100 DE PROPÓSITO: uma falha enche a barra inteira, o que
+    # reproduz exatamente a Regra A ("a crítica cobra na hora"). A regra
+    # não foi removida — ela virou o caso particular do medidor em que o
+    # enchimento é total. Uma mecânica a menos para manter em sincronia.
+    #
+    # Nos demais, o número é quantas falhas cabem antes do disparo:
+    #   Alta 40 → 3 falhas · Média 25 → 4 · Baixa 15 → 7
+    ("enche_prioridade", "CRITICA", 100, "Crítica", 1),
+    ("enche_prioridade", "ALTA",     40, "Alta",    2),
+    ("enche_prioridade", "MEDIA",    25, "Média",   3),
+    ("enche_prioridade", "BAIXA",    15, "Baixa",   4),
+
+    # A dificuldade multiplica — E O SENTIDO É INVERSO ao de `mult_dificuldade`.
+    # Lá, difícil vale MAIS XP porque é mais mérito cumprir. Aqui, difícil
+    # enche MENOS porque é mais compreensível falhar: quem não fez o fácil
+    # não tem desculpa, quem não fez o lendário tem.
+    #
+    # Reaproveitar `mult_dificuldade` teria sido tentador e errado — daria
+    # ao lendário 2,5x de punição por ser difícil, punindo justamente quem
+    # tentou a missão mais dura.
+    ("enche_dificuldade", "FACIL",    1.5, "Fácil",    1),
+    ("enche_dificuldade", "NORMAL",   1.0, "Normal",   2),
+    ("enche_dificuldade", "DIFICIL",  0.8, "Difícil",  3),
+    ("enche_dificuldade", "LENDARIO", 0.6, "Lendário", 4),
+
     # REERGUER — o preço em Mana de reabrir uma rotina de janela que fechou.
     # É preço de desconforto, não de mercado: alto o bastante para doer,
     # baixo o bastante para não fazer o hunter desistir do banho.
@@ -455,4 +483,35 @@ def punicao_regras(db=None) -> dict:
         "decaimento_dias": max(1, int(_v(t, "punicao", "decaimento_dias", 7))),
         "reparacao_pct":   max(0, min(100, int(_v(t, "punicao", "reparacao_pct", 50)))),
         "tributo_base":    max(0, int(_v(t, "punicao", "tributo_base", 50))),
+
+        # A CHAVE DO MEDIDOR. Nasce DESLIGADA de propósito.
+        #
+        # Com ela em 0 o medidor mede e mostra, e quem pune continua sendo
+        # o julgamento do dia (Regra B). O Arquiteto acompanha as barras
+        # enchendo por uns dias, compara com o que a regra faria, e só
+        # então vira a chave — sem reverter código.
+        #
+        # `fechamento.py` é o arquivo que já quebrou duas vezes neste
+        # projeto. Trocar o gatilho principal às cegas é como isso
+        # acontece uma terceira vez.
+        "medidor_dispara": bool(int(_v(t, "punicao", "medidor_dispara", 0))),
+    }
+
+
+def enchimento_regras(db=None) -> dict:
+    """
+    Quanto uma falha enche o medidor daquela rotina.
+
+    Sai da Balança porque calibrar isto é decisão do Arquiteto — a mesma
+    razão de `punicao_regras` morar lá. Se ele achar que quatro falhas
+    até a punição é frouxo, muda o número, não o código.
+    """
+    t = tabelas(db)
+    return {
+        "prioridade": {p: max(0.0, _v(t, "enche_prioridade", p, d))
+                       for p, d in (("CRITICA", 100), ("ALTA", 40),
+                                    ("MEDIA", 25), ("BAIXA", 15))},
+        "dificuldade": {p: max(0.0, _v(t, "enche_dificuldade", p, d))
+                        for p, d in (("FACIL", 1.5), ("NORMAL", 1.0),
+                                     ("DIFICIL", 0.8), ("LENDARIO", 0.6))},
     }
