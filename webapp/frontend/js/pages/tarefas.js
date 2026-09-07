@@ -14,6 +14,7 @@
    ============================================================ */
 
 const Tarefas = {
+  // `null` = TUDO. A aba abre no livro inteiro; a data e recorte.
   _dataAtual:   null,
   _lista:       [],       // tarefas CRUAS de /tarefas/ — é o que o formulário espera
   _ordem:       'PRIORIDADE',
@@ -29,20 +30,34 @@ const Tarefas = {
     this._isArquiteto = u?.nivel_acesso === 'Arquiteto';
     this._ordem = localStorage.getItem('sr_tarefas_ordem') || 'PRIORIDADE';
 
-    if (!this._dataAtual) {
-      this._dataAtual = this._hojeISO();
-    }
+    /* A ABA ABRE MOSTRANDO O QUE EXISTE.
 
+       Ela abria em HOJE e pedia `?data=<hoje>` — e o backend filtra por
+       dia exato. Resultado medido na conta do Arquiteto: 35 missões
+       gerais no banco, ZERO na tela, porque nenhuma era de hoje. As
+       concluídas de agosto, as canceladas de setembro, todas invisíveis.
+
+       Pior: uma missão criada hoje aparecia hoje e sumia amanhã. O
+       Arquiteto deduziu isso sozinho antes de eu confirmar.
+
+       É a MESMA lição que o Extrato já tinha aprendido, e que não foi
+       aplicada aqui — o comentário está em `dashboard.carregarExtrato`:
+       "um livro-caixa abre mostrando o que existe. Abrir em 'hoje'
+       escondia todo o histórico logo no momento em que ele passou a
+       existir."
+
+       `null` = tudo. A data continua existindo como RECORTE. */
     const inputData = document.getElementById('filter-data-tarefa');
     if (inputData && !inputData._tarefaChangeAdded) {
-      inputData.value = this._dataAtual;
+      inputData.value = this._dataAtual || '';
       inputData.addEventListener('change', (e) => {
-        this._dataAtual = e.target.value;
+        // Campo limpo volta para tudo — é o caminho de volta sem botão.
+        this._dataAtual = e.target.value || null;
         this.carregarPorData(this._dataAtual);
       });
       inputData._tarefaChangeAdded = true;
     } else if (inputData) {
-      inputData.value = this._dataAtual;
+      inputData.value = this._dataAtual || '';
     }
 
     await this.carregarPorData(this._dataAtual);
@@ -59,6 +74,12 @@ const Tarefas = {
 
   // ── Carrega o dia ─────────────────────────────────────────
   async carregarPorData(data) {
+    /* UMA VERDADE SO. Este metodo recebia a data e NAO gravava
+       `_dataAtual` — e e `_dataAtual` que o render consulta para decidir
+       entre a vista de dia e o livro. Chamado direto (o `onMudou` do
+       cartao faz isso), os dois discordavam: pedia um dia ao servidor e
+       desenhava como se fosse tudo. */
+    this._dataAtual = data || null;
     this.destruir();
     const cont = document.getElementById('lista-tarefas');
     if (!cont) return;
@@ -70,7 +91,8 @@ const Tarefas = {
     }
 
     try {
-      const lista = await API.get(`/tarefas/?data=${data}`);
+      // Sem data = tudo. Com data = aquele dia.
+      const lista = await API.get(data ? `/tarefas/?data=${data}` : '/tarefas/');
       this._lista = lista || [];
       this.renderLista(this._ordenarLista(this._lista));
     } catch (err) {
@@ -123,7 +145,8 @@ const Tarefas = {
       cont.innerHTML = this._avisoDia() + `
         <div class="empty-state">
           <div class="empty-icon">⚔️</div>
-          <div>Nenhuma missão geral para ${this._rotuloDia()}</div>
+          <div>${this._dataAtual ? `Nenhuma missão geral para ${this._rotuloDia()}`
+                                 : 'Nenhuma missão geral ainda'}</div>
           <div style="font-size:.78rem;color:var(--text-muted);max-width:32rem;margin:.4rem auto .9rem;line-height:1.5">
             Missão geral é a que não se repete — o compromisso de uma vez só.
             O que volta toda semana é rotina, e mora na guia Rotinas.
@@ -135,31 +158,64 @@ const Tarefas = {
       return;
     }
 
-    const ativas = visiveis.filter(m => !this._FINAIS.includes(m.status));
-    const finais = visiveis.filter(m =>  this._FINAIS.includes(m.status));
-
     // Cache indexado por uid ("g"+id). merge:true porque o Dashboard pode ter
     // cacheado o extrato antes — os dois espaços de chave convivem.
     MissaoCard.cachear(missoes, { modo: 'missao', merge: true });
 
     // mc-lista: o cartão mede ESTA coluna, não a janela (missao-card.css).
     cont.classList.add('mc-lista');
+
+    /* DUAS VISTAS, E ELAS NÃO SÃO A MESMA COISA.
+
+       UM DIA é uma vista de trabalho: o que está em aberto sobe, o que
+       terminou desce para "Encerradas".
+
+       TUDO é um livro: agrupado por dia, do mais recente para trás.
+       Separar aberto de encerrado aqui misturaria uma missão de agosto
+       com a de ontem no mesmo bloco, e a linha do tempo — que é a
+       informação desta vista — se perderia. */
     let html = this._avisoDia() + '<div style="display:flex;flex-direction:column;gap:.9rem">';
-    html += ativas.map(m => MissaoCard.html(m, { modo: 'missao' })).join('');
-    if (finais.length) {
-      html += `
-        <div style="font-family:var(--font-section);font-size:.72rem;color:var(--text-muted);
-          letter-spacing:1.5px;text-transform:uppercase;margin-top:.5rem;padding-top:.5rem;
-          border-top:1px solid rgba(255,255,255,.06)">
-          Encerradas (${finais.length})
-        </div>`;
-      html += finais.map(m => MissaoCard.html(m, { modo: 'missao' })).join('');
+
+    if (this._dataAtual) {
+      const ativas = visiveis.filter(m => !this._FINAIS.includes(m.status));
+      const finais = visiveis.filter(m =>  this._FINAIS.includes(m.status));
+      html += ativas.map(m => MissaoCard.html(m, { modo: 'missao' })).join('');
+      if (finais.length) {
+        html += `<div class="tf-sep">Encerradas (${finais.length})</div>`;
+        html += finais.map(m => MissaoCard.html(m, { modo: 'missao' })).join('');
+      }
+    } else {
+      const porDia = new Map();
+      visiveis.forEach(m => {
+        const d = String(m.data || '').slice(0, 10) || 'sem-data';
+        if (!porDia.has(d)) porDia.set(d, []);
+        porDia.get(d).push(m);
+      });
+      // O backend já devolve em ordem decrescente; ordenar de novo aqui
+      // é o que garante a ordem mesmo se alguém mexer no `order_by`.
+      const dias = [...porDia.keys()].sort((a, b) =>
+        a === 'sem-data' ? 1 : b === 'sem-data' ? -1 : b.localeCompare(a));
+      html += dias.map(d => {
+        const itens = porDia.get(d);
+        const abertas = itens.filter(m => !this._FINAIS.includes(m.status)).length;
+        return `<section>
+          <div class="tf-dia">
+            <span class="tf-dia-rot">${this._rotuloData(d)}</span>
+            <span class="tf-dia-cont">${itens.length} miss${itens.length > 1 ? 'ões' : 'ão'}${abertas ? ` · ${abertas} em aberto` : ''}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:.9rem">
+            ${itens.map(m => MissaoCard.html(m, { modo: 'missao' })).join('')}
+          </div>
+        </section>`;
+      }).join('');
     }
     html += '</div>';
     cont.innerHTML = html;
 
     document.getElementById('btn-tarefas-hoje')
       ?.addEventListener('click', () => this._irParaHoje());
+    document.getElementById('btn-tarefas-tudo')
+      ?.addEventListener('click', () => this._verTudo());
 
     MissaoCard.montar(cont, {
       onMudou: () => this.carregarPorData(this._dataAtual),
@@ -174,8 +230,42 @@ const Tarefas = {
 
   /* Fora do dia corrente todo cartão vem selado (editavel:false), e sem um
      aviso isso parece defeito. A faixa explica e devolve o caminho de volta. */
+  /* Cabeçalho humano do dia, no agrupamento. "2026-09-06" não diz nada;
+     "Ontem" e "Sábado, 06/09" dizem. Espelha `dashboard._rotuloDia` — e a
+     data ISO é quebrada à mão porque `new Date("2026-09-06")` seria lida
+     como UTC e voltaria um dia no fuso de Brasília. */
+  _rotuloData(iso) {
+    if (!iso || iso === 'sem-data') return 'Sem data';
+    const [a, m, d] = iso.split('-').map(Number);
+    if (!a || !m || !d) return iso;
+    const dt = new Date(a, m - 1, d);
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    const dif = Math.round((dt - hoje) / 86400000);
+    if (dif === 0)  return 'Hoje';
+    if (dif === -1) return 'Ontem';
+    if (dif === 1)  return 'Amanhã';
+    const semana = dt.toLocaleDateString('pt-BR', { weekday: 'long' }).replace('-feira', '');
+    return `${semana}, ${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}`;
+  },
+
   _avisoDia() {
-    if (this._dataAtual === this._hojeISO()) return '';
+    /* Vendo tudo: uma linha discreta com o atalho para o dia. Não é o
+       aviso de "somente leitura" — aqui a leitura é o ponto. */
+    if (!this._dataAtual) {
+      return `
+        <div class="tf-faixa">
+          <span>Todas as suas missões gerais, das mais recentes para trás.
+            As de dias passados são somente leitura.</span>
+          <button id="btn-tarefas-hoje" class="tf-faixa-btn">Ver só hoje</button>
+        </div>`;
+    }
+    if (this._dataAtual === this._hojeISO()) {
+      return `
+        <div class="tf-faixa">
+          <span>Vendo <strong>hoje</strong>.</span>
+          <button id="btn-tarefas-tudo" class="tf-faixa-btn">Ver todas</button>
+        </div>`;
+    }
     return `
       <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;
         margin-bottom:1rem;padding:.6rem .9rem;border-radius:.6rem;
@@ -191,6 +281,7 @@ const Tarefas = {
           color:#e9d5ff;transition:all .2s">
           Voltar para hoje
         </button>
+        <button id="btn-tarefas-tudo" class="tf-faixa-btn">Ver todas</button>
       </div>`;
   },
 
@@ -199,6 +290,16 @@ const Tarefas = {
     const inputData = document.getElementById('filter-data-tarefa');
     if (inputData) inputData.value = this._dataAtual;
     this.carregarPorData(this._dataAtual);
+  },
+
+  /* O caminho de volta para o livro inteiro. Limpar o campo de data faz
+     o mesmo, mas ninguem descobre que limpar um `input[type=date]` e uma
+     acao — o botao e o que torna a saida visivel. */
+  _verTudo() {
+    this._dataAtual = null;
+    const inputData = document.getElementById('filter-data-tarefa');
+    if (inputData) inputData.value = '';
+    this.carregarPorData(null);
   },
 
   _rotuloDia() {

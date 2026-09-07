@@ -125,16 +125,34 @@ def _get_ou_404(tarefa_id: int, usuario: Usuario, db: Session) -> TarefaDia:
 @router.get("/")
 def listar_tarefas(
     data: Optional[date] = None,
+    inicio: Optional[date] = None,
+    fim: Optional[date] = None,
     status: Optional[str] = None,
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(get_usuario_atual),
 ):
+    """
+    As missões gerais. SEM FILTRO, DEVOLVE TUDO.
+
+    `inicio`/`fim` são o recorte por intervalo; `data` continua existindo
+    para o dia exato — há chamadas antigas que o usam, e tirá-lo
+    quebraria o `/tarefas/hoje` da agenda sem ganhar nada.
+
+    A ORDEM É DECRESCENTE, e isso não é detalhe. Crescente colocava
+    agosto no topo e a missão de ontem no fim de uma lista de trinta e
+    cinco — quem abre a aba quer ver o que é recente.
+    """
     q = db.query(TarefaDia).filter(TarefaDia.usuario_id == usuario.id)
     if data:
         q = q.filter(TarefaDia.data_prevista == data)
+    if inicio:
+        q = q.filter(TarefaDia.data_prevista >= inicio)
+    if fim:
+        q = q.filter(TarefaDia.data_prevista <= fim)
     if status:
         q = q.filter(TarefaDia.status == status.upper())
-    return [_tarefa_to_dict(t) for t in q.order_by(TarefaDia.data_prevista, TarefaDia.id).all()]
+    return [_tarefa_to_dict(t) for t in
+            q.order_by(TarefaDia.data_prevista.desc(), TarefaDia.id.desc()).all()]
 
 
 @router.get("/hoje")

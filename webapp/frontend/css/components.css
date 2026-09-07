@@ -1550,3 +1550,47 @@ tbody tr:hover td {
   .sr-corrente-elos { gap: 1.5px; }
   .sr-corrente-legenda { font-size: .55rem; gap: .5rem; }
 }
+
+/* ── MISSÕES GERAIS: o livro por dia ──────────────────────────────
+   A aba abria em HOJE e pedia o dia exato ao backend. Medido na conta
+   do Arquiteto: 35 missões no banco, ZERO na tela. Agora ela abre no
+   histórico inteiro, e a data é recorte — o mesmo que o Extrato já
+   fazia e que não tinha sido aplicado aqui. */
+.tf-faixa {
+  display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
+  margin-bottom: 1rem; padding: .5rem .9rem; border-radius: .6rem;
+  border: 1px solid rgba(100,116,139,.24); background: rgba(100,116,139,.07);
+  font-size: .74rem; color: var(--text-muted); line-height: 1.5;
+}
+.tf-faixa > span { flex: 1; min-width: 12rem; }
+.tf-faixa-btn {
+  font-family: var(--font-section); font-size: .66rem; font-weight: 700;
+  letter-spacing: .06em; padding: .3rem .7rem; border-radius: .4rem;
+  cursor: pointer; white-space: nowrap;
+  border: 1px solid rgba(168,85,247,.4); background: rgba(124,58,237,.15);
+  color: #e9d5ff; transition: background .2s;
+}
+.tf-faixa-btn:hover { background: rgba(124,58,237,.3); }
+
+/* Cabeçalho de dia. `sticky` para o hunter não perder de vista em que
+   dia está ao rolar trinta e cinco cartões. */
+.tf-dia {
+  position: sticky; top: 0; z-index: 3;
+  display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap;
+  padding: .35rem .15rem; margin-bottom: .5rem;
+  background: var(--bg-card);
+  border-bottom: 1px solid rgba(124,58,237,.2);
+}
+.tf-dia-rot {
+  font-family: var(--font-section); font-size: .74rem; font-weight: 700;
+  letter-spacing: .05em; color: var(--purple-glow); text-transform: capitalize;
+}
+.tf-dia-cont {
+  font-family: var(--font-section); font-size: .62rem; color: var(--text-muted);
+}
+.tf-sep {
+  font-family: var(--font-section); font-size: .72rem; color: var(--text-muted);
+  letter-spacing: 1.5px; text-transform: uppercase;
+  margin-top: .5rem; padding-top: .5rem;
+  border-top: 1px solid rgba(255,255,255,.06);
+}
