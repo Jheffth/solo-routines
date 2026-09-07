@@ -268,3 +268,22 @@
   margin-top: .3rem; font-size: .58rem; color: var(--text-muted);
   font-family: var(--font-section); letter-spacing: .05em;
 }
+
+/* ── O CAMINHO DE VOLTA, no card do pacto ──────────────────────────
+   O recuo acontecia e ninguem via: a penitencia baixava de surpresa na
+   proxima falha, e o hunter nao ligava o alivio ao que tinha feito.
+   Verde de proposito — e a unica coisa boa que um card de punicao tem
+   para dizer. */
+.pct-recuo {
+  font-family: var(--font-section); font-size: .55rem;
+  letter-spacing: .06em; color: var(--text-muted);
+  display: inline-block; margin-top: .25rem;
+}
+.pct-recuo--ativo {
+  color: #6ee7b7; background: rgba(16,185,129,.12);
+  border: 1px solid rgba(16,185,129,.32);
+  padding: .08rem .35rem; border-radius: .25rem; margin: 0 0 0 .35rem;
+}
+.pct-recuo--base {
+  color: #6ee7b7; font-weight: 700;
+}

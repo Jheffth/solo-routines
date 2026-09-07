@@ -232,10 +232,29 @@ const Pacto = {
     el.innerHTML = this._itens.map(p => {
       const noTeto = p.valor_atual >= p.teto;
       const pct = Math.min(100, Math.round((p.valor_atual / Math.max(1, p.teto)) * 100));
+
+      /* O CAMINHO DE VOLTA, ESCRITO.
+         `valor_atual` aqui já é o VIGENTE — o servidor desconta o tempo
+         limpo desde a última queda. Sem esta linha o recuo acontecia e
+         ninguém via: a barra caía de surpresa na próxima falha, e o
+         hunter não ligava o alívio ao que ele tinha feito. */
+      let recuo = '';
+      if (p.na_base && p.vezes_caiu) {
+        recuo = `<span class="pct-recuo pct-recuo--base">de volta à base</span>`;
+      } else if (p.dias_para_recuar !== null && p.dias_para_recuar !== undefined) {
+        const d = p.dias_para_recuar;
+        recuo = `<span class="pct-recuo">recua em ${d} dia${d === 1 ? '' : 's'} limpo${d === 1 ? '' : 's'}</span>`;
+      }
+      // Quanto já recuou desde a queda — a prova de que se comportar paga.
+      const jaRecuou = p.recuando
+        ? `<span class="pct-recuo pct-recuo--ativo" title="Já recuou desde a última queda">↓ de ${p.valor_registrado}</span>`
+        : '';
+
       return `
       <div class="pct-item" data-pct-id="${p.id}">
         <div class="pct-item-topo">
           <span class="pct-tipo pct-tipo-${(p.tipo || '').toLowerCase()}">${this._rotuloTipo(p.tipo)}</span>
+          ${jaRecuou}
           ${p.vezes_caiu ? `<span class="pct-caiu" title="Quantas vezes esta penitência já foi cobrada">
             caiu ${p.vezes_caiu}×</span>` : ''}
         </div>
@@ -245,6 +264,7 @@ const Pacto = {
           <span class="pct-escala-txt ${noTeto ? 'no-teto' : ''}">
             ${p.base} → <b>${p.valor_atual}</b> → ${p.teto}${noTeto ? ' · no teto' : ''}
           </span>
+          ${recuo}
         </div>
         <div class="pct-item-acoes">
           <button class="btn btn-sm" data-pct-editar="${p.id}">Editar</button>

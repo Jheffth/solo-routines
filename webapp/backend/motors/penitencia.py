@@ -54,22 +54,29 @@ def tem_pacto(db, usuario_id: int) -> bool:
 
 # ── ESCALONAMENTO E DECAIMENTO ───────────────────────────────────────
 
-def _aplicar_decaimento(db, p: Pacto, hoje: date, regras: dict) -> None:
+def vigente(p: Pacto, hoje: date, regras: dict) -> int:
     """
-    O caminho de volta, cobrado na hora de sortear.
+    O QUE ESTE PACTO VALE HOJE. Ninguem le `p.valor_atual` cru.
 
-    Rodar isto num agendador diario seria trabalho para nada: o valor
-    so importa quando a penitencia CAI. Entao o decaimento e calculado
-    aqui, a partir da distancia entre hoje e a ultima queda — e o
-    resultado e identico ao de um cron rodando todo dia, sem cron.
+    ANTES, ISTO ERA `_aplicar_decaimento` E SO RODAVA NO SORTEIO.
+
+    O comentario dizia que calcular na hora da queda era "identico a um
+    cron rodando todo dia, sem cron". Para o NUMERO no instante da
+    queda, era verdade. Para o que o hunter VE, nao era: entre uma queda
+    e a seguinte, o card mostrava o valor velho, e trinta dias limpos
+    apareciam na tela como nenhum progresso. O unico jeito de ver a
+    penitencia recuar era falhar de novo.
+
+    Pior: com o teto de dividas cheio, `cobrar` retorna antes do sorteio
+    — entao o decaimento nao rodava NUNCA, justamente para quem estava
+    mais afundado.
+
+    Derivar a cada leitura conserta os dois de uma vez, e continua sem
+    cron: `valor_atual` e `ultima_queda` sempre contiveram a verdade.
     """
-    if not p.ultima_queda or p.valor_atual <= p.base:
-        return
-    dias = (hoje - p.ultima_queda).days
-    degraus = dias // max(1, regras["decaimento_dias"])
-    if degraus > 0:
-        p.valor_atual = cat.decair(p.valor_atual, p.base, p.tipo, degraus,
-                                   regras["escala_fator"])
+    return cat.valor_vigente(p.valor_atual, p.base, p.tipo, p.ultima_queda,
+                             hoje, regras["decaimento_dias"],
+                             regras["decaimento_fator"])
 
 
 def _sortear(db, usuario_id: int, hoje: date, regras: dict) -> Pacto | None:
@@ -96,7 +103,11 @@ def _sortear(db, usuario_id: int, hoje: date, regras: dict) -> Pacto | None:
     escolhido = lista[random.choice(disponiveis)]
     escolhido.ciclo = ciclo_atual
 
-    _aplicar_decaimento(db, escolhido, hoje, regras)
+    # MATERIALIZA o recuo que o tempo limpo ja rendeu, antes de escalar.
+    # A leitura derivada e a verdade; aqui ela vira estado porque a
+    # queda esta prestes a mover `ultima_queda`, e sem gravar o recuo
+    # ele seria perdido no mesmo instante em que foi conquistado.
+    escolhido.valor_atual = vigente(escolhido, hoje, regras)
     return escolhido
 
 

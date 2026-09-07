@@ -11,7 +11,7 @@ from database import (
     get_db, Usuario, Rotina, TarefaDia, Execucao, ExecucaoDia, Pacto,
     ConquistaUsuario, Conquista, Nivel
 )
-from motors import economia, gamificacao, penitencia
+from motors import economia, gamificacao, penitencia, pactos as cat
 from auth.router import get_usuario_atual
 from routers.rotinas import _eh_rotina_de_hoje
 
@@ -170,10 +170,11 @@ def resumo_penitencia(
         anuncia isso num Eco. Quem não leu o Eco nunca soube que há um
         limite, nem o quanto falta para bater nele.
 
-      · O DECAIMENTO. `_aplicar_decaimento` devolve a severidade ao
-        normal depois de `decaimento_dias` sem quedas. O comentário do
-        motor chama isso de "o caminho de volta" — e o caminho de volta
-        estava invisível.
+      · O DECAIMENTO. A severidade recua a cada `decaimento_dias` de
+        tempo limpo — o motor chama isso de "o caminho de volta". Era
+        invisível de duas formas: não aparecia aqui, e nem chegava a ser
+        calculado enquanto o hunter se comportava (ver
+        `pactos.valor_vigente`).
 
       · O ABATE. Cumprir missão tira da barra da penitência mais antiga.
         Foi construído e nunca teve mostrador; o hunter não via a
@@ -187,17 +188,24 @@ def resumo_penitencia(
     regras = economia.punicao_regras(db)
     abertas = penitencia.pendentes(db, usuario.id)
 
-    # Quando o próximo degrau de decaimento cai. É a MAIOR data de
-    # última queda entre os pactos que ainda estão acima da base: só
-    # esses têm o que devolver.
+    # Quando o próximo degrau de recuo cai — o mais próximo entre os
+    # pactos que ainda têm o que devolver.
+    #
+    # ISTO TINHA CONTA PRÓPRIA e ela estava errada: `decaimento_dias −
+    # dias_passados`, travado em zero. Com 10 dias corridos e degrau de
+    # 7, dava 0 ("recua já"), quando o degrau seguinte só cai em 4 dias.
+    # A conta certa é cíclica, e agora mora num lugar só —
+    # `pactos.dias_para_recuar`, a mesma que o card do Pacto usa.
     hoje = tempo.hoje()
     proximo_decaimento = None
     for p in db.query(Pacto).filter(Pacto.usuario_id == usuario.id,
                                     Pacto.ativo == True).all():
-        if not p.ultima_queda or (p.valor_atual or 0) <= (p.base or 0):
+        faltam = cat.dias_para_recuar(p.valor_atual, p.base, p.tipo,
+                                      p.ultima_queda, hoje,
+                                      regras["decaimento_dias"],
+                                      regras["decaimento_fator"])
+        if faltam is None:
             continue
-        faltam = regras["decaimento_dias"] - (hoje - p.ultima_queda).days
-        faltam = max(0, faltam)
         if proximo_decaimento is None or faltam < proximo_decaimento:
             proximo_decaimento = faltam
 

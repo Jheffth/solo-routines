@@ -481,6 +481,27 @@ def punicao_regras(db=None) -> dict:
         "divida_teto":     max(1, int(_v(t, "punicao", "divida_teto", 4))),
         "escala_fator":    max(1, int(_v(t, "punicao", "escala_fator", 2))),
         "decaimento_dias": max(1, int(_v(t, "punicao", "decaimento_dias", 7))),
+
+        # O PASSO DE DESCIDA, separado do de subida.
+        #
+        # Os dois usavam `escala_fator`, e era isso que produzia a soma
+        # zero: uma semana limpa comprava exatamente uma queda, então
+        # quem falhava a cada 13 dias ou menos ficava cravado no teto
+        # para sempre.
+        #
+        # NASCE IGUAL AO DE SUBIDA (2), de propósito. O defeito não era a
+        # calibração — era o decaimento nunca ser calculado enquanto o
+        # hunter se comportava (ver `pactos.valor_vigente`). Corrigida a
+        # derivação, o passo simétrico já devolve o pacto do Arquiteto de
+        # 30 para 10 em duas semanas limpas, que é o mesmo caminho que a
+        # subida percorreu.
+        #
+        # Separá-lo é o que permite calibrar a ASSIMETRIA depois, com
+        # dados: 3 aqui contra 2 na subida faria uma semana limpa apagar
+        # duas quedas. Essa decisão é do Arquiteto na Balança, não minha
+        # por padrão — afrouxar a punição em 50% sem ele pedir seria
+        # trocar um defeito por outro.
+        "decaimento_fator": max(1.01, float(_v(t, "punicao", "decaimento_fator", 2))),
         "reparacao_pct":   max(0, min(100, int(_v(t, "punicao", "reparacao_pct", 50)))),
         "tributo_base":    max(0, int(_v(t, "punicao", "tributo_base", 50))),
 

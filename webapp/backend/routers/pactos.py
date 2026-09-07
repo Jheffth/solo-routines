@@ -38,7 +38,19 @@ class AdotarIn(BaseModel):
     chaves: list[str]
 
 
-def _serial(p: Pacto) -> dict:
+def _serial(p: Pacto, regras: dict | None = None, hoje=None) -> dict:
+    """
+    O card do pacto. `valor_atual` aqui é o VIGENTE, não o gravado.
+
+    O gravado é o valor da última queda; o vigente já desconta o tempo
+    limpo desde então. Servir o gravado era o que fazia trinta dias de
+    bom comportamento aparecerem na tela como nenhum progresso — e o
+    pacto do Arquiteto morar em 30/30 depois de 51 quedas.
+    """
+    regras = regras or economia.punicao_regras()
+    hoje = hoje or tempo.hoje()
+    vig = cat.valor_vigente(p.valor_atual, p.base, p.tipo, p.ultima_queda,
+                            hoje, regras["decaimento_dias"], regras["decaimento_fator"])
     return {
         "id": p.id,
         "titulo": p.titulo,
@@ -46,10 +58,18 @@ def _serial(p: Pacto) -> dict:
         "unidade": p.unidade,
         "base": p.base,
         "teto": p.teto,
-        "valor_atual": p.valor_atual,
+        "valor_atual": vig,
+        # O que estava gravado, para o Arquiteto conferir o recuo em
+        # curso: se `vigente < registrado`, o tempo limpo está pagando.
+        "valor_registrado": p.valor_atual,
+        "recuando": vig < (p.valor_atual or 0),
+        "dias_para_recuar": cat.dias_para_recuar(
+            p.valor_atual, p.base, p.tipo, p.ultima_queda, hoje,
+            regras["decaimento_dias"], regras["decaimento_fator"]),
+        "na_base": vig <= (p.base or 0),
         # O texto com o número já resolvido — o cliente não precisa
         # conhecer o `{n}`, que é sintaxe do lançador.
-        "exemplo": (p.titulo or "").replace("{n}", str(p.valor_atual)),
+        "exemplo": (p.titulo or "").replace("{n}", str(vig)),
         "vezes_caiu": p.vezes_caiu or 0,
         "ultima_queda": p.ultima_queda.isoformat() if p.ultima_queda else None,
         "ativo": bool(p.ativo),
@@ -110,8 +130,12 @@ def listar(db: Session = Depends(get_db),
     itens = (db.query(Pacto)
                .filter(Pacto.usuario_id == usuario.id, Pacto.ativo == True)
                .order_by(Pacto.id).all())
+    # Uma leitura das regras para a lista inteira — elas não mudam entre
+    # um card e o outro, e `punicao_regras` bate na Balança.
+    regras = economia.punicao_regras(db)
+    hoje = tempo.hoje()
     return {
-        "itens": [_serial(p) for p in itens],
+        "itens": [_serial(p, regras, hoje) for p in itens],
         "pendentes": penitencia.contar(db, usuario.id),
     }
 

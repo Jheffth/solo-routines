@@ -208,10 +208,90 @@ def decair(valor: int, base: int, tipo: str, degraus: int = 1,
     f = ESCALA_DO_TIPO.get(tipo) or float(fator_balanca or 2)
     if fator_balanca and tipo in (QUANTITATIVA, TRIBUTO):
         f = float(fator_balanca)
+    f = max(1.0001, float(f))          # fator 1 (ou menor) faria o laço não descer
     v = float(valor)
     for _ in range(max(0, int(degraus))):
         v = v / f
     return int(max(base, round(v)))
+
+
+def degraus_limpos(ultima_queda, hoje, decaimento_dias: int) -> int:
+    """Quantos degraus de decaimento o tempo limpo já rendeu."""
+    if not ultima_queda or not hoje:
+        return 0
+    dias = (hoje - ultima_queda).days
+    if dias <= 0:
+        return 0
+    return dias // max(1, int(decaimento_dias))
+
+
+def valor_vigente(valor_atual: int, base: int, tipo: str, ultima_queda,
+                  hoje, decaimento_dias: int, fator_decaimento: float = None) -> int:
+    """
+    O QUE A PENITÊNCIA VALE HOJE. É esta a função que se lê — nunca o
+    `valor_atual` cru.
+
+    O DEFEITO QUE ELA CORRIGE
+
+    O decaimento existia e era aplicado num lugar só: dentro do sorteio,
+    ou seja, no exato instante em que a penitência CAÍA de novo. As
+    consequências, medidas com os números reais do Arquiteto (base 10,
+    teto 30, fator 2, decaimento 7 dias):
+
+      · comportar-se não devolvia nada. Trinta dias limpos rodavam o
+        decaimento ZERO vezes, porque ninguém tinha caído. O único jeito
+        de ver a barra baixar era falhar outra vez — o oposto exato do
+        que o docstring de `decair` promete;
+
+      · e quando enfim rodava, a escalada da mesma queda anulava: decai
+        um degrau, sobe um degrau, saldo zero. De 7 a 13 dias de folga o
+        resultado era idêntico a não ter folga nenhuma;
+
+      · com o teto de dívidas cheio, `cobrar` retornava antes do sorteio
+        e nada decaía, nunca.
+
+    Resultado: um pacto que caiu 51 vezes ficava cravado em 30/30 para
+    sempre, e entre a queda nº 2 e a nº 51 não havia diferença — que é
+    exatamente a morte da mecânica que `decair` foi escrito para evitar.
+
+    A CORREÇÃO É DE FORMA, NÃO DE FÓRMULA
+
+    `valor_atual` e `ultima_queda`, juntos, já continham a verdade. O
+    que faltava era derivá-la em vez de esperar um evento para gravá-la.
+    Agora o valor vigente é CALCULADO a cada leitura, e o card mostra a
+    penitência recuando dia após dia sem ninguém precisar falhar.
+
+    Continua sem cron, e agora a promessa "idêntico a um cron rodando
+    todo dia" passou a ser verdade também para o que se VÊ — antes ela
+    valia só para o número no instante da queda.
+    """
+    if not valor_atual:
+        return valor_atual
+    d = degraus_limpos(ultima_queda, hoje, decaimento_dias)
+    if d <= 0:
+        return int(valor_atual)
+    return decair(int(valor_atual), int(base or 0), tipo, d, fator_decaimento)
+
+
+def dias_para_recuar(valor_atual: int, base: int, tipo: str, ultima_queda,
+                     hoje, decaimento_dias: int,
+                     fator_decaimento: float = None) -> int | None:
+    """
+    Quantos dias limpos faltam para o PRÓXIMO degrau de recuo.
+
+    `None` quando não há o que recuar (já está na base, ou nunca caiu).
+    É o número que torna o caminho de volta visível — sem ele, a barra
+    desce de surpresa e o hunter não liga o recuo ao que ele fez.
+    """
+    if not ultima_queda or not hoje:
+        return None
+    vig = valor_vigente(valor_atual, base, tipo, ultima_queda, hoje,
+                        decaimento_dias, fator_decaimento)
+    if vig <= (base or 0):
+        return None
+    passo = max(1, int(decaimento_dias))
+    dias = max(0, (hoje - ultima_queda).days)
+    return passo - (dias % passo)
 
 
 def sortear_indice(total: int, ja_sorteados: list) -> int:
