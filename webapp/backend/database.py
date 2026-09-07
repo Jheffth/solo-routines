@@ -163,6 +163,25 @@ class Rotina(Base):
     # explícito é "honestidade sem punição dupla" (a passiva já pune).
     condicional_payload     = Column(Text, nullable=True)  # JSON ou None
 
+    # ── CIRCUITO — a sessão com blocos ───────────────────────────────────
+    #
+    # JSON com os blocos, na ordem em que se faz:
+    #   { "etapas": [
+    #       {"id":"mob","titulo":"Mobilidade","modo":"TEMPO","min":5,"max":5},
+    #       {"id":"car","titulo":"Cardio base","modo":"TEMPO","min":25,"max":30},
+    #       {"id":"pra","titulo":"Prancha","modo":"SERIE_TEMPO","series":3,
+    #        "min":20,"max":30,"unidade":"s"},
+    #       {"id":"agc","titulo":"Agachamento","modo":"SERIE_REP","series":3,
+    #        "min":10,"max":12} ] }
+    #
+    # NÃO SÃO QUATRO ROTINAS. Quatro rotinas dariam quatro cartões, quatro
+    # prazos e — com o medidor de punição — QUATRO BARRAS enchendo. O hunter
+    # que perdeu o treino não falhou quatro compromissos, perdeu um.
+    #
+    # A faixa (min/max) é o que a META não tem: ela carrega um alvo único, e
+    # uma orientação de adaptação usa intervalos de propósito.
+    circuito_payload        = Column(Text, nullable=True)  # JSON ou None
+
     # Controle
     ativo            = Column(Boolean, default=True)
     status           = Column(String(20), default="ATIVA")    # ATIVA | PAUSADA | CANCELADA | CONCLUIDA
@@ -313,6 +332,18 @@ class ExecucaoDia(Base):
     meta_atual          = Column(Float, nullable=False, default=0, server_default="0")
     ultima_meta_em      = Column(DateTime, nullable=True)
 
+    # ── CIRCUITO — o que foi entregue HOJE ───────────────────────────────
+    # JSON: { "mob": {"valor": 5},
+    #         "car": {"valor": 28},
+    #         "pra": {"valores": [25, 22, 20]},
+    #         "agc": {"valores": [12, 10]} }
+    #
+    # Mora aqui e não na Rotina pela mesma razão do `meta_atual`: o desenho
+    # do circuito é a regra, o que foi feito é o dia. E é o que permite o
+    # estado parcial sobreviver entre as 06:02 e as 06:40 — o hunter fecha
+    # um bloco, larga o celular, e volta.
+    circuito_feito      = Column(Text, nullable=True)
+
     # Uma rotina só pode ter UMA instância por dia. Sem isto, duas requisições
     # simultâneas (ou o job + o app abrindo junto) criavam missões duplicadas
     # para o mesmo dia — e o extrato mostraria "Carregar Dolphin" duas vezes
@@ -390,6 +421,14 @@ class TarefaDia(Base):
     meta_modo     = Column(String(10), nullable=True)
     meta_inicial  = Column(Float, nullable=True)
     meta_atual    = Column(Float, nullable=False, default=0, server_default="0")
+
+    # ── CIRCUITO — nas DUAS origens, sempre ──────────────────────────
+    # Na missão geral a regra e o registro moram no mesmo objeto (não há
+    # ExecucaoDia). Emitir os campos só do lado da rotina foi o erro que o
+    # teste do extrato já pegou uma vez: as duas origens precisam ter a
+    # MESMA FORMA, porque um cartão só desenha as duas.
+    circuito_payload    = Column(Text, nullable=True)
+    circuito_feito      = Column(Text, nullable=True)
     contador_id         = Column(Integer, ForeignKey("contadores.id"), nullable=True, index=True)
     # SEM `xp_por_repeticao`. Ele existiu por cinco commits e nunca
     # deveria ter existido: guardava, por missao, um preco que so a

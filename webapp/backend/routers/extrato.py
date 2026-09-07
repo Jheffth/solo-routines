@@ -193,6 +193,7 @@ def _missao_de_rotina(ed: ExecucaoDia, r: Rotina, hoje: date) -> dict:
         # instancia diaria — nao da rotina, que so guarda o alvo.
         **_repeticao(r, getattr(ed, "repeticoes", 0)),
         **_campos_meta(r, ed),
+        **_circuito(r, ed),
         # Sempre nulos aqui — penitencia so nasce como missao geral —
         # mas PRESENTES, para as duas origens terem a mesma forma.
         **_penitencia(ed),
@@ -225,6 +226,19 @@ def _repeticao(fonte, repeticoes) -> dict:
         "contador_id":     getattr(fonte, "contador_id", None),
         "repeticoes":      int(repeticoes or 0),
     }
+
+
+def _circuito(regra, acum) -> dict:
+    """
+    Os campos do circuito — nas DUAS origens, sempre.
+
+    Uma chave so, com o objeto inteiro ou `None`. E a mesma licao do
+    `_repeticao` e do `_penitencia`: chave ausente vira `undefined` no
+    cliente, e `undefined` se comporta diferente de `null` em
+    comparacao — divergencia que aparece meses depois.
+    """
+    from motors import circuito as _c
+    return {"circuito": _c.para_json(regra, acum)}
 
 
 def _penitencia(fonte) -> dict:
@@ -370,6 +384,7 @@ def _missao_geral(t: TarefaDia, hoje: date) -> dict:
                          if getattr(t, "confessada_em", None) else None,
         **_repeticao(t, getattr(t, "repeticoes", 0)),
         **_campos_meta(t, t),
+        **_circuito(t, t),
         **_penitencia(t),
 
         # PENITENCIA E SEMPRE EDITAVEL. Ela tem `data_prevista` igual ao dia

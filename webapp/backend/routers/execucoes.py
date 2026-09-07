@@ -9,6 +9,7 @@ from typing import Optional
 from datetime import date, datetime, timedelta
 from motors import tempo, prazos, economia, especiais
 from motors import meta as motor_meta
+from motors import circuito as motor_circuito
 
 from database import (get_db, Rotina, Execucao, ExecucaoDia, TarefaDia,
                       Usuario, MetaAporte)
@@ -86,11 +87,30 @@ def concluir_rotina(
                 f"de {motor_meta.formatar(rotina.meta_alvo, esp, un)} — "
                 f"registre os valores para chegar lá.")
 
+    # A MESMA TRAVA, para o circuito. Uma sessão com blocos se conclui ao
+    # entregar os blocos — não por clique. Aqui o motivo é ainda mais
+    # direto que na meta: o card existe justamente para saber QUAIS partes
+    # foram feitas, e um botão que fecha com dois blocos em aberto joga
+    # fora o dado inteiro que a natureza foi criada para guardar.
+    if motor_circuito.eh_circuito(rotina):
+        ed_c = db.query(ExecucaoDia).filter(
+            ExecucaoDia.rotina_id == rotina.id,
+            ExecucaoDia.usuario_id == usuario.id,
+            ExecucaoDia.data == hoje).first()
+        if not motor_circuito.completo(rotina, ed_c):
+            d = motor_circuito.normalizar(rotina.circuito_payload)
+            p = motor_circuito.progresso(
+                d, motor_circuito.ler_feito(getattr(ed_c, "circuito_feito", None)))
+            raise HTTPException(400,
+                f"Esta é uma missão de circuito: ela se conclui ao entregar "
+                f"os blocos. Você fechou {p['fechados']} de {p['total']} — "
+                f"falta{'m' if p['faltam'] > 1 else ''} {p['faltam']}.")
+
     return anexar(*_liquidar(db, usuario, rotina, hoje, payload.observacao))
 
 
 def _liquidar(db: Session, usuario: Usuario, rotina: Rotina, hoje: date,
-              observacao: Optional[str] = None):
+              observacao: Optional[str] = None, fator_xp: float = 1.0):
     """
     O NÚCLEO DA CONCLUSÃO — prazo, liquidação, XP, punição e carimbo.
 
@@ -129,11 +149,17 @@ def _liquidar(db: Session, usuario: Usuario, rotina: Rotina, hoje: date,
         reerguida=bool(getattr(ed, "reerguida", False)),
     )
 
+    # `fator_xp` < 1 é a SESSÃO PARCIAL do circuito: algum bloco fechou
+    # abaixo do piso combinado. Não é fracasso — é entrega incompleta, e
+    # paga menos. Multiplica aqui, e não dentro de `economia.liquidacao`,
+    # porque a Balança precifica a MISSÃO; o quanto dela foi entregue é
+    # fato do dia, não regra de preço.
+    fator_xp = max(0.0, min(1.0, float(fator_xp if fator_xp is not None else 1.0)))
     resultado = aplicar_xp(
         db=db,
         usuario=usuario,
-        xp_base=liq["xp"],
-        moedas=liq["moedas"],
+        xp_base=int(round(liq["xp"] * fator_xp)),
+        moedas=int(round(liq["moedas"] * fator_xp)),
         hoje=hoje,
         rotina_id=rotina.id,
         observacao=observacao or f"Rotina concluída: {rotina.titulo}",
@@ -1201,3 +1227,189 @@ def meta_desfazer(payload: MetaDesfazerRequest,
 
     return _corpo_meta(regra, acum, _aportes_de(db, acum),
                        {"desfeito": float(ultimo.valor), "reabriu": reabriu})
+
+
+# ══════════════════════════════════════════════════════════════════════
+# O CIRCUITO — a sessão com blocos
+#
+# Um card, N blocos. O hunter fecha um bloco às 06:02, larga o celular,
+# volta às 06:10 e fecha o próximo. Ao entregar o último, a sessão se
+# conclui sozinha — pelo mesmo `_liquidar` de qualquer rotina, com o
+# mesmo prazo, o mesmo abate de penitência e o mesmo streak.
+#
+# UMA MISSÃO, UMA PUNIÇÃO. É a razão de o circuito existir em vez de
+# quatro rotinas: perder o treino enche UMA barra do medidor.
+# ══════════════════════════════════════════════════════════════════════
+
+class CircuitoRegistrarRequest(BaseModel):
+    rotina_id: Optional[int] = None
+    tarefa_id: Optional[int] = None
+    etapa_id: str
+    valor: Optional[float] = None      # ausente só no modo CHECK
+
+
+class CircuitoDesfazerRequest(BaseModel):
+    rotina_id: Optional[int] = None
+    tarefa_id: Optional[int] = None
+    etapa_id: str
+
+
+def _alvo_de_circuito(db: Session, usuario: Usuario, rotina_id, tarefa_id):
+    """
+    (regra, acumulador) — mesmo par que a meta usa, mesma razão.
+
+    Na rotina o desenho mora na Rotina e o registro no ExecucaoDia de
+    hoje; na missão geral a TarefaDia é os dois.
+    """
+    if rotina_id:
+        rotina = db.query(Rotina).filter(
+            Rotina.id == rotina_id, Rotina.usuario_id == usuario.id,
+            Rotina.ativo == True).first()
+        if not rotina:
+            raise HTTPException(404, "Rotina não encontrada")
+        if not motor_circuito.eh_circuito(rotina):
+            raise HTTPException(400, "Esta rotina não é uma missão de circuito")
+        return rotina, _execucao_do_dia(db, usuario, rotina, tempo.hoje())
+
+    t = db.query(TarefaDia).filter(
+        TarefaDia.id == tarefa_id, TarefaDia.usuario_id == usuario.id).first()
+    if not t:
+        raise HTTPException(404, "Missão não encontrada")
+    if not motor_circuito.eh_circuito(t):
+        raise HTTPException(400, "Esta missão não é uma missão de circuito")
+    return t, t
+
+
+def _corpo_circuito(regra, acum, extra=None) -> dict:
+    """A resposta única dos dois endpoints — o cartão lê uma forma só."""
+    corpo = {
+        "id": acum.id,
+        "titulo": regra.titulo,
+        "status": getattr(acum, "status", None),
+        "circuito": motor_circuito.para_json(regra, acum),
+    }
+    if extra:
+        corpo.update(extra)
+    return corpo
+
+
+@router.post("/circuito/registrar")
+def circuito_registrar(payload: CircuitoRegistrarRequest,
+                       db: Session = Depends(get_db),
+                       usuario: Usuario = Depends(get_usuario_atual)):
+    """
+    Entrega um bloco — ou mais uma série dele.
+
+    A CONCLUSÃO É CONSEQUÊNCIA, NÃO BOTÃO. Quando o último bloco fecha, a
+    sessão se liquida aqui, exatamente como a meta faz ao bater o alvo. O
+    `status != CONCLUIDA` é a trava contra pagar duas vezes: desfazer e
+    refazer o último bloco não rende XP de novo.
+    """
+    if not payload.rotina_id and not payload.tarefa_id:
+        raise HTTPException(400, "Informe rotina_id ou tarefa_id")
+
+    regra, acum = _alvo_de_circuito(db, usuario, payload.rotina_id, payload.tarefa_id)
+    if getattr(acum, "status", None) in ("CANCELADA", "FRACASSADA"):
+        raise HTTPException(400, "Esta missão já foi encerrada.")
+
+    desenho = motor_circuito.normalizar(regra.circuito_payload)
+    feito = motor_circuito.ler_feito(getattr(acum, "circuito_feito", None))
+    try:
+        feito, etapa = motor_circuito.registrar(desenho, feito, payload.etapa_id,
+                                                payload.valor)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+    acum.circuito_feito = motor_circuito.gravar(feito)
+    db.flush()
+
+    p = motor_circuito.progresso(desenho, feito)
+    resultado = None
+    concluiu = False
+
+    if p["completo"] and getattr(acum, "status", None) != "CONCLUIDA":
+        concluiu = True
+        # A SESSÃO PARCIAL. Algum bloco fechou abaixo do piso combinado —
+        # decisão do Arquiteto: o bloco fecha, a sessão paga menos, e
+        # nada fracassa. Recusar o bloco abaixo do piso ensinaria a
+        # arredondar para cima na hora de lançar.
+        pct = economia.circuito_regras(db)["xp_parcial_pct"]
+        fator = (pct / 100.0) if p["parcial"] else 1.0
+        nota = "circuito completo" if not p["parcial"] else "circuito parcial"
+
+        if isinstance(acum, ExecucaoDia):
+            _, resultado = _liquidar(db, usuario, regra, tempo.hoje(),
+                                     observacao=f"{regra.titulo} — {nota}",
+                                     fator_xp=fator)
+        else:
+            acum.status = "CONCLUIDA"
+            acum.concluida_em = tempo.agora()
+            resultado = aplicar_xp(
+                db=db, usuario=usuario,
+                xp_base=int(round(max(0, int(getattr(regra, "xp_recompensa", 0) or 0)) * fator)),
+                moedas=int(round(int(getattr(regra, "moedas_recompensa", 0) or 0) * fator)),
+                hoje=tempo.hoje(),
+                observacao=f"{regra.titulo} — {nota}",
+            )
+            db.commit()
+    else:
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+
+    corpo = _corpo_circuito(regra, acum, {
+        "bloco": etapa["id"],
+        "registrado": payload.valor,
+        "circuito_cumprido": concluiu,
+        "parcial": p["parcial"],
+        "resultado": resultado,
+    })
+    return anexar(corpo, resultado) if resultado else corpo
+
+
+@router.post("/circuito/desfazer")
+def circuito_desfazer(payload: CircuitoDesfazerRequest,
+                      db: Session = Depends(get_db),
+                      usuario: Usuario = Depends(get_usuario_atual)):
+    """
+    Volta um passo NAQUELE bloco — a última série, ou o bloco inteiro se
+    ele não tiver séries.
+
+    Desfazer o bloco todo de uma vez apagaria três séries por um erro de
+    digitação na terceira.
+
+    REABRE A SESSÃO se ela tinha fechado, e devolve o XP creditado — a
+    mesma regra do `meta/desfazer`. As conquistas NÃO são revogadas:
+    tirá-las puniria o hunter por corrigir um número.
+    """
+    if not payload.rotina_id and not payload.tarefa_id:
+        raise HTTPException(400, "Informe rotina_id ou tarefa_id")
+
+    regra, acum = _alvo_de_circuito(db, usuario, payload.rotina_id, payload.tarefa_id)
+    desenho = motor_circuito.normalizar(regra.circuito_payload)
+    feito = motor_circuito.ler_feito(getattr(acum, "circuito_feito", None))
+    try:
+        feito = motor_circuito.desfazer(desenho, feito, payload.etapa_id)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+    acum.circuito_feito = motor_circuito.gravar(feito)
+
+    reabriu = False
+    p = motor_circuito.progresso(desenho, feito)
+    if not p["completo"] and getattr(acum, "status", None) == "CONCLUIDA":
+        reabriu = True
+        devolver = int(getattr(acum, "xp_ganho", 0) or 0)
+        if devolver:
+            usuario.xp_total = max(0, (usuario.xp_total or 0) - devolver)
+            usuario.xp_atual = max(0, (usuario.xp_atual or 0) - devolver)
+        acum.xp_ganho = 0
+        acum.moedas_ganhas = 0
+        acum.status = "ATIVA"
+        acum.concluida_em = None
+
+    db.commit()
+    return _corpo_circuito(regra, acum, {"desfeito": payload.etapa_id,
+                                         "reabriu": reabriu})

@@ -104,6 +104,20 @@ SEMENTE = [
     ("enche_dificuldade", "DIFICIL",  0.8, "Difícil",  3),
     ("enche_dificuldade", "LENDARIO", 0.6, "Lendário", 4),
 
+    # ── O CIRCUITO ───────────────────────────────────────────────────
+    # Quanto do XP a sessão paga quando algum bloco fechou ABAIXO do piso
+    # combinado (25 min de cardio numa faixa de 25–30, entregues 22).
+    #
+    # NÃO É FRACASSO — é decisão do Arquiteto: o bloco fecha e a sessão
+    # fica parcial. Recusar o bloco abaixo do piso ensinaria a arredondar
+    # para cima na hora de lançar, e um sistema que premia a mentira
+    # perde o único dado que tinha.
+    #
+    # 70 porque precisa doer sem desestimular: quem entregou 22 dos 25
+    # fez o treino, e mandá-lo embora com 30% do XP ensinaria a não
+    # lançar em vez de ensinar a completar.
+    ("circuito", "xp_parcial_pct", 70, "XP da sessão parcial (%)", 1),
+
     # REERGUER — o preço em Mana de reabrir uma rotina de janela que fechou.
     # É preço de desconforto, não de mercado: alto o bastante para doer,
     # baixo o bastante para não fazer o hunter desistir do banho.
@@ -516,6 +530,14 @@ def punicao_regras(db=None) -> dict:
         # projeto. Trocar o gatilho principal às cegas é como isso
         # acontece uma terceira vez.
         "medidor_dispara": bool(int(_v(t, "punicao", "medidor_dispara", 0))),
+    }
+
+
+def circuito_regras(db=None) -> dict:
+    """As regras da sessão com blocos. Uma só, por enquanto."""
+    t = tabelas(db)
+    return {
+        "xp_parcial_pct": max(0, min(100, int(_v(t, "circuito", "xp_parcial_pct", 70)))),
     }
 
 

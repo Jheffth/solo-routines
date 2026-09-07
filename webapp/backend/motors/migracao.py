@@ -178,6 +178,15 @@ COLUNAS = [
     ("rotinas",     "carga_punicao",        "REAL NOT NULL DEFAULT 0",     "DOUBLE PRECISION NOT NULL DEFAULT 0"),
     ("tarefas_dia", "origem_rotina_id",     "INTEGER",                     "INTEGER"),
     ("tarefas_dia", "teste",                "BOOLEAN NOT NULL DEFAULT 0",  "BOOLEAN NOT NULL DEFAULT FALSE"),
+
+    # ── CIRCUITO — a sessão com blocos ────────────────────────────────────
+    # `circuito_payload` é o desenho (a regra); `circuito_feito` é o que foi
+    # entregue no dia. Nas DUAS origens: a missão geral guarda os dois no
+    # mesmo objeto, a rotina separa regra (Rotina) de registro (ExecucaoDia).
+    ("rotinas",      "circuito_payload",    "TEXT",                        "TEXT"),
+    ("execucao_dia", "circuito_feito",      "TEXT",                        "TEXT"),
+    ("tarefas_dia",  "circuito_payload",    "TEXT",                        "TEXT"),
+    ("tarefas_dia",  "circuito_feito",      "TEXT",                        "TEXT"),
 ]
 
 

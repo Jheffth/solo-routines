@@ -490,6 +490,147 @@ const MissaoCard = {
       { minimumFractionDigits: casas, maximumFractionDigits: casas });
   },
 
+  /* ══════════════════════════════════════════════════════════
+     O CIRCUITO — a sessão com blocos
+
+     Um card, N blocos. Nasceu de um treino real: mobilidade 5min,
+     cardio 25–30min, prancha 3×20–30s, agachamento 3×10–12.
+
+     POR QUE NÃO SÃO QUATRO CARTÕES: quatro rotinas dariam quatro
+     prazos, quatro chances de fracasso e — com o medidor de punição —
+     QUATRO BARRAS enchendo. Quem perdeu o treino não falhou quatro
+     compromissos, perdeu um.
+
+     A FAIXA É O QUE A META NÃO TEM. "25 a 30 min" não cabe num
+     `meta_alvo` único, e uma orientação de adaptação usa intervalos de
+     propósito. Por isso cada bloco carrega piso e teto.
+
+     O PISO NÃO REPROVA, MARCA. 22 min numa faixa de 25–30 fecha o
+     bloco e deixa a sessão parcial. Recusar ensinaria a arredondar
+     para cima na hora de lançar.
+     ══════════════════════════════════════════════════════════ */
+  _ehCircuito(m) {
+    return !!(m?.circuito && Array.isArray(m.circuito.blocos) && m.circuito.blocos.length);
+  },
+
+  _corpoCircuito(m, chave) {
+    if (!this._ehCircuito(m)) return '';
+    const c = m.circuito;
+    const encerrada = ['CONCLUIDA', 'CANCELADA', 'FRACASSADA']
+      .includes((m.status_hoje || m.status || '').toUpperCase());
+
+    /* A ESCADA. Um segmento por bloco, na ordem em que se faz — é o
+       efeito de card do circuito, e o único livre na gramática (os
+       chevrons são da ativa, o selo da passiva, as brasas da
+       progressiva, a bifurcação da condicional, o enchimento da meta). */
+    const escada = c.blocos.map(b => {
+      const cls = !b.feito ? 'aberto' : (b.abaixo ? 'parcial' : 'ok');
+      return `<i class="mc-circ-degrau mc-circ-${cls}"
+                 title="${this._esc(b.titulo)}"></i>`;
+    }).join('');
+
+    const linhas = c.blocos.map(b => this._blocoCircuito(b, chave, encerrada)).join('');
+
+    return `<div class="mc-circuito">
+      <div class="mc-circ-topo">
+        <div class="mc-circ-escada">${escada}</div>
+        <span class="mc-circ-conta">${c.fechados} de ${c.total}</span>
+        ${c.parcial ? '<span class="mc-circ-selo-parcial" title="Algum bloco fechou abaixo do combinado">parcial</span>' : ''}
+      </div>
+      <div class="mc-circ-blocos">${linhas}</div>
+    </div>`;
+  },
+
+  _blocoCircuito(b, chave, encerrada) {
+    const faixa = this._faixaCircuito(b);
+    const temSerie = b.modo === 'SERIE_TEMPO' || b.modo === 'SERIE_REP';
+
+    // As séries já lançadas, uma ficha cada — é onde o hunter vê que a
+    // segunda saiu curta, e é onde mora o desfazer.
+    const fichas = temSerie ? (b.valores || []).map(v =>
+      `<span class="mc-circ-serie${(b.min != null && v < b.min) ? ' curta' : ''}"
+        >${this._esc(this._numCirc(v))}${b.unidade ? ' ' + this._esc(b.unidade) : ''}</span>`
+    ).join('') : '';
+
+    let acao = '';
+    if (!encerrada && !b.feito) {
+      if (b.modo === 'CHECK') {
+        acao = `<button type="button" class="mc-circ-ok" data-mc-acao="circ-registrar"
+                  data-mc-bloco="${this._esc(b.id)}" data-mc-id="${chave}">Feito</button>`;
+      } else {
+        const rot = temSerie ? `Série ${(b.valores || []).length + 1}` : 'Lançar';
+        acao = `<span class="mc-circ-entrada">
+          <input type="text" inputmode="decimal" class="mc-circ-input"
+                 data-mc-circ-input="${chave}|${this._esc(b.id)}"
+                 placeholder="${this._esc(b.unidade || '')}"
+                 aria-label="Valor de ${this._esc(b.titulo)}">
+          <button type="button" class="mc-circ-ok" data-mc-acao="circ-registrar"
+                  data-mc-bloco="${this._esc(b.id)}" data-mc-id="${chave}">${rot}</button>
+        </span>`;
+      }
+    }
+
+    /* O DESFAZER SOBREVIVE À CONCLUSÃO — e o registrar não.
+       A sessão fecha sozinha ao entregar o último bloco. Se o hunter
+       errou o número dessa última série, esconder o desfazer tornaria o
+       erro permanente pela tela: ele teria fechado o treino com um dado
+       falso e nenhum caminho de volta.
+       Corrigir, sim; acrescentar depois de fechado, não. */
+    const desfazer = (b.feito || (b.valores || []).length)
+      ? `<button type="button" class="mc-circ-desfazer" data-mc-acao="circ-desfazer"
+           data-mc-bloco="${this._esc(b.id)}" data-mc-id="${chave}"
+           title="Voltar um passo neste bloco">${this._g('menos', 11)}</button>`
+      : '';
+
+    const valor = (!temSerie && b.valor != null)
+      ? `<span class="mc-circ-valor${(b.min != null && b.valor < b.min) ? ' curta' : ''}"
+          >${this._esc(this._numCirc(b.valor))}${b.unidade ? ' ' + this._esc(b.unidade) : ''}</span>`
+      : '';
+
+    const est = !b.feito ? 'aberto' : (b.abaixo ? 'parcial' : 'ok');
+    return `<div class="mc-circ-bloco mc-circ-b-${est}">
+      <div class="mc-circ-linha">
+        <span class="mc-circ-marca">${b.feito ? this._g('concluida', 12) : ''}</span>
+        <span class="mc-circ-nome">${this._esc(b.titulo)}</span>
+        <span class="mc-circ-faixa">${this._esc(faixa)}</span>
+        ${valor}${desfazer}
+      </div>
+      ${b.nota ? `<div class="mc-circ-nota">${this._esc(b.nota)}</div>` : ''}
+      ${fichas || acao ? `<div class="mc-circ-series">${fichas}${acao}</div>` : ''}
+    </div>`;
+  },
+
+  /* "25–30 min", "3 × 20–30 s", "3 × 10–12" — o combinado, em texto.
+     Espelha `circuito.rotulo_faixa` no servidor; se um dia divergirem, é
+     o texto que o hunter lê que está errado. */
+  _faixaCircuito(b) {
+    const u = b.unidade || '';
+    const n = (v) => this._numCirc(v);
+    let faixa = '';
+    if (b.min != null && b.max != null && b.min !== b.max) faixa = `${n(b.min)}–${n(b.max)}`;
+    else if (b.min != null || b.max != null) faixa = n(b.min != null ? b.min : b.max);
+    const base = faixa + (u ? ' ' + u : '');
+    return b.series ? `${b.series} × ${base}`.trim() : base.trim();
+  },
+
+  _numCirc(v) {
+    const n = Number(v || 0);
+    return Number.isInteger(n) ? String(n)
+      : n.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+  },
+
+  /* O QUE FALTA, no lugar do botão de concluir — irmão do
+     `_seloFaltaMeta`, e pelo mesmo motivo: um botão desabilitado diz
+     "não pode" sem dizer por quê. */
+  _seloFaltaCircuito(m) {
+    const c = m.circuito || {};
+    const n = c.faltam || 0;
+    return `<span class="mc-selo mc-selo-etapa"
+      title="O circuito se conclui ao entregar os blocos.">`
+      + `${this._g('ampulheta', 12)} Falta${n > 1 ? 'm' : ''} ${n} bloco${n > 1 ? 's' : ''}`
+      + '</span>';
+  },
+
   _ehProgressiva(m) {
     return !!m?.eh_progressiva;
   },
@@ -1323,6 +1464,7 @@ const MissaoCard = {
            evita o acidente, mas só a trava lá impede a chamada direta. */
         acoes = b('pausar', 'mc-btn-neutro', this._g('pausada', 13) + ' Pausar') +
                 (this._ehMeta(m) ? this._seloFaltaMeta(m)
+                 : this._ehCircuito(m) && !m.circuito.completo ? this._seloFaltaCircuito(m)
                                  : b('concluir', 'mc-btn-concluir',
                                      this._g('concluida', 13) + ' Concluir'));
         break;
@@ -1332,6 +1474,7 @@ const MissaoCard = {
       case 'PAUSADA':
         acoes = b('retomar', 'mc-btn-iniciar', this._g('ativa', 12) + ' Retomar') +
                 (this._ehMeta(m) ? this._seloFaltaMeta(m)
+                 : this._ehCircuito(m) && !m.circuito.completo ? this._seloFaltaCircuito(m)
                                  : b('concluir', 'mc-btn-concluir',
                                      this._g('concluida', 13) + ' Concluir'));
         break;
@@ -1611,6 +1754,7 @@ const MissaoCard = {
        a bifurcação no fundo e desliga o espólio do topo — a pergunta é
        container, o espólio mora na missão que ela gera. */
     const meta = this._ehMeta(m) ? ' mc-meta-card' : '';
+    const circ = this._ehCircuito(m) ? ' mc-circuito-card' : '';
     const cond = this._condPayload(m) ? ' mc-condicional' : '';
     /* A MISSÃO NASCIDA DE UMA PERGUNTA. Ganha o fio que sobe até o
        cartão que a gerou — é a "inteligência visual" que impede ela de
@@ -1624,7 +1768,7 @@ const MissaoCard = {
       : '';
 
     return `
-    <div class="mc ${st.classe}${compacto}${selado}${passiva}${repet}${modoRep}${penit}${prog}${etapaProg}${cond}${condResp}${filha}${meta}" data-mc-card="${chave}"
+    <div class="mc ${st.classe}${compacto}${selado}${passiva}${repet}${modoRep}${penit}${prog}${etapaProg}${cond}${condResp}${filha}${meta}${circ}" data-mc-card="${chave}"
          data-mc-sig="${this.assinatura(m, opts)}"
          style="--mc-cor:${cor};--mc-cor-suave:${this._alpha(cor, .14)}${
            prog ? `;--prog-carga:${this._cargaProgressiva(m).toFixed(3)}` : ''}${
@@ -1714,6 +1858,7 @@ const MissaoCard = {
         })()}
         ${cond ? this._corpoCondicional(m, chave) : ''}
         ${meta ? this._corpoMeta(m, chave) : ''}
+        ${this._corpoCircuito(m, chave)}
         ${prog ? this._barraProgressiva(m) : ''}
         ${repet
           ? (this._alvoDe(m) !== null
@@ -2016,6 +2161,8 @@ const MissaoCard = {
       return this._repetir(chave, btn, acao === 'repetir' ? +1 : -1);
     if (acao === 'meta-somar' || acao === 'meta-desfazer')
       return this._meta(chave, btn, acao === 'meta-somar');
+    if (acao === 'circ-registrar' || acao === 'circ-desfazer')
+      return this._circuito(chave, btn, acao === 'circ-registrar');
     if (this._demo) return this._demoTransicao(acao, chave);
 
     // Trava de segurança: origem "rotina" sem rotina_id significa que a lista
@@ -2253,6 +2400,72 @@ const MissaoCard = {
      banco guardaria outro.
 
      Então o fluxo é: manda, espera, e desenha o que voltou. */
+  /* Entrega um bloco — ou desfaz o último passo dele.
+
+     O SERVIDOR É A VERDADE, e aqui isso importa mais que na meta: o
+     que fecha um bloco de séries é a CONTAGEM delas contra o combinado,
+     e o combinado mora no payload do servidor. Adivinhar aqui faria o
+     card declarar "feito" um bloco que o backend ainda considera aberto
+     — e o botão Concluir apareceria para ser recusado. */
+  async _circuito(chave, btn, registrando) {
+    const { m, id, tarefa } = this._rota(chave);
+    if (!Number.isFinite(Number(id))) {
+      SoloDialog?.toast?.('Não consegui identificar a missão — recarregue a lista.', 'error');
+      return;
+    }
+    const bloco = btn?.dataset?.mcBloco;
+    if (!bloco) return;
+
+    let valor = null;
+    if (registrando) {
+      const b = (m.circuito?.blocos || []).find(x => x.id === bloco);
+      // CHECK não tem número; os outros exigem um.
+      if (b && b.modo !== 'CHECK') {
+        const campo = document.querySelector(
+          `[data-mc-circ-input="${chave}|${bloco}"]`);
+        valor = this._lerNumero(campo?.value || '');
+        if (valor === null) {
+          SoloDialog?.toast?.('Digite o valor deste bloco.', 'error');
+          campo?.focus();
+          return;
+        }
+      }
+    }
+
+    btn.disabled = true;
+    try {
+      const base = tarefa ? { tarefa_id: id } : { rotina_id: id };
+      const resp = registrando
+        ? await API.post('/execucoes/circuito/registrar',
+            { ...base, etapa_id: bloco, valor })
+        : await API.post('/execucoes/circuito/desfazer',
+            { ...base, etapa_id: bloco });
+
+      if (resp.circuito) m.circuito = resp.circuito;
+      if (resp.status) { m.status = resp.status; m.status_hoje = resp.status; }
+      this.repintar(chave);
+
+      if (resp.circuito_cumprido) {
+        const card = document.querySelector(`[data-mc-card="${chave}"]`);
+        const g = resp.resultado || {};
+        if (typeof missionComplete === 'function' && card)
+          missionComplete(card, g.xp_ganho || 0, g.moedas_ganhas || 0);
+        // A sessão parcial é notícia: o hunter precisa saber POR QUE
+        // ganhou menos, senão o desconto vira defeito aos olhos dele.
+        if (resp.parcial)
+          SoloDialog?.toast?.('Sessão parcial — algum bloco ficou abaixo do combinado. XP reduzido.', 'info');
+      }
+      if (resp.reabriu) SoloDialog?.toast?.('Sessão reaberta e XP devolvido.', 'info');
+
+      this.avisarDesatualizado('circuito');
+      if (this._onMudou) await this._onMudou(resp, registrando ? 'circ-registrar' : 'circ-desfazer', id, chave);
+    } catch (err) {
+      SoloDialog?.toast?.(err.message || String(err), 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  },
+
   async _meta(chave, btn, somando) {
     const { m, id, tarefa } = this._rota(chave);
     if (!Number.isFinite(Number(id))) {

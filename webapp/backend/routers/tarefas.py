@@ -372,6 +372,19 @@ def concluir_tarefa(
                 f"de {motor_meta.formatar(t.meta_alvo, esp, un)} — registre "
                 f"os valores para chegar lá.")
 
+    # ── NEM UM CIRCUITO ──────────────────────────────────────────────
+    # Mesma trava, mesmo motivo: o card do circuito existe para saber
+    # QUAIS blocos foram feitos, e um botão que fecha com blocos em
+    # aberto joga fora o dado inteiro que a natureza guarda.
+    from motors import circuito as motor_circuito
+    if motor_circuito.eh_circuito(t) and not motor_circuito.completo(t, t):
+        d = motor_circuito.normalizar(t.circuito_payload)
+        p = motor_circuito.progresso(d, motor_circuito.ler_feito(t.circuito_feito))
+        raise HTTPException(400,
+            f"Esta é uma missão de circuito: ela se conclui ao entregar os "
+            f"blocos. Você fechou {p['fechados']} de {p['total']} — "
+            f"falta{'m' if p['faltam'] > 1 else ''} {p['faltam']}.")
+
     # O prazo da missão geral conta desde a INTENÇÃO (quando foi criada), não
     # desde o play. Quem cria uma missão de 30 minutos às 14:00 tem até 14:30,
     # tenha começado ou não. Concluir depois disso continua valendo a pena
