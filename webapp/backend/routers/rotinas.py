@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import date, datetime
 from motors import meta as motor_meta
+from motors import circuito as motor_circuito
 from motors import tempo
 from motors import economia, especiais
 
@@ -58,6 +59,7 @@ class RotinaCreate(BaseModel):
     dias_progressivos_alvo: Optional[int]  = None
     # CONDICIONAL: JSON { pergunta, opcao_a: {txt, xp_bonus}, opcao_b: {txt, xp_bonus} }
     condicional_payload:    Optional[str]  = None
+    circuito_payload:       Optional[str]  = None
     # META — o alvo numérico. `meta_modo` NÃO vem do cliente: quem decide
     # é `motors/meta.py` a partir da espécie, e deixar o cliente mandar
     # abriria caminho para uma meta de peso configurada como acúmulo —
@@ -94,6 +96,7 @@ class RotinaUpdate(BaseModel):
     eh_progressiva:         Optional[bool] = None
     dias_progressivos_alvo: Optional[int]  = None
     condicional_payload:    Optional[str]  = None
+    circuito_payload:       Optional[str]  = None
     # META — o alvo numérico. `meta_modo` NÃO vem do cliente: quem decide
     # é `motors/meta.py` a partir da espécie, e deixar o cliente mandar
     # abriria caminho para uma meta de peso configurada como acúmulo —
@@ -189,6 +192,7 @@ def _rotina_to_dict(r: Rotina, exec_dia: "ExecucaoDia | None" = None,
         "resposta_condicional": getattr(ed, "resposta_condicional", None) if ed else None,
         "condicional_vitoria":  getattr(ed, "condicional_vitoria",  None) if ed else None,
         "condicional_payload":  getattr(r, "condicional_payload",   None),
+        "circuito_payload":     getattr(r, "circuito_payload",      None),
         "meta_alvo":       getattr(r, "meta_alvo", None),
         "meta_unidade":    getattr(r, "meta_unidade", None),
         "meta_especie":    getattr(r, "meta_especie", None),
@@ -475,6 +479,22 @@ def criar_rotina(
         try: rotina.condicional_payload = payload.condicional_payload
         except Exception: pass
 
+    # CIRCUITO — aqui o payload NÃO é guardado bruto, ao contrário do
+    # condicional. O motor normaliza antes: corta blocos sem título,
+    # desinverte faixas digitadas ao contrário (30–25 vira 25–30), trava
+    # o número de séries e descarta modo inválido.
+    #
+    # Guardar bruto e normalizar só na leitura funcionaria — mas deixaria
+    # lixo no banco à espera do dia em que alguém lesse o campo sem passar
+    # pelo motor. Normalizar na entrada é o que faz o banco conter apenas
+    # circuitos que existem.
+    if natureza == especiais.CIRCUITO:
+        d = motor_circuito.normalizar(payload.circuito_payload)
+        if not d:
+            raise HTTPException(400, "Um circuito precisa de pelo menos um "
+                                     "bloco — sem eles não haveria o que entregar.")
+        rotina.circuito_payload = json.dumps(d, ensure_ascii=False)
+
     db.add(rotina)
     db.commit()
     db.refresh(rotina)
@@ -535,6 +555,17 @@ def atualizar_rotina(
         if payload.hora_fim      is not None: r.hora_fim      = payload.hora_fim or None
     except Exception:
         pass
+
+    # CIRCUITO — o desenho pode ser editado, e passa pelo mesmo motor da
+    # criação. Sem isto, editar um circuito para trocar "25–30 min" por
+    # "20–25 min" salvava tudo menos justamente os blocos, e o hunter
+    # concluiria que a edição não funciona.
+    if payload.circuito_payload is not None:
+        d = motor_circuito.normalizar(payload.circuito_payload)
+        if not d:
+            raise HTTPException(400, "Um circuito precisa de pelo menos um "
+                                     "bloco — sem eles não haveria o que entregar.")
+        r.circuito_payload = json.dumps(d, ensure_ascii=False)
 
     # A EDIÇÃO era a segunda porta do mesmo buraco: bastava criar uma rotina
     # honesta e depois editá-la pedindo 999.999 XP. A recompensa é sempre

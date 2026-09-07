@@ -87,7 +87,27 @@ const ForjaMissao = {
       sub: 'você mantém', premium: true },
     { id: 'CONDICIONAL', ico: 'condicional', txt: 'Condicional',  cor: '#f59e0b',
       sub: 'bifurca ao fim', premium: true },
+    /* CIRCUITO × as outras. O `sub` precisa dizer a diferença que
+       importa: aqui a missão tem PARTES, e todas contam para o mesmo
+       prazo e a mesma punição. Quem tem um treino de quatro blocos
+       cadastraria quatro rotinas se este rótulo não existisse — e
+       levaria quatro punições por uma manhã perdida. */
+    { id: 'CIRCUITO',    ico: 'repeticao',   txt: 'Circuito',     cor: '#14b8a6',
+      sub: 'blocos numa sessão' },
   ],
+
+  /* OS MODOS DE BLOCO. Espelham `motors/circuito.py` — o backend
+     continua sendo a verdade; aqui ficam o rótulo e a unidade sugerida,
+     que são coisas de tela. */
+  MODOS_BLOCO: [
+    { id: 'TEMPO',       txt: 'Tempo',        un: 'min', serie: false },
+    { id: 'SERIE_TEMPO', txt: 'Séries/tempo', un: 's',   serie: true  },
+    { id: 'SERIE_REP',   txt: 'Séries/reps',  un: '',    serie: true  },
+    { id: 'CHECK',       txt: 'Só marcar',    un: '',    serie: false },
+  ],
+  _modoBloco(id) {
+    return this.MODOS_BLOCO.find(x => x.id === id) || this.MODOS_BLOCO[0];
+  },
   /* AS ESPÉCIES DE META. Espelham `motors/meta.py` — o backend continua
      sendo a verdade (é ele que formata "R$ 1.234,50" e decide as casas);
      aqui ficam só o rótulo, o ícone e o palpite de alvo, que são coisas
@@ -103,6 +123,60 @@ const ForjaMissao = {
   ],
   _especieMeta(id) {
     return this.ESPECIES_META.find(x => x.id === (id || 'VALOR')) || this.ESPECIES_META[0];
+  },
+
+  /* AS LINHAS DO CIRCUITO.
+
+     Uma linha por bloco: título, modo, séries, faixa e unidade. O campo
+     de séries só aparece nos modos que têm série, e o de faixa some no
+     CHECK — mostrar "mín/máx" num bloco que é só marcar convidaria a
+     preencher um número que nada leria.
+
+     O ESTADO MORA EM `e.circ_blocos`, e os inputs são espelho dele. Ler
+     os valores do DOM na hora de salvar funcionaria até o hunter remover
+     a segunda linha de quatro: os índices dançam, e o `data-i` de cada
+     input passaria a apontar para o bloco errado. */
+  _linhasCircuito(e) {
+    const blocos = e.circ_blocos || [];
+    return blocos.map((b, i) => {
+      const modo = this._modoBloco(b.modo);
+      const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
+        c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      return `
+      <div class="fm-circ-linha" data-i="${i}">
+        <span class="fm-circ-n">${i + 1}</span>
+        <input type="text" class="fm-input fm-circ-titulo" data-circ="titulo" data-i="${i}"
+               value="${esc(b.titulo)}" placeholder="Cardio base" maxlength="120">
+        <select class="fm-input fm-circ-modo" data-circ="modo" data-i="${i}">
+          ${this.MODOS_BLOCO.map(x => `<option value="${x.id}"${x.id === b.modo ? ' selected' : ''}>${x.txt}</option>`).join('')}
+        </select>
+        <input type="text" inputmode="numeric" class="fm-input fm-circ-num" data-circ="series" data-i="${i}"
+               value="${esc(b.series)}" placeholder="3" title="Séries"
+               ${modo.serie ? '' : 'style="visibility:hidden"'}>
+        <input type="text" inputmode="decimal" class="fm-input fm-circ-num" data-circ="min" data-i="${i}"
+               value="${esc(b.min)}" placeholder="mín"
+               ${modo.id === 'CHECK' ? 'style="visibility:hidden"' : ''}>
+        <input type="text" inputmode="decimal" class="fm-input fm-circ-num" data-circ="max" data-i="${i}"
+               value="${esc(b.max)}" placeholder="máx"
+               ${modo.id === 'CHECK' ? 'style="visibility:hidden"' : ''}>
+        <input type="text" class="fm-input fm-circ-un" data-circ="unidade" data-i="${i}"
+               value="${esc(b.unidade)}" placeholder="${esc(modo.un || '—')}" maxlength="8"
+               ${modo.id === 'CHECK' ? 'style="visibility:hidden"' : ''}>
+        <button type="button" class="fm-circ-del" data-circ-del="${i}"
+                title="Remover este bloco" aria-label="Remover bloco ${i + 1}"
+                ${blocos.length <= 1 ? 'disabled' : ''}>×</button>
+      </div>`;
+    }).join('');
+  },
+
+  /* Repinta SÓ a lista de blocos.
+
+     Repintar o formulário inteiro perderia o foco e o que estava sendo
+     digitado nos outros campos — e o hunter que trocou o modo do bloco 3
+     voltaria ao começo do título da missão. */
+  _repintarCircuito() {
+    const el = document.getElementById('fm-circ-lista');
+    if (el) el.innerHTML = this._linhasCircuito(this._estado);
   },
   /* Só o PESO mede. É a regra de `motors/meta.py`, repetida aqui apenas
      para MOSTRAR/ESCONDER o campo de ponto de partida — nenhuma conta é
@@ -240,6 +314,11 @@ const ForjaMissao = {
          nascem vazios de propósito — um alvo sugerido viraria alvo
          aceito sem ninguém pensar nele. */
       meta_especie: 'VALOR', meta_alvo: '', meta_unidade: '', meta_inicial: '',
+      /* CIRCUITO. Nasce com UM bloco vazio, não com nenhum: uma lista
+         vazia com um botão "+" faz o hunter ter de descobrir que precisa
+         clicar antes de escrever. A primeira linha já pronta mostra o
+         formato sem explicá-lo. */
+      circ_blocos: [{ titulo: '', modo: 'TEMPO', series: 3, min: '', max: '', unidade: '' }],
     };
 
     if (ed) this._carregarEdicao(ed, opts.tipo);
@@ -575,6 +654,29 @@ const ForjaMissao = {
       e.meta_especie  = ed.meta_especie || 'VALOR';
       e.meta_inicial  = ed.meta_inicial ?? '';
     }
+
+    /* OS BLOCOS VOLTAM PARA O FORMULÁRIO.
+
+       A mesma lição da bifurcação, logo abaixo: sem hidratar, abrir um
+       circuito para corrigir o título mostraria a lista em branco, e
+       salvar apagaria os quatro blocos. O defeito não daria erro — só
+       destruiria o trabalho em silêncio.
+
+       Payload torto cai no `catch` e o formulário abre com a linha vazia
+       padrão: um circuito que perdeu o desenho ainda é editável. */
+    try {
+      const c = JSON.parse(ed.circuito_payload || '{}') || {};
+      if (Array.isArray(c.etapas) && c.etapas.length) {
+        e.circ_blocos = c.etapas.map(b => ({
+          titulo:  b.titulo || '',
+          modo:    b.modo || 'TEMPO',
+          series:  b.series ?? 3,
+          min:     b.min ?? '',
+          max:     b.max ?? '',
+          unidade: b.unidade || '',
+        }));
+      }
+    } catch (_) { /* desenho ilegível: abre com a linha padrão */ }
 
     /* A BIFURCAÇÃO VOLTA PARA O FORMULÁRIO.
 
@@ -928,6 +1030,21 @@ const ForjaMissao = {
               </div>
             </div>
 
+            <!-- CIRCUITO — os blocos da sessão. Só para CIRCUITO. -->
+            <div class="fm-bloco fm-full" id="fm-bloco-circuito"
+                 ${e.natureza === 'CIRCUITO' ? '' : 'style="display:none"'}>
+              <div class="fm-rotulo">${gl("repeticao", 14)} Os blocos da sessão</div>
+              <div id="fm-circ-lista">${this._linhasCircuito(e)}</div>
+              <button type="button" class="fm-circ-add" id="fm-circ-add">+ bloco</button>
+              <div class="fm-prog-aviso">
+                💡 <b>Uma missão, várias partes.</b> Todos os blocos dividem o
+                mesmo prazo — e falhar a sessão conta como <i>uma</i> falha,
+                não uma por bloco. Use <code>mín</code> e <code>máx</code> para
+                faixas (<code>25</code> a <code>30</code> min); entregar abaixo
+                do mínimo fecha o bloco e marca a sessão como parcial.
+              </div>
+            </div>
+
             <!-- CONDICIONAL — a bifurcação. Só para CONDICIONAL. -->
             <div class="fm-bloco fm-full" id="fm-bloco-condicional"
                  ${e.natureza === 'CONDICIONAL' ? '' : 'style="display:none"'}>
@@ -1174,6 +1291,33 @@ const ForjaMissao = {
     bd.dataset.bound = '1';
 
     bd.addEventListener('click', (ev) => {
+      if (ev.target.id === 'fm-circ-add') {
+        const bl = this._estado.circ_blocos;
+        // Herda o modo do último: quem acabou de criar um bloco de
+        // séries provavelmente vai criar outro.
+        const ult = bl[bl.length - 1] || {};
+        bl.push({ titulo: '', modo: ult.modo || 'TEMPO',
+                  series: ult.series || 3, min: '', max: '',
+                  unidade: ult.unidade || '' });
+        this._repintarCircuito();
+        // O foco vai para o título do bloco novo — senão o hunter clica
+        // em "+ bloco" e tem de caçar onde escrever.
+        setTimeout(() => {
+          const campos = document.querySelectorAll('[data-circ="titulo"]');
+          campos[campos.length - 1]?.focus();
+        }, 20);
+        return;
+      }
+      if (ev.target.matches('[data-circ-del]')) {
+        const i = +ev.target.dataset.circDel;
+        // NUNCA remove o último. Um circuito sem blocos não é um
+        // circuito, e o servidor recusaria — melhor não deixar chegar lá.
+        if (this._estado.circ_blocos.length > 1) {
+          this._estado.circ_blocos.splice(i, 1);
+          this._repintarCircuito();
+        }
+        return;
+      }
       // Dias da semana: seleção MÚLTIPLA — não passa pelo fluxo dos grupos.
       const dia = ev.target.closest('[data-fm-dia]');
       if (dia) {
@@ -1326,6 +1470,21 @@ const ForjaMissao = {
     });
 
     bd.addEventListener('change', (ev) => {
+      /* Trocar o MODO de um bloco repinta a lista: o campo de séries
+         some no TEMPO, e a faixa some no CHECK. Sem a repintura, o
+         hunter escolheria "Só marcar" e continuaria vendo mín/máx. */
+      if (ev.target.matches('[data-circ="modo"]')) {
+        const i = +ev.target.dataset.i;
+        const b = this._estado.circ_blocos[i];
+        if (b) {
+          b.modo = ev.target.value;
+          // A unidade sugerida acompanha o modo — mas só quando o hunter
+          // ainda não escreveu a dele.
+          if (!b.unidade) b.unidade = '';
+          this._repintarCircuito();
+        }
+        return;
+      }
       if (ev.target.matches('[data-fm-janela]')) {
         this._estado.janela = ev.target.checked;
         document.getElementById('fm-horarios')?.classList.toggle('on', this._estado.janela);
@@ -1353,6 +1512,17 @@ const ForjaMissao = {
 
     bd.addEventListener('input', (ev) => {
       const t = ev.target;
+      /* O ESTADO É A VERDADE, não o DOM. Ler os inputs só na hora de
+         salvar quebraria ao remover a segunda de quatro linhas: os
+         índices dançam e cada `data-i` passaria a apontar para o bloco
+         errado. Aqui cada tecla vai direto para `circ_blocos`. */
+      if (t.matches('[data-circ]')) {
+        const i = +t.dataset.i;
+        const campo = t.dataset.circ;
+        const b = this._estado.circ_blocos[i];
+        if (b) b[campo] = t.value;
+        return;
+      }
       if (t.id === 'fm-titulo-input') {
         this._estado.titulo = t.value;
         if (this._estado.tipo === 'PACTO') { this._atualizar(); return; }
@@ -1433,6 +1603,7 @@ const ForjaMissao = {
     // Condicional: bloco de config da bifurcação
     mostra('fm-bloco-condicional', !pacto && !tarefa && e.natureza === 'CONDICIONAL');
     mostra('fm-bloco-meta',        !pacto && e.natureza === 'META');
+    mostra('fm-bloco-circuito',    !pacto && e.natureza === 'CIRCUITO');
     mostra('fm-bloco-prior',     !pacto);
     mostra('fm-bloco-dific',     !pacto);
     mostra('fm-bloco-categoria', !pacto);
@@ -1918,6 +2089,47 @@ const ForjaMissao = {
             }
             payload.meta_inicial = ini;
           }
+        }
+
+        /* CIRCUITO — os blocos viram o payload que `motors/circuito.py`
+           lê. O servidor NORMALIZA de novo (corta bloco sem título,
+           desinverte faixa, trava o número de séries): o que sai daqui é
+           uma proposta, não a verdade. Validamos mesmo assim para o erro
+           chegar como frase, e não como 400. */
+        if (e.natureza === 'CIRCUITO') {
+          const n = (v) => {
+            const x = this._numeroBR(v);
+            return x === null ? null : x;
+          };
+          const blocos = (e.circ_blocos || [])
+            .filter(b => (b.titulo || '').trim())
+            .map((b, i) => {
+              const modo = this._modoBloco(b.modo);
+              const o = {
+                // O id é estável dentro do circuito e é o que o registro
+                // do dia usa como chave. Derivado da posição, e não do
+                // título, porque renomear um bloco não pode apagar o que
+                // já foi entregue nele.
+                id: `b${i}`,
+                titulo: (b.titulo || '').trim(),
+                modo: modo.id,
+              };
+              if (modo.serie) o.series = Math.max(1, parseInt(b.series, 10) || 1);
+              if (modo.id !== 'CHECK') {
+                const mi = n(b.min), ma = n(b.max);
+                if (mi !== null) o.min = mi;
+                if (ma !== null) o.max = ma;
+                const un = (b.unidade || '').trim() || modo.un;
+                if (un) o.unidade = un;
+              }
+              return o;
+            });
+
+          if (!blocos.length) {
+            SoloDialog?.toast?.('Um circuito precisa de pelo menos um bloco com título.', 'error');
+            if (btn) btn.disabled = false; return;
+          }
+          payload.circuito_payload = JSON.stringify({ etapas: blocos });
         }
 
         if (e.natureza === 'CONDICIONAL') {

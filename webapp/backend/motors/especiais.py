@@ -94,11 +94,14 @@ PASSIVA    = "PASSIVA"
 REPETICAO  = "REPETICAO"
 META       = "META"
 CONDICIONAL = "CONDICIONAL"
+# CIRCUITO — a sessao com blocos. Uma missao, N partes, um prazo, UMA
+# punicao ao falhar. Ver motors/circuito.py.
+CIRCUITO   = "CIRCUITO"
 # PUNICAO nao e criada pelo hunter: nasce do fechamento do dia. Por isso
 # ela esta em NATUREZAS (o cartao precisa reconhece-la) e NAO no
 # lancador — `pode_criar` a recusa de proposito, ver abaixo.
 PUNICAO    = "PUNICAO"
-NATUREZAS  = (ATIVA, PASSIVA, REPETICAO, META, CONDICIONAL, PUNICAO)
+NATUREZAS  = (ATIVA, PASSIVA, REPETICAO, META, CONDICIONAL, CIRCUITO, PUNICAO)
 
 # Naturezas que exigem permissão para serem criadas. ATIVA e REPETICAO
 # são de todos. CONDICIONAL é premium: a bifurcação precisa de payload
@@ -155,9 +158,20 @@ def permissao(usuario) -> dict:
     A tela nunca decide se PODE — ela decide o que MOSTRAR. Quem decide se
     pode é o servidor, em `pode_criar`, a cada requisição."""
     liberado = (getattr(usuario, "nivel_acesso", "") or "") in FORJADORES_ESPECIAIS
+    # A LISTA É DERIVADA, e era escrita à mão: `[ATIVA, REPETICAO]`.
+    #
+    # Uma lista paralela ao lado de `PREMIUM` garante que a próxima
+    # natureza seja esquecida nela — foi o que aconteceu com META, que
+    # nunca foi premium e mesmo assim não aparecia para o hunter comum, e
+    # o que quase aconteceu de novo com CIRCUITO.
+    #
+    # Agora a regra é uma só: premium é premium, o resto é de todos.
+    # PUNICAO fica de fora dos dois lados porque não se cria — nasce do
+    # fechamento do dia.
+    comuns = [n for n in NATUREZAS if n not in PREMIUM and n != PUNICAO]
     return {
         "pode_especiais": liberado,
-        "naturezas": list(NATUREZAS) if liberado else [ATIVA, REPETICAO],
+        "naturezas": [n for n in NATUREZAS if n != PUNICAO] if liberado else comuns,
         "motivo": None if liberado
                   else "Missões especiais são exclusivas da Staff por enquanto.",
     }

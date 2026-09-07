@@ -1016,3 +1016,59 @@
 @media (max-width: 560px) {
   .fm-cond-linha { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* ── CIRCUITO: o editor de blocos ─────────────────────────────────
+   Uma linha por bloco. Compacta de proposito: um treino tem quatro
+   blocos, e quatro cartoes empilhados empurrariam o botao de salvar
+   para fora da tela no celular. */
+.fm-circ-linha {
+  display: grid;
+  grid-template-columns: 18px 1fr 106px 52px 52px 52px 26px;
+  gap: .3rem; align-items: center; margin-bottom: .35rem;
+}
+.fm-circ-n {
+  font-family: var(--font-section); font-size: .6rem;
+  color: var(--text-muted); text-align: center;
+}
+.fm-circ-linha .fm-input { padding: .3rem .4rem; font-size: .72rem; }
+.fm-circ-num, .fm-circ-un { text-align: center; }
+
+.fm-circ-del {
+  width: 24px; height: 24px; border-radius: .25rem; cursor: pointer;
+  border: 1px solid rgba(239,68,68,.3); background: rgba(239,68,68,.08);
+  color: #fca5a5; font-size: .85rem; line-height: 1;
+}
+.fm-circ-del:hover:not(:disabled) { background: rgba(239,68,68,.2); }
+/* Desabilitado no ULTIMO bloco: um circuito sem blocos nao e um
+   circuito, e o servidor recusaria. Melhor nao deixar chegar la. */
+.fm-circ-del:disabled { opacity: .25; cursor: not-allowed; }
+
+.fm-circ-add {
+  margin: .2rem 0 .6rem; padding: .3rem .7rem; cursor: pointer;
+  font-family: var(--font-section); font-size: .64rem; letter-spacing: .05em;
+  border-radius: .3rem; border: 1px dashed rgba(20,184,166,.45);
+  background: rgba(20,184,166,.08); color: #5eead4;
+}
+.fm-circ-add:hover { background: rgba(20,184,166,.18); }
+
+/* No celular a linha vira duas: titulo em cima, numeros embaixo. Sete
+   colunas em 360px dariam campos de 30px, que ninguem acerta. */
+@media (max-width: 560px) {
+  .fm-circ-linha {
+    grid-template-columns: 18px 1fr 26px;
+    grid-template-areas: "n titulo del" ". campos campos";
+    row-gap: .25rem;
+  }
+  .fm-circ-n      { grid-area: n; }
+  .fm-circ-titulo { grid-area: titulo; }
+  .fm-circ-del    { grid-area: del; }
+  .fm-circ-modo, .fm-circ-num, .fm-circ-un {
+    grid-area: campos; display: inline-block; width: auto;
+  }
+  .fm-circ-linha {
+    display: flex; flex-wrap: wrap;
+  }
+  .fm-circ-titulo { flex: 1 1 60%; }
+  .fm-circ-modo   { flex: 0 0 106px; }
+  .fm-circ-num, .fm-circ-un { flex: 0 0 52px; }
+}
