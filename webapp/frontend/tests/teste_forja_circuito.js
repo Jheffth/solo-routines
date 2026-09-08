@@ -87,29 +87,106 @@ function rodar() {
   ok(F._modoBloco('TEMPO').serie === false, 'e os de lançamento único também');
   ok(F._modoBloco('LIXO').id === 'TEMPO', 'modo desconhecido cai no padrão, não quebra');
 
-  /* ── 3. O estado nasce utilizável ───────────────────────────── */
-  console.log('\n-- a primeira linha já vem pronta --');
+  /* ── 3. A FORJA PREVÊ O CARTÃO ──────────────────────────────
+     A primeira versao era uma PLANILHA: sete colunas, um `select` e
+     "min"/"max" abreviados em caixas de 52px. Funcionava e nao se
+     entendia — quem cadastra um treino nao pensa em colunas, pensa em
+     "cardio, de 25 a 30 minutos".
+
+     Agora cada bloco e desenhado como a FILHA que ele vai virar, e sem
+     passo de traducao entre o que se forja e o que se ve. */
+  console.log('\n-- a placa do bloco --');
   F._estado = {
     tipo: 'ROTINA', natureza: 'CIRCUITO', titulo: 'Treino',
-    circ_blocos: [{ titulo: '', modo: 'TEMPO', series: 3, min: '', max: '', unidade: '' }],
+    janela: true, hora_inicio: '06:00', hora_fim: '06:45',
+    circ_blocos: [
+      { titulo: 'Mobilidade', modo: 'TEMPO', min: '5', max: '10', unidade: 'min', nota: 'Giro de braços' },
+      { titulo: 'Cardio base', modo: 'TEMPO', min: '25', max: '30', unidade: 'min', nota: '' },
+      { titulo: 'Prancha', modo: 'SERIE_TEMPO', series: '3', min: '20', max: '30', unidade: 's', nota: '' },
+    ],
   };
   const html = F._linhasCircuito(F._estado);
-  ok(/data-circ="titulo"/.test(html), 'a linha tem campo de título');
-  ok(/data-circ="modo"/.test(html), 'e seletor de modo');
-  ok(/data-circ="min"/.test(html) && /data-circ="max"/.test(html),
-     'e os dois lados da faixa');
-  ok(/disabled/.test(html),
-     'com o remover DESABILITADO — não se apaga o último bloco');
 
-  /* O CHECK não mostra faixa: pedir mín/máx para "fez ou não fez"
-     convidaria a preencher um número que nada leria. */
+  ok(/fm-circ-hex/.test(html),
+     'o hexagono numerado — a mesma forma do NO no cartao');
+  ok((html.match(/fm-circ-bloco/g) || []).length === 3,
+     'tres placas, uma por bloco — nao tres linhas de tabela');
+  ok(!/<select/.test(html),
+     'o SELECT sumiu: escolher glifo e reconhecimento, ler quatro linhas e leitura');
+  ok((html.match(/data-circ-modo/g) || []).length === 12,
+     'cada bloco oferece os quatro modos como botao (3 x 4 = 12)');
+  ok(/aria-pressed="true"/.test(html),
+     'e o modo escolhido se anuncia — o botao ligado e estado, nao so cor');
+  ok((html.match(/<svg /g) || []).length >= 12,
+     'com os MESMOS glifos do cartao: o que se escolhe aqui e o que se ve la');
+
+  /* A FAIXA VIRA FRASE. "3 series de 20 a 30 s" e como a orientacao foi
+     escrita; "min [20] max [30]" e como um banco de dados pensa. */
+  console.log('\n-- a faixa lida como frase --');
+  ok(/<em>de<\/em>/.test(html) && /<em>a<\/em>/.test(html),
+     'a faixa se le "de X a Y", nao "min/max"');
+  ok(/séries de/.test(html),
+     'e o bloco de series diz "3 series de 20 a 30 s"');
+  ok(!/placeholder="mín"/.test(html) && !/placeholder="máx"/.test(html),
+     'as abreviacoes de planilha sumiram dos campos');
+  ok((html.match(/fm-circ-trilho/g) || []).length === 3,
+     'cada bloco tem o TRILHO de previa — "esses numeros fazem sentido juntos?"');
+
+  /* Faixa de valor unico daria janela de largura zero, aqui como no cartao. */
+  const p1 = F._previaFaixa({ min: '5', max: '5' });
+  const a1 = parseFloat(/left:([\d.]+)%/.exec(p1)[1]);
+  const z1 = 100 - parseFloat(/right:([\d.]+)%/.exec(p1)[1]);
+  ok(z1 - a1 >= 3, `faixa de 5 a 5 ganha largura minima na previa (${(z1-a1).toFixed(1)}%)`);
+  ok(/vazio/.test(F._previaFaixa({ min: '', max: '' })),
+     'e bloco sem faixa mostra o trilho apagado, nao um vazio quebrado');
+
+  /* ── 3b. O QUE SO O CONJUNTO SABE ───────────────────────────
+     A duracao da sessao e o aviso de janela. E o que evita o erro mais
+     provavel de todos: montar 50 minutos de treino numa janela de 45. */
+  console.log('\n-- a duracao, e se ela cabe --');
+  /* 10 + 30 + (3 x 30s = 1,5) = 41,5, que arredonda para 42. Escrevi 41
+     no primeiro assert e o teste me corrigiu — meia unidade de series
+     cronometradas e exatamente o tipo de resto que se perde na conta de
+     cabeca, e e por isso que o cabecalho existe. */
+  ok(F._duracaoCircuito(F._estado) === 42,
+     `soma os tetos: 10 + 30 + 3x30s = ${F._duracaoCircuito(F._estado)} min`);
+  ok(/fm-circ-cabe/.test(html) && /45 min/.test(html),
+     'e compara com a janela: "cabe na janela de 45 min"');
+
+  F._estado.circ_blocos[1].max = '45';
+  ok(/fm-circ-alerta/.test(F._linhasCircuito(F._estado)),
+     'estourando a janela, o cabecalho AVISA — um numero solto ' +
+     '("57 min") nao diz se cabe');
+  F._estado.circ_blocos[1].max = '30';
+
+  ok(F._duracaoCircuito({ circ_blocos: [{ modo: 'SERIE_REP', series: '3', max: '12' }] }) === 0,
+     'REPETICAO nao entra na conta de tempo — contar seria inventar ' +
+     'uma duracao que ninguem sabe');
+
+  /* ── 3c. A ORDEM E DO CIRCUITO ──────────────────────────────── */
+  console.log('\n-- reordenar --');
+  ok(/data-circ-sobe/.test(html) && /data-circ-desce/.test(html),
+     'ha setas para trocar dois blocos de lugar');
+  ok(/data-circ-sobe="0"[^>]*disabled/.test(html),
+     'o primeiro nao sobe');
+  ok(/data-circ-desce="2"[^>]*disabled/.test(html),
+     'e o ultimo nao desce');
+  ok(/circ_blocos\[i\], bl\[j\]\] = \[bl\[j\]/.test(fonte) || /\[bl\[i\], bl\[j\]\] = \[bl\[j\], bl\[i\]\]/.test(fonte),
+     'a troca mexe no ESTADO, nao no DOM');
+
+  /* ── 3d. A INSTRUCAO ────────────────────────────────────────── */
+  ok(/fm-circ-nota/.test(html),
+     'ha campo de instrucao — o cartao ja a desenhava, era a Forja que ' +
+     'nao tinha como escreve-la');
+  ok(/o\.nota = nt/.test(fonte), 'e ela vai no payload');
+  ok(/nota:\s+b\.nota \|\| ''/.test(fonte), 'e volta na edicao');
+
+  /* ── 3e. O modo CHECK nao pede numero ───────────────────────── */
   const soCheck = F._linhasCircuito({ circ_blocos: [{ titulo: 'X', modo: 'CHECK' }] });
-  const ocultos = (soCheck.match(/visibility:hidden/g) || []).length;
-  ok(ocultos >= 3, `no modo "só marcar", faixa e unidade somem (${ocultos} campos)`);
-
-  const comSerie = F._linhasCircuito({ circ_blocos: [{ titulo: 'X', modo: 'SERIE_TEMPO', series: 3 }] });
-  ok(!/data-circ="series"[^>]*visibility:hidden/.test(comSerie),
-     'e no modo de séries o campo de séries aparece');
+  ok(/fm-circ-frase-check/.test(soCheck) && /so marca que fez|só marca que fez/.test(soCheck),
+     'no "so marcar" a faixa da lugar a uma frase — pedir min/max ali ' +
+     'convidaria a preencher um numero que nada leria');
+  ok(!/data-circ="min"/.test(soCheck), 'e os campos de faixa nem existem');
 
   /* ── 4. O treino do Arquiteto vira payload ──────────────────── */
   console.log('\n-- o treino, do formulário ao payload --');
@@ -186,8 +263,9 @@ function rodar() {
      'é o motivo de a natureza existir, e o hunter precisa saber');
 
   /* ── 9. O celular ──────────────────────────────────────────── */
-  ok(/@media \(max-width: 560px\)[\s\S]*fm-circ-linha/.test(css),
-     'sete colunas viram flex no celular — 30px por campo ninguém acerta');
+  ok(/@media \(max-width: 560px\)[\s\S]*fm-circ-modo-bt span\s*\{\s*display:\s*none/.test(css),
+     'no celular sobra so o glifo no botao de modo — quatro rotulos ' +
+     'lado a lado nao cabem em 360px');
 
   console.log(`\n=== ${testes - falhas}/${testes} ===`);
   return falhas;

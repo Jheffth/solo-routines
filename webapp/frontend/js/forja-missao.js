@@ -125,46 +125,158 @@ const ForjaMissao = {
     return this.ESPECIES_META.find(x => x.id === (id || 'VALOR')) || this.ESPECIES_META[0];
   },
 
-  /* AS LINHAS DO CIRCUITO.
+  /* ══════════════════════════════════════════════════════════
+     O EDITOR DE CIRCUITO — a forja prevê o cartão
 
-     Uma linha por bloco: título, modo, séries, faixa e unidade. O campo
-     de séries só aparece nos modos que têm série, e o de faixa some no
-     CHECK — mostrar "mín/máx" num bloco que é só marcar convidaria a
-     preencher um número que nada leria.
+     A PRIMEIRA VERSÃO ERA UMA PLANILHA: sete colunas, um `select`, e
+     "mín"/"máx" abreviados em caixas de 52px. Funcionava e não se
+     entendia — quem cadastra um treino não pensa em colunas, pensa em
+     "cardio, de 25 a 30 minutos".
 
-     O ESTADO MORA EM `e.circ_blocos`, e os inputs são espelho dele. Ler
-     os valores do DOM na hora de salvar funcionaria até o hunter remover
-     a segunda linha de quatro: os índices dançam, e o `data-i` de cada
-     input passaria a apontar para o bloco errado. */
+     A CORREÇÃO É DE PRINCÍPIO: cada bloco aqui é desenhado como a FILHA
+     que ele vai virar. Mesmo hexágono numerado, mesmo glifo do modo,
+     mesmo trilho com a janela. Assim não há passo de tradução entre o
+     que se forja e o que se vê — o Arquiteto configura olhando para o
+     resultado.
+
+     Três coisas que a planilha não conseguia dizer:
+
+       · O MODO VIRA ÍCONE. Escolher entre ampulheta e barras empilhadas
+         é reconhecimento; ler quatro linhas de um `select` é leitura.
+       · A FAIXA VIRA FRASE. "de 25 a 30 min" é como a orientação foi
+         escrita; "mín [25] máx [30]" é como um banco de dados pensa.
+       · A ORDEM É DO CIRCUITO. Um treino tem sequência — mobilidade
+         antes de cardio —, e sem as setas o Arquiteto teria de apagar
+         e reescrever para trocar dois blocos de lugar.
+     ══════════════════════════════════════════════════════════ */
+  _glifoModo(modo) {
+    const w = 'width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"';
+    const g = {
+      TEMPO: `<svg ${w}><path d="M7 3h10M7 21h10M8 3v3.5a4 4 0 0 0 1.6 3.2L12 12l2.4-2.3A4 4 0 0 0 16 6.5V3M8 21v-3.5a4 4 0 0 1 1.6-3.2L12 12l2.4 2.3A4 4 0 0 1 16 17.5V21"/></svg>`,
+      SERIE_TEMPO: `<svg ${w}><rect x="3" y="4" width="18" height="4" rx="1.2"/><rect x="3" y="10" width="18" height="4" rx="1.2"/><rect x="3" y="16" width="18" height="4" rx="1.2"/><path d="M12 5.4v1.2M12 11.4v1.2"/></svg>`,
+      SERIE_REP: `<svg ${w}><rect x="3" y="4" width="18" height="4" rx="1.2"/><rect x="3" y="10" width="18" height="4" rx="1.2"/><rect x="3" y="16" width="18" height="4" rx="1.2"/><path d="M6.5 5.6v.8M9 5.6v.8M6.5 11.6v.8M9 11.6v.8"/></svg>`,
+      CHECK: `<svg ${w}><path d="M12 2.5 20 6v6c0 4.5-3.2 8.3-8 9.5-4.8-1.2-8-5-8-9.5V6z"/><path d="m9 12 2 2 4-4"/></svg>`,
+    };
+    return g[modo] || g.TEMPO;
+  },
+
+  /* O trilho de prévia — o mesmo desenho do cartão, com a janela
+     combinada. Ele responde à pergunta que a planilha deixava no ar:
+     "esses números fazem sentido juntos?". Uma faixa de 5 a 300 aparece
+     como uma janela ocupando a barra inteira, e isso se vê. */
+  _previaFaixa(b) {
+    const mi = this._numeroBR(b.min), ma = this._numeroBR(b.max);
+    if (mi === null && ma === null) return '<div class="fm-circ-trilho vazio"></div>';
+    const teto = Math.max(1, (ma !== null ? ma : mi)) * 1.25;
+    const p = (v) => Math.max(0, Math.min(100, (v / teto) * 100));
+    let a = mi !== null ? p(mi) : 0;
+    let z = ma !== null ? p(ma) : 100;
+    if (z - a < 3.5) { const c = (a + z) / 2; a = Math.max(0, c - 1.75); z = Math.min(100, c + 1.75); }
+    return `<div class="fm-circ-trilho"><i style="left:${a}%;right:${(100 - z).toFixed(1)}%"></i></div>`;
+  },
+
+  /* QUANTO A SESSÃO VAI DURAR, no teto de cada bloco.
+
+     É a informação que só o conjunto tem — e a que evita o erro mais
+     provável de todos: montar um circuito de 50 minutos dentro de uma
+     janela de 45. O aviso compara com `hora_inicio`/`hora_fim` quando
+     eles existem, porque um número solto ("47 min") não diz se cabe. */
+  _duracaoCircuito(e) {
+    let seg = 0;
+    for (const b of (e.circ_blocos || [])) {
+      const modo = this._modoBloco(b.modo);
+      const ma = this._numeroBR(b.max) ?? this._numeroBR(b.min);
+      if (ma === null) continue;
+      const u = (b.unidade || modo.un || '').toLowerCase();
+      const emSeg = u.startsWith('s') ? ma : u.startsWith('h') ? ma * 3600 : ma * 60;
+      // Repetição não tem duração conhecida — contar seria inventar.
+      if (modo.id === 'SERIE_REP' || modo.id === 'CHECK') continue;
+      seg += emSeg * (modo.serie ? Math.max(1, parseInt(b.series, 10) || 1) : 1);
+    }
+    return Math.round(seg / 60);
+  },
+
+  _cabecalhoCircuito(e) {
+    const n = (e.circ_blocos || []).filter(b => (b.titulo || '').trim()).length;
+    const min = this._duracaoCircuito(e);
+    let janela = '';
+    if (e.janela && e.hora_inicio && e.hora_fim) {
+      const [hi, mi] = e.hora_inicio.split(':').map(Number);
+      const [hf, mf] = e.hora_fim.split(':').map(Number);
+      let disp = (hf * 60 + mf) - (hi * 60 + mi);
+      if (disp < 0) disp += 24 * 60;          // janela que cruza a meia-noite
+      janela = min > disp
+        ? `<span class="fm-circ-alerta">não cabe na janela de ${disp} min</span>`
+        : `<span class="fm-circ-cabe">cabe na janela de ${disp} min</span>`;
+    }
+    return `<div class="fm-circ-cab">
+      <span class="fm-circ-cab-n">${n} bloco${n === 1 ? '' : 's'}</span>
+      ${min ? `<span class="fm-circ-cab-t">${min} min de trabalho cronometrado</span>` : ''}
+      ${janela}
+    </div>`;
+  },
+
   _linhasCircuito(e) {
     const blocos = e.circ_blocos || [];
-    return blocos.map((b, i) => {
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
+      c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    return this._cabecalhoCircuito(e) + blocos.map((b, i) => {
       const modo = this._modoBloco(b.modo);
-      const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
-        c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      const un = b.unidade || modo.un || '';
+      const seriePre = modo.serie
+        ? `<span class="fm-circ-frag">
+             <input type="text" inputmode="numeric" class="fm-circ-mini" data-circ="series" data-i="${i}"
+                    value="${esc(b.series)}" placeholder="3" aria-label="Quantas séries">
+             <em>séries de</em></span>`
+        : '';
       return `
-      <div class="fm-circ-linha" data-i="${i}">
-        <span class="fm-circ-n">${i + 1}</span>
+      <div class="fm-circ-bloco" data-i="${i}">
+        <div class="fm-circ-b-topo">
+          <i class="fm-circ-hex"><b>${i + 1}</b></i>
+          <div class="fm-circ-modos" role="group" aria-label="Modo do bloco ${i + 1}">
+            ${this.MODOS_BLOCO.map(x => `
+              <button type="button" class="fm-circ-modo-bt${x.id === modo.id ? ' on' : ''}"
+                      data-circ-modo="${x.id}" data-i="${i}" title="${x.txt}"
+                      aria-pressed="${x.id === modo.id}">
+                ${this._glifoModo(x.id)}<span>${x.txt}</span>
+              </button>`).join('')}
+          </div>
+          <span class="fm-circ-ord">
+            <button type="button" class="fm-circ-mv" data-circ-sobe="${i}" ${i === 0 ? 'disabled' : ''}
+                    title="Subir" aria-label="Subir o bloco ${i + 1}">↑</button>
+            <button type="button" class="fm-circ-mv" data-circ-desce="${i}" ${i === blocos.length - 1 ? 'disabled' : ''}
+                    title="Descer" aria-label="Descer o bloco ${i + 1}">↓</button>
+            <button type="button" class="fm-circ-del" data-circ-del="${i}"
+                    title="Remover" aria-label="Remover o bloco ${i + 1}"
+                    ${blocos.length <= 1 ? 'disabled' : ''}>×</button>
+          </span>
+        </div>
+
         <input type="text" class="fm-input fm-circ-titulo" data-circ="titulo" data-i="${i}"
-               value="${esc(b.titulo)}" placeholder="Cardio base" maxlength="120">
-        <select class="fm-input fm-circ-modo" data-circ="modo" data-i="${i}">
-          ${this.MODOS_BLOCO.map(x => `<option value="${x.id}"${x.id === b.modo ? ' selected' : ''}>${x.txt}</option>`).join('')}
-        </select>
-        <input type="text" inputmode="numeric" class="fm-input fm-circ-num" data-circ="series" data-i="${i}"
-               value="${esc(b.series)}" placeholder="3" title="Séries"
-               ${modo.serie ? '' : 'style="visibility:hidden"'}>
-        <input type="text" inputmode="decimal" class="fm-input fm-circ-num" data-circ="min" data-i="${i}"
-               value="${esc(b.min)}" placeholder="mín"
-               ${modo.id === 'CHECK' ? 'style="visibility:hidden"' : ''}>
-        <input type="text" inputmode="decimal" class="fm-input fm-circ-num" data-circ="max" data-i="${i}"
-               value="${esc(b.max)}" placeholder="máx"
-               ${modo.id === 'CHECK' ? 'style="visibility:hidden"' : ''}>
-        <input type="text" class="fm-input fm-circ-un" data-circ="unidade" data-i="${i}"
-               value="${esc(b.unidade)}" placeholder="${esc(modo.un || '—')}" maxlength="8"
-               ${modo.id === 'CHECK' ? 'style="visibility:hidden"' : ''}>
-        <button type="button" class="fm-circ-del" data-circ-del="${i}"
-                title="Remover este bloco" aria-label="Remover bloco ${i + 1}"
-                ${blocos.length <= 1 ? 'disabled' : ''}>×</button>
+               value="${esc(b.titulo)}" placeholder="Nome do bloco — ex: Cardio base" maxlength="120">
+
+        ${modo.id === 'CHECK' ? `
+          <div class="fm-circ-frase fm-circ-frase-check">sem medida — o hunter só marca que fez</div>
+        ` : `
+          <div class="fm-circ-frase">
+            ${seriePre}
+            <em>de</em>
+            <input type="text" inputmode="decimal" class="fm-circ-mini" data-circ="min" data-i="${i}"
+                   value="${esc(b.min)}" placeholder="25" aria-label="Mínimo">
+            <em>a</em>
+            <input type="text" inputmode="decimal" class="fm-circ-mini" data-circ="max" data-i="${i}"
+                   value="${esc(b.max)}" placeholder="30" aria-label="Máximo">
+            <input type="text" class="fm-circ-un" data-circ="unidade" data-i="${i}"
+                   value="${esc(b.unidade)}" placeholder="${esc(modo.un || 'un')}" maxlength="8"
+                   aria-label="Unidade">
+          </div>
+          ${this._previaFaixa(b)}
+        `}
+
+        <input type="text" class="fm-input fm-circ-nota" data-circ="nota" data-i="${i}"
+               value="${esc(b.nota)}" maxlength="200"
+               placeholder="Instrução (opcional) — ex: dá pra conversar, não pra cantar">
       </div>`;
     }).join('');
   },
@@ -318,7 +430,7 @@ const ForjaMissao = {
          vazia com um botão "+" faz o hunter ter de descobrir que precisa
          clicar antes de escrever. A primeira linha já pronta mostra o
          formato sem explicá-lo. */
-      circ_blocos: [{ titulo: '', modo: 'TEMPO', series: 3, min: '', max: '', unidade: '' }],
+      circ_blocos: [{ titulo: '', modo: 'TEMPO', series: 3, min: '', max: '', unidade: '', nota: '' }],
     };
 
     if (ed) this._carregarEdicao(ed, opts.tipo);
@@ -674,6 +786,7 @@ const ForjaMissao = {
           min:     b.min ?? '',
           max:     b.max ?? '',
           unidade: b.unidade || '',
+          nota:    b.nota || '',
         }));
       }
     } catch (_) { /* desenho ilegível: abre com a linha padrão */ }
@@ -1298,7 +1411,7 @@ const ForjaMissao = {
         const ult = bl[bl.length - 1] || {};
         bl.push({ titulo: '', modo: ult.modo || 'TEMPO',
                   series: ult.series || 3, min: '', max: '',
-                  unidade: ult.unidade || '' });
+                  unidade: ult.unidade || '', nota: '' });
         this._repintarCircuito();
         // O foco vai para o título do bloco novo — senão o hunter clica
         // em "+ bloco" e tem de caçar onde escrever.
@@ -1308,8 +1421,42 @@ const ForjaMissao = {
         }, 20);
         return;
       }
-      if (ev.target.matches('[data-circ-del]')) {
-        const i = +ev.target.dataset.circDel;
+      /* O MODO virou botão. Trocar repinta o bloco: o campo de séries
+         nasce no modo de série, e a faixa some no "só marcar" — sem a
+         repintura o Arquiteto escolheria "só marcar" e continuaria
+         vendo os campos de mínimo e máximo. */
+      const btModo = ev.target.closest('[data-circ-modo]');
+      if (btModo) {
+        const i = +btModo.dataset.i;
+        const b = this._estado.circ_blocos[i];
+        if (b && b.modo !== btModo.dataset.circModo) {
+          b.modo = btModo.dataset.circModo;
+          // A unidade sugerida acompanha o modo, mas nunca sobrescreve a
+          // que o Arquiteto escreveu.
+          if (!b.unidade) b.unidade = '';
+          this._repintarCircuito();
+        }
+        return;
+      }
+
+      /* REORDENAR. Um treino tem sequência — mobilidade antes de cardio
+         —, e sem isto trocar dois blocos de lugar exigiria apagar e
+         reescrever os dois. */
+      const sobe = ev.target.closest('[data-circ-sobe]');
+      const desce = ev.target.closest('[data-circ-desce]');
+      if (sobe || desce) {
+        const bl = this._estado.circ_blocos;
+        const i = +(sobe || desce).dataset[sobe ? 'circSobe' : 'circDesce'];
+        const j = sobe ? i - 1 : i + 1;
+        if (j >= 0 && j < bl.length) {
+          [bl[i], bl[j]] = [bl[j], bl[i]];
+          this._repintarCircuito();
+        }
+        return;
+      }
+
+      if (ev.target.closest('[data-circ-del]')) {
+        const i = +ev.target.closest('[data-circ-del]').dataset.circDel;
         // NUNCA remove o último. Um circuito sem blocos não é um
         // circuito, e o servidor recusaria — melhor não deixar chegar lá.
         if (this._estado.circ_blocos.length > 1) {
@@ -1470,21 +1617,6 @@ const ForjaMissao = {
     });
 
     bd.addEventListener('change', (ev) => {
-      /* Trocar o MODO de um bloco repinta a lista: o campo de séries
-         some no TEMPO, e a faixa some no CHECK. Sem a repintura, o
-         hunter escolheria "Só marcar" e continuaria vendo mín/máx. */
-      if (ev.target.matches('[data-circ="modo"]')) {
-        const i = +ev.target.dataset.i;
-        const b = this._estado.circ_blocos[i];
-        if (b) {
-          b.modo = ev.target.value;
-          // A unidade sugerida acompanha o modo — mas só quando o hunter
-          // ainda não escreveu a dele.
-          if (!b.unidade) b.unidade = '';
-          this._repintarCircuito();
-        }
-        return;
-      }
       if (ev.target.matches('[data-fm-janela]')) {
         this._estado.janela = ev.target.checked;
         document.getElementById('fm-horarios')?.classList.toggle('on', this._estado.janela);
@@ -1521,6 +1653,19 @@ const ForjaMissao = {
         const campo = t.dataset.circ;
         const b = this._estado.circ_blocos[i];
         if (b) b[campo] = t.value;
+        /* O cabeçalho e o trilho de prévia acompanham a digitação — sem
+           isto, "cabe na janela de 45 min" ficaria mentindo até o
+           próximo clique. Repintar o bloco inteiro roubaria o foco do
+           campo, então só estas duas partes são refeitas. */
+        if (campo === 'min' || campo === 'max' || campo === 'series' ||
+            campo === 'unidade' || campo === 'titulo') {
+          const cab = document.querySelector('#fm-circ-lista .fm-circ-cab');
+          if (cab) cab.outerHTML = this._cabecalhoCircuito(this._estado);
+          if (campo !== 'titulo') {
+            const trilho = document.querySelector(`.fm-circ-bloco[data-i="${i}"] .fm-circ-trilho`);
+            if (trilho && b) trilho.outerHTML = this._previaFaixa(b);
+          }
+        }
         return;
       }
       if (t.id === 'fm-titulo-input') {
@@ -2122,6 +2267,10 @@ const ForjaMissao = {
                 const un = (b.unidade || '').trim() || modo.un;
                 if (un) o.unidade = un;
               }
+              // A NOTA e a instrucao que aparece dentro da filha. O card
+              // ja a desenhava; era a Forja que nao tinha como escreve-la.
+              const nt = (b.nota || '').trim();
+              if (nt) o.nota = nt.slice(0, 200);
               return o;
             });
 

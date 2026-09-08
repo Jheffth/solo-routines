@@ -875,7 +875,7 @@
 }
 
 
-/* -- PROGRESSIVA � toggle + aviso ----------------------------------------- */
+/* -- PROGRESSIVA — toggle + aviso ----------------------------------------- */
 .fm-progressiva-wrap {
   display: flex;
   flex-direction: column;
@@ -951,7 +951,7 @@
 .fm-prog-aviso b { color: #f87171; }
 .fm-prog-aviso i { opacity: .85; }
 
-/* -- CONDICIONAL � form de bifurca��o ------------------------------------- */
+/* -- CONDICIONAL — form de bifurcação ------------------------------------- */
 .fm-cond-wrap {
   display: flex;
   flex-direction: column;
@@ -1017,58 +1017,168 @@
   .fm-cond-linha { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-/* ── CIRCUITO: o editor de blocos ─────────────────────────────────
-   Uma linha por bloco. Compacta de proposito: um treino tem quatro
-   blocos, e quatro cartoes empilhados empurrariam o botao de salvar
-   para fora da tela no celular. */
-.fm-circ-linha {
-  display: grid;
-  grid-template-columns: 18px 1fr 106px 52px 52px 52px 26px;
-  gap: .3rem; align-items: center; margin-bottom: .35rem;
-}
-.fm-circ-n {
-  font-family: var(--font-section); font-size: .6rem;
-  color: var(--text-muted); text-align: center;
-}
-.fm-circ-linha .fm-input { padding: .3rem .4rem; font-size: .72rem; }
-.fm-circ-num, .fm-circ-un { text-align: center; }
+/* ══════════════════════════════════════════════════════════════════
+   CIRCUITO: A FORJA PREVÊ O CARTÃO
 
-.fm-circ-del {
-  width: 24px; height: 24px; border-radius: .25rem; cursor: pointer;
-  border: 1px solid rgba(239,68,68,.3); background: rgba(239,68,68,.08);
-  color: #fca5a5; font-size: .85rem; line-height: 1;
+   A primeira versão era uma planilha: sete colunas, um `select`, e
+   "mín"/"máx" abreviados em caixas de 52px. Funcionava e não se
+   entendia — quem cadastra um treino não pensa em colunas, pensa em
+   "cardio, de 25 a 30 minutos".
+
+   Agora cada bloco é desenhado como a FILHA que ele vai virar: mesmo
+   hexágono numerado, mesmo glifo do modo, mesmo trilho com a janela.
+   Não há passo de tradução entre o que se forja e o que se vê.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* O CABEÇALHO diz o que só o conjunto sabe: quanto a sessão dura, e se
+   ela cabe na janela. É o que evita o erro mais provável de todos —
+   montar 50 minutos de treino dentro de uma janela de 45. */
+.fm-circ-cab {
+  display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+  margin-bottom: .6rem; padding-bottom: .5rem;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+  font-family: var(--font-section); font-size: .58rem; letter-spacing: .07em;
 }
+.fm-circ-cab-n { color: var(--purple-glow); font-weight: 700; text-transform: uppercase; }
+.fm-circ-cab-t { color: var(--text-muted); }
+.fm-circ-cabe   { color: #6ee7b7; }
+.fm-circ-alerta {
+  color: #fcd34d; background: rgba(245,158,11,.14);
+  border: 1px solid rgba(245,158,11,.4); padding: .08rem .4rem; border-radius: .22rem;
+}
+
+/* ── A PLACA DO BLOCO ──────────────────────────────────────────── */
+.fm-circ-bloco {
+  position: relative;
+  border: 1px solid rgba(124,58,237,.2);
+  border-radius: .55rem;
+  padding: .6rem .7rem;
+  margin-bottom: .5rem;
+  background:
+    linear-gradient(135deg, rgba(124,58,237,.05), rgba(255,255,255,.008)),
+    radial-gradient(120% 150% at 0% 0%, rgba(124,58,237,.06), transparent 60%);
+  transition: border-color .25s ease;
+}
+.fm-circ-bloco:focus-within { border-color: rgba(124,58,237,.55); }
+
+.fm-circ-b-topo {
+  display: flex; align-items: center; gap: .5rem;
+  margin-bottom: .5rem; flex-wrap: wrap;
+}
+
+/* O HEXÁGONO NUMERADO — a mesma forma do nó no cartão. É o que faz o
+   Arquiteto reconhecer, aqui na forja, a peça que vai aparecer lá. */
+.fm-circ-hex {
+  width: 20px; height: 23px; flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: center;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: var(--purple-main, #7c3aed);
+}
+.fm-circ-hex b {
+  display: flex; align-items: center; justify-content: center;
+  width: 15px; height: 18px;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: #0d0d1a; color: var(--purple-glow);
+  font-family: var(--font-section); font-size: .58rem; font-weight: 700;
+}
+
+/* ── O MODO VIRA ÍCONE ──────────────────────────────────────────
+   Escolher entre ampulheta e barras empilhadas é RECONHECIMENTO; ler
+   quatro linhas de um `select` é leitura. E os glifos são os mesmos do
+   cartão, então o que se escolhe aqui é o que se vê lá. */
+.fm-circ-modos { display: flex; gap: .25rem; flex: 1 1 auto; flex-wrap: wrap; }
+.fm-circ-modo-bt {
+  display: inline-flex; align-items: center; gap: .28rem;
+  padding: .28rem .5rem; border-radius: .35rem; cursor: pointer;
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.025);
+  color: var(--text-muted);
+  font-family: var(--font-section); font-size: .55rem; letter-spacing: .05em;
+  transition: all .18s ease;
+}
+.fm-circ-modo-bt:hover { border-color: rgba(124,58,237,.45); color: var(--text-primary); }
+.fm-circ-modo-bt.on {
+  border-color: rgba(124,58,237,.7);
+  background: rgba(124,58,237,.18);
+  color: var(--purple-glow);
+  box-shadow: 0 0 10px rgba(124,58,237,.2);
+}
+.fm-circ-modo-bt svg { flex: 0 0 auto; }
+
+.fm-circ-ord { display: inline-flex; gap: .2rem; margin-left: auto; }
+.fm-circ-mv, .fm-circ-del {
+  width: 24px; height: 24px; border-radius: .28rem; cursor: pointer;
+  border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.03);
+  color: var(--text-muted); font-size: .75rem; line-height: 1;
+  transition: all .18s;
+}
+.fm-circ-mv:hover:not(:disabled) { color: var(--text-primary); border-color: rgba(124,58,237,.5); }
+.fm-circ-del { border-color: rgba(239,68,68,.28); color: #fca5a5; }
 .fm-circ-del:hover:not(:disabled) { background: rgba(239,68,68,.2); }
-/* Desabilitado no ULTIMO bloco: um circuito sem blocos nao e um
-   circuito, e o servidor recusaria. Melhor nao deixar chegar la. */
-.fm-circ-del:disabled { opacity: .25; cursor: not-allowed; }
+.fm-circ-mv:disabled, .fm-circ-del:disabled { opacity: .22; cursor: not-allowed; }
+
+.fm-circ-titulo { width: 100%; margin-bottom: .45rem; }
+
+/* ── A FAIXA VIRA FRASE ─────────────────────────────────────────
+   "3 séries de 20 a 30 s" é como a orientação foi escrita.
+   "mín [20] máx [30]" é como um banco de dados pensa — e era isso que
+   estava na tela. */
+.fm-circ-frase {
+  display: flex; align-items: center; gap: .3rem; flex-wrap: wrap;
+  font-size: .72rem; color: var(--text-secondary);
+}
+.fm-circ-frase em { font-style: normal; color: var(--text-muted); font-size: .68rem; }
+.fm-circ-frag { display: inline-flex; align-items: center; gap: .3rem; }
+.fm-circ-frase-check {
+  font-style: italic; color: var(--text-muted); font-size: .68rem;
+  padding: .25rem 0;
+}
+.fm-circ-mini, .fm-circ-un {
+  width: 3.2rem; text-align: center;
+  padding: .26rem .3rem; font-size: .74rem;
+  font-family: var(--font-section);
+  border-radius: .3rem; border: 1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.32); color: var(--text-primary);
+  transition: border-color .18s, box-shadow .18s;
+}
+.fm-circ-un { width: 2.8rem; }
+.fm-circ-mini:focus, .fm-circ-un:focus {
+  outline: none; border-color: var(--purple-glow);
+  box-shadow: 0 0 0 2px rgba(124,58,237,.2);
+}
+
+/* O TRILHO DE PRÉVIA responde à pergunta que a planilha deixava no ar:
+   "esses números fazem sentido juntos?". Uma faixa de 5 a 300 aparece
+   como uma janela ocupando a barra inteira — e isso se vê. */
+.fm-circ-trilho {
+  position: relative; height: 5px; margin: .45rem 0 .1rem;
+  border-radius: 3px; background: rgba(255,255,255,.06);
+}
+.fm-circ-trilho > i {
+  position: absolute; top: 0; bottom: 0; border-radius: 3px;
+  background: rgba(124,58,237,.45);
+  box-shadow: inset 0 0 0 1px rgba(168,85,247,.5);
+  transition: left .25s ease, right .25s ease;
+}
+.fm-circ-trilho.vazio { opacity: .35; }
+
+.fm-circ-nota {
+  width: 100%; margin-top: .45rem;
+  font-size: .68rem; font-style: italic;
+}
 
 .fm-circ-add {
-  margin: .2rem 0 .6rem; padding: .3rem .7rem; cursor: pointer;
-  font-family: var(--font-section); font-size: .64rem; letter-spacing: .05em;
-  border-radius: .3rem; border: 1px dashed rgba(20,184,166,.45);
-  background: rgba(20,184,166,.08); color: #5eead4;
+  width: 100%; margin: .2rem 0 .6rem; padding: .45rem;
+  cursor: pointer;
+  font-family: var(--font-section); font-size: .64rem; letter-spacing: .07em;
+  border-radius: .4rem; border: 1px dashed rgba(124,58,237,.45);
+  background: rgba(124,58,237,.06); color: var(--purple-glow);
+  transition: all .2s;
 }
-.fm-circ-add:hover { background: rgba(20,184,166,.18); }
+.fm-circ-add:hover { background: rgba(124,58,237,.18); border-style: solid; }
 
-/* No celular a linha vira duas: titulo em cima, numeros embaixo. Sete
-   colunas em 360px dariam campos de 30px, que ninguem acerta. */
 @media (max-width: 560px) {
-  .fm-circ-linha {
-    grid-template-columns: 18px 1fr 26px;
-    grid-template-areas: "n titulo del" ". campos campos";
-    row-gap: .25rem;
-  }
-  .fm-circ-n      { grid-area: n; }
-  .fm-circ-titulo { grid-area: titulo; }
-  .fm-circ-del    { grid-area: del; }
-  .fm-circ-modo, .fm-circ-num, .fm-circ-un {
-    grid-area: campos; display: inline-block; width: auto;
-  }
-  .fm-circ-linha {
-    display: flex; flex-wrap: wrap;
-  }
-  .fm-circ-titulo { flex: 1 1 60%; }
-  .fm-circ-modo   { flex: 0 0 106px; }
-  .fm-circ-num, .fm-circ-un { flex: 0 0 52px; }
+  .fm-circ-modo-bt span { display: none; }   /* só o glifo no celular */
+  .fm-circ-modo-bt { padding: .3rem .45rem; }
+  .fm-circ-mini, .fm-circ-un { width: 2.9rem; }
 }
