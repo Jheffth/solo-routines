@@ -575,7 +575,7 @@ const MissaoCard = {
     // destaque e é onde o pulso do cordão para.
     const alvo = c.blocos.findIndex(b => !b.feito);
     const filhas = c.blocos.map((b, i) =>
-      this._filhaCircuito(b, chave, encerrada, i, i === alvo, c.blocos.length)).join('');
+      this._filhaCircuito(b, chave, encerrada, i, i === alvo, c.blocos.length, m)).join('');
 
     return `<div class="mc-grupo mc-grupo-circ${encerrada ? ' mc-grupo-fim' : ''}"
       data-mc-card="${chave}" data-mc-sig="${this.assinatura(m, opts)}"
@@ -632,7 +632,7 @@ const MissaoCard = {
      quem entrega ACIMA do teto ainda caber no desenho — sem ela, quem
      fez 35 numa faixa de 25–30 veria o marcador colado na borda, como
      se tivesse batido no limite do mundo. */
-  _trilhoFaixa(b) {
+  _trilhoFaixa(b, aoVivo = null) {
     const min = b.min, max = b.max != null ? b.max : b.min;
     if (min == null && max == null) return '';
     const teto = Math.max(1, (max != null ? max : min)) * 1.25;
@@ -644,10 +644,14 @@ const MissaoCard = {
        mais preciso. Um alvo exato continua sendo um alvo: ganha a
        largura mínima para ser visto. */
     if (jF - jI < 3.5) { const c = (jI + jF) / 2; jI = Math.max(0, c - 1.75); jF = Math.min(100, c + 1.75); }
-    const val = b.valor;
+    /* O MARCADOR ANDA ENQUANTO O CRONOMETRO CORRE. Ver o marcador
+       ENTRAR na janela combinada e o momento em que o hunter sabe que
+       pode parar — e e isso que um campo de texto jamais diria. */
+    const val = aoVivo != null ? aoVivo : b.valor;
     const curta = val != null && min != null && val < min;
     const marca = val != null
-      ? `<i class="mc-cf-marca${curta ? ' curta' : ''}" style="left:${pct(val)}%"
+      ? `<i class="mc-cf-marca${curta ? ' curta' : ''}${aoVivo != null ? ' vivo' : ''}"
+           style="left:${pct(val)}%"
            title="${this._esc(this._numCirc(val))}${this._esc(b.unidade || '')}"></i>` : '';
     return `<div class="mc-cf-trilho" aria-hidden="true">
       <i class="mc-cf-janela" style="left:${jI}%;right:${(100 - jF).toFixed(1)}%"></i>
@@ -674,32 +678,186 @@ const MissaoCard = {
     return `<div class="mc-cf-slots">${out}</div>`;
   },
 
-  _filhaCircuito(b, chave, encerrada, i, ehAlvo, total) {
+  /* ══════════════════════════════════════════════════════════
+     O CRONÔMETRO DO BLOCO
+
+     O Arquiteto: "o local para lançar a missão está confuso. Um campo
+     para lançar minutos? Confuso demais. Deve ter a rolagem do tempo no
+     card, um botão de iniciar e de finalizar, assim o próprio card
+     marca o tempo."
+
+     Ele tem razão e o motivo é simples: ninguém sabe quantos minutos
+     andou. Pedir o número é pedir que o hunter estime — e uma estimativa
+     lançada num sistema que mede é um dado falso entrando pela porta da
+     frente. O cartão que conta sozinho é o único que sabe.
+
+     ONDE O INSTANTE MORA. Em `localStorage`, não no servidor: um bloco
+     em curso é estado DE SESSÃO, dura minutos, e gravá-lo no banco
+     custaria uma coluna, uma migração e um endpoint para um dado que
+     morre às 06:45. Sobrevive ao recarregar a página, que é o que
+     importa — o hunter tranca o celular no meio da caminhada.
+
+     O campo manual NÃO SUMIU: quem esqueceu de iniciar, ou fez o bloco
+     longe do telefone, ainda precisa lançar. Ele virou a saída
+     secundária, que é o lugar dele.
+     ══════════════════════════════════════════════════════════ */
+  _chaveCrono(chave, blocoId) { return `sr_circ_t_${chave}_${blocoId}`; },
+
+  _cronoInicio(chave, blocoId) {
+    try {
+      const v = parseInt(localStorage.getItem(this._chaveCrono(chave, blocoId)), 10);
+      // Instante no futuro é relógio do aparelho que voltou: trata como
+      // não iniciado em vez de mostrar tempo negativo correndo.
+      return (Number.isFinite(v) && v > 0 && v <= Date.now()) ? v : null;
+    } catch (_) { return null; }
+  },
+
+  _cronoLigar(chave, blocoId) {
+    try { localStorage.setItem(this._chaveCrono(chave, blocoId), String(Date.now())); } catch (_) {}
+  },
+
+  _cronoDesligar(chave, blocoId) {
+    try { localStorage.removeItem(this._chaveCrono(chave, blocoId)); } catch (_) {}
+  },
+
+  /* A unidade do bloco decide o que o cronômetro entrega. Um bloco de
+     cardio quer MINUTOS; uma prancha de 20–30 quer SEGUNDOS. Ler isso da
+     `unidade` mantém a decisão com quem cadastrou a missão. */
+  _cronoUnidade(b) {
+    const u = (b.unidade || '').toLowerCase();
+    if (u.startsWith('s')) return 's';
+    if (u.startsWith('h')) return 'h';
+    if (u.startsWith('m')) return 'min';
+    // Sem unidade escrita: série cronometrada é segundo, bloco corrido é minuto.
+    return b.modo === 'SERIE_TEMPO' ? 's' : 'min';
+  },
+
+  /* Só faz sentido cronometrar o que se mede em tempo. Repetição se
+     conta, e um cronômetro num bloco de agachamento mediria a coisa
+     errada com precisão. */
+  _cronometravel(b) {
+    return b.modo === 'TEMPO' || b.modo === 'SERIE_TEMPO';
+  },
+
+  _segsDecorridos(chave, blocoId) {
+    const ini = this._cronoInicio(chave, blocoId);
+    return ini ? Math.max(0, Math.floor((Date.now() - ini) / 1000)) : 0;
+  },
+
+  /* "07:42" e "1:02:15" — o relógio grande do bloco em curso. */
+  _relogio(segs) {
+    const s = Math.max(0, Math.floor(segs));
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
+    const dd = (n) => String(n).padStart(2, '0');
+    return h ? `${h}:${dd(m)}:${dd(r)}` : `${dd(m)}:${dd(r)}`;
+  },
+
+  /* O decorrido convertido para a unidade do bloco. Uma casa decimal nos
+     minutos porque 27,5 min é uma informação e 27 é um arredondamento
+     que some com meio minuto de caminhada. */
+  _cronoValor(b, segs) {
+    const u = this._cronoUnidade(b);
+    if (u === 's') return Math.max(1, Math.round(segs));
+    if (u === 'h') return Math.round((segs / 3600) * 100) / 100;
+    return Math.max(0.1, Math.round((segs / 60) * 10) / 10);
+  },
+
+  /* O QUE ESTE BLOCO ACRESCENTA AO MESTRE.
+
+     O Arquiteto pediu para "mostrar o acréscimo de XP que dará ao card
+     principal". O XP é da SESSÃO — só cai quando o último bloco fecha —,
+     então o que o bloco tem é uma PARTE. Dividir por igual é a leitura
+     honesta: nenhum bloco vale mais que outro dentro do mesmo circuito.
+
+     O resto da divisão vai para o último, senão quatro blocos de 180 XP
+     somariam 176 e o hunter, que sabe somar, veria o Sistema errando
+     uma conta simples. */
+  _xpDoBloco(m, i, total) {
+    const xp = Math.max(0, parseInt(m?.xp_recompensa, 10) || 0);
+    if (!xp || !total) return 0;
+    const base = Math.floor(xp / total);
+    return i === total - 1 ? xp - base * (total - 1) : base;
+  },
+
+  _filhaCircuito(b, chave, encerrada, i, ehAlvo, total, m) {
     const temSerie = b.modo === 'SERIE_TEMPO' || b.modo === 'SERIE_REP';
     const est = !b.feito ? 'aberto' : (b.abaixo ? 'parcial' : 'ok');
+    const crono = this._cronometravel(b) && !encerrada && !b.feito;
+    const rodando = crono ? this._cronoInicio(chave, b.id) : null;
+    const uni = this._cronoUnidade(b);
+    const xpBloco = this._xpDoBloco(m, i, total);
 
+    /* ── O RELÓGIO EM CURSO ────────────────────────────────────
+       Enquanto roda, ele É o conteúdo do cartão: número grande, e o
+       marcador do trilho andando junto. Ver o marcador entrar na janela
+       combinada é o momento em que o hunter sabe que pode parar — e é
+       isso que um campo de texto nunca conseguiria dizer. */
+    const segs = rodando ? this._segsDecorridos(chave, b.id) : 0;
+    const vivo = rodando ? this._cronoValor(b, segs) : null;
+
+    let painel = '';
+    if (rodando) {
+      painel = `<div class="mc-cf-crono">
+        <span class="mc-cf-crono-t" data-mc-crono-bloco="${chave}|${this._esc(b.id)}"
+              data-mc-crono-uni="${uni}">${this._relogio(segs)}</span>
+        <span class="mc-cf-crono-u">${this._esc(this._numCirc(vivo))} ${this._esc(uni)}</span>
+        <i class="mc-cf-crono-batida" aria-hidden="true"></i>
+      </div>`;
+    }
+
+    /* ── A AÇÃO ────────────────────────────────────────────────
+       Um botão que começa e um que encerra. O campo manual continua,
+       recolhido, para quem esqueceu de iniciar. */
     let acao = '';
     if (!encerrada && !b.feito) {
       if (b.modo === 'CHECK') {
-        acao = `<button type="button" class="mc-cf-btn" data-mc-acao="circ-registrar"
-                  data-mc-bloco="${this._esc(b.id)}" data-mc-id="${chave}">Marcar feito</button>`;
+        acao = `<button type="button" class="mc-cf-btn mc-cf-btn-forte" data-mc-acao="circ-registrar"
+                  data-mc-bloco="${this._esc(b.id)}" data-mc-id="${chave}">
+                  ${this._g('concluida', 12)} Marcar feito</button>`;
+      } else if (rodando) {
+        acao = `<button type="button" class="mc-cf-btn mc-cf-btn-parar" data-mc-acao="circ-parar"
+                  data-mc-bloco="${this._esc(b.id)}" data-mc-id="${chave}">
+                  <i class="mc-cf-quad"></i> Encerrar bloco</button>
+                <button type="button" class="mc-cf-btn mc-cf-btn-fraco" data-mc-acao="circ-cancelar"
+                  data-mc-bloco="${this._esc(b.id)}" data-mc-id="${chave}"
+                  title="Descartar este cronômetro sem lançar nada">Descartar</button>`;
       } else {
-        const rot = temSerie ? `Série ${(b.valores || []).length + 1}` : 'Lançar';
-        acao = `<span class="mc-cf-entrada">
-          <input type="text" inputmode="decimal" class="mc-cf-input"
-                 data-mc-circ-input="${chave}|${this._esc(b.id)}"
-                 placeholder="${this._esc(b.unidade || '0')}"
-                 aria-label="Valor de ${this._esc(b.titulo)}">
-          <button type="button" class="mc-cf-btn" data-mc-acao="circ-registrar"
-                  data-mc-bloco="${this._esc(b.id)}" data-mc-id="${chave}">${rot}</button>
-        </span>`;
+        const rot = temSerie ? `Iniciar série ${(b.valores || []).length + 1}` : 'Iniciar bloco';
+        const ini = crono
+          ? `<button type="button" class="mc-cf-btn mc-cf-btn-forte" data-mc-acao="circ-iniciar"
+               data-mc-bloco="${this._esc(b.id)}" data-mc-id="${chave}">
+               <i class="mc-cf-play"></i> ${rot}</button>` : '';
+        /* REPETIÇÃO NÃO SE CRONOMETRA — se conta. Os degraus são o que
+           substitui o campo de texto livre: 12 agachamentos são doze
+           toques ou um arraste, nunca uma digitação. */
+        const manual = temSerie && b.modo === 'SERIE_REP'
+          ? `<span class="mc-cf-passo">
+               <button type="button" class="mc-cf-pm" data-mc-acao="circ-menos"
+                 data-mc-bloco="${this._esc(b.id)}" data-mc-id="${chave}" aria-label="Menos um">−</button>
+               <input type="text" inputmode="numeric" class="mc-cf-input mc-cf-input-num"
+                      data-mc-circ-input="${chave}|${this._esc(b.id)}"
+                      value="${b.min != null ? this._esc(this._numCirc(b.min)) : ''}"
+                      aria-label="Repetições de ${this._esc(b.titulo)}">
+               <button type="button" class="mc-cf-pm" data-mc-acao="circ-mais"
+                 data-mc-bloco="${this._esc(b.id)}" data-mc-id="${chave}" aria-label="Mais um">+</button>
+               <button type="button" class="mc-cf-btn mc-cf-btn-forte" data-mc-acao="circ-registrar"
+                 data-mc-bloco="${this._esc(b.id)}" data-mc-id="${chave}">Lançar série</button>
+             </span>`
+          : `<details class="mc-cf-manual">
+               <summary>lançar à mão</summary>
+               <span class="mc-cf-entrada">
+                 <input type="text" inputmode="decimal" class="mc-cf-input"
+                        data-mc-circ-input="${chave}|${this._esc(b.id)}"
+                        placeholder="${this._esc(uni)}"
+                        aria-label="Valor de ${this._esc(b.titulo)}">
+                 <button type="button" class="mc-cf-btn" data-mc-acao="circ-registrar"
+                   data-mc-bloco="${this._esc(b.id)}" data-mc-id="${chave}">Lançar</button>
+               </span>
+             </details>`;
+        acao = ini + manual;
       }
     }
 
-    /* O desfazer sobrevive à conclusão e o registrar não — corrigir sim,
-       acrescentar depois de fechado não. A sessão fecha SOZINHA no
-       último bloco, e sem isto um erro de digitação naquela última
-       série ficaria permanente pela tela. */
     const desfazer = (b.feito || (b.valores || []).length)
       ? `<button type="button" class="mc-cf-desfazer" data-mc-acao="circ-desfazer"
            data-mc-bloco="${this._esc(b.id)}" data-mc-id="${chave}"
@@ -707,28 +865,45 @@ const MissaoCard = {
            aria-label="Desfazer último lançamento de ${this._esc(b.titulo)}">${this._g('menos', 11)}</button>`
       : '';
 
-    // A MEDIDA: slots quando há série, trilho quando é um lançamento só.
     const medida = temSerie ? this._slotsSerie(b)
-                            : (b.modo === 'CHECK' ? '' : this._trilhoFaixa(b));
+                            : (b.modo === 'CHECK' ? '' : this._trilhoFaixa(b, vivo));
 
-    const entregue = (!temSerie && b.valor != null)
-      ? `<b class="mc-cf-valor${(b.min != null && b.valor < b.min) ? ' curta' : ''}"
-          >${this._esc(this._numCirc(b.valor))}<span>${this._esc(b.unidade || '')}</span></b>` : '';
+    /* ── O CARTÃO CUMPRIDO ─────────────────────────────────────
+       O Arquiteto: "o card filho concluído também está pobre, muito
+       longe do padrão do projeto." Estava: virava um retângulo apagado
+       com um número pequeno.
 
-    return `<article class="mc-cf mc-cf-${est}${ehAlvo ? ' mc-cf-alvo' : ''}" role="listitem"
-      data-mc-bloco-card="${this._esc(b.id)}">
+       Agora ele é um EXTRATO do que foi feito — o valor em tamanho de
+       manchete, o veredito contra a faixa, e o XP que ele levou para o
+       mestre. Um bloco cumprido é conquista; tem de parecer uma. */
+    const cumprido = b.feito ? `
+      <div class="mc-cf-fecho">
+        <b class="mc-cf-grande${b.abaixo ? ' curta' : ''}">
+          ${this._esc(this._numCirc(temSerie ? (b.valores || []).length : b.valor))}<span
+            >${this._esc(temSerie ? `de ${b.series} séries` : (b.unidade || ''))}</span></b>
+        <span class="mc-cf-veredito${b.abaixo ? ' curta' : ''}">
+          ${b.abaixo ? 'abaixo do combinado' : 'dentro do combinado'}</span>
+        ${xpBloco ? `<span class="mc-cf-xp mc-cf-xp-pago">${this._g('xp', 11)} +${xpBloco} XP</span>` : ''}
+      </div>` : '';
+
+    return `<article class="mc-cf mc-cf-${est}${ehAlvo ? ' mc-cf-alvo' : ''}${rodando ? ' mc-cf-rodando' : ''}"
+      role="listitem" data-mc-bloco-card="${this._esc(b.id)}">
       <i class="mc-cf-no" aria-hidden="true"><b>${i + 1}</b></i>
       <div class="mc-cf-fio" aria-hidden="true"></div>
-      ${ehAlvo && !encerrada ? '<div class="mc-cf-luz" aria-hidden="true"></div>' : ''}
+      ${(ehAlvo || rodando) && !encerrada ? '<div class="mc-cf-borda" aria-hidden="true"></div>' : ''}
+      ${ehAlvo && !rodando && !encerrada ? '<div class="mc-cf-luz" aria-hidden="true"></div>' : ''}
       ${est === 'ok' ? '<div class="mc-cf-selo" aria-hidden="true">' + this._g('concluida', 13) + '</div>' : ''}
       <div class="mc-cf-ico" aria-hidden="true">${this._glifoBloco(b.modo)}</div>
       <div class="mc-cf-corpo">
         <div class="mc-cf-topo">
           <span class="mc-cf-nome">${this._esc(b.titulo)}</span>
           <span class="mc-cf-faixa">${this._esc(this._faixaCircuito(b))}</span>
-          ${entregue}${desfazer}
+          ${!b.feito && xpBloco ? `<span class="mc-cf-xp" title="O que este bloco acrescenta ao total da sessão">${this._g('xp', 11)} +${xpBloco}</span>` : ''}
+          ${desfazer}
         </div>
-        ${b.nota ? `<div class="mc-cf-nota">${this._esc(b.nota)}</div>` : ''}
+        ${b.nota && !rodando ? `<div class="mc-cf-nota">${this._esc(b.nota)}</div>` : ''}
+        ${painel}
+        ${cumprido}
         ${medida}
         ${acao ? `<div class="mc-cf-acao">${acao}</div>` : ''}
       </div>
@@ -2141,6 +2316,37 @@ const MissaoCard = {
       /* O CRONÔMETRO DA DÍVIDA. Entra no MESMO tique dos outros — um
          segundo intervalo só para ele custaria bateria e sairia de
          sincronia com o resto da tela em qualquer soluço de quadro. */
+      /* OS CRONOMETROS DE BLOCO entram no MESMO tique. Um intervalo
+         proprio por bloco seria um relogio por linha da tela — e num
+         circuito de quatro blocos, quatro intervalos disputando o mesmo
+         segundo e saindo de sincronia entre si. */
+      const blocos = document.querySelectorAll('[data-mc-crono-bloco]');
+      blocos.forEach(el => {
+        const [ch, bid] = String(el.dataset.mcCronoBloco || '').split('|');
+        const ini = this._cronoInicio(ch, bid);
+        if (!ini) return;
+        const sg = Math.max(0, Math.floor((Date.now() - ini) / 1000));
+        el.textContent = this._relogio(sg);
+        // O valor na unidade e o marcador do trilho andam junto.
+        const cart = el.closest('[data-mc-bloco-card]');
+        const u = el.dataset.mcCronoUni || 'min';
+        const conv = u === 's' ? Math.round(sg)
+                   : u === 'h' ? Math.round((sg / 3600) * 100) / 100
+                               : Math.round((sg / 60) * 10) / 10;
+        const alvoU = cart?.querySelector('.mc-cf-crono-u');
+        if (alvoU) alvoU.textContent = `${this._numCirc(conv)} ${u}`;
+        const mk = cart?.querySelector('.mc-cf-marca.vivo');
+        if (mk) {
+          const m2 = this._cache?.[ch];
+          const b2 = (m2?.circuito?.blocos || []).find(x => x.id === bid);
+          if (b2) {
+            const teto = Math.max(1, (b2.max != null ? b2.max : b2.min) || 1) * 1.25;
+            mk.style.left = Math.max(0, Math.min(100, (conv / teto) * 100)) + '%';
+            mk.classList.toggle('curta', b2.min != null && conv < b2.min);
+          }
+        }
+      });
+
       const dividas = document.querySelectorAll('[data-mc-pen-crono]');
       dividas.forEach(el => {
         const m = this._cache?.[el.dataset.mcPenCrono];
@@ -2148,7 +2354,7 @@ const MissaoCard = {
         el.textContent = this._durDivida(this._segsDivida(m));
       });
       // Nada para mover: o intervalo se encerra sozinho em vez de girar à toa.
-      if (!prazos.length && !cronos.length && !dividas.length) {
+      if (!prazos.length && !cronos.length && !dividas.length && !blocos.length) {
         clearInterval(this._timer); this._timer = null; return;
       }
 
@@ -2312,6 +2518,10 @@ const MissaoCard = {
       return this._meta(chave, btn, acao === 'meta-somar');
     if (acao === 'circ-registrar' || acao === 'circ-desfazer')
       return this._circuito(chave, btn, acao === 'circ-registrar');
+    if (acao === 'circ-iniciar' || acao === 'circ-parar' || acao === 'circ-cancelar')
+      return this._cronoBloco(chave, btn, acao);
+    if (acao === 'circ-mais' || acao === 'circ-menos')
+      return this._passoBloco(chave, btn, acao === 'circ-mais');
     if (this._demo) return this._demoTransicao(acao, chave);
 
     // Trava de segurança: origem "rotina" sem rotina_id significa que a lista
@@ -2556,6 +2766,72 @@ const MissaoCard = {
      e o combinado mora no payload do servidor. Adivinhar aqui faria o
      card declarar "feito" um bloco que o backend ainda considera aberto
      — e o botão Concluir apareceria para ser recusado. */
+  /* Liga, encerra ou descarta o cronômetro do bloco.
+
+     ENCERRAR NÃO É UMA AÇÃO NOVA no servidor: ele converte o decorrido
+     na unidade do bloco e cai no MESMO `circ-registrar` de sempre. Um
+     endpoint separado para "lançar por cronômetro" criaria dois caminhos
+     para o mesmo fato — e o dia em que um deles ganhasse uma regra, o
+     outro ficaria para trás.
+
+     Só apaga o instante DEPOIS de o servidor aceitar. Apagar antes e
+     falhar a rede deixaria o hunter sem o cronômetro e sem o lançamento
+     — os minutos que ele andou sumiriam entre um clique e um erro. */
+  async _cronoBloco(chave, btn, acao) {
+    const bloco = btn?.dataset?.mcBloco;
+    if (!bloco) return;
+    const { m } = this._rota(chave);
+    const b = (m?.circuito?.blocos || []).find(x => x.id === bloco);
+    if (!b) return;
+
+    if (acao === 'circ-iniciar') {
+      this._cronoLigar(chave, bloco);
+      this.repintar(chave);
+      this._iniciarTimer();
+      return;
+    }
+
+    if (acao === 'circ-cancelar') {
+      const ok = typeof SoloDialog !== 'undefined' && SoloDialog.confirm
+        ? await SoloDialog.confirm(
+            'Descartar este cronômetro? O tempo corrido não será lançado.',
+            { okTexto: 'Descartar', perigo: true })
+        : true;
+      if (!ok) return;
+      this._cronoDesligar(chave, bloco);
+      this.repintar(chave);
+      return;
+    }
+
+    // ENCERRAR: o decorrido vira valor e segue o caminho normal.
+    const segs = this._segsDecorridos(chave, bloco);
+    if (segs < 3) {
+      SoloDialog?.toast?.('O cronômetro mal começou — use "lançar à mão" se já fez o bloco.', 'info');
+      return;
+    }
+    const valor = this._cronoValor(b, segs);
+    btn.disabled = true;
+    try {
+      await this._enviarCircuito(chave, bloco, valor, btn);
+      this._cronoDesligar(chave, bloco);
+      this.repintar(chave);
+    } finally {
+      btn.disabled = false;
+    }
+  },
+
+  /* Os degraus da repetição. Doze agachamentos são doze toques ou um
+     arraste — nunca uma digitação. O campo continua editável para quem
+     preferir escrever. */
+  _passoBloco(chave, btn, somando) {
+    const bloco = btn?.dataset?.mcBloco;
+    const campo = document.querySelector(`[data-mc-circ-input="${chave}|${bloco}"]`);
+    if (!campo) return;
+    const n = this._lerNumero(campo.value);
+    const novo = Math.max(0, (n === null ? 0 : n) + (somando ? 1 : -1));
+    campo.value = this._numCirc(novo);
+  },
+
   async _circuito(chave, btn, registrando) {
     const { m, id, tarefa } = this._rota(chave);
     if (!Number.isFinite(Number(id))) {
@@ -2583,36 +2859,44 @@ const MissaoCard = {
 
     btn.disabled = true;
     try {
-      const base = tarefa ? { tarefa_id: id } : { rotina_id: id };
-      const resp = registrando
-        ? await API.post('/execucoes/circuito/registrar',
-            { ...base, etapa_id: bloco, valor })
-        : await API.post('/execucoes/circuito/desfazer',
-            { ...base, etapa_id: bloco });
-
-      if (resp.circuito) m.circuito = resp.circuito;
-      if (resp.status) { m.status = resp.status; m.status_hoje = resp.status; }
-      this.repintar(chave);
-
-      if (resp.circuito_cumprido) {
-        const card = document.querySelector(`[data-mc-card="${chave}"]`);
-        const g = resp.resultado || {};
-        if (typeof missionComplete === 'function' && card)
-          missionComplete(card, g.xp_ganho || 0, g.moedas_ganhas || 0);
-        // A sessão parcial é notícia: o hunter precisa saber POR QUE
-        // ganhou menos, senão o desconto vira defeito aos olhos dele.
-        if (resp.parcial)
-          SoloDialog?.toast?.('Sessão parcial — algum bloco ficou abaixo do combinado. XP reduzido.', 'info');
-      }
-      if (resp.reabriu) SoloDialog?.toast?.('Sessão reaberta e XP devolvido.', 'info');
-
-      this.avisarDesatualizado('circuito');
-      if (this._onMudou) await this._onMudou(resp, registrando ? 'circ-registrar' : 'circ-desfazer', id, chave);
+      await this._enviarCircuito(chave, bloco, valor, btn, registrando);
     } catch (err) {
       SoloDialog?.toast?.(err.message || String(err), 'error');
     } finally {
       btn.disabled = false;
     }
+  },
+
+  /* O ENVIO, num lugar só — usado pelo botão de lançar E pelo encerrar
+     do cronômetro. Dois caminhos para o mesmo fato dariam duas chances
+     de divergir: o dia em que um ganhasse uma regra, o outro ficaria
+     para trás sem ninguém notar. */
+  async _enviarCircuito(chave, bloco, valor, btn, registrando = true) {
+    const { m, id, tarefa } = this._rota(chave);
+    const base = tarefa ? { tarefa_id: id } : { rotina_id: id };
+    const resp = registrando
+      ? await API.post('/execucoes/circuito/registrar', { ...base, etapa_id: bloco, valor })
+      : await API.post('/execucoes/circuito/desfazer',  { ...base, etapa_id: bloco });
+
+    if (resp.circuito) m.circuito = resp.circuito;
+    if (resp.status) { m.status = resp.status; m.status_hoje = resp.status; }
+    this.repintar(chave);
+
+    if (resp.circuito_cumprido) {
+      const card = document.querySelector(`[data-mc-card="${chave}"]`);
+      const g = resp.resultado || {};
+      if (typeof missionComplete === 'function' && card)
+        missionComplete(card, g.xp_ganho || 0, g.moedas_ganhas || 0);
+      // A sessão parcial é notícia: o hunter precisa saber POR QUE
+      // ganhou menos, senão o desconto vira defeito aos olhos dele.
+      if (resp.parcial)
+        SoloDialog?.toast?.('Sessão parcial — algum bloco ficou abaixo do combinado. XP reduzido.', 'info');
+    }
+    if (resp.reabriu) SoloDialog?.toast?.('Sessão reaberta e XP devolvido.', 'info');
+
+    this.avisarDesatualizado('circuito');
+    if (this._onMudou) await this._onMudou(resp, registrando ? 'circ-registrar' : 'circ-desfazer', id, chave);
+    return resp;
   },
 
   async _meta(chave, btn, somando) {

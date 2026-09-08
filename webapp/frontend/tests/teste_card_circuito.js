@@ -86,7 +86,7 @@ function montar() {
   return { win, doc: win.document, MC: win.__MC };
 }
 
-function rodar() {
+async function rodar() {
   console.log('\n=== O CARD DO CIRCUITO ===\n');
   const { win, doc, MC } = montar();
   const m = missao();
@@ -154,11 +154,11 @@ function rodar() {
   /* "22min", sem espaco: a unidade e um <span> menor colado ao numero,
      e nao um sufixo de texto. E o que faz "22" ser lido como grandeza e
      "min" como legenda, em vez de uma frase. */
-  ok(/22\s*min/.test(filhas[1].textContent), 'com o que foi entregue ao lado');
-  ok(!!filhas[1].querySelector('.mc-cf-valor span'),
-     'e a unidade e um span proprio — grandeza e legenda tem pesos diferentes');
-  ok(filhas[1].querySelector('.mc-cf-valor.curta'),
-     'e o valor curto e marcado');
+  ok(/22\s*min/.test(filhas[1].textContent), 'com o que foi entregue');
+  ok(!!filhas[1].querySelector('.mc-cf-grande span'),
+     'a unidade e um span proprio — grandeza e legenda tem pesos diferentes');
+  ok(!!filhas[1].querySelector('.mc-cf-grande.curta'),
+     'e o valor curto sai em ambar');
   ok(/Giro de bra/.test(filhas[0].textContent),
      'a nota do bloco vive na filha — e onde a instrucao pertence');
 
@@ -213,7 +213,8 @@ function rodar() {
      'e a TERCEIRA vazia — e ela que diz que falta uma, sem texto');
   ok(filhas[3].querySelectorAll('.mc-cf-slot').length === 3,
      'bloco nem comecado ja mostra os tres lugares a preencher');
-  ok(/Série 3/.test(filhas[2].textContent), 'e o botao pede a proxima');
+  ok(/Iniciar série 3/.test(filhas[2].textContent),
+     'e o botao INICIA a proxima serie — o cartao cronometra, nao pergunta');
 
   /* EFEITO: a varredura, so no alvo e so enquanto vive. */
   ok(!!filhas[2].querySelector('.mc-cf-luz'),
@@ -257,7 +258,7 @@ function rodar() {
 }
 
 async function rodarAsync() {
-  const { win, doc, MC, m, btn, campo } = rodar();
+  const { win, doc, MC, m, btn, campo } = await rodar();
 
   campo.value = '24';
   win.__resp = {
@@ -351,6 +352,120 @@ async function rodarAsync() {
      'a trava do Concluir lê `completo` do SERVIDOR, não recontando aqui');
   ok(/data-mc-circ-input="\$\{chave\}\|/.test(fonte),
      'o input é endereçado por missão e bloco');
+
+  /* ══════════════════════════════════════════════════════════
+     O CRONOMETRO — "o local para lancar a missao esta confuso"
+
+     O Arquiteto: "um campo para lancar minutos? Confuso demais. Deve
+     ter a rolagem do tempo no card, um botao de iniciar e de finalizar,
+     assim o proprio card marca o tempo."
+
+     O motivo e mais forte que a conveniencia: NINGUEM SABE quantos
+     minutos andou. Pedir o numero e pedir uma estimativa — e estimativa
+     lancada num sistema que mede e dado falso entrando pela porta da
+     frente.
+     ══════════════════════════════════════════════════════════ */
+  console.log('\n-- o cartao marca o tempo sozinho --');
+  const c = montar();
+  /* O `car` do fixture padrao ja esta entregue; aqui ele precisa estar
+     EM ABERTO, porque e o cronometro dele que esta sob teste. */
+  const mc2 = missao();
+  mc2.circuito = JSON.parse(JSON.stringify(mc2.circuito));
+  mc2.circuito.blocos[1] = { ...mc2.circuito.blocos[1],
+    valor: null, feito: false, abaixo: false };
+  mc2.circuito.fechados = 1; mc2.circuito.faltam = 3; mc2.circuito.parciais = 0;
+  mc2.circuito.parcial = false;
+  c.MC.cachear([mc2], { modo: 'missao' });
+
+  const so = (h, id) => {
+    c.doc.getElementById('lista').innerHTML = h;
+    return [...c.doc.querySelectorAll('.mc-cf')]
+      .find(f => f.dataset.mcBlocoCard === id);
+  };
+
+  let f = so(c.MC.html(mc2, { compacto: true }), 'car');
+  ok(!!f.querySelector('[data-mc-acao="circ-iniciar"]'),
+     'bloco de TEMPO oferece INICIAR, nao um campo solto');
+  ok(!!f.querySelector('.mc-cf-manual'),
+     'e o lancamento a mao continua — recolhido, para quem esqueceu de iniciar');
+  ok(!f.querySelector('.mc-cf-crono-t'), 'sem relogio antes de comecar');
+
+  // Liga o cronometro ha 12m34s.
+  c.win.localStorage.setItem('sr_circ_t_r7_car', String(Date.now() - (12 * 60 + 34) * 1000));
+  f = so(c.MC.html(mc2, { compacto: true }), 'car');
+  const rel = f.querySelector('.mc-cf-crono-t');
+  ok(!!rel, 'iniciado, o RELOGIO aparece');
+  ok(/^12:3[3-5]$/.test(rel.textContent.trim()),
+     `contando de verdade: ${rel.textContent.trim()}`);
+  ok(!!f.querySelector('.mc-cf-marca.vivo'),
+     'e o marcador do trilho anda junto — ver ele ENTRAR na janela e ' +
+     'o momento em que o hunter sabe que pode parar');
+  ok(!!f.querySelector('[data-mc-acao="circ-parar"]'), 'com o botao de ENCERRAR');
+  ok(!!f.querySelector('[data-mc-acao="circ-cancelar"]'),
+     'e o de descartar, para quem iniciou por engano');
+  ok(!!f.querySelector('.mc-cf-borda'), 'o bloco em curso ganha a BORDA animada');
+  ok(!f.querySelector('[data-mc-acao="circ-iniciar"]'),
+     'e o iniciar some — um bloco nao se inicia duas vezes');
+
+  // Encerrar converte o decorrido e cai no registrar de sempre.
+  c.win.chamadas.length = 0;
+  c.win.__resp = { ok: true, circuito: mc2.circuito, circuito_cumprido: false };
+  await c.MC._cronoBloco('r7', f.querySelector('[data-mc-acao="circ-parar"]'), 'circ-parar');
+  const env = c.win.chamadas.find(x => x[0] === '/execucoes/circuito/registrar');
+  ok(!!env, 'encerrar cai no MESMO endpoint de registrar — ' +
+            'dois caminhos para o mesmo fato divergiriam com o tempo');
+  ok(env && Math.abs(env[1].valor - 12.6) < 0.2,
+     `e manda o decorrido convertido na unidade do bloco (${env && env[1].valor} min)`);
+  ok(!c.win.localStorage.getItem('sr_circ_t_r7_car'),
+     'so entao apaga o instante — apagar antes e falhar a rede perderia os minutos');
+
+  // Serie cronometrada entrega SEGUNDOS.
+  ok(c.MC._cronoUnidade({ modo: 'SERIE_TEMPO', unidade: 's' }) === 's',
+     'serie cronometrada mede em segundos');
+  ok(c.MC._cronoUnidade({ modo: 'TEMPO', unidade: 'min' }) === 'min',
+     'e o bloco corrido, em minutos');
+  ok(c.MC._cronometravel({ modo: 'SERIE_REP' }) === false,
+     'REPETICAO nao se cronometra — um relogio ali mediria a coisa errada ' +
+     'com precisao');
+
+  f = so(c.MC.html(mc2, { compacto: true }), 'agc');
+  ok(!!f.querySelector('[data-mc-acao="circ-mais"]') &&
+     !!f.querySelector('[data-mc-acao="circ-menos"]'),
+     'ela ganha DEGRAUS: doze agachamentos sao doze toques, nao uma digitacao');
+  ok(!f.querySelector('[data-mc-acao="circ-iniciar"]'), 'e nenhum botao de iniciar');
+
+  // Relogio adiantado nao vira tempo negativo correndo.
+  c.win.localStorage.setItem('sr_circ_t_r7_car', String(Date.now() + 60000));
+  ok(c.MC._cronoInicio('r7', 'car') === null,
+     'instante no FUTURO (relogio do aparelho errado) e tratado como nao iniciado');
+  c.win.localStorage.removeItem('sr_circ_t_r7_car');
+
+  /* ── O XP QUE O BLOCO ACRESCENTA ────────────────────────────── */
+  console.log('\n-- o acrescimo de XP ao mestre --');
+  const mx = missao({ xp_recompensa: 180 });
+  const partes = [0, 1, 2, 3].map(i => c.MC._xpDoBloco(mx, i, 4));
+  ok(partes.reduce((a, b) => a + b, 0) === 180,
+     `as partes somam o TOTAL do mestre (${partes.join('+')}=180) — ` +
+     'quatro blocos somando 176 seriam o Sistema errando uma conta simples');
+  const mx2 = missao({ xp_recompensa: 100 });
+  const p2 = [0, 1, 2].map(i => c.MC._xpDoBloco(mx2, i, 3));
+  ok(p2.reduce((a, b) => a + b, 0) === 100,
+     `e o resto vai para o ultimo (${p2.join('+')}=100)`);
+
+  c.doc.getElementById('lista').innerHTML = c.MC.html(mx, { compacto: true });
+  const fAberto = [...c.doc.querySelectorAll('.mc-cf')].find(x => x.dataset.mcBlocoCard === 'agc');
+  const fFeito  = [...c.doc.querySelectorAll('.mc-cf')].find(x => x.dataset.mcBlocoCard === 'mob');
+  ok(/\+45/.test(fAberto.textContent), 'o bloco em aberto PROMETE o seu XP');
+  ok(!!fFeito.querySelector('.mc-cf-xp-pago'), 'e o cumprido mostra como conta paga');
+
+  /* ── O CUMPRIDO DEIXOU DE SER POBRE ─────────────────────────── */
+  console.log('\n-- "o card filho concluido tambem esta pobre" --');
+  ok(!!fFeito.querySelector('.mc-cf-grande'),
+     'o valor entregue vira MANCHETE, nao um numero pequeno num canto');
+  ok(!!fFeito.querySelector('.mc-cf-veredito'),
+     'com o veredito contra a faixa, em palavras');
+  const fCurto = [...c.doc.querySelectorAll('.mc-cf')].find(x => x.dataset.mcBlocoCard === 'car');
+  ok(/dentro do combinado/.test(fFeito.textContent), 'quem cumpriu ouve isso');
 
   console.log(`\n=== ${testes - falhas}/${testes} ===`);
   return falhas;

@@ -3301,10 +3301,163 @@
 }
 .mc-cf-desfazer:hover { color: var(--text-primary); border-color: rgba(255,255,255,.3); }
 
-/* Sessão encerrada: nada respira nem varre. Um grupo concluído que
+/* ── A BORDA VIVA ────────────────────────────────────────────────
+   O Arquiteto pediu "uma animação de bordas". Um anel de luz percorre
+   o perímetro do bloco ativo.
+
+   `conic-gradient` girando dentro de uma máscara de dois retângulos:
+   o de fora pinta a borda, o de dentro a recorta com `xor`. É uma
+   borda de verdade — acompanha o raio do cartão e não engorda o
+   layout, ao contrário de um `outline` animado.
+
+   Só no ALVO e no que está RODANDO. Um circuito inteiro com bordas
+   girando seria uma árvore de natal, e a borda deixaria de dizer
+   "é aqui". */
+.mc-cf-borda {
+  position: absolute; inset: 0; border-radius: inherit;
+  padding: 1px; pointer-events: none; z-index: 1;
+  background: conic-gradient(from var(--giro, 0deg),
+    transparent 0deg, transparent 250deg,
+    color-mix(in srgb, var(--mc-cor) 85%, transparent) 310deg,
+    var(--mc-cor) 340deg, transparent 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  animation: mc-cf-gira 4s linear infinite;
+}
+@property --giro { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+@keyframes mc-cf-gira { to { --giro: 360deg; } }
+/* Onde `@property` não existe, o anel fica parado num ângulo bonito em
+   vez de sumir: borda acesa vale mais que borda ausente. */
+@supports not (background: conic-gradient(from var(--x, 0deg), red, blue)) {
+  .mc-cf-borda { background: linear-gradient(120deg, transparent 40%, var(--mc-cor) 75%, transparent); animation: none; }
+}
+.mc-cf-rodando .mc-cf-borda { animation-duration: 2.2s; }
+
+/* ── O PAINEL DO CRONÔMETRO ─────────────────────────────────────
+   Enquanto roda, o relógio É o conteúdo do cartão. Número grande, em
+   fonte de seção, com a batida ao lado — o hunter olha de longe, com o
+   celular apoiado, no meio de uma caminhada. */
+.mc-cf-crono {
+  display: flex; align-items: baseline; gap: .5rem;
+  margin-top: .45rem; flex-wrap: wrap;
+}
+.mc-cf-crono-t {
+  font-family: var(--font-section); font-size: 1.5rem; line-height: 1;
+  letter-spacing: .04em; color: var(--mc-cor);
+  text-shadow: 0 0 14px color-mix(in srgb, var(--mc-cor) 45%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+.mc-cf-crono-u {
+  font-family: var(--font-section); font-size: .62rem;
+  color: var(--text-muted); letter-spacing: .06em;
+}
+/* A BATIDA. Elemento próprio — duas animações no mesmo elemento se
+   cancelam nesta base, e o relógio já tem o brilho do texto. */
+.mc-cf-crono-batida {
+  width: 7px; height: 7px; border-radius: 50%; margin-left: auto;
+  background: var(--mc-cor);
+  animation: mc-cf-bate 1s steps(1, end) infinite;
+}
+@keyframes mc-cf-bate { 0%, 49% { opacity: 1; } 50%, 100% { opacity: .18; } }
+
+/* ── O CARTÃO CUMPRIDO ──────────────────────────────────────────
+   Era um retângulo apagado com um número pequeno. Agora é o extrato do
+   que foi feito: o valor em tamanho de manchete, o veredito contra a
+   faixa e o XP que ele levou para o mestre. Bloco cumprido é conquista;
+   tem de parecer uma. */
+.mc-cf-fecho {
+  display: flex; align-items: baseline; gap: .55rem;
+  margin-top: .4rem; flex-wrap: wrap;
+}
+.mc-cf-grande {
+  font-family: var(--font-section); font-size: 1.35rem; line-height: 1;
+  color: var(--mc-cor); font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 12px color-mix(in srgb, var(--mc-cor) 35%, transparent);
+}
+.mc-cf-grande span {
+  font-size: .58rem; opacity: .65; margin-left: .22rem; letter-spacing: .04em;
+}
+.mc-cf-grande.curta { color: #fcd34d; text-shadow: 0 0 12px rgba(245,158,11,.35); }
+.mc-cf-veredito {
+  font-family: var(--font-section); font-size: .55rem; letter-spacing: .07em;
+  text-transform: uppercase; color: color-mix(in srgb, var(--mc-cor) 75%, white 10%);
+}
+.mc-cf-veredito.curta { color: #fcd34d; }
+
+/* ── O XP DO BLOCO ──────────────────────────────────────────────
+   O que ele acrescenta ao mestre. Antes de cumprir é promessa (traço
+   fino); depois, é conta paga (preenchido). */
+.mc-cf-xp {
+  display: inline-flex; align-items: center; gap: .18rem;
+  font-family: var(--font-section); font-size: .55rem; letter-spacing: .05em;
+  padding: .1rem .35rem; border-radius: .25rem; white-space: nowrap;
+  color: var(--gold-xp, #fbbf24);
+  border: 1px solid color-mix(in srgb, var(--gold-xp, #fbbf24) 28%, transparent);
+  background: color-mix(in srgb, var(--gold-xp, #fbbf24) 8%, transparent);
+}
+.mc-cf-xp-pago {
+  margin-left: auto;
+  background: color-mix(in srgb, var(--gold-xp, #fbbf24) 16%, transparent);
+  border-color: color-mix(in srgb, var(--gold-xp, #fbbf24) 45%, transparent);
+}
+
+/* ── AÇÕES ──────────────────────────────────────────────────────── */
+.mc-cf-acao { margin-top: .55rem; display: flex; gap: .35rem; align-items: center; flex-wrap: wrap; }
+.mc-cf-btn-forte {
+  background: color-mix(in srgb, var(--mc-cor) 22%, transparent);
+  border-color: color-mix(in srgb, var(--mc-cor) 60%, transparent);
+  font-weight: 700;
+}
+.mc-cf-btn-forte:hover { background: color-mix(in srgb, var(--mc-cor) 36%, transparent); }
+.mc-cf-btn-parar {
+  background: rgba(239,68,68,.16); border-color: rgba(239,68,68,.5); color: #fca5a5;
+}
+.mc-cf-btn-parar:hover { background: rgba(239,68,68,.3); }
+.mc-cf-btn-fraco {
+  background: transparent; border-color: rgba(255,255,255,.12); color: var(--text-muted);
+}
+.mc-cf-play {
+  width: 0; height: 0; display: inline-block; margin-right: .3rem;
+  border-left: 7px solid currentColor;
+  border-top: 4.5px solid transparent; border-bottom: 4.5px solid transparent;
+}
+.mc-cf-quad {
+  width: 8px; height: 8px; display: inline-block; margin-right: .3rem;
+  background: currentColor; border-radius: 1px;
+}
+
+/* Os degraus da repetição: o campo de texto livre virou dois botões e
+   um número. Doze agachamentos são doze toques, não uma digitação. */
+.mc-cf-passo { display: inline-flex; align-items: center; gap: .25rem; }
+.mc-cf-pm {
+  width: 26px; height: 26px; border-radius: .3rem; cursor: pointer;
+  border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04);
+  color: var(--text-primary); font-size: .85rem; line-height: 1;
+  transition: background .15s;
+}
+.mc-cf-pm:hover { background: rgba(255,255,255,.11); }
+.mc-cf-pm:active { transform: scale(.92); }
+.mc-cf-input-num { width: 3rem; text-align: center; }
+
+/* O lançamento à mão RECOLHIDO: continua para quem esqueceu de iniciar,
+   sem competir com o botão que é o caminho certo. */
+.mc-cf-manual > summary {
+  font-family: var(--font-section); font-size: .55rem; letter-spacing: .06em;
+  color: var(--text-muted); cursor: pointer; padding: .2rem .1rem;
+  list-style: none; transition: color .2s;
+}
+.mc-cf-manual > summary::-webkit-details-marker { display: none; }
+.mc-cf-manual > summary::before { content: '+ '; opacity: .6; }
+.mc-cf-manual[open] > summary::before { content: '− '; }
+.mc-cf-manual > summary:hover { color: var(--text-primary); }
+.mc-cf-manual .mc-cf-entrada { margin-top: .3rem; }
+
+/* Sessão encerrada: nada respira, varre ou gira. Um grupo concluído que
    continua pedindo atenção pede o que já foi dado. */
 .mc-grupo-fim .mc-cf-alvo .mc-cf-no { animation: none; }
-.mc-grupo-fim .mc-cf-luz { display: none; }
+.mc-grupo-fim .mc-cf-luz,
+.mc-grupo-fim .mc-cf-borda { display: none; }
 .mc-grupo-fim .mc-cf { opacity: .85; }
 
 @media (max-width: 560px) {
@@ -3316,13 +3469,17 @@
   .mc-cf-fio { left: -9px; width: 9px; }
   .mc-cf-nome { white-space: normal; }
   .mc-cf-slot { min-width: 2.1rem; }
+  .mc-cf-crono-t { font-size: 1.3rem; }
+  .mc-cf-acao { gap: .3rem; }
 }
 
-/* "Reduzir movimento" desliga pulso, varredura e respiração. O cordão
-   aceso e o trilho continuam — eles são dado, não enfeite. */
+/* "Reduzir movimento" desliga o que se mexe por estética. O relógio
+   continua contando e o trilho continua marcando — eles são dado. */
 @media (prefers-reduced-motion: reduce) {
   .mc-circ-pulso { animation: none; opacity: .6; }
   .mc-cf-alvo .mc-cf-no { animation: none; }
-  .mc-cf-luz { animation: none; display: none; }
+  .mc-cf-luz { display: none; }
+  .mc-cf-borda { animation: none; }
+  .mc-cf-crono-batida { animation: none; }
   .mc-cf-marca { transition: none; }
 }
