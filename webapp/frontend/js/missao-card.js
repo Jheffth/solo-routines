@@ -595,20 +595,94 @@ const MissaoCard = {
 
      TRÊS ESTADOS, e o do meio é o que esta natureza inventou:
      em aberto · entregue · entregue ABAIXO do combinado. */
+  /* O GLIFO DO BLOCO — traço, no alfabeto do Sistema.
+
+     Cada modo tem o seu, porque "3 × 20–30 s" e "25–30 min" pedem
+     leituras diferentes e o ícone é o que separa as duas antes de o
+     hunter ler qualquer número. Desenhados aqui e não em `Glifos`
+     porque são desta natureza: um relógio de bloco não serve a mais
+     ninguém, e poluir o alfabeto geral com quatro traços de uso único
+     é como um alfabeto para de ser alfabeto. */
+  _glifoBloco(modo) {
+    const w = 'width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"';
+    const g = {
+      // Ampulheta: tempo corrido, um lançamento só.
+      TEMPO: `<svg ${w}><path d="M7 3h10M7 21h10M8 3v3.5a4 4 0 0 0 1.6 3.2L12 12l2.4-2.3A4 4 0 0 0 16 6.5V3M8 21v-3.5a4 4 0 0 1 1.6-3.2L12 12l2.4 2.3A4 4 0 0 1 16 17.5V21"/></svg>`,
+      // Barras empilhadas com marca de tempo: séries cronometradas.
+      SERIE_TEMPO: `<svg ${w}><rect x="3" y="4" width="18" height="4" rx="1.2"/><rect x="3" y="10" width="18" height="4" rx="1.2"/><rect x="3" y="16" width="18" height="4" rx="1.2"/><path d="M12 5.4v1.2M12 11.4v1.2"/></svg>`,
+      // Barras empilhadas com contagem: séries de repetição.
+      SERIE_REP: `<svg ${w}><rect x="3" y="4" width="18" height="4" rx="1.2"/><rect x="3" y="10" width="18" height="4" rx="1.2"/><rect x="3" y="16" width="18" height="4" rx="1.2"/><path d="M6.5 5.6v.8M9 5.6v.8M6.5 11.6v.8M9 11.6v.8"/></svg>`,
+      // Selo: fez ou não fez, sem número.
+      CHECK: `<svg ${w}><path d="M12 2.5 20 6v6c0 4.5-3.2 8.3-8 9.5-4.8-1.2-8-5-8-9.5V6z"/><path d="m9 12 2 2 4-4"/></svg>`,
+    };
+    return g[modo] || g.TEMPO;
+  },
+
+  /* A FAIXA DESENHADA — a informação que faltava.
+
+     Antes a faixa era só texto ("25–30 min") jogado na borda direita, e
+     o valor entregue outro texto ao lado. Dois números soltos que o
+     hunter tinha de comparar de cabeça.
+
+     Aqui a janela combinada vira uma REGIÃO no trilho e o entregue vira
+     um MARCADOR. Ficar aquém deixa de ser uma conta e passa a ser uma
+     coisa que se vê: o marcador parado antes da região acesa.
+
+     A escala vai de zero a `max × 1.25`, e a folga de 25% existe para
+     quem entrega ACIMA do teto ainda caber no desenho — sem ela, quem
+     fez 35 numa faixa de 25–30 veria o marcador colado na borda, como
+     se tivesse batido no limite do mundo. */
+  _trilhoFaixa(b) {
+    const min = b.min, max = b.max != null ? b.max : b.min;
+    if (min == null && max == null) return '';
+    const teto = Math.max(1, (max != null ? max : min)) * 1.25;
+    const pct = (v) => Math.max(0, Math.min(100, (v / teto) * 100));
+    let jI = min != null ? pct(min) : 0;
+    let jF = max != null ? pct(max) : 100;
+    /* FAIXA DE VALOR ÚNICO (5 a 5) daria uma janela de largura ZERO —
+       invisível, e o trilho apareceria vazio justamente no bloco de alvo
+       mais preciso. Um alvo exato continua sendo um alvo: ganha a
+       largura mínima para ser visto. */
+    if (jF - jI < 3.5) { const c = (jI + jF) / 2; jI = Math.max(0, c - 1.75); jF = Math.min(100, c + 1.75); }
+    const val = b.valor;
+    const curta = val != null && min != null && val < min;
+    const marca = val != null
+      ? `<i class="mc-cf-marca${curta ? ' curta' : ''}" style="left:${pct(val)}%"
+           title="${this._esc(this._numCirc(val))}${this._esc(b.unidade || '')}"></i>` : '';
+    return `<div class="mc-cf-trilho" aria-hidden="true">
+      <i class="mc-cf-janela" style="left:${jI}%;right:${(100 - jF).toFixed(1)}%"></i>
+      ${marca}
+    </div>`;
+  },
+
+  /* OS SLOTS DA SÉRIE. Três caixas, não três fichas soltas.
+
+     A caixa vazia é o ponto: ela diz quantas faltam SEM texto. Fichas
+     que só apareciam depois de lançadas escondiam o tamanho do
+     compromisso — o hunter via "25s, 18s" e não sabia que faltava uma. */
+  _slotsSerie(b) {
+    const n = Math.max(1, b.series || 1);
+    const vals = b.valores || [];
+    let out = '';
+    for (let k = 0; k < n; k++) {
+      const v = vals[k];
+      const curta = v != null && b.min != null && v < b.min;
+      const cls = v == null ? '' : (curta ? ' cheio curta' : ' cheio');
+      out += `<i class="mc-cf-slot${cls}" title="Série ${k + 1}${v != null ? ': ' + this._numCirc(v) + (b.unidade || '') : ' — em aberto'}"
+        >${v != null ? this._esc(this._numCirc(v)) + this._esc(b.unidade || '') : k + 1}</i>`;
+    }
+    return `<div class="mc-cf-slots">${out}</div>`;
+  },
+
   _filhaCircuito(b, chave, encerrada, i, ehAlvo, total) {
     const temSerie = b.modo === 'SERIE_TEMPO' || b.modo === 'SERIE_REP';
     const est = !b.feito ? 'aberto' : (b.abaixo ? 'parcial' : 'ok');
 
-    const fichas = temSerie ? (b.valores || []).map((v, k) => `
-      <span class="mc-cf-serie${(b.min != null && v < b.min) ? ' curta' : ''}"
-            title="Série ${k + 1}">${this._esc(this._numCirc(v))}${b.unidade ? this._esc(b.unidade) : ''}</span>`
-    ).join('') : '';
-
     let acao = '';
     if (!encerrada && !b.feito) {
       if (b.modo === 'CHECK') {
-        acao = `<button type="button" class="mc-cf-ok" data-mc-acao="circ-registrar"
-                  data-mc-bloco="${this._esc(b.id)}" data-mc-id="${chave}">Feito</button>`;
+        acao = `<button type="button" class="mc-cf-btn" data-mc-acao="circ-registrar"
+                  data-mc-bloco="${this._esc(b.id)}" data-mc-id="${chave}">Marcar feito</button>`;
       } else {
         const rot = temSerie ? `Série ${(b.valores || []).length + 1}` : 'Lançar';
         acao = `<span class="mc-cf-entrada">
@@ -616,7 +690,7 @@ const MissaoCard = {
                  data-mc-circ-input="${chave}|${this._esc(b.id)}"
                  placeholder="${this._esc(b.unidade || '0')}"
                  aria-label="Valor de ${this._esc(b.titulo)}">
-          <button type="button" class="mc-cf-ok" data-mc-acao="circ-registrar"
+          <button type="button" class="mc-cf-btn" data-mc-acao="circ-registrar"
                   data-mc-bloco="${this._esc(b.id)}" data-mc-id="${chave}">${rot}</button>
         </span>`;
       }
@@ -633,24 +707,30 @@ const MissaoCard = {
            aria-label="Desfazer último lançamento de ${this._esc(b.titulo)}">${this._g('menos', 11)}</button>`
       : '';
 
+    // A MEDIDA: slots quando há série, trilho quando é um lançamento só.
+    const medida = temSerie ? this._slotsSerie(b)
+                            : (b.modo === 'CHECK' ? '' : this._trilhoFaixa(b));
+
     const entregue = (!temSerie && b.valor != null)
-      ? `<span class="mc-cf-valor${(b.min != null && b.valor < b.min) ? ' curta' : ''}"
-          >${this._esc(this._numCirc(b.valor))}${b.unidade ? ' ' + this._esc(b.unidade) : ''}</span>`
-      : '';
+      ? `<b class="mc-cf-valor${(b.min != null && b.valor < b.min) ? ' curta' : ''}"
+          >${this._esc(this._numCirc(b.valor))}<span>${this._esc(b.unidade || '')}</span></b>` : '';
 
     return `<article class="mc-cf mc-cf-${est}${ehAlvo ? ' mc-cf-alvo' : ''}" role="listitem"
       data-mc-bloco-card="${this._esc(b.id)}">
-      <i class="mc-cf-no" aria-hidden="true"></i>
+      <i class="mc-cf-no" aria-hidden="true"><b>${i + 1}</b></i>
       <div class="mc-cf-fio" aria-hidden="true"></div>
+      ${ehAlvo && !encerrada ? '<div class="mc-cf-luz" aria-hidden="true"></div>' : ''}
+      ${est === 'ok' ? '<div class="mc-cf-selo" aria-hidden="true">' + this._g('concluida', 13) + '</div>' : ''}
+      <div class="mc-cf-ico" aria-hidden="true">${this._glifoBloco(b.modo)}</div>
       <div class="mc-cf-corpo">
         <div class="mc-cf-topo">
-          <span class="mc-cf-ord">${i + 1}<span class="mc-cf-de">/${total}</span></span>
           <span class="mc-cf-nome">${this._esc(b.titulo)}</span>
           <span class="mc-cf-faixa">${this._esc(this._faixaCircuito(b))}</span>
           ${entregue}${desfazer}
         </div>
         ${b.nota ? `<div class="mc-cf-nota">${this._esc(b.nota)}</div>` : ''}
-        ${fichas || acao ? `<div class="mc-cf-linha">${fichas}${acao}</div>` : ''}
+        ${medida}
+        ${acao ? `<div class="mc-cf-acao">${acao}</div>` : ''}
       </div>
     </article>`;
   },

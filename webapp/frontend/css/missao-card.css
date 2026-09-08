@@ -3073,145 +3073,256 @@
   box-shadow: 0 0 7px rgba(245,158,11,.3);
 }
 
+/* ── A FILHA — um cartão de verdade, não uma linha ───────────────
+   O Arquiteto reprovou a primeira versão: "os cards filhos são pobres,
+   não são modernos, medíocres. Não tem efeitos, não tem animações, não
+   tem informações, não tem svg."
+
+   Ele estava certo em cada item. Eram retângulos com um título à
+   esquerda, o texto da faixa perdido na borda direita e um campo
+   minúsculo embaixo — metade da largura vazia no meio.
+
+   A GRADE resolve o vazio: glifo | corpo. E o corpo empilha nome,
+   nota, MEDIDA e ação, nessa ordem — que é a ordem em que se lê. */
 .mc-cf {
   position: relative;
-  border-radius: .55rem;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: .6rem;
+  align-items: start;
+  border-radius: .6rem;
+  padding: .6rem .75rem;
+  overflow: hidden;
   border: 1px solid rgba(255,255,255,.07);
-  background: linear-gradient(135deg, rgba(255,255,255,.028), rgba(255,255,255,.012));
-  padding: .5rem .7rem;
-  transition: border-color .3s ease, background .3s ease, transform .2s ease;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.035), rgba(255,255,255,.008)),
+    radial-gradient(120% 160% at 0% 0%, rgba(255,255,255,.03), transparent 60%);
+  transition: border-color .3s ease, background .3s ease, box-shadow .3s ease;
 }
 
-/* O NÓ: onde a filha se prende ao cordão. */
-.mc-cf-no {
-  position: absolute; left: -22px; top: 1.05rem;
-  width: 11px; height: 11px; border-radius: 50%;
-  background: #0d0d1a; border: 2px solid rgba(255,255,255,.16);
-  z-index: 2; transition: all .3s ease;
+/* O GLIFO. Traço, no alfabeto do Sistema — e é ele que separa "25–30
+   min" de "3 × 20–30 s" antes de qualquer número ser lido. */
+.mc-cf-ico {
+  width: 34px; height: 34px; border-radius: .45rem;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--mc-cor); opacity: .75;
+  border: 1px solid color-mix(in srgb, var(--mc-cor) 22%, transparent);
+  background: color-mix(in srgb, var(--mc-cor) 8%, transparent);
+  transition: all .3s ease;
 }
-/* O FIO: o traço horizontal do cordão até a borda da filha. Sem ele o
-   nó fica boiando ao lado do cartão em vez de amarrado a ele. */
+
+/* O NÓ VIROU HEXÁGONO, com o número do bloco dentro.
+
+   O círculo vazado de antes não pertencia a lugar nenhum. O hexágono é
+   a forma do Sistema — é a moldura do avatar do hunter e o corte das
+   insígnias —, e carregar o número fez o chip "1/4" desaparecer do
+   corpo: um dado, um lugar. */
+.mc-cf-no {
+  position: absolute; left: -24px; top: 1.05rem;
+  width: 16px; height: 18px; z-index: 3;
+  display: flex; align-items: center; justify-content: center;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: rgba(255,255,255,.16);
+  transition: background .35s ease, filter .35s ease;
+}
+.mc-cf-no b {
+  display: flex; align-items: center; justify-content: center;
+  width: 12px; height: 14px;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: #0b0b14; color: var(--text-muted);
+  font-family: var(--font-section); font-size: .5rem; font-weight: 700;
+  transition: color .35s ease, background .35s ease;
+}
 .mc-cf-fio {
-  position: absolute; left: -12px; top: calc(1.05rem + 5px);
-  width: 12px; height: 2px; background: rgba(255,255,255,.10);
+  position: absolute; left: -10px; top: calc(1.05rem + 8px);
+  width: 10px; height: 2px; background: rgba(255,255,255,.10);
   transition: background .3s ease;
 }
 
-/* Entregue. */
-.mc-cf-ok { border-color: color-mix(in srgb, var(--mc-cor) 42%, transparent); }
-.mc-cf-ok .mc-cf-no {
-  background: var(--mc-cor); border-color: var(--mc-cor);
-  box-shadow: 0 0 10px var(--mc-cor-suave);
+/* ── ENTREGUE ─────────────────────────────────────────────────── */
+.mc-cf-ok {
+  border-color: color-mix(in srgb, var(--mc-cor) 34%, transparent);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--mc-cor) 7%, transparent), transparent);
 }
+.mc-cf-ok .mc-cf-no { background: var(--mc-cor); filter: drop-shadow(0 0 6px var(--mc-cor-suave)); }
+.mc-cf-ok .mc-cf-no b { background: var(--mc-cor); color: #0b0b14; }
 .mc-cf-ok .mc-cf-fio { background: var(--mc-cor); }
+.mc-cf-ok .mc-cf-ico { opacity: 1; border-color: color-mix(in srgb, var(--mc-cor) 45%, transparent); }
 .mc-cf-ok .mc-cf-nome { color: var(--text-muted); }
 
-/* Entregue ABAIXO do combinado — o estado que esta natureza inventou.
-   Nem verde nem apagado: âmbar. Não é fracasso, é entrega curta. */
-.mc-cf-parcial { border-color: rgba(245,158,11,.4); }
-.mc-cf-parcial .mc-cf-no {
-  background: #f59e0b; border-color: #f59e0b;
-  box-shadow: 0 0 10px rgba(245,158,11,.4);
+/* O SELO: a marca de cumprido, no canto. Discreta de propósito — ela
+   confirma, não comemora. A comemoração é do cartão mestre, quando a
+   sessão inteira fecha. */
+.mc-cf-selo {
+  position: absolute; top: .45rem; right: .5rem;
+  color: var(--mc-cor); opacity: .5; pointer-events: none;
 }
-.mc-cf-parcial .mc-cf-fio { background: rgba(245,158,11,.6); }
+.mc-cf-parcial .mc-cf-selo { color: #f59e0b; }
 
-/* O ALVO: o primeiro bloco em aberto. É para onde o hunter vai, e o
-   único que respira — destacar todos os abertos seria não destacar
-   nenhum. */
+/* ── ENTREGUE ABAIXO DO COMBINADO ─────────────────────────────── */
+.mc-cf-parcial { border-color: rgba(245,158,11,.38); }
+.mc-cf-parcial .mc-cf-no { background: #f59e0b; filter: drop-shadow(0 0 6px rgba(245,158,11,.4)); }
+.mc-cf-parcial .mc-cf-no b { background: #f59e0b; color: #0b0b14; }
+.mc-cf-parcial .mc-cf-fio { background: rgba(245,158,11,.6); }
+.mc-cf-parcial .mc-cf-ico { color: #fcd34d; border-color: rgba(245,158,11,.35); }
+
+/* ── O ALVO ───────────────────────────────────────────────────── */
 .mc-cf-alvo {
-  border-color: color-mix(in srgb, var(--mc-cor) 55%, transparent);
-  background: linear-gradient(135deg, var(--mc-cor-suave), rgba(255,255,255,.015));
+  border-color: color-mix(in srgb, var(--mc-cor) 50%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mc-cor) 10%, transparent);
+}
+.mc-cf-alvo .mc-cf-ico {
+  opacity: 1; color: var(--mc-cor);
+  border-color: color-mix(in srgb, var(--mc-cor) 50%, transparent);
+  background: color-mix(in srgb, var(--mc-cor) 14%, transparent);
 }
 .mc-cf-alvo .mc-cf-no {
-  border-color: var(--mc-cor);
-  animation: mc-cf-respira 2.4s ease-in-out infinite;
+  background: color-mix(in srgb, var(--mc-cor) 70%, transparent);
+  animation: mc-cf-pulsa 2.6s ease-in-out infinite;
 }
-@keyframes mc-cf-respira {
-  0%, 100% { box-shadow: 0 0 0 0 var(--mc-cor-suave); }
-  50%      { box-shadow: 0 0 0 5px transparent; }
+.mc-cf-alvo .mc-cf-no b { color: var(--mc-cor); }
+@keyframes mc-cf-pulsa {
+  0%, 100% { filter: drop-shadow(0 0 2px var(--mc-cor-suave)); }
+  50%      { filter: drop-shadow(0 0 8px var(--mc-cor)); }
 }
 
-.mc-cf-corpo { min-width: 0; }
-.mc-cf-topo {
-  display: flex; align-items: baseline; gap: .4rem; flex-wrap: wrap;
+/* A VARREDURA do alvo. Elemento próprio — duas animações no mesmo
+   elemento se cancelam nesta base, lição que já custou uma tarde. */
+.mc-cf-luz {
+  position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(105deg, transparent 35%,
+    color-mix(in srgb, var(--mc-cor) 11%, transparent) 50%, transparent 65%);
+  background-size: 260% 100%;
+  animation: mc-cf-varre 4.5s ease-in-out infinite;
 }
-.mc-cf-ord {
-  font-family: var(--font-section); font-size: .58rem; font-weight: 700;
-  color: var(--mc-cor); letter-spacing: .04em;
+@keyframes mc-cf-varre {
+  0%   { background-position: 160% 0; }
+  55%  { background-position: -60% 0; }
+  100% { background-position: -60% 0; }
 }
-.mc-cf-de { color: var(--text-muted); font-weight: 400; }
+
+/* ── O CORPO ──────────────────────────────────────────────────── */
+.mc-cf-topo { display: flex; align-items: baseline; gap: .45rem; flex-wrap: wrap; }
 .mc-cf-nome {
-  font-size: .76rem; flex: 1 1 auto; min-width: 0;
+  font-size: .8rem; font-weight: 500; flex: 1 1 auto; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .mc-cf-faixa {
-  font-family: var(--font-section); font-size: .54rem;
-  letter-spacing: .05em; color: var(--text-muted); white-space: nowrap;
+  font-family: var(--font-section); font-size: .55rem; letter-spacing: .07em;
+  color: var(--text-muted); white-space: nowrap;
+  padding: .08rem .32rem; border-radius: .2rem;
+  border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.03);
 }
 .mc-cf-valor {
-  font-family: var(--font-section); font-size: .62rem; color: var(--mc-cor);
+  font-family: var(--font-section); font-size: .78rem; color: var(--mc-cor);
+  line-height: 1;
 }
-.mc-cf-valor.curta, .mc-cf-serie.curta { color: #fcd34d; }
+.mc-cf-valor span { font-size: .55rem; opacity: .7; margin-left: .08rem; }
+.mc-cf-valor.curta { color: #fcd34d; }
 .mc-cf-nota {
-  font-size: .58rem; color: var(--text-muted);
-  line-height: 1.5; font-style: italic; margin-top: .15rem;
+  font-size: .6rem; color: var(--text-muted);
+  line-height: 1.5; margin-top: .12rem;
 }
 
-.mc-cf-linha {
-  display: flex; align-items: center; gap: .3rem;
-  flex-wrap: wrap; margin-top: .35rem;
+/* ── O TRILHO DA FAIXA — a informação que faltava ─────────────────
+   A janela combinada é uma REGIÃO; o entregue é um MARCADOR. Ficar
+   aquém deixa de ser uma conta de cabeça e vira coisa que se vê: o
+   marcador parado antes da região acesa. */
+.mc-cf-trilho {
+  position: relative; height: 6px; margin-top: .5rem;
+  border-radius: 3px; background: rgba(255,255,255,.06);
+  overflow: visible;
 }
-.mc-cf-serie {
-  font-family: var(--font-section); font-size: .56rem;
-  padding: .08rem .32rem; border-radius: .2rem;
-  background: color-mix(in srgb, var(--mc-cor) 14%, transparent);
-  border: 1px solid color-mix(in srgb, var(--mc-cor) 32%, transparent);
+.mc-cf-janela {
+  position: absolute; top: 0; bottom: 0; border-radius: 3px;
+  background: color-mix(in srgb, var(--mc-cor) 30%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mc-cor) 40%, transparent);
+}
+.mc-cf-ok .mc-cf-janela { background: color-mix(in srgb, var(--mc-cor) 55%, transparent); }
+.mc-cf-marca {
+  position: absolute; top: 50%; width: 3px; height: 14px;
+  transform: translate(-50%, -50%); border-radius: 2px;
+  background: var(--mc-cor); box-shadow: 0 0 7px var(--mc-cor);
+  transition: left .5s cubic-bezier(.34,1.3,.64,1);
+}
+.mc-cf-marca.curta { background: #fcd34d; box-shadow: 0 0 7px rgba(245,158,11,.7); }
+
+/* ── OS SLOTS DA SÉRIE ───────────────────────────────────────────
+   A caixa VAZIA é o ponto: ela diz quantas faltam sem uma palavra.
+   Fichas que só nasciam ao lançar escondiam o tamanho do compromisso. */
+.mc-cf-slots { display: flex; gap: .28rem; margin-top: .5rem; flex-wrap: wrap; }
+.mc-cf-slot {
+  min-width: 2.5rem; text-align: center;
+  font-family: var(--font-section); font-size: .58rem; line-height: 1;
+  padding: .28rem .3rem; border-radius: .3rem;
+  border: 1px dashed rgba(255,255,255,.14);
+  color: rgba(255,255,255,.22);
+  transition: all .3s ease;
+}
+.mc-cf-slot.cheio {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--mc-cor) 40%, transparent);
+  background: color-mix(in srgb, var(--mc-cor) 12%, transparent);
   color: var(--mc-cor);
 }
-.mc-cf-serie.curta {
-  background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.35);
+.mc-cf-slot.cheio.curta {
+  border-color: rgba(245,158,11,.45); background: rgba(245,158,11,.12); color: #fcd34d;
 }
 
-.mc-cf-entrada { display: inline-flex; gap: .25rem; align-items: center; }
+/* ── A AÇÃO ───────────────────────────────────────────────────── */
+.mc-cf-acao { margin-top: .5rem; }
+.mc-cf-entrada { display: inline-flex; gap: .3rem; align-items: center; }
 .mc-cf-input {
-  width: 58px; padding: .14rem .3rem; font-size: .66rem;
-  border-radius: .25rem; border: 1px solid rgba(255,255,255,.12);
-  background: rgba(0,0,0,.3); color: var(--text-primary);
-  transition: border-color .2s;
+  width: 4.2rem; padding: .3rem .45rem; font-size: .72rem;
+  font-family: var(--font-section);
+  border-radius: .35rem; border: 1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.35); color: var(--text-primary);
+  transition: border-color .2s, box-shadow .2s;
 }
-.mc-cf-input:focus { outline: none; border-color: var(--mc-cor); }
-.mc-cf-ok-btn, .mc-cf-ok {
-  font-family: var(--font-section); font-size: .54rem; letter-spacing: .05em;
-  padding: .2rem .45rem; border-radius: .25rem; cursor: pointer;
-  border: 1px solid color-mix(in srgb, var(--mc-cor) 40%, transparent);
-  background: color-mix(in srgb, var(--mc-cor) 12%, transparent);
-  color: var(--mc-cor); transition: background .2s;
+.mc-cf-input::placeholder { color: rgba(255,255,255,.25); }
+.mc-cf-input:focus {
+  outline: none; border-color: var(--mc-cor);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--mc-cor) 18%, transparent);
 }
-.mc-cf-ok:hover { background: color-mix(in srgb, var(--mc-cor) 26%, transparent); }
+.mc-cf-btn {
+  font-family: var(--font-section); font-size: .6rem; letter-spacing: .06em;
+  padding: .32rem .7rem; border-radius: .35rem; cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--mc-cor) 45%, transparent);
+  background: color-mix(in srgb, var(--mc-cor) 14%, transparent);
+  color: var(--mc-cor); transition: background .2s, transform .1s;
+}
+.mc-cf-btn:hover { background: color-mix(in srgb, var(--mc-cor) 28%, transparent); }
+.mc-cf-btn:active { transform: scale(.96); }
 .mc-cf-desfazer {
   border: 1px solid rgba(255,255,255,.12); background: transparent;
   color: var(--text-muted); cursor: pointer;
-  padding: .08rem .28rem; border-radius: .22rem; line-height: 1;
+  padding: .1rem .3rem; border-radius: .25rem; line-height: 1;
+  transition: all .2s;
 }
 .mc-cf-desfazer:hover { color: var(--text-primary); border-color: rgba(255,255,255,.3); }
 
-/* Sessão encerrada: o cordão para de pulsar e as filhas descansam. Um
-   grupo concluído que continua respirando pede atenção que já foi dada. */
+/* Sessão encerrada: nada respira nem varre. Um grupo concluído que
+   continua pedindo atenção pede o que já foi dado. */
 .mc-grupo-fim .mc-cf-alvo .mc-cf-no { animation: none; }
-.mc-grupo-fim .mc-cf { opacity: .82; }
+.mc-grupo-fim .mc-cf-luz { display: none; }
+.mc-grupo-fim .mc-cf { opacity: .85; }
 
 @media (max-width: 560px) {
-  .mc-circ-filhas { padding-left: 26px; }
-  .mc-circ-filhas::before, .mc-circ-filhas::after { left: 12px; }
-  .mc-circ-trilho { margin-left: 12px; }
-  .mc-cf-no  { left: -19px; }
-  .mc-cf-fio { left: -10px; width: 10px; }
+  .mc-circ-filhas { padding-left: 24px; }
+  .mc-circ-trilho { margin-left: 11px; }
+  .mc-cf { grid-template-columns: 28px minmax(0, 1fr); gap: .45rem; padding: .55rem .6rem; }
+  .mc-cf-ico { width: 28px; height: 28px; }
+  .mc-cf-no  { left: -20px; }
+  .mc-cf-fio { left: -9px; width: 9px; }
   .mc-cf-nome { white-space: normal; }
+  .mc-cf-slot { min-width: 2.1rem; }
 }
 
-/* "Reduzir movimento" desliga o pulso e a respiração. O cordão aceso
-   continua — ele é informação, não enfeite. */
+/* "Reduzir movimento" desliga pulso, varredura e respiração. O cordão
+   aceso e o trilho continuam — eles são dado, não enfeite. */
 @media (prefers-reduced-motion: reduce) {
   .mc-circ-pulso { animation: none; opacity: .6; }
   .mc-cf-alvo .mc-cf-no { animation: none; }
+  .mc-cf-luz { animation: none; display: none; }
+  .mc-cf-marca { transition: none; }
 }

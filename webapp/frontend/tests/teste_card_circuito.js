@@ -143,8 +143,6 @@ function rodar() {
   ok(!!grupo.querySelector('.mc-circ-trilho .mc-circ-pulso'),
      'o cordao desce do mestre com o pulso — a animacao propria da natureza');
 
-  ok(/1\/4/.test(filhas[0].textContent) && /4\/4/.test(filhas[3].textContent),
-     'as filhas se numeram dentro do circuito (1/4 … 4/4)');
   ok(filhas[0].classList.contains('mc-cf-ok'), 'a 1a esta entregue');
   ok(filhas[1].classList.contains('mc-cf-parcial'), 'a 2a, entregue curta');
   ok(filhas[2].classList.contains('mc-cf-alvo'),
@@ -153,17 +151,78 @@ function rodar() {
      'e SO ela respira: destacar todos os abertos seria nao destacar nenhum');
 
   ok(/25–30 min/.test(filhas[1].textContent), 'a faixa aparece na filha');
-  ok(/22 min/.test(filhas[1].textContent), 'com o que foi entregue ao lado');
+  /* "22min", sem espaco: a unidade e um <span> menor colado ao numero,
+     e nao um sufixo de texto. E o que faz "22" ser lido como grandeza e
+     "min" como legenda, em vez de uma frase. */
+  ok(/22\s*min/.test(filhas[1].textContent), 'com o que foi entregue ao lado');
+  ok(!!filhas[1].querySelector('.mc-cf-valor span'),
+     'e a unidade e um span proprio — grandeza e legenda tem pesos diferentes');
   ok(filhas[1].querySelector('.mc-cf-valor.curta'),
      'e o valor curto e marcado');
   ok(/Giro de bra/.test(filhas[0].textContent),
      'a nota do bloco vive na filha — e onde a instrucao pertence');
 
-  const fichas = filhas[2].querySelectorAll('.mc-cf-serie');
-  ok(fichas.length === 2, 'as series lancadas viram fichas na filha');
-  ok(fichas[1].classList.contains('curta'),
-     'a serie de 18s (piso 20) sai marcada');
+  /* ── 3b. O QUE O ARQUITETO DISSE QUE FALTAVA ─────────────────
+     "os cards filhos sao pobres, nao sao modernos, medioceres. Nao tem
+      efeitos, nao tem animacoes, nao tem informacoes, nao tem svg."
+     Cada assert abaixo cobra um item dessa lista. */
+  console.log('\n-- glifo, medida e efeito --');
+  ok([...filhas].every(f => f.querySelector('.mc-cf-ico svg')),
+     'SVG: cada filha tem o glifo do seu modo');
+  const dTempo = filhas[0].querySelector('.mc-cf-ico svg').innerHTML;
+  const dSerie = filhas[2].querySelector('.mc-cf-ico svg').innerHTML;
+  ok(dTempo !== dSerie,
+     'e o glifo de TEMPO e diferente do de SERIE — o icone separa as ' +
+     'duas leituras antes de qualquer numero');
+
+  ok(!!filhas[0].querySelector('.mc-cf-no b'),
+     'o no virou hexagono NUMERADO — o chip "1/4" sumiu do corpo');
+  ok(filhas[3].querySelector('.mc-cf-no b').textContent === '4',
+     'com o numero do bloco dentro');
+
+  /* A FAIXA DESENHADA. Antes eram dois numeros soltos que o hunter
+     comparava de cabeca; agora a janela e uma regiao e o entregue e um
+     marcador — ficar aquem virou coisa que se ve. */
+  const trilho = filhas[1].querySelector('.mc-cf-trilho');
+  ok(!!trilho, 'INFORMACAO: a faixa virou trilho');
+  const jan = trilho.querySelector('.mc-cf-janela');
+  const mrc = trilho.querySelector('.mc-cf-marca');
+  ok(!!jan && !!mrc, 'com a janela combinada e o marcador do entregue');
+  ok(mrc.classList.contains('curta'),
+     'e o marcador de 22 numa faixa de 25-30 sai em ambar');
+  const posJ = parseFloat(/left:([\d.]+)%/.exec(jan.getAttribute('style'))[1]);
+  const posM = parseFloat(/left:([\d.]+)%/.exec(mrc.getAttribute('style'))[1]);
+  ok(posM < posJ,
+     `o marcador para ANTES da janela (${posM.toFixed(1)}% < ${posJ.toFixed(1)}%) — ` +
+     'a falta e visivel, nao calculada');
+
+  /* Faixa de valor unico daria janela de largura ZERO. */
+  const j0 = filhas[0].querySelector('.mc-cf-janela').getAttribute('style');
+  const a0 = parseFloat(/left:([\d.]+)%/.exec(j0)[1]);
+  const b0 = 100 - parseFloat(/right:([\d.]+)%/.exec(j0)[1]);
+  ok(b0 - a0 >= 3, `faixa de 5 a 5 ganha largura minima (${(b0-a0).toFixed(1)}%) — ` +
+     'alvo exato continua sendo alvo');
+
+  /* OS SLOTS. A caixa vazia diz quantas faltam sem uma palavra. */
+  const slots = filhas[2].querySelectorAll('.mc-cf-slot');
+  ok(slots.length === 3, `tres slots para 3 series, nao duas fichas (${slots.length})`);
+  ok(slots[0].classList.contains('cheio') && slots[1].classList.contains('cheio'),
+     'duas cheias');
+  ok(slots[1].classList.contains('curta'), 'a de 18s (piso 20) marcada');
+  ok(!slots[2].classList.contains('cheio'),
+     'e a TERCEIRA vazia — e ela que diz que falta uma, sem texto');
+  ok(filhas[3].querySelectorAll('.mc-cf-slot').length === 3,
+     'bloco nem comecado ja mostra os tres lugares a preencher');
   ok(/Série 3/.test(filhas[2].textContent), 'e o botao pede a proxima');
+
+  /* EFEITO: a varredura, so no alvo e so enquanto vive. */
+  ok(!!filhas[2].querySelector('.mc-cf-luz'),
+     'EFEITO: o alvo tem a varredura');
+  ok(!filhas[0].querySelector('.mc-cf-luz') && !filhas[3].querySelector('.mc-cf-luz'),
+     'e SO ele — varrer todas seria nao varrer nenhuma');
+  ok(!!filhas[0].querySelector('.mc-cf-selo'),
+     'o entregue ganha o selo de cumprido');
+  ok(!filhas[2].querySelector('.mc-cf-selo'), 'o que esta em aberto, nao');
 
   /* ── 4. A trava do Concluir ─────────────────────────────────── */
   console.log('\n-- o botão que não aparece --');
