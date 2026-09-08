@@ -2955,111 +2955,263 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   O CIRCUITO — a sessão com blocos
+   O CIRCUITO — cartão mestre e cartões subordinados
 
-   EFEITO DE CARD: A ESCADA. Um degrau por bloco, aceso na ordem em que
-   se faz. É o único desenho livre na gramática — chevrons são da ativa,
-   selo da passiva, brasas da progressiva, bifurcação da condicional,
-   enchimento da meta.
+   O Arquiteto reprovou o desenho anterior: "não gosto da ideia de um
+   card grosso cheio de coisas dentro. Prefiro um card principal bonito
+   e elegante, e depois outros cards subordinados, também bonitos, mas
+   vinculados ao principal. Deve haver um elo visual óbvio entre eles."
 
-   Três estados, e o do meio é o que esta natureza inventou: aberto,
-   FECHADO ABAIXO DO COMBINADO (âmbar), e fechado. O âmbar não é
-   fracasso — é a entrega parcial que o Arquiteto decidiu premiar em vez
-   de recusar, porque recusar ensina a arredondar para cima.
+   O ELO É O CORDÃO — e ele tem DOIS trabalhos, nenhum inventado:
+
+     1. é o vínculo. Desce do mestre e passa por dentro de cada filha,
+        com um NÓ por bloco. Nenhuma filha flutua solta.
+     2. é a barra de progresso. Cada trecho acende ao entregar o bloco
+        que ele alimenta, então o cordão é literalmente o caminho já
+        percorrido — e o que falta dele é o que falta fazer.
+
+   A ANIMAÇÃO PRÓPRIA DA NATUREZA: um pulso desce do mestre e PARA no
+   ponto em que o cordão apaga. Ele não passeia pela lista inteira; para
+   onde o pulso vai é para onde o hunter deve ir. Um elemento só, porque
+   duas animações no mesmo elemento se cancelam nesta base de código —
+   lição que já custou uma tarde neste arquivo.
+
+   Nenhuma gramática ocupada foi tocada: chevrons são da ativa, selo da
+   passiva, brasas SUBINDO da progressiva, bifurcação diagonal da
+   condicional, enchimento da meta. O cordão vertical estava livre.
    ══════════════════════════════════════════════════════════════════ */
-.mc-circuito { margin-top: .55rem; }
+.mc-grupo-circ {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
 
-.mc-circ-topo {
-  display: flex; align-items: center; gap: .5rem; margin-bottom: .5rem;
+/* ── O resumo, dentro do mestre ─────────────────────────────────── */
+.mc-circ-resumo {
+  display: flex; align-items: center; gap: .5rem;
+  margin-top: .5rem; flex-wrap: wrap;
 }
-.mc-circ-escada {
-  display: flex; gap: 3px; flex: 1 1 auto; min-width: 0;
-}
+.mc-circ-escada { display: flex; gap: 3px; flex: 1 1 auto; min-width: 3rem; }
 .mc-circ-degrau {
-  display: block; flex: 1 1 0; height: 5px; border-radius: 3px;
+  display: block; flex: 1 1 0; height: 4px; border-radius: 2px;
   background: rgba(255,255,255,.09);
-  transition: background .25s ease;
+  transition: background .3s ease, box-shadow .3s ease;
 }
-.mc-circ-ok      { background: #10b981; box-shadow: 0 0 5px rgba(16,185,129,.5); }
+.mc-circ-ok      { background: var(--mc-cor); box-shadow: 0 0 6px var(--mc-cor-suave); }
 .mc-circ-parcial { background: #f59e0b; box-shadow: 0 0 5px rgba(245,158,11,.45); }
-
 .mc-circ-conta {
   font-family: var(--font-section); font-size: .58rem;
   letter-spacing: .06em; color: var(--text-muted); white-space: nowrap;
 }
-/* Nome proprio, e nao `.mc-circ-parcial`: aquele e o ESTADO DO DEGRAU
-   na escada, e reusar o nome fazia o selo herdar a cor de fundo de um
-   retangulo de 5px de altura. Dois conceitos, dois nomes. */
 .mc-circ-selo-parcial {
-  font-family: var(--font-section); font-size: .52rem; letter-spacing: .08em;
+  font-family: var(--font-section); font-size: .5rem; letter-spacing: .08em;
   text-transform: uppercase; color: #fcd34d;
   background: rgba(245,158,11,.14); border: 1px solid rgba(245,158,11,.4);
-  padding: .06rem .3rem; border-radius: .22rem;
+  padding: .05rem .3rem; border-radius: .2rem;
 }
 
-.mc-circ-blocos { display: flex; flex-direction: column; gap: .3rem; }
-
-.mc-circ-bloco {
-  padding: .35rem .45rem; border-radius: .35rem;
-  background: rgba(255,255,255,.02);
-  border-left: 2px solid rgba(255,255,255,.08);
-  border-radius: 0 .35rem .35rem 0;   /* borda de um lado só não arredonda os dois */
+/* ── O TRILHO: o pedaço de cordão entre o mestre e a primeira filha ─
+   Existe para o cordão NASCER do cartão de cima, e não começar solto no
+   ar em cima da primeira filha. */
+.mc-circ-trilho {
+  position: relative; height: 14px; margin-left: 15px; width: 2px;
+  flex: 0 0 auto;
 }
-.mc-circ-b-ok      { border-left-color: rgba(16,185,129,.6); }
-.mc-circ-b-parcial { border-left-color: rgba(245,158,11,.6); }
+.mc-circ-trilho > i { position: absolute; inset: 0; border-radius: 2px; }
+.mc-circ-cordao      { background: rgba(255,255,255,.10); }
+.mc-circ-cordao-vivo { background: var(--mc-cor); opacity: .55; }
 
-.mc-circ-linha {
-  display: flex; align-items: center; gap: .4rem; flex-wrap: wrap;
+/* O PULSO. Desce o trecho e reinicia — a energia indo do mestre para o
+   trabalho. Fica só aqui, no topo, porque é daqui que a sessão parte. */
+.mc-circ-pulso {
+  height: 7px !important; inset: auto 0 auto 0 !important;
+  background: linear-gradient(180deg, transparent, var(--mc-cor), transparent);
+  filter: blur(.4px);
+  animation: mc-circ-desce 2.4s cubic-bezier(.55,.1,.5,.9) infinite;
 }
-.mc-circ-marca { display: inline-flex; width: 14px; color: #10b981; }
-.mc-circ-nome  { font-size: .72rem; flex: 1 1 auto; min-width: 0; }
-.mc-circ-b-ok .mc-circ-nome,
-.mc-circ-b-parcial .mc-circ-nome { color: var(--text-muted); }
-.mc-circ-faixa {
-  font-family: var(--font-section); font-size: .55rem;
+@keyframes mc-circ-desce {
+  0%   { top: -7px; opacity: 0; }
+  22%  { opacity: 1; }
+  78%  { opacity: 1; }
+  100% { top: 14px; opacity: 0; }
+}
+
+/* ── AS FILHAS ─────────────────────────────────────────────────── */
+.mc-circ-filhas {
+  position: relative;
+  padding-left: 32px;          /* a calha onde o cordão desce */
+  display: flex; flex-direction: column; gap: .4rem;
+}
+/* O CORDÃO É DESENHADO POR SEGMENTOS, um por filha — e não como uma
+   linha única no container.
+
+   A primeira versão era uma linha só, com a altura do trecho aceso em
+   PORCENTAGEM. Funcionava enquanto todas as filhas tivessem a mesma
+   altura, e elas não têm: um bloco com três séries lançadas é o dobro
+   de um bloco em aberto. A porcentagem passava a apontar para o meio do
+   nada, e a linha sobrava abaixo do último nó — um caminho seguindo
+   para lugar nenhum.
+
+   Cada filha desenha o trecho que chega ATÉ O SEU nó. O cordão termina
+   exatamente no último, sem cálculo, e acende trecho a trecho conforme
+   os blocos são entregues: o cordão é o caminho percorrido. */
+.mc-cf::before {
+  content: ''; position: absolute;
+  left: -17px; top: calc(-.4rem - 1px);
+  width: 2px; height: calc(1.05rem + 5px + .4rem + 1px);
+  background: rgba(255,255,255,.10);
+  border-radius: 2px;
+  transition: background .4s ease, box-shadow .4s ease;
+}
+/* O trecho que leva a um nó ACESO acende junto com ele. */
+.mc-cf-ok::before {
+  background: linear-gradient(180deg, var(--mc-cor-suave), var(--mc-cor));
+  box-shadow: 0 0 7px var(--mc-cor-suave);
+}
+.mc-cf-parcial::before {
+  background: linear-gradient(180deg, rgba(245,158,11,.35), #f59e0b);
+  box-shadow: 0 0 7px rgba(245,158,11,.3);
+}
+
+.mc-cf {
+  position: relative;
+  border-radius: .55rem;
+  border: 1px solid rgba(255,255,255,.07);
+  background: linear-gradient(135deg, rgba(255,255,255,.028), rgba(255,255,255,.012));
+  padding: .5rem .7rem;
+  transition: border-color .3s ease, background .3s ease, transform .2s ease;
+}
+
+/* O NÓ: onde a filha se prende ao cordão. */
+.mc-cf-no {
+  position: absolute; left: -22px; top: 1.05rem;
+  width: 11px; height: 11px; border-radius: 50%;
+  background: #0d0d1a; border: 2px solid rgba(255,255,255,.16);
+  z-index: 2; transition: all .3s ease;
+}
+/* O FIO: o traço horizontal do cordão até a borda da filha. Sem ele o
+   nó fica boiando ao lado do cartão em vez de amarrado a ele. */
+.mc-cf-fio {
+  position: absolute; left: -12px; top: calc(1.05rem + 5px);
+  width: 12px; height: 2px; background: rgba(255,255,255,.10);
+  transition: background .3s ease;
+}
+
+/* Entregue. */
+.mc-cf-ok { border-color: color-mix(in srgb, var(--mc-cor) 42%, transparent); }
+.mc-cf-ok .mc-cf-no {
+  background: var(--mc-cor); border-color: var(--mc-cor);
+  box-shadow: 0 0 10px var(--mc-cor-suave);
+}
+.mc-cf-ok .mc-cf-fio { background: var(--mc-cor); }
+.mc-cf-ok .mc-cf-nome { color: var(--text-muted); }
+
+/* Entregue ABAIXO do combinado — o estado que esta natureza inventou.
+   Nem verde nem apagado: âmbar. Não é fracasso, é entrega curta. */
+.mc-cf-parcial { border-color: rgba(245,158,11,.4); }
+.mc-cf-parcial .mc-cf-no {
+  background: #f59e0b; border-color: #f59e0b;
+  box-shadow: 0 0 10px rgba(245,158,11,.4);
+}
+.mc-cf-parcial .mc-cf-fio { background: rgba(245,158,11,.6); }
+
+/* O ALVO: o primeiro bloco em aberto. É para onde o hunter vai, e o
+   único que respira — destacar todos os abertos seria não destacar
+   nenhum. */
+.mc-cf-alvo {
+  border-color: color-mix(in srgb, var(--mc-cor) 55%, transparent);
+  background: linear-gradient(135deg, var(--mc-cor-suave), rgba(255,255,255,.015));
+}
+.mc-cf-alvo .mc-cf-no {
+  border-color: var(--mc-cor);
+  animation: mc-cf-respira 2.4s ease-in-out infinite;
+}
+@keyframes mc-cf-respira {
+  0%, 100% { box-shadow: 0 0 0 0 var(--mc-cor-suave); }
+  50%      { box-shadow: 0 0 0 5px transparent; }
+}
+
+.mc-cf-corpo { min-width: 0; }
+.mc-cf-topo {
+  display: flex; align-items: baseline; gap: .4rem; flex-wrap: wrap;
+}
+.mc-cf-ord {
+  font-family: var(--font-section); font-size: .58rem; font-weight: 700;
+  color: var(--mc-cor); letter-spacing: .04em;
+}
+.mc-cf-de { color: var(--text-muted); font-weight: 400; }
+.mc-cf-nome {
+  font-size: .76rem; flex: 1 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.mc-cf-faixa {
+  font-family: var(--font-section); font-size: .54rem;
   letter-spacing: .05em; color: var(--text-muted); white-space: nowrap;
 }
-.mc-circ-valor {
-  font-family: var(--font-section); font-size: .62rem; color: #6ee7b7;
+.mc-cf-valor {
+  font-family: var(--font-section); font-size: .62rem; color: var(--mc-cor);
 }
-.mc-circ-valor.curta, .mc-circ-serie.curta { color: #fcd34d; }
-
-.mc-circ-nota {
+.mc-cf-valor.curta, .mc-cf-serie.curta { color: #fcd34d; }
+.mc-cf-nota {
   font-size: .58rem; color: var(--text-muted);
-  margin: .15rem 0 0 18px; line-height: 1.5; font-style: italic;
+  line-height: 1.5; font-style: italic; margin-top: .15rem;
 }
 
-.mc-circ-series {
+.mc-cf-linha {
   display: flex; align-items: center; gap: .3rem;
-  flex-wrap: wrap; margin: .3rem 0 0 18px;
+  flex-wrap: wrap; margin-top: .35rem;
 }
-.mc-circ-serie {
-  font-family: var(--font-section); font-size: .58rem;
-  padding: .1rem .35rem; border-radius: .22rem;
-  background: rgba(16,185,129,.12); border: 1px solid rgba(16,185,129,.3);
-  color: #6ee7b7;
+.mc-cf-serie {
+  font-family: var(--font-section); font-size: .56rem;
+  padding: .08rem .32rem; border-radius: .2rem;
+  background: color-mix(in srgb, var(--mc-cor) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--mc-cor) 32%, transparent);
+  color: var(--mc-cor);
 }
-.mc-circ-serie.curta {
+.mc-cf-serie.curta {
   background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.35);
 }
 
-.mc-circ-entrada { display: inline-flex; gap: .25rem; align-items: center; }
-.mc-circ-input {
-  width: 62px; padding: .16rem .3rem; font-size: .66rem;
-  border-radius: .25rem; border: 1px solid rgba(124,58,237,.35);
-  background: rgba(0,0,0,.28); color: var(--text-primary);
+.mc-cf-entrada { display: inline-flex; gap: .25rem; align-items: center; }
+.mc-cf-input {
+  width: 58px; padding: .14rem .3rem; font-size: .66rem;
+  border-radius: .25rem; border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.3); color: var(--text-primary);
+  transition: border-color .2s;
 }
-.mc-circ-input:focus {
-  outline: none; border-color: rgba(124,58,237,.75);
-}
-.mc-circ-ok, .mc-circ-desfazer {
-  font-family: var(--font-section); font-size: .56rem; letter-spacing: .05em;
+.mc-cf-input:focus { outline: none; border-color: var(--mc-cor); }
+.mc-cf-ok-btn, .mc-cf-ok {
+  font-family: var(--font-section); font-size: .54rem; letter-spacing: .05em;
   padding: .2rem .45rem; border-radius: .25rem; cursor: pointer;
-  border: 1px solid rgba(124,58,237,.4);
-  background: rgba(124,58,237,.12); color: var(--purple-glow);
+  border: 1px solid color-mix(in srgb, var(--mc-cor) 40%, transparent);
+  background: color-mix(in srgb, var(--mc-cor) 12%, transparent);
+  color: var(--mc-cor); transition: background .2s;
 }
-.mc-circ-ok:hover, .mc-circ-desfazer:hover { background: rgba(124,58,237,.24); }
-.mc-circ-desfazer {
-  border-color: rgba(255,255,255,.14); background: transparent;
-  color: var(--text-muted); padding: .12rem .3rem;
+.mc-cf-ok:hover { background: color-mix(in srgb, var(--mc-cor) 26%, transparent); }
+.mc-cf-desfazer {
+  border: 1px solid rgba(255,255,255,.12); background: transparent;
+  color: var(--text-muted); cursor: pointer;
+  padding: .08rem .28rem; border-radius: .22rem; line-height: 1;
+}
+.mc-cf-desfazer:hover { color: var(--text-primary); border-color: rgba(255,255,255,.3); }
+
+/* Sessão encerrada: o cordão para de pulsar e as filhas descansam. Um
+   grupo concluído que continua respirando pede atenção que já foi dada. */
+.mc-grupo-fim .mc-cf-alvo .mc-cf-no { animation: none; }
+.mc-grupo-fim .mc-cf { opacity: .82; }
+
+@media (max-width: 560px) {
+  .mc-circ-filhas { padding-left: 26px; }
+  .mc-circ-filhas::before, .mc-circ-filhas::after { left: 12px; }
+  .mc-circ-trilho { margin-left: 12px; }
+  .mc-cf-no  { left: -19px; }
+  .mc-cf-fio { left: -10px; width: 10px; }
+  .mc-cf-nome { white-space: normal; }
+}
+
+/* "Reduzir movimento" desliga o pulso e a respiração. O cordão aceso
+   continua — ele é informação, não enfeite. */
+@media (prefers-reduced-motion: reduce) {
+  .mc-circ-pulso { animation: none; opacity: .6; }
+  .mc-cf-alvo .mc-cf-no { animation: none; }
 }

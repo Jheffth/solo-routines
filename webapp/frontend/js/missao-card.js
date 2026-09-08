@@ -513,92 +513,148 @@ const MissaoCard = {
     return !!(m?.circuito && Array.isArray(m.circuito.blocos) && m.circuito.blocos.length);
   },
 
-  _corpoCircuito(m, chave) {
+  /* O RESUMO, dentro do cartão mestre.
+
+     O que sobrou do corpo antigo. O Arquiteto reprovou o cartão grosso
+     com tudo dentro — e tinha razão: quatro blocos com campo, séries e
+     faixa faziam um bloco de texto que ninguém lê de relance.
+
+     Aqui fica só o veredito: a escada e a conta. Os blocos saíram para
+     cartões próprios, abaixo, presos ao mestre pelo cordão. */
+  _resumoCircuito(m) {
     if (!this._ehCircuito(m)) return '';
+    const c = m.circuito;
+    const escada = c.blocos.map(b => {
+      const cls = !b.feito ? 'aberto' : (b.abaixo ? 'parcial' : 'ok');
+      return `<i class="mc-circ-degrau mc-circ-${cls}" title="${this._esc(b.titulo)}"></i>`;
+    }).join('');
+    return `<div class="mc-circ-resumo">
+      <div class="mc-circ-escada">${escada}</div>
+      <span class="mc-circ-conta">${c.fechados} de ${c.total} blocos</span>
+      ${c.parcial ? '<span class="mc-circ-selo-parcial" title="Algum bloco fechou abaixo do combinado">parcial</span>' : ''}
+    </div>`;
+  },
+
+  /* ══════════════════════════════════════════════════════════
+     O GRUPO — cartão mestre e cartões subordinados
+
+     O Arquiteto: "prefiro um card principal bonito e elegante, e
+     depois outros cards subordinados, também bonitos, mas vinculados
+     ao principal. Deve haver um elo visual óbvio entre eles."
+
+     É o mesmo desenho que ele pediu para a condicional — pergunta que
+     é container, missões que nascem abaixo. A diferença é a origem: lá
+     as filhas são TarefaDia de verdade no banco; aqui os blocos vivem
+     num JSON, então o parentesco é do desenho, não da tabela. Um
+     circuito continua sendo UMA missão, com UM prazo e UMA punição.
+
+     O ELO É O CORDÃO. Uma linha vertical que desce do mestre e passa
+     por dentro de cada filha, com um NÓ por bloco. O nó acende quando o
+     bloco é entregue, e o trecho de cordão acima dele acende junto —
+     então o cordão é, ao mesmo tempo, o vínculo e a barra de progresso.
+     Um elemento com dois trabalhos, e nenhum deles inventado: é
+     literalmente o caminho que o hunter percorre.
+
+     A ANIMAÇÃO PRÓPRIA: um pulso desce o cordão, do mestre até o
+     primeiro bloco em aberto, e para ali. Ele não passeia pela lista
+     inteira — para onde o pulso vai é para onde o hunter deve ir.
+
+     Nenhuma das gramáticas ocupadas foi tocada: chevrons são da ativa,
+     selo da passiva, brasas subindo da progressiva, bifurcação diagonal
+     da condicional, enchimento da meta. O cordão vertical estava livre.
+
+     `data-mc-card` mora AQUI, no invólucro. É ele que a lista do extrato
+     reconcilia e que `repintar` troca por inteiro — se ficasse no
+     mestre, repintar deixaria as filhas órfãs na tela. */
+  _grupoCircuito(m, chave, opts, cartaoMestre, cor) {
     const c = m.circuito;
     const encerrada = ['CONCLUIDA', 'CANCELADA', 'FRACASSADA']
       .includes((m.status_hoje || m.status || '').toUpperCase());
 
-    /* A ESCADA. Um segmento por bloco, na ordem em que se faz — é o
-       efeito de card do circuito, e o único livre na gramática (os
-       chevrons são da ativa, o selo da passiva, as brasas da
-       progressiva, a bifurcação da condicional, o enchimento da meta). */
-    const escada = c.blocos.map(b => {
-      const cls = !b.feito ? 'aberto' : (b.abaixo ? 'parcial' : 'ok');
-      return `<i class="mc-circ-degrau mc-circ-${cls}"
-                 title="${this._esc(b.titulo)}"></i>`;
-    }).join('');
+    // O primeiro bloco em aberto é PARA ONDE O HUNTER VAI. Ele ganha o
+    // destaque e é onde o pulso do cordão para.
+    const alvo = c.blocos.findIndex(b => !b.feito);
+    const filhas = c.blocos.map((b, i) =>
+      this._filhaCircuito(b, chave, encerrada, i, i === alvo, c.blocos.length)).join('');
 
-    const linhas = c.blocos.map(b => this._blocoCircuito(b, chave, encerrada)).join('');
-
-    return `<div class="mc-circuito">
-      <div class="mc-circ-topo">
-        <div class="mc-circ-escada">${escada}</div>
-        <span class="mc-circ-conta">${c.fechados} de ${c.total}</span>
-        ${c.parcial ? '<span class="mc-circ-selo-parcial" title="Algum bloco fechou abaixo do combinado">parcial</span>' : ''}
+    return `<div class="mc-grupo mc-grupo-circ${encerrada ? ' mc-grupo-fim' : ''}"
+      data-mc-card="${chave}" data-mc-sig="${this.assinatura(m, opts)}"
+      style="--mc-cor:${cor};--mc-cor-suave:${this._alpha(cor, .14)}">
+      ${cartaoMestre}
+      <div class="mc-circ-trilho" aria-hidden="true">
+        <i class="mc-circ-cordao"></i>
+        <i class="mc-circ-cordao-vivo"></i>
+        ${encerrada || alvo < 0 ? '' : '<i class="mc-circ-pulso"></i>'}
       </div>
-      <div class="mc-circ-blocos">${linhas}</div>
+      <div class="mc-circ-filhas" role="list">${filhas}</div>
     </div>`;
   },
 
-  _blocoCircuito(b, chave, encerrada) {
-    const faixa = this._faixaCircuito(b);
-    const temSerie = b.modo === 'SERIE_TEMPO' || b.modo === 'SERIE_REP';
+  /* Uma filha por bloco. É um cartão de verdade — borda, sigilo, ações —
+     e não uma linha de lista: foi essa a diferença que o Arquiteto pediu.
 
-    // As séries já lançadas, uma ficha cada — é onde o hunter vê que a
-    // segunda saiu curta, e é onde mora o desfazer.
-    const fichas = temSerie ? (b.valores || []).map(v =>
-      `<span class="mc-circ-serie${(b.min != null && v < b.min) ? ' curta' : ''}"
-        >${this._esc(this._numCirc(v))}${b.unidade ? ' ' + this._esc(b.unidade) : ''}</span>`
+     TRÊS ESTADOS, e o do meio é o que esta natureza inventou:
+     em aberto · entregue · entregue ABAIXO do combinado. */
+  _filhaCircuito(b, chave, encerrada, i, ehAlvo, total) {
+    const temSerie = b.modo === 'SERIE_TEMPO' || b.modo === 'SERIE_REP';
+    const est = !b.feito ? 'aberto' : (b.abaixo ? 'parcial' : 'ok');
+
+    const fichas = temSerie ? (b.valores || []).map((v, k) => `
+      <span class="mc-cf-serie${(b.min != null && v < b.min) ? ' curta' : ''}"
+            title="Série ${k + 1}">${this._esc(this._numCirc(v))}${b.unidade ? this._esc(b.unidade) : ''}</span>`
     ).join('') : '';
 
     let acao = '';
     if (!encerrada && !b.feito) {
       if (b.modo === 'CHECK') {
-        acao = `<button type="button" class="mc-circ-ok" data-mc-acao="circ-registrar"
+        acao = `<button type="button" class="mc-cf-ok" data-mc-acao="circ-registrar"
                   data-mc-bloco="${this._esc(b.id)}" data-mc-id="${chave}">Feito</button>`;
       } else {
         const rot = temSerie ? `Série ${(b.valores || []).length + 1}` : 'Lançar';
-        acao = `<span class="mc-circ-entrada">
-          <input type="text" inputmode="decimal" class="mc-circ-input"
+        acao = `<span class="mc-cf-entrada">
+          <input type="text" inputmode="decimal" class="mc-cf-input"
                  data-mc-circ-input="${chave}|${this._esc(b.id)}"
-                 placeholder="${this._esc(b.unidade || '')}"
+                 placeholder="${this._esc(b.unidade || '0')}"
                  aria-label="Valor de ${this._esc(b.titulo)}">
-          <button type="button" class="mc-circ-ok" data-mc-acao="circ-registrar"
+          <button type="button" class="mc-cf-ok" data-mc-acao="circ-registrar"
                   data-mc-bloco="${this._esc(b.id)}" data-mc-id="${chave}">${rot}</button>
         </span>`;
       }
     }
 
-    /* O DESFAZER SOBREVIVE À CONCLUSÃO — e o registrar não.
-       A sessão fecha sozinha ao entregar o último bloco. Se o hunter
-       errou o número dessa última série, esconder o desfazer tornaria o
-       erro permanente pela tela: ele teria fechado o treino com um dado
-       falso e nenhum caminho de volta.
-       Corrigir, sim; acrescentar depois de fechado, não. */
+    /* O desfazer sobrevive à conclusão e o registrar não — corrigir sim,
+       acrescentar depois de fechado não. A sessão fecha SOZINHA no
+       último bloco, e sem isto um erro de digitação naquela última
+       série ficaria permanente pela tela. */
     const desfazer = (b.feito || (b.valores || []).length)
-      ? `<button type="button" class="mc-circ-desfazer" data-mc-acao="circ-desfazer"
+      ? `<button type="button" class="mc-cf-desfazer" data-mc-acao="circ-desfazer"
            data-mc-bloco="${this._esc(b.id)}" data-mc-id="${chave}"
-           title="Voltar um passo neste bloco">${this._g('menos', 11)}</button>`
+           title="Voltar um passo neste bloco"
+           aria-label="Desfazer último lançamento de ${this._esc(b.titulo)}">${this._g('menos', 11)}</button>`
       : '';
 
-    const valor = (!temSerie && b.valor != null)
-      ? `<span class="mc-circ-valor${(b.min != null && b.valor < b.min) ? ' curta' : ''}"
+    const entregue = (!temSerie && b.valor != null)
+      ? `<span class="mc-cf-valor${(b.min != null && b.valor < b.min) ? ' curta' : ''}"
           >${this._esc(this._numCirc(b.valor))}${b.unidade ? ' ' + this._esc(b.unidade) : ''}</span>`
       : '';
 
-    const est = !b.feito ? 'aberto' : (b.abaixo ? 'parcial' : 'ok');
-    return `<div class="mc-circ-bloco mc-circ-b-${est}">
-      <div class="mc-circ-linha">
-        <span class="mc-circ-marca">${b.feito ? this._g('concluida', 12) : ''}</span>
-        <span class="mc-circ-nome">${this._esc(b.titulo)}</span>
-        <span class="mc-circ-faixa">${this._esc(faixa)}</span>
-        ${valor}${desfazer}
+    return `<article class="mc-cf mc-cf-${est}${ehAlvo ? ' mc-cf-alvo' : ''}" role="listitem"
+      data-mc-bloco-card="${this._esc(b.id)}">
+      <i class="mc-cf-no" aria-hidden="true"></i>
+      <div class="mc-cf-fio" aria-hidden="true"></div>
+      <div class="mc-cf-corpo">
+        <div class="mc-cf-topo">
+          <span class="mc-cf-ord">${i + 1}<span class="mc-cf-de">/${total}</span></span>
+          <span class="mc-cf-nome">${this._esc(b.titulo)}</span>
+          <span class="mc-cf-faixa">${this._esc(this._faixaCircuito(b))}</span>
+          ${entregue}${desfazer}
+        </div>
+        ${b.nota ? `<div class="mc-cf-nota">${this._esc(b.nota)}</div>` : ''}
+        ${fichas || acao ? `<div class="mc-cf-linha">${fichas}${acao}</div>` : ''}
       </div>
-      ${b.nota ? `<div class="mc-circ-nota">${this._esc(b.nota)}</div>` : ''}
-      ${fichas || acao ? `<div class="mc-circ-series">${fichas}${acao}</div>` : ''}
-    </div>`;
+    </article>`;
   },
+
 
   /* "25–30 min", "3 × 20–30 s", "3 × 10–12" — o combinado, em texto.
      Espelha `circuito.rotulo_faixa` no servidor; se um dia divergirem, é
@@ -1767,9 +1823,20 @@ const MissaoCard = {
       ? (this._alvoDe(m) !== null ? ' mc-rep-modo-meta' : ' mc-rep-modo-bonus')
       : '';
 
-    return `
-    <div class="mc ${st.classe}${compacto}${selado}${passiva}${repet}${modoRep}${penit}${prog}${etapaProg}${cond}${condResp}${filha}${meta}${circ}" data-mc-card="${chave}"
-         data-mc-sig="${this.assinatura(m, opts)}"
+    /* O CIRCUITO VIRA UM GRUPO: cartao mestre + filhas.
+       Quando ha grupo, `data-mc-card` mora no INVOLUCRO — e ele que a
+       lista reconcilia e que `repintar` troca por inteiro. O mestre
+       recebe `data-mc-mestre` para nao existirem dois donos da chave. */
+    /* VALE TAMBEM NO COMPACTO — e principalmente nele.
+       Eu tinha escrito `&& !compacto`, e o Extrato desenha TUDO em
+       compacto: o grupo simplesmente nao aparecia justamente na tela
+       onde o hunter ve as missoes. O compacto encolhe o cartao mestre;
+       nao dissolve o circuito de volta num bloco so. */
+    const grupo = this._ehCircuito(m);
+
+    const _cartao = `
+    <div class="mc ${st.classe}${compacto}${selado}${passiva}${repet}${modoRep}${penit}${prog}${etapaProg}${cond}${condResp}${filha}${meta}${circ}" ${grupo ? 'data-mc-mestre' : `data-mc-card="${chave}"`}
+         ${grupo ? '' : `data-mc-sig="${this.assinatura(m, opts)}"`}
          style="--mc-cor:${cor};--mc-cor-suave:${this._alpha(cor, .14)}${
            prog ? `;--prog-carga:${this._cargaProgressiva(m).toFixed(3)}` : ''}${
            meta ? `;--meta-pct:${(Math.max(0, Math.min(1, m.meta_progresso || 0)) * 100).toFixed(2)}%` : ''}">
@@ -1858,7 +1925,7 @@ const MissaoCard = {
         })()}
         ${cond ? this._corpoCondicional(m, chave) : ''}
         ${meta ? this._corpoMeta(m, chave) : ''}
-        ${this._corpoCircuito(m, chave)}
+        ${this._resumoCircuito(m)}
         ${prog ? this._barraProgressiva(m) : ''}
         ${repet
           ? (this._alvoDe(m) !== null
@@ -1873,6 +1940,8 @@ const MissaoCard = {
       </div>
       ${compacto ? `<div class="mc-acoes">${this._acoes(status, chave, m)}</div>` : ''}
     </div>`;
+
+    return grupo ? this._grupoCircuito(m, chave, opts, _cartao, cor) : _cartao;
   },
 
   /* ── HTML da REGRA (agenda) ──────────────────────────────

@@ -95,60 +95,82 @@ function rodar() {
   doc.getElementById('lista').innerHTML = html;
   const card = doc.querySelector('[data-mc-card]');
 
-  /* ── 1. A escada ────────────────────────────────────────────── */
-  console.log('-- a escada, o efeito deste card --');
-  const degraus = card.querySelectorAll('.mc-circ-degrau');
+  /* ── 1. É UM GRUPO, e conta como UM cartão ──────────────────── */
+  console.log('-- o cartao mestre e as filhas --');
+  const grupo = card;
+  ok(grupo.classList.contains('mc-grupo-circ'),
+     'o circuito vira um GRUPO, nao um cartao grosso');
+  ok(grupo.dataset.mcCard === 'r7',
+     '`data-mc-card` mora no INVOLUCRO — e ele que a lista reconcilia');
+  ok(!!grupo.dataset.mcSig, 'com a assinatura junto, para a repintura comparar');
+  ok(doc.querySelectorAll('[data-mc-card]').length === 1,
+     'UM dono da chave na tela — as filhas nao viram missoes separadas');
+
+  const mestre = grupo.querySelector('[data-mc-mestre]');
+  ok(!!mestre, 'o cartao mestre esta dentro do grupo');
+  ok(!mestre.hasAttribute('data-mc-card'),
+     'e NAO carrega a chave — dois donos quebrariam repintar()');
+  ok(mestre.classList.contains('mc'),
+     'o mestre continua sendo um cartao de verdade, com o cromo de sempre');
+
+  /* ── 2. O mestre ficou magro ────────────────────────────────── */
+  console.log('\n-- o mestre so tem o veredito --');
+  const resumo = mestre.querySelector('.mc-circ-resumo');
+  ok(!!resumo, 'ele mostra a escada e a conta');
+  ok(/2 de 4 blocos/.test(mestre.textContent), 'em texto: "2 de 4 blocos"');
+  ok(!mestre.querySelector('.mc-cf'),
+     'e NENHUM bloco dentro dele — era isso o "card grosso cheio de coisas"');
+  ok(!mestre.querySelector('.mc-cf-input'),
+     'nem campo de lancamento: o mestre nao coleta, ele resume');
+
+  const degraus = resumo.querySelectorAll('.mc-circ-degrau');
   ok(degraus.length === 4, `quatro degraus, um por bloco (${degraus.length})`);
-  ok(degraus[0].classList.contains('mc-circ-ok'), 'mobilidade entregue: verde');
+  ok(degraus[0].classList.contains('mc-circ-ok'), 'entregue: aceso');
   ok(degraus[1].classList.contains('mc-circ-parcial'),
-     'cardio curto: ÂMBAR — nem verde nem apagado');
-  ok(!degraus[2].classList.contains('mc-circ-ok') &&
-     !degraus[2].classList.contains('mc-circ-parcial'),
-     'prancha em aberto: apagado');
-  ok(/2 de 4/.test(card.textContent), 'e a conta em texto: 2 de 4');
-  ok(!!card.querySelector('.mc-circ-selo-parcial'),
-     'a sessão se declara parcial');
+     'entregue curto: AMBAR — nem aceso nem apagado');
+  ok(!degraus[2].classList.contains('mc-circ-ok'), 'em aberto: apagado');
 
-  /* O selo e o degrau nao podem dividir a mesma classe: um e um
-     retangulo de 5px, o outro e uma etiqueta de texto. */
-  ok(card.querySelectorAll('.mc-circ-parcial').length === 1,
-     'e "parcial" de degrau não colide com o selo (nomes diferentes)');
+  /* ── 3. As filhas, e o elo ──────────────────────────────────── */
+  console.log('\n-- as filhas e o cordao --');
+  const filhas = grupo.querySelectorAll('.mc-cf');
+  ok(filhas.length === 4, 'quatro cartoes subordinados');
+  ok([...filhas].every(f => f.tagName === 'ARTICLE'),
+     'cada bloco e um <article> proprio, nao uma linha de lista');
+  ok([...filhas].every(f => f.querySelector('.mc-cf-no')),
+     'cada filha tem seu NO no cordao — nenhuma flutua solta');
+  ok([...filhas].every(f => f.querySelector('.mc-cf-fio')),
+     'e o fio horizontal que a amarra ao cordao');
+  ok(!!grupo.querySelector('.mc-circ-trilho .mc-circ-pulso'),
+     'o cordao desce do mestre com o pulso — a animacao propria da natureza');
 
-  /* ── 2. Os blocos ───────────────────────────────────────────── */
-  console.log('\n-- os blocos --');
-  const blocos = card.querySelectorAll('.mc-circ-bloco');
-  ok(blocos.length === 4, 'quatro blocos listados');
-  ok(/25–30 min/.test(card.textContent), 'a faixa do cardio aparece: 25–30 min');
-  ok(/3 × 20–30 s/.test(card.textContent), 'e a da prancha, com séries');
-  ok(/3 × 10–12/.test(card.textContent), 'e a do agachamento, sem unidade');
-  ok(/5 min/.test(card.textContent) && !/5–5/.test(card.textContent),
-     'faixa de valor único não vira "5–5"');
-  ok(/Giro de braços/.test(card.textContent),
-     'a nota do bloco aparece — é onde mora a instrução');
+  ok(/1\/4/.test(filhas[0].textContent) && /4\/4/.test(filhas[3].textContent),
+     'as filhas se numeram dentro do circuito (1/4 … 4/4)');
+  ok(filhas[0].classList.contains('mc-cf-ok'), 'a 1a esta entregue');
+  ok(filhas[1].classList.contains('mc-cf-parcial'), 'a 2a, entregue curta');
+  ok(filhas[2].classList.contains('mc-cf-alvo'),
+     'a 3a e o ALVO — o primeiro bloco em aberto');
+  ok(!filhas[3].classList.contains('mc-cf-alvo'),
+     'e SO ela respira: destacar todos os abertos seria nao destacar nenhum');
 
-  ok(blocos[1].classList.contains('mc-circ-b-parcial'),
-     'o bloco curto se destaca dos demais');
-  const val = blocos[1].querySelector('.mc-circ-valor');
-  ok(val && val.classList.contains('curta'),
-     'e o valor entregue (22) é marcado como curto');
+  ok(/25–30 min/.test(filhas[1].textContent), 'a faixa aparece na filha');
+  ok(/22 min/.test(filhas[1].textContent), 'com o que foi entregue ao lado');
+  ok(filhas[1].querySelector('.mc-cf-valor.curta'),
+     'e o valor curto e marcado');
+  ok(/Giro de bra/.test(filhas[0].textContent),
+     'a nota do bloco vive na filha — e onde a instrucao pertence');
 
-  /* ── 3. As séries ───────────────────────────────────────────── */
-  console.log('\n-- as séries --');
-  const fichas = blocos[2].querySelectorAll('.mc-circ-serie');
-  ok(fichas.length === 2, 'duas séries lançadas viram duas fichas');
+  const fichas = filhas[2].querySelectorAll('.mc-cf-serie');
+  ok(fichas.length === 2, 'as series lancadas viram fichas na filha');
   ok(fichas[1].classList.contains('curta'),
-     'a de 18s (piso 20) sai marcada — a média não esconde a série fraca');
-  ok(/Série 3/.test(blocos[2].textContent),
-     'e o botão pede a PRÓXIMA série pelo número certo');
-  ok(!!blocos[2].querySelector('.mc-circ-input'),
-     'com campo para o valor dela');
-  ok(!blocos[3].querySelector('.mc-circ-serie'),
-     'bloco não começado não mostra ficha nenhuma');
+     'a serie de 18s (piso 20) sai marcada');
+  ok(/Série 3/.test(filhas[2].textContent), 'e o botao pede a proxima');
 
   /* ── 4. A trava do Concluir ─────────────────────────────────── */
   console.log('\n-- o botão que não aparece --');
   ok(!card.querySelector('[data-mc-acao="concluir"]'),
      'NÃO há botão Concluir com dois blocos em aberto');
+  ok(!!card.querySelector('[data-mc-mestre] .mc-selo-etapa'),
+     'e o selo do que falta fica NO MESTRE — e la que a conclusao mora');
   ok(/Faltam 2 blocos/.test(card.textContent),
      'no lugar dele, um selo dizendo o que falta');
 
@@ -246,8 +268,26 @@ async function rodarAsync() {
   /* ── 6. O código e o CSS ────────────────────────────────────── */
   console.log('\n-- o desenho pertence ao Sistema --');
   ok(/mc-circ-degrau/.test(css), 'a escada existe no CSS');
-  ok(/border-radius:\s*0 \.35rem \.35rem 0/.test(css),
-     'e a borda de um lado só não arredonda os quatro cantos');
+
+  /* O CORDAO E DESENHADO POR SEGMENTOS, um por filha. A primeira versao
+     era uma linha unica com o trecho aceso em PORCENTAGEM — e as filhas
+     nao tem a mesma altura: um bloco com tres series lancadas e o dobro
+     de um em aberto. A porcentagem apontava para o meio do nada e a
+     linha sobrava abaixo do ultimo no. */
+  ok(/\.mc-cf::before/.test(css),
+     'cada filha desenha o trecho de cordao que chega ao SEU no');
+  ok(!/--circ-aceso/.test(css) && !/--circ-aceso/.test(fonte),
+     'e a variavel de porcentagem foi ELIMINADA dos dois lados — ' +
+     'dado morto no CSS envelhece sem ninguem notar');
+  ok(/\.mc-cf-ok::before/.test(css) && /\.mc-cf-parcial::before/.test(css),
+     'o trecho acende junto com o no que ele alimenta');
+
+  /* O pulso e a respiracao sao enfeite; o cordao aceso e informacao. */
+  const rm = css.slice(css.indexOf('prefers-reduced-motion', css.indexOf('mc-circ-pulso')));
+  ok(/mc-circ-pulso\s*\{\s*animation: none/.test(rm),
+     'com "reduzir movimento" o pulso para');
+  ok(/mc-cf-alvo .mc-cf-no\s*\{\s*animation: none/.test(rm),
+     'e o no do alvo tambem — mas o cordao aceso continua, porque e dado');
   ok(/_seloFaltaCircuito/.test(fonte) && /_ehCircuito\(m\) && !m\.circuito\.completo/.test(fonte),
      'a trava do Concluir lê `completo` do SERVIDOR, não recontando aqui');
   ok(/data-mc-circ-input="\$\{chave\}\|/.test(fonte),
