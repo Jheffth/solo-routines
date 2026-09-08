@@ -521,7 +521,7 @@ const MissaoCard = {
 
      Aqui fica só o veredito: a escada e a conta. Os blocos saíram para
      cartões próprios, abaixo, presos ao mestre pelo cordão. */
-  _resumoCircuito(m) {
+  _resumoCircuito(m, chave) {
     if (!this._ehCircuito(m)) return '';
     const c = m.circuito;
     const escada = c.blocos.map(b => {
@@ -532,6 +532,7 @@ const MissaoCard = {
       <div class="mc-circ-escada">${escada}</div>
       <span class="mc-circ-conta">${c.fechados} de ${c.total} blocos</span>
       ${c.parcial ? '<span class="mc-circ-selo-parcial" title="Algum bloco fechou abaixo do combinado">parcial</span>' : ''}
+      ${chave ? this._botaoGuardar(m, chave) : ''}
     </div>`;
   },
 
@@ -566,10 +567,32 @@ const MissaoCard = {
      `data-mc-card` mora AQUI, no invólucro. É ele que a lista do extrato
      reconcilia e que `repintar` troca por inteiro — se ficasse no
      mestre, repintar deixaria as filhas órfãs na tela. */
+  /* ── GUARDAR AS FILHAS ────────────────────────────────────────
+     O Arquiteto: "o card principal deve ter um botãozinho para guardar
+     os cards filhos dentro dele, para não ficar ocupando espaço de
+     cards principais o tempo todo."
+
+     O PADRÃO É POR ESTADO, A ESCOLHA É DO HUNTER. Uma sessão encerrada
+     nasce guardada — ela virou história, e história não precisa de
+     quatro cartões abertos disputando a lista com o que ainda é para
+     fazer. Uma sessão viva nasce aberta, porque é trabalho à mão.
+
+     Mas a escolha dele SEMPRE ganha do padrão: `null` no armazenamento
+     significa "nunca decidi", e só então o estado decide. */
+  _circGuardado(chave, encerrada) {
+    try {
+      const v = localStorage.getItem('sr_circ_guardado_' + chave);
+      if (v === '1') return true;
+      if (v === '0') return false;
+    } catch (_) {}
+    return encerrada;
+  },
+
   _grupoCircuito(m, chave, opts, cartaoMestre, cor) {
     const c = m.circuito;
     const encerrada = ['CONCLUIDA', 'CANCELADA', 'FRACASSADA']
       .includes((m.status_hoje || m.status || '').toUpperCase());
+    const guardado = this._circGuardado(chave, encerrada);
 
     // O primeiro bloco em aberto é PARA ONDE O HUNTER VAI. Ele ganha o
     // destaque e é onde o pulso do cordão para.
@@ -577,17 +600,62 @@ const MissaoCard = {
     const filhas = c.blocos.map((b, i) =>
       this._filhaCircuito(b, chave, encerrada, i, i === alvo, c.blocos.length, m)).join('');
 
-    return `<div class="mc-grupo mc-grupo-circ${encerrada ? ' mc-grupo-fim' : ''}"
+    /* `--n` é quantas filhas há, e é o que faz o escalonamento acontecer
+       de baixo para cima ao guardar. Sem ele o CSS teria de adivinhar. */
+    return `<div class="mc-grupo mc-grupo-circ${encerrada ? ' mc-grupo-fim' : ''}${guardado ? ' mc-grupo-guardado' : ''}"
       data-mc-card="${chave}" data-mc-sig="${this.assinatura(m, opts)}"
-      style="--mc-cor:${cor};--mc-cor-suave:${this._alpha(cor, .14)}">
+      style="--mc-cor:${cor};--mc-cor-suave:${this._alpha(cor, .14)};--n:${c.blocos.length}">
       ${cartaoMestre}
       <div class="mc-circ-trilho" aria-hidden="true">
         <i class="mc-circ-cordao"></i>
         <i class="mc-circ-cordao-vivo"></i>
         ${encerrada || alvo < 0 ? '' : '<i class="mc-circ-pulso"></i>'}
       </div>
-      <div class="mc-circ-filhas" role="list">${filhas}</div>
+      <div class="mc-circ-cofre">
+        <div class="mc-circ-filhas" role="list">${filhas}</div>
+      </div>
     </div>`;
+  },
+
+  /* O BOTÃO, dentro do resumo do mestre.
+
+     Ele não diz "expandir/recolher" — diz quantos blocos estão
+     guardados, porque essa é a informação que falta quando eles não
+     estão à vista. "Guardar" quando abertos, "4 blocos" quando não. */
+  _botaoGuardar(m, chave) {
+    const c = m.circuito;
+    const encerrada = ['CONCLUIDA', 'CANCELADA', 'FRACASSADA']
+      .includes((m.status_hoje || m.status || '').toUpperCase());
+    const g = this._circGuardado(chave, encerrada);
+    const n = c.blocos.length;
+    return `<button type="button" class="mc-circ-cofre-bt" data-mc-acao="circ-guardar"
+      data-mc-id="${chave}" aria-expanded="${!g}"
+      title="${g ? 'Mostrar os blocos' : 'Guardar os blocos dentro do cartão'}">
+      <i class="mc-circ-seta" aria-hidden="true"></i>
+      <span>${g ? `${n} bloco${n > 1 ? 's' : ''}` : 'guardar'}</span>
+    </button>`;
+  },
+
+  /* Guardar e mostrar NÃO REPINTAM o cartão.
+
+     Repintar trocaria o grupo inteiro por HTML novo, e a transição
+     morreria no meio — o hunter veria os blocos sumirem de uma vez, que
+     é exatamente o oposto do que foi pedido. Aqui só a classe vira, e o
+     CSS anima. A repintura seguinte lê a escolha do armazenamento e
+     nasce no estado certo. */
+  _guardarCircuito(chave, btn) {
+    const grupo = document.querySelector(`[data-mc-card="${chave}"]`);
+    if (!grupo) return;
+    const guardando = !grupo.classList.contains('mc-grupo-guardado');
+    grupo.classList.toggle('mc-grupo-guardado', guardando);
+    try { localStorage.setItem('sr_circ_guardado_' + chave, guardando ? '1' : '0'); } catch (_) {}
+
+    const m = this._cache?.[chave];
+    const n = m?.circuito?.blocos?.length || 0;
+    btn.setAttribute('aria-expanded', String(!guardando));
+    btn.title = guardando ? 'Mostrar os blocos' : 'Guardar os blocos dentro do cartão';
+    const rot = btn.querySelector('span');
+    if (rot) rot.textContent = guardando ? `${n} bloco${n > 1 ? 's' : ''}` : 'guardar';
   },
 
   /* Uma filha por bloco. É um cartão de verdade — borda, sigilo, ações —
@@ -887,7 +955,7 @@ const MissaoCard = {
       </div>` : '';
 
     return `<article class="mc-cf mc-cf-${est}${ehAlvo ? ' mc-cf-alvo' : ''}${rodando ? ' mc-cf-rodando' : ''}"
-      role="listitem" data-mc-bloco-card="${this._esc(b.id)}">
+      role="listitem" data-mc-bloco-card="${this._esc(b.id)}" style="--i:${i}">
       <i class="mc-cf-no" aria-hidden="true"><b>${i + 1}</b></i>
       <div class="mc-cf-fio" aria-hidden="true"></div>
       ${(ehAlvo || rodando) && !encerrada ? '<div class="mc-cf-borda" aria-hidden="true"></div>' : ''}
@@ -2180,7 +2248,7 @@ const MissaoCard = {
         })()}
         ${cond ? this._corpoCondicional(m, chave) : ''}
         ${meta ? this._corpoMeta(m, chave) : ''}
-        ${this._resumoCircuito(m)}
+        ${this._resumoCircuito(m, chave)}
         ${prog ? this._barraProgressiva(m) : ''}
         ${repet
           ? (this._alvoDe(m) !== null
@@ -2518,6 +2586,7 @@ const MissaoCard = {
       return this._meta(chave, btn, acao === 'meta-somar');
     if (acao === 'circ-registrar' || acao === 'circ-desfazer')
       return this._circuito(chave, btn, acao === 'circ-registrar');
+    if (acao === 'circ-guardar') return this._guardarCircuito(chave, btn);
     if (acao === 'circ-iniciar' || acao === 'circ-parar' || acao === 'circ-cancelar')
       return this._cronoBloco(chave, btn, acao);
     if (acao === 'circ-mais' || acao === 'circ-menos')

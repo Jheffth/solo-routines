@@ -3483,3 +3483,112 @@
   .mc-cf-crono-batida { animation: none; }
   .mc-cf-marca { transition: none; }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   GUARDAR AS FILHAS
+
+   O Arquiteto: "o card principal deve ter um botãozinho para guardar os
+   cards filhos dentro dele, para não ficar ocupando espaço de cards
+   principais o tempo todo. Programe isso com um efeito leve e bonito de
+   cards sendo guardados e mostrados novamente."
+
+   COMO A ALTURA ANIMA. `grid-template-rows: 1fr → 0fr` com o filho em
+   `min-height: 0`. É o jeito de transicionar até `height: auto` sem
+   medir nada em JavaScript — e medir em JS quebraria no primeiro bloco
+   que ganhasse uma série a mais durante a animação.
+
+   O ESCALONAMENTO É AO CONTRÁRIO NOS DOIS SENTIDOS, e é isso que faz o
+   movimento parecer guardar e não sumir:
+
+     GUARDANDO — a última filha sai primeiro, e as de cima descem por
+     cima dela. É a ordem com que se empilha algo dentro de uma caixa.
+     REVELANDO — a primeira aparece primeiro, e o resto desce em
+     sequência, como o cordão desenrolando de novo.
+
+   `--n` (o número de filhas) vem do JS, porque o CSS não sabe contar
+   irmãos para calcular o atraso inverso.
+   ══════════════════════════════════════════════════════════════════ */
+.mc-circ-cofre {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows .42s cubic-bezier(.4, 0, .2, 1);
+}
+.mc-circ-cofre > .mc-circ-filhas { min-height: 0; overflow: hidden; }
+
+.mc-grupo-guardado .mc-circ-cofre { grid-template-rows: 0fr; }
+
+/* Cada filha some por conta própria, com atraso. Sem isto elas seriam
+   espremidas juntas pela altura do container — e espremer não é
+   guardar. */
+.mc-cf {
+  transition:
+    border-color .3s ease, background .3s ease, box-shadow .3s ease,
+    opacity .26s ease, transform .32s cubic-bezier(.4, 0, .2, 1);
+}
+.mc-grupo-guardado .mc-cf {
+  opacity: 0;
+  transform: translateY(-10px) scale(.97);
+  /* A ÚLTIMA SAI PRIMEIRO: o atraso é invertido pelo índice. */
+  transition-delay: calc((var(--n) - var(--i, 0)) * 28ms);
+}
+.mc-grupo-circ:not(.mc-grupo-guardado) .mc-cf {
+  /* Revelando, a PRIMEIRA chega primeiro. */
+  transition-delay: calc(var(--i, 0) * 34ms);
+}
+
+/* O CORDÃO SE RECOLHE JUNTO. Ele é o vínculo; deixá-lo pendurado sobre
+   o vazio faria o cartão parecer quebrado em vez de fechado. */
+.mc-grupo-guardado .mc-circ-trilho {
+  height: 0; opacity: 0;
+  transition: height .3s ease .1s, opacity .2s ease;
+}
+.mc-circ-trilho { transition: height .3s ease, opacity .25s ease .15s; }
+.mc-grupo-guardado .mc-circ-pulso { animation: none; }
+
+/* ── O BOTÃO ────────────────────────────────────────────────────
+   Ele não diz "expandir" — diz QUANTOS blocos estão guardados, porque
+   é essa a informação que falta quando eles não estão à vista. */
+.mc-circ-cofre-bt {
+  display: inline-flex; align-items: center; gap: .28rem;
+  margin-left: auto; cursor: pointer;
+  font-family: var(--font-section); font-size: .55rem; letter-spacing: .07em;
+  padding: .16rem .45rem; border-radius: .3rem;
+  border: 1px solid color-mix(in srgb, var(--mc-cor) 30%, transparent);
+  background: color-mix(in srgb, var(--mc-cor) 8%, transparent);
+  color: color-mix(in srgb, var(--mc-cor) 80%, white 12%);
+  transition: background .2s, border-color .2s;
+}
+.mc-circ-cofre-bt:hover {
+  background: color-mix(in srgb, var(--mc-cor) 20%, transparent);
+  border-color: color-mix(in srgb, var(--mc-cor) 55%, transparent);
+}
+/* A seta aponta para BAIXO quando há o que mostrar e para CIMA quando
+   há o que guardar — a direção do movimento que o clique provoca. */
+.mc-circ-seta {
+  width: 0; height: 0; display: inline-block;
+  border-left: 4px solid transparent; border-right: 4px solid transparent;
+  border-bottom: 5px solid currentColor;
+  transition: transform .34s cubic-bezier(.4, 0, .2, 1);
+}
+.mc-grupo-guardado .mc-circ-seta { transform: rotate(180deg); }
+
+/* Guardado, o mestre ganha uma sombra fina embaixo: a pilha de cartões
+   que está lá dentro. Duas linhas, e elas dizem "tem coisa aqui" sem
+   ocupar altura nenhuma. */
+.mc-grupo-guardado [data-mc-mestre] { position: relative; }
+.mc-grupo-guardado [data-mc-mestre]::after {
+  content: ''; position: absolute; left: 8px; right: 8px; bottom: -3px;
+  height: 3px; border-radius: 0 0 .5rem .5rem; pointer-events: none;
+  background: color-mix(in srgb, var(--mc-cor) 30%, transparent);
+  box-shadow: 0 3px 0 -1px color-mix(in srgb, var(--mc-cor) 16%, transparent);
+  animation: mc-circ-pilha .3s ease .1s both;
+}
+@keyframes mc-circ-pilha { from { opacity: 0; transform: translateY(-4px); } }
+
+/* "Reduzir movimento": guarda e mostra na hora, sem escalonar. O
+   recurso continua inteiro — o que sai é o balé. */
+@media (prefers-reduced-motion: reduce) {
+  .mc-circ-cofre, .mc-cf, .mc-circ-trilho, .mc-circ-seta { transition: none; }
+  .mc-grupo-guardado .mc-cf { transition-delay: 0s; }
+  .mc-grupo-guardado [data-mc-mestre]::after { animation: none; }
+}

@@ -467,6 +467,98 @@ async function rodarAsync() {
   const fCurto = [...c.doc.querySelectorAll('.mc-cf')].find(x => x.dataset.mcBlocoCard === 'car');
   ok(/dentro do combinado/.test(fFeito.textContent), 'quem cumpriu ouve isso');
 
+  /* ══════════════════════════════════════════════════════════
+     GUARDAR AS FILHAS
+
+     "O card principal deve ter um botaozinho para guardar os cards
+     filhos dentro dele, para nao ficar ocupando espaco de cards
+     principais o tempo todo."
+     ══════════════════════════════════════════════════════════ */
+  console.log('\n-- guardar e mostrar --');
+  const gz = montar();
+  const mkG = (st) => {
+    const x = missao({ status: st, status_hoje: st });
+    x.uid = 'r7';
+    return x;
+  };
+
+  // Sessao VIVA nasce aberta: e trabalho a mao.
+  const viva = mkG('ATIVA');
+  gz.MC.cachear([viva], { modo: 'missao' });
+  gz.doc.getElementById('lista').innerHTML = gz.MC.html(viva, { compacto: true });
+  let gr = gz.doc.querySelector('[data-mc-card]');
+  ok(!gr.classList.contains('mc-grupo-guardado'),
+     'sessao VIVA nasce aberta — e trabalho a mao');
+  const bt = gr.querySelector('[data-mc-acao="circ-guardar"]');
+  ok(!!bt, 'o mestre tem o botao de guardar');
+  ok(/guardar/.test(bt.textContent), 'que diz "guardar" quando estao a vista');
+  ok(bt.getAttribute('aria-expanded') === 'true',
+     'e se anuncia como expandido — leitor de tela tambem precisa saber');
+
+  // Sessao ENCERRADA nasce guardada: virou historia.
+  const morta = mkG('CONCLUIDA');
+  gz.MC.cachear([morta], { modo: 'missao', merge: true });
+  gz.doc.getElementById('lista').innerHTML = gz.MC.html(morta, { compacto: true });
+  gr = gz.doc.querySelector('[data-mc-card]');
+  ok(gr.classList.contains('mc-grupo-guardado'),
+     'sessao ENCERRADA nasce GUARDADA — historia nao disputa a lista ' +
+     'com o que ainda e para fazer');
+  ok(/4 blocos/.test(gr.querySelector('[data-mc-acao="circ-guardar"]').textContent),
+     'e o botao diz QUANTOS estao guardados — e a informacao que falta ' +
+     'quando eles nao estao a vista');
+
+  // A escolha do hunter GANHA do padrao, nos dois sentidos.
+  gz.win.localStorage.setItem('sr_circ_guardado_r7', '0');
+  gz.doc.getElementById('lista').innerHTML = gz.MC.html(morta, { compacto: true });
+  ok(!gz.doc.querySelector('[data-mc-card]').classList.contains('mc-grupo-guardado'),
+     'encerrada, mas o hunter mandou MOSTRAR: a escolha dele ganha');
+  gz.win.localStorage.setItem('sr_circ_guardado_r7', '1');
+  gz.doc.getElementById('lista').innerHTML = gz.MC.html(viva, { compacto: true });
+  ok(gz.doc.querySelector('[data-mc-card]').classList.contains('mc-grupo-guardado'),
+     'viva, mas o hunter mandou GUARDAR: idem');
+
+  /* O TOGGLE NAO REPINTA. Repintar trocaria o grupo por HTML novo e a
+     transicao morreria no meio — o hunter veria os blocos sumirem de
+     uma vez, o oposto do que foi pedido. */
+  gz.win.localStorage.removeItem('sr_circ_guardado_r7');
+  gz.doc.getElementById('lista').innerHTML = gz.MC.html(viva, { compacto: true });
+  gr = gz.doc.querySelector('[data-mc-card]');
+  const filhaAntes = gr.querySelector('.mc-cf');
+  const btnG = gr.querySelector('[data-mc-acao="circ-guardar"]');
+  gz.MC._guardarCircuito('r7', btnG);
+  ok(gr.querySelector('.mc-cf') === filhaAntes,
+     'guardar preserva os NOS das filhas — sem repintura, a transicao roda');
+  ok(gr.classList.contains('mc-grupo-guardado'), 'e a classe vira');
+  ok(gz.win.localStorage.getItem('sr_circ_guardado_r7') === '1',
+     'a escolha e lembrada');
+  ok(btnG.getAttribute('aria-expanded') === 'false', 'o aria acompanha');
+  ok(/4 blocos/.test(btnG.textContent), 'e o rotulo tambem');
+
+  gz.MC._guardarCircuito('r7', btnG);
+  ok(!gr.classList.contains('mc-grupo-guardado'), 'clicar de novo mostra');
+  ok(gz.win.localStorage.getItem('sr_circ_guardado_r7') === '0',
+     'e grava a escolha oposta — nao volta a "nunca decidi"');
+
+  /* O escalonamento precisa saber quantas filhas ha e onde cada uma
+     esta; o CSS nao sabe contar irmaos para um atraso invertido. */
+  ok(/--n:4/.test(gz.MC.html(viva, { compacto: true })),
+     'o grupo publica quantas filhas tem (--n)');
+  ok((gz.MC.html(viva, { compacto: true }).match(/--i:\d/g) || []).length === 4,
+     'e cada filha publica o seu indice (--i)');
+
+  const bloco = css.slice(css.indexOf('GUARDAR AS FILHAS'));
+  ok(/grid-template-rows: 0fr/.test(bloco),
+     'a altura anima com grid 1fr->0fr — sem medir nada em JS, que ' +
+     'quebraria se um bloco ganhasse uma serie durante a animacao');
+  ok(/\(var\(--n\) - var\(--i, 0\)\)/.test(bloco),
+     'guardando, a ULTIMA filha sai primeiro — e a ordem de empilhar ' +
+     'algo dentro de uma caixa');
+  ok(/mc-grupo-guardado \.mc-circ-trilho/.test(bloco),
+     'o cordao se recolhe junto — pendurado sobre o vazio, o cartao ' +
+     'pareceria quebrado em vez de fechado');
+  ok(/prefers-reduced-motion[\s\S]*mc-circ-cofre/.test(bloco),
+     'e com "reduzir movimento" o recurso continua inteiro, sem o bale');
+
   console.log(`\n=== ${testes - falhas}/${testes} ===`);
   return falhas;
 }
