@@ -63,7 +63,7 @@ const CAMPOS_HERDADOS = [
   'titulo', 'descricao', 'icone', 'categoria', 'rank', 'dificuldade',
   'tipo_permanencia', 'tipo_recorrencia', 'dias_semana', 'dia_mes',
   'mes_dia', 'data_inicio', 'data_fim', 'hora_entrada', 'hora_saida',
-  'tolerancia_min', 'xp_entrada', 'xp_clear', 'moedas_clear',
+  'tolerancia_min', 'duracao_max_min', 'xp_entrada', 'xp_clear', 'moedas_clear',
   'penalidade_entrada_xp', 'penalidade_atraso_xp', 'agenda_semanal',
   'folgas',
 ];
@@ -370,6 +370,47 @@ async function rodar() {
     ok(criadas.length === 1, 'só a missão NOVA foi criada no servidor');
     ok(criadas[0][2].titulo === 'Revisar as anotações',
        'e é a certa — a que já tinha id não foi duplicada');
+  }
+
+  /* ── 7b. O LIMITE DE TEMPO ─────────────────────────────────────── */
+  console.log('\n-- o limite da travessia sobrevive ao interruptor --');
+  {
+    const { win, F } = montar();
+    F.abrir(null, {});
+    set(win, 'fp-titulo-i', 'Estúdio');
+    set(win, 'fp-hora-saida', '17:30');
+    set(win, 'fp-duracao', '90');
+    F._pintar();
+
+    ok(g(win, 'fp-lt').textContent.includes('90 min'),
+       'a leitura diz o prazo da travessia');
+    ok(g(win, 'fp-pv-selos').innerHTML.includes('1h30'),
+       'e a prévia carimba "limite 1h30" no portão');
+
+    g(win, 'fp-chave-aberta').click();
+    F._pintar();
+    ok(g(win, 'fp-pv-selos').innerHTML.includes('1h30'),
+       'ligar o portão aberto NÃO apaga o limite — é ali que ele importa');
+    ok(g(win, 'fp-aviso').textContent.includes('não para'),
+       'e a forja avisa que o relógio corre mesmo com ele fora');
+
+    await F._salvar();
+    const p = win.chamadas.find(c => c[0] === 'criar')[1];
+    ok(p.duracao_max_min === 90,
+       'o limite viaja no payload, mesmo com o portão aberto');
+    ok(p.hora_saida === null,
+       'enquanto a hora de saída, essa sim, foi apagada pelo interruptor');
+
+    // Sem limite escrito, o campo vai nulo — não zero.
+    const b = montar();
+    b.F.abrir(null, {});
+    set(b.win, 'fp-titulo-i', 'Sem prazo');
+    await b.F._salvar();
+    const p2 = b.win.chamadas.find(c => c[0] === 'criar')[1];
+    ok(p2.duracao_max_min === null,
+       'campo vazio vira NULO, não 0 — zero seria um prazo de zero minutos');
+    ok(g(b.win, 'fp-lt').textContent === 'só o fim do dia',
+       'e a leitura diz que a travessia não tem prazo');
   }
 
   /* ── 8. A CASCA ────────────────────────────────────────────────── */

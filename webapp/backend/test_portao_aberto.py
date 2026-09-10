@@ -44,6 +44,17 @@ O QUE ESTE TESTE PROTEGE, EM ORDEM DE GRAVIDADE
    marcada, sair continua sendo encerrar e a travessia continua sendo
    uma por dia.
 
+6. SAIR PARA A PRESENÇA, NUNCA O PRAZO.
+
+       "os portões não podem ter o tempo parado, se o user decidir sair
+        de um deles, é escolha dele, mas se for uma dungeon com limite
+        de tempo, o tempo não para" — o Arquiteto.
+
+   Correção de um erro meu: a suspensão congelava a sessão inteira,
+   prazo incluído. Sair viraria um botão de pausa — bastaria voltar às
+   23h para reabrir uma travessia que devia ter fechado às 17:30, e a
+   dungeon com limite de tempo deixaria de ter limite de tempo.
+
 Uso: DATABASE_URL=sqlite:///./x.db SECRET_KEY=... python test_portao_aberto.py
 """
 from datetime import timedelta
@@ -109,6 +120,11 @@ def nova_dungeon(db, u, aberta, com_missoes=2, **kw):
         ))
     db.commit()
     return d
+
+
+def _agora_menos(d, s, minutos):
+    """Recua a entrada da sessão, para simular o tempo passando."""
+    return rd._agora() - timedelta(minutes=minutos)
 
 
 def sessao(db, d, u):
@@ -324,6 +340,110 @@ def rodar():
     ok(s_susp.rank_obtido == "S", f"com o rank que ela merecia ({s_susp.rank_obtido})")
     ok((u.xp_total or 0) > xp_antes,
        "SUSPENDER NÃO É ESQUECER: o clear de ontem foi pago, não confiscado")
+
+    # ── 7. O RELÓGIO NÃO PARA ───────────────────────────────────────
+    #
+    # "os portões não podem ter o tempo parado, se o user decidir sair de
+    #  um deles, é escolha dele, mas se for uma dungeon com limite de
+    #  tempo, o tempo não para" — o Arquiteto.
+    #
+    # É a correção de um erro meu: eu tinha feito a suspensão congelar a
+    # sessão inteira, prazo incluído. Sair viraria um botão de pausa —
+    # bastaria voltar às 23h para reabrir uma travessia que devia ter
+    # fechado às 17:30, e a dungeon com limite de tempo deixaria de ter
+    # limite de tempo.
+    print("\n-- o relógio do mundo não espera --")
+    limpar(db, u)
+
+    # Um portão aberto COM limite de travessia: 90 minutos, contados da
+    # primeira entrada — não do tempo de permanência.
+    t = nova_dungeon(db, u, aberta=True, com_missoes=2, duracao_max_min=90)
+    rd.entrar_dungeon(t.id, db=db, usuario=u)
+    st = sessao(db, t, u)
+
+    prazo = rd._prazo_da_sessao(t, st)
+    ok(prazo is not None, "um portão aberto PODE ter limite de tempo")
+    ok(abs((prazo - st.entrada_em).total_seconds() / 60 - 90) < 1,
+       "e o prazo conta da PRIMEIRA travessia, não da permanência")
+
+    r = rd.sair_dungeon(t.id, db=db, usuario=u)
+    db.refresh(st)
+    rel = r["relatorio"]
+    ok(st.status == "SUSPENSA", "ele sai — a escolha é dele")
+    ok(rel.get("prazo_em") is not None,
+       "mas o relatório da saída já diz que existe um prazo correndo")
+    ok(rel.get("minutos_restantes") is not None and rel["minutos_restantes"] <= 90,
+       f"e quanto resta dele ({rel.get('minutos_restantes')} min)")
+    ok(rd._prazo_da_sessao(t, st) == prazo,
+       "O PRAZO NÃO SE MEXEU COM A SUSPENSÃO — sair não é pausar o mundo")
+
+    # Agora o tempo passa: o prazo vence com ele do lado de fora.
+    st.entrada_em = _agora_menos(t, st, 120)     # entrou há 2h; limite era 1h30
+    db.commit()
+    ok(rd._prazo_da_sessao(t, st) < rd._agora(),
+       "duas horas depois, o prazo de 90 min já venceu — e ele estava fora")
+
+    erro(lambda: rd.entrar_dungeon(t.id, db=db, usuario=u),
+         "acabou", "voltar depois do prazo é recusado, não perdoado")
+
+    # E a varredura da lista resolve a travessia vencida sozinha, sem
+    # esperar que alguém abra ESTA dungeon.
+    rd.listar_dungeons(db=db, usuario=u)
+    db.refresh(st)
+    ok(st.status == "CONCLUIDA",
+       "a travessia vencida foi resolvida na varredura — não ficou parada esperando por ele")
+    ok(st.saida_em is not None and st.saida_em <= rd._agora(),
+       "e foi fechada no instante do PRAZO, não no instante em que o Sistema percebeu")
+
+    # `hora_saida` é a outra fonte de prazo: o horário do mundo.
+    limpar(db, u)
+    h = nova_dungeon(db, u, aberta=True, com_missoes=1)
+    h.hora_saida = "23:59"; db.commit()
+    rd.entrar_dungeon(h.id, db=db, usuario=u)
+    sh = sessao(db, h, u)
+    ph = rd._prazo_da_sessao(h, sh)
+    ok(ph is not None and ph.hour == 23 and ph.minute == 59,
+       "a hora de saída também é prazo, mesmo num portão aberto")
+
+    h.duracao_max_min = 30; db.commit()
+    ok(rd._prazo_da_sessao(h, sh) < ph,
+       "e com as duas fontes vale a MAIS APERTADA — o prazo não se escolhe pelo mais folgado")
+
+    # O portão SEM limite nenhum: aí sim a suspensão é aberta, e o dia fecha.
+    limpar(db, u)
+    livre = nova_dungeon(db, u, aberta=True, com_missoes=1)
+    rd.entrar_dungeon(livre.id, db=db, usuario=u)
+    sl = sessao(db, livre, u)
+    ok(rd._prazo_da_sessao(livre, sl) is None,
+       "portão sem hora de saída e sem limite não tem prazo — só o fim do dia")
+    rd.sair_dungeon(livre.id, db=db, usuario=u)
+    rd.listar_dungeons(db=db, usuario=u)
+    db.refresh(sl)
+    ok(sl.status == "SUSPENSA",
+       "e essa suspensão sobrevive à varredura: não há prazo para vencer")
+
+    # ── 8. PRESENÇA E PRAZO SÃO NÚMEROS DIFERENTES ──────────────────
+    print("\n-- presença não é a mesma coisa que prazo --")
+    limpar(db, u)
+    p2 = nova_dungeon(db, u, aberta=True, com_missoes=1, duracao_max_min=180)
+    rd.entrar_dungeon(p2.id, db=db, usuario=u)
+    s2 = sessao(db, p2, u)
+
+    # Ele esteve 10 minutos dentro e entrou há 70: 60 minutos foram embora
+    # do lado de fora.
+    s2.entrada_em = rd._agora() - timedelta(minutes=70)
+    s2.tempo_total_min = 10
+    db.commit()
+
+    fora = rd._minutos_fora(s2)
+    ok(58 <= fora <= 62, f"minutos_fora ≈ 60 (veio {fora})")
+    ok((s2.tempo_total_min or 0) == 10,
+       "e `tempo_total_min` continua sendo só a PRESENÇA — somar o tempo de fora "
+       "faria uma visita de 10 min, retomada horas depois, valer horas")
+
+    d2 = rd._sessao_to_dict(s2)
+    ok(d2["tempo_total_min"] == 10 and 58 <= d2["minutos_fora"] <= 62,
+       "e a tela recebe os dois números separados, para poder dizer a verdade")
 
     limpar(db, u)
     db.close()

@@ -200,6 +200,7 @@
               <div class="fp-linha"><span class="k">Risco por no-show</span><span class="v ruim" id="fp-lp">−50</span></div>
               <div class="fp-linha"><span class="k">Risco por atraso</span><span class="v ruim" id="fp-lpa">−15</span></div>
               <div class="fp-linha"><span class="k">Missões no quadro</span><span class="v" id="fp-lq">0</span></div>
+              <div class="fp-linha"><span class="k">Prazo da travessia</span><span class="v" id="fp-lt">—</span></div>
             </div>
 
             <div class="fp-aviso vazio" id="fp-aviso"></div>
@@ -292,6 +293,18 @@
             <input id="fp-data-inicio" type="date"></div>
           <div class="fp-campo" id="fp-w-fim"><label>Fim</label>
             <input id="fp-data-fim" type="date"></div>
+        </div>
+
+        <div class="fp-secao">Limite da travessia</div>
+        <div class="fp-grade">
+          <div class="fp-campo full"><label>Duração máxima (min)
+            <span class="dica">— vazio = sem limite</span></label>
+            <input id="fp-duracao" type="number" min="0" placeholder="sem limite">
+            <div style="margin-top:.35rem;font-size:.67rem;color:var(--text-muted);line-height:1.45">
+              O relógio conta da <b>primeira travessia do dia</b>, não do tempo
+              lá dentro. Sair para outra dungeon gasta o prazo igual — o tempo
+              não para porque você saiu.
+            </div></div>
         </div>
 
         <div class="fp-secao" id="fp-sec-horarios">Horários</div>
@@ -528,6 +541,7 @@
       v('fp-hora-entrada', d?.hora_entrada);
       v('fp-hora-saida',   d?.hora_saida);
       v('fp-tolerancia',   d?.tolerancia_min ?? 10);
+      v('fp-duracao',      d?.duracao_max_min ?? '');
       v('fp-xp-entrada',   d?.xp_entrada ?? '');
       v('fp-xp-clear',     d?.xp_clear ?? '');
       v('fp-moedas-clear', d?.moedas_clear ?? '');
@@ -640,6 +654,12 @@
       const selos = [];
       selos.push(`<span class="selo destaque">${esc(dific[0] + dific.slice(1).toLowerCase())}</span>`);
       selos.push(`<span class="selo">${esc(g('fp-categoria').value)}</span>`);
+      const dur = parseInt(g('fp-duracao').value);
+      if (dur > 0) {
+        const h = Math.floor(dur / 60), mm = dur % 60;
+        const txt = h ? (mm ? `${h}h${String(mm).padStart(2, '0')}` : `${h}h`) : `${dur}min`;
+        selos.push(`<span class="selo destaque">⏳ limite ${txt}</span>`);
+      }
       if (aberta) {
         selos.push('<span class="selo destaque">∞ nunca fecha</span>');
       } else {
@@ -684,6 +704,13 @@
       this._num('fp-lpa', aberta ? '—' : '−' + penAt);
       this._num('fp-lq',  String(this._missoes.length));
 
+      // O PRAZO, DITO EM VOZ ALTA. Ele nasce de duas fontes e vale a mais
+      // apertada — a mesma regra de `_prazo_da_sessao` no servidor.
+      const fontes = [];
+      if (dur > 0) fontes.push(`${dur} min desde a entrada`);
+      if (!aberta && g('fp-hora-saida').value) fontes.push(`até ${g('fp-hora-saida').value}`);
+      this._num('fp-lt', fontes.length ? fontes.join(' · ') : 'só o fim do dia');
+
       // OS AVISOS — o que a forja antiga deixava você descobrir depois.
       const avisos = [];
       if (!g('fp-titulo-i').value.trim())
@@ -697,6 +724,8 @@
         avisos.push('Semanal sem nenhum dia marcado: este portão nunca vai abrir.');
       if (!this._missoes.length)
         avisos.push('O quadro está vazio — sem missões, todo clear sai rank S de graça.');
+      if (dur > 0 && aberta)
+        avisos.push(`O relógio não para quando você sai: os ${dur} min correm desde a entrada, esteja você dentro ou em outra dungeon.`);
       if (perm === 'TEMPORARIA' && !g('fp-data-fim').value)
         avisos.push('Temporária sem data de fim nunca se arquiva sozinha.');
 
@@ -1042,6 +1071,13 @@
         hora_entrada:     aberta ? null : (g('fp-hora-entrada').value || null),
         hora_saida:       aberta ? null : (g('fp-hora-saida').value || null),
         tolerancia_min:   aberta ? 0 : (parseInt(g('fp-tolerancia').value) || 0),
+        /* O LIMITE SOBREVIVE AO INTERRUPTOR.
+           Ao contrário dos horários, `duracao_max_min` não é apagado pelo
+           portão aberto — é justamente ali que ele importa. Um portão sem
+           hora marcada não tem `hora_saida` para servir de prazo, e sem
+           este campo "dungeon com limite de tempo" seria impossível de
+           dizer exatamente onde sair e voltar é permitido. */
+        duracao_max_min:  parseInt(g('fp-duracao').value) || null,
         agenda_semanal:   aberta ? null : this._coletarAgenda(),
         folgas:           this._folgas.slice(),
         xp_entrada:            num('fp-xp-entrada'),

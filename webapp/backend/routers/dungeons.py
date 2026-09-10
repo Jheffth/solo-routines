@@ -184,6 +184,7 @@ class DungeonCreate(BaseModel):
     hora_saida:            Optional[str]       = None
     tolerancia_min:        int                 = 10
     sempre_aberta:         bool                = False  # o portão que não fecha
+    duracao_max_min:       Optional[int]       = None   # limite da travessia, em min
     agenda_semanal:        Optional[dict]      = None   # {"0":{"aberto":true,"entrada":"08:00","saida":"17:30"},...}
     folgas:                Optional[List[str]] = None   # ["2026-07-22", ...]
     categoria:             str                 = "Pessoal"
@@ -214,6 +215,7 @@ class DungeonUpdate(BaseModel):
     hora_saida:            Optional[str]       = None
     tolerancia_min:        Optional[int]       = None
     sempre_aberta:         Optional[bool]      = None
+    duracao_max_min:       Optional[int]       = None
     agenda_semanal:        Optional[dict]      = None
     folgas:                Optional[List[str]] = None
     categoria:             Optional[str]       = None
@@ -424,6 +426,11 @@ def _sessao_to_dict(s: DungeonSessao) -> dict:
         "reaberta_em": (s.reaberta_em.isoformat()
                         if getattr(s, "reaberta_em", None) else None),
         "visitas": int(getattr(s, "visitas", 0) or 0),
+        # O TEMPO TEM DOIS NÚMEROS, E ELES NÃO SÃO O MESMO.
+        # `tempo_total_min` é presença (só corre lá dentro).
+        # `minutos_fora` é o que o prazo consumiu enquanto ele esteve fora
+        # — num portão com limite, é exatamente o que ele escolheu perder.
+        "minutos_fora": _minutos_fora(s),
         "clear_xp_pago": int(getattr(s, "clear_xp_pago", 0) or 0),
         "clear_moedas_pago": int(getattr(s, "clear_moedas_pago", 0) or 0),
         "fracassada_em": s.fracassada_em.isoformat() if s.fracassada_em else None,
@@ -454,6 +461,7 @@ def _dungeon_to_dict(d: Dungeon, sessao: DungeonSessao = None, hoje: date = None
         "folgas": (json.loads(d.folgas) if getattr(d, "folgas", None) else []),
         "tolerancia_min": d.tolerancia_min,
         "sempre_aberta": bool(getattr(d, "sempre_aberta", False)),
+        "duracao_max_min": getattr(d, "duracao_max_min", None),
         "categoria": d.categoria, "rank": d.rank, "dificuldade": d.dificuldade,
         "icone": d.icone, "cor": d.cor, "tema_ambiente": d.tema_ambiente,
         "xp_entrada": d.xp_entrada, "xp_clear": d.xp_clear, "moedas_clear": d.moedas_clear,
@@ -551,6 +559,27 @@ def listar_dungeons(
     if pendentes_antigas:
         db.commit()
 
+    # O PRAZO VENCE MESMO COM O HUNTER EM OUTRO PORTÃO.
+    #
+    # `_verificar_saida_automatica` só roda quando ALGUÉM olha para aquela
+    # dungeon. Sem esta varredura, o hunter suspenderia a sessão da
+    # dungeon A às 09h, passaria o dia na B, e a A ficaria suspensa muito
+    # depois da hora em que devia ter fechado — parada, esperando por ele.
+    # É exatamente o tempo parado que o Arquiteto recusou. Aqui, ao abrir
+    # a lista, toda travessia cujo prazo já passou é resolvida no instante
+    # do prazo, não no instante em que o Sistema percebeu.
+    vencidas = db.query(DungeonSessao).filter(
+        DungeonSessao.usuario_id == usuario.id,
+        DungeonSessao.status.in_(("ATIVA", "SUSPENSA")),
+        DungeonSessao.data == hoje,
+        DungeonSessao.modo_teste == False,
+    ).all()
+    for sv in vencidas:
+        prazo = _prazo_da_sessao(sv.dungeon, sv)
+        if prazo and _agora() > prazo:
+            _resolver_sessao(db, sv.dungeon, sv, usuario,
+                             agora=prazo, credita=True, auto=True)
+
     # Higiene: fecha sessões ATIVAS esquecidas de dias anteriores
     # (usuário fechou o app sem check-out — resolve sem crédito de clear)
     antigas = db.query(DungeonSessao).filter(
@@ -621,6 +650,7 @@ def criar_dungeon(
         hora_entrada=payload.hora_entrada, hora_saida=payload.hora_saida,
         tolerancia_min=payload.tolerancia_min,
         sempre_aberta=bool(payload.sempre_aberta),
+        duracao_max_min=payload.duracao_max_min or None,
         agenda_semanal=json.dumps(payload.agenda_semanal) if payload.agenda_semanal else None,
         folgas=json.dumps(payload.folgas) if payload.folgas else None,
         categoria=payload.categoria, rank=rank,
@@ -953,6 +983,20 @@ def entrar_dungeon(
         abre_em = _parse_hhmm(h_abre, hoje)
         if abre_em and agora < abre_em:
             raise HTTPException(400, f"O portão ainda está selado — abre às {h_abre}")
+
+    # O PRAZO NÃO ESPERA QUEM SAIU.
+    #
+    # Sem esta trava, sair de uma dungeon com limite de tempo seria de
+    # graça: bastaria voltar às 23h para reabrir uma travessia que devia
+    # ter fechado às 17:30. O prazo é o mesmo que resolve a sessão
+    # sozinha (`_prazo_da_sessao`) — aqui ele apenas se recusa a ser
+    # atravessado de novo depois de vencido.
+    prazo = _prazo_da_sessao(d, s)
+    if prazo and agora > prazo:
+        raise HTTPException(
+            400,
+            f"O tempo desta travessia acabou às {prazo.strftime('%H:%M')} — "
+            "o prazo correu enquanto você esteve fora")
 
     mult  = _mult(d)
 
@@ -1564,6 +1608,9 @@ def _resolver_sessao(db: Session, d: Dungeon, s: DungeonSessao, usuario: Usuario
         "missoes_totais": len(contaveis),
         "bonus_capturados": len(bonus_ext),
         "tempo_total_min": s.tempo_total_min,
+        # O tempo que o prazo consumiu com ele do lado de fora. Zero para
+        # quem nunca saiu — e, para quem saiu, o preço da escolha.
+        "minutos_fora": _minutos_fora(s, agora),
         "atraso_minutos": s.atraso_minutos or 0,
         "xp_sessao": s.xp_ganho or 0,
         "xp_perdido": s.xp_perdido or 0,
@@ -1578,6 +1625,56 @@ def _resolver_sessao(db: Session, d: Dungeon, s: DungeonSessao, usuario: Usuario
     return relatorio, eventos_xp
 
 
+def _prazo_da_sessao(d: Dungeon, s: DungeonSessao) -> Optional[datetime]:
+    """
+    O INSTANTE EM QUE ESTA TRAVESSIA ACABA — esteja o hunter dentro ou fora.
+
+    "os portões não podem ter o tempo parado... se for uma dungeon com
+     limite de tempo, o tempo não para" — o Arquiteto.
+
+    Duas fontes, e vale a mais apertada:
+
+      · `hora_saida` do dia — um horário do MUNDO. Ele chega às 17:30
+        quer o hunter esteja lá dentro, quer esteja em outra dungeon.
+      · `duracao_max_min` — conta da PRIMEIRA travessia do dia
+        (`entrada_em`), não do tempo de permanência. É o limite de tempo
+        do portão que não fecha, que não tem hora marcada para servir de
+        prazo.
+
+    Sem nenhuma das duas, a travessia não tem prazo: o dia a encerra.
+    """
+    limites = []
+
+    _h_ent, h_saida = _horario_do_dia(d, s.data)
+    if h_saida:
+        fim = _parse_hhmm(h_saida, s.data)
+        if fim:
+            limites.append(fim)
+
+    dur = getattr(d, "duracao_max_min", None)
+    if dur and s.entrada_em:
+        limites.append(s.entrada_em + timedelta(minutes=int(dur)))
+
+    return min(limites) if limites else None
+
+
+def _minutos_fora(s: DungeonSessao, agora: datetime = None) -> int:
+    """
+    Quanto tempo do prazo ele gastou do lado de fora.
+
+    `tempo_total_min` conta a PRESENÇA e continua contando só ela — somar
+    o tempo de fora ali faria uma visita de dez minutos, retomada seis
+    horas depois, valer seis horas. Mas o número existe e precisa ser
+    dito: num portão com limite, este é exatamente o tempo que ele
+    escolheu perder.
+    """
+    if not s.entrada_em:
+        return 0
+    agora = agora or _agora()
+    corrido = max(0.0, (agora - s.entrada_em).total_seconds() / 60.0)
+    return max(0, int(round(corrido)) - int(s.tempo_total_min or 0))
+
+
 def _suspender_sessao(db: Session, d: Dungeon, s: DungeonSessao,
                       agora: datetime = None) -> dict:
     """
@@ -1589,10 +1686,21 @@ def _suspender_sessao(db: Session, d: Dungeon, s: DungeonSessao,
     de outra dungeon seria cobrar pedágio pela liberdade que o portão
     aberto promete.
 
-    Aqui a sessão apenas ADORMECE: o relógio para, o progresso fica
-    inteiro, nada é punido e nada é pago. Ela volta a correr na próxima
-    travessia, e só é resolvida quando o hunter encerrar de propósito ou
-    quando o dia acabar por ele.
+    Aqui a sessão apenas ADORMECE: o progresso fica inteiro, nada é
+    punido e nada é pago. Ela volta a correr na próxima travessia.
+
+    O QUE PARA É A PRESENÇA, NUNCA O PRAZO.
+
+    "os portões não podem ter o tempo parado, se o user decidir sair de
+     um deles, é escolha dele, mas se for uma dungeon com limite de
+     tempo, o tempo não para" — o Arquiteto.
+
+    `tempo_total_min` congela porque ele mede permanência, e ele não
+    está presente. Mas `_prazo_da_sessao` continua correndo no relógio do
+    mundo: a dungeon que fecha às 17:30 fecha às 17:30, e as duas horas
+    que ele passou em outro portão saíram do prazo DELE. Se o prazo
+    vencer com a sessão suspensa, ela é resolvida como qualquer outra —
+    com o rank que ela tinha na hora em que ele saiu.
     """
     agora = agora or _agora()
 
@@ -1603,6 +1711,8 @@ def _suspender_sessao(db: Session, d: Dungeon, s: DungeonSessao,
     s.status              = "SUSPENSA"
     s.saida_em            = agora
     s.ultimo_heartbeat_em = None
+
+    prazo = _prazo_da_sessao(d, s)
 
     execs = db.query(DungeonMissaoExecucao).filter(
         DungeonMissaoExecucao.dungeon_sessao_id == s.id
@@ -1615,10 +1725,20 @@ def _suspender_sessao(db: Session, d: Dungeon, s: DungeonSessao,
     db.commit()
     db.refresh(s)
 
+    restam = None
+    if prazo:
+        restam = max(0, int((prazo - agora).total_seconds() // 60))
+
     return {
         "suspensa": True,
         "modo_teste": bool(s.modo_teste),
         "tempo_total_min": s.tempo_total_min,
+        # O RELÓGIO QUE NÃO PAROU. Sem estes dois, a suspensão parece
+        # gratuita na tela — e o hunter só descobre o custo quando volta
+        # e encontra o portão fechado.
+        "prazo_em": prazo.isoformat() if prazo else None,
+        "minutos_restantes": restam,
+        "minutos_fora": _minutos_fora(s, agora),
         "visitas": int(getattr(s, "visitas", 0) or 0),
         "missoes_concluidas": len(concluidas),
         "missoes_totais": len(contaveis),
@@ -1642,16 +1762,16 @@ def _verificar_saida_automatica(db: Session, d: Dungeon, s: DungeonSessao,
     if not s or s.status not in ("ATIVA", "SUSPENSA"):
         return None
 
-    _h_ent, h_saida = _horario_do_dia(d, s.data)
-    limite = _parse_hhmm(h_saida, s.data) if h_saida else None
+    limite = _prazo_da_sessao(d, s)
 
-    # O PORTÃO ABERTO NÃO TEM HORA DE SAÍDA — TEM FIM DE DIA.
+    # O PORTÃO SEM PRAZO NÃO TEM HORA DE SAÍDA — TEM FIM DE DIA.
     #
-    # Sem isto, uma sessão suspensa num portão sem `hora_saida` nunca seria
-    # resolvida: o dia vira, uma sessão nova é criada para a data de hoje, e
-    # a de ontem fica encalhada para sempre com o clear por pagar. A
-    # meia-noite da própria data é o limite natural — o crédito é do dia em
-    # que o trabalho foi feito, não do dia em que o Sistema percebeu.
+    # Sem isto, uma sessão suspensa num portão sem `hora_saida` nem
+    # `duracao_max_min` nunca seria resolvida: o dia vira, uma sessão nova
+    # é criada para a data de hoje, e a de ontem fica encalhada para
+    # sempre com o clear por pagar. A meia-noite da própria data é o
+    # limite natural — o crédito é do dia em que o trabalho foi feito, não
+    # do dia em que o Sistema percebeu.
     if not limite and s.data < tempo.hoje():
         limite = datetime.combine(s.data, dtime(23, 59, 59))
 

@@ -193,6 +193,7 @@ COLUNAS = [
     # entrada e saída livres. `visitas`/`reaberta_em`: o ir e vir do dia.
     # O resto dá ao portão as naturezas que o mundo de fora já tinha.
     ("dungeons",        "sempre_aberta",     "BOOLEAN NOT NULL DEFAULT 0",  "BOOLEAN NOT NULL DEFAULT FALSE"),
+    ("dungeons",        "duracao_max_min",   "INTEGER",                     "INTEGER"),
     ("dungeon_sessoes", "visitas",           "INTEGER NOT NULL DEFAULT 0",  "INTEGER NOT NULL DEFAULT 0"),
     ("dungeon_sessoes", "reaberta_em",       "DATETIME",                    "TIMESTAMP"),
     ("dungeon_sessoes", "clear_xp_pago",     "INTEGER NOT NULL DEFAULT 0",  "INTEGER NOT NULL DEFAULT 0"),

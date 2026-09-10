@@ -663,6 +663,21 @@ class Dungeon(Base):
     # delas, o rank de saída continua sendo calculado e o streak continua
     # zerando quando o dia fecha sem clear. O que sai é a ANSIEDADE DO
     # RELÓGIO DA PORTA, não a exigência do conteúdo.
+    # O LIMITE DE TEMPO DA TRAVESSIA — e ele NÃO PARA.
+    #
+    # "os portões não podem ter o tempo parado, se o user decidir sair de
+    #  um deles, é escolha dele, mas se for uma dungeon com limite de
+    #  tempo, o tempo não para" — o Arquiteto.
+    #
+    # Num portão comum o limite é a `hora_saida`: um horário do mundo, que
+    # corre esteja o hunter dentro ou fora. Num portão que não fecha não
+    # existe hora_saida — e sem esta coluna não haveria como dizer "esta
+    # dungeon tem limite de tempo", justamente nos portões onde sair e
+    # voltar é permitido. `duracao_max_min` conta da PRIMEIRA travessia do
+    # dia, não do tempo de permanência: ir cuidar de outra dungeon gasta o
+    # prazo igual, porque o relógio do mundo não espera ninguém.
+    duracao_max_min        = Column(Integer, nullable=True)
+
     sempre_aberta          = Column(Boolean, default=False, nullable=False,
                                     server_default="0")
 
