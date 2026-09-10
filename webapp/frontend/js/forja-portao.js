@@ -64,26 +64,47 @@
      de um `<select>`, onde a explicação some assim que se escolhe. Como
      placa, ela fica na tela enquanto os campos daquela natureza estão
      abertos — que é exatamente quando ela é necessária. */
+  /* `glifo` é o nome no alfabeto do Sistema (js/glifos.js), não um
+     emoji. O arquivo de lá explica o porquê melhor do que eu: "cada
+     sistema operacional desenha o seu, a cor não obedece ao tema, o peso
+     não combina com o traço do app". As placas nasceram com emoji e
+     eram, sozinhas, o último canto da forja fora do alfabeto.
+
+     `ico` sobrevive como o ícone PADRÃO da missão daquela natureza —
+     esse continua sendo emoji porque é escolha do hunter, feita no
+     seletor de ícones, e vai gravado no banco. */
   const NATUREZAS = [
-    { v: 'PADRAO',    ico: '⚔️', nome: 'Padrão',
+    { v: 'PADRAO',    glifo: 'padrao',    ico: '⚔️', nome: 'Padrão',
       diz: 'Iniciar, pausar, cumprir. A missão comum do quadro.' },
-    { v: 'AGENDADA',  ico: '🕒', nome: 'Agendada',
+    { v: 'AGENDADA',  glifo: 'agendada',  ico: '🕒', nome: 'Agendada',
       diz: 'Abre numa hora e vence noutra, dentro da sessão.' },
-    { v: 'CIRCUITO',  ico: '🌀', nome: 'Circuito',
+    { v: 'CIRCUITO',  glifo: 'circuito',  ico: '🌀', nome: 'Circuito',
       diz: 'Vários blocos, um prazo, uma punição só.' },
-    { v: 'META',      ico: '🎯', nome: 'Meta',
+    { v: 'META',      glifo: 'meta',      ico: '🎯', nome: 'Meta',
       diz: 'Um número a perseguir: km, páginas, litros.' },
-    { v: 'REPETICAO', ico: '🔁', nome: 'Repetição',
+    { v: 'REPETICAO', glifo: 'repeticao', ico: '🔁', nome: 'Repetição',
       diz: 'N vezes dentro da mesma travessia.' },
-    { v: 'RESISTENCIA', ico: '⏳', nome: 'Resistência',
+    { v: 'RESISTENCIA', glifo: 'ampulheta', ico: '⏳', nome: 'Resistência',
       diz: 'Enche sozinha com o tempo de permanência.' },
-    { v: 'EVENTO_ALEATORIO', ico: '⚡', nome: 'Evento',
+    { v: 'EVENTO_ALEATORIO', glifo: 'evento', ico: '⚡', nome: 'Evento',
       diz: 'Surge de surpresa e expira. Bônus, nunca punição.' },
-    { v: 'BEM_ESTAR', ico: '💧', nome: 'Bem-estar',
+    { v: 'BEM_ESTAR', glifo: 'bem_estar', ico: '💧', nome: 'Bem-estar',
       diz: 'Lembrete periódico: água, alongar, respirar.' },
-    { v: 'FLAVOR',    ico: '👁', nome: 'Sussurro',
+    { v: 'FLAVOR',    glifo: 'olho',      ico: '👁', nome: 'Sussurro',
       diz: 'Só imersão. Não vale XP e não cobra nada.' },
   ];
+
+  /* O DESENHO, COM UMA SAÍDA SE O ALFABETO NÃO CARREGOU.
+     `forja-portao.js` pode ser carregado sem `glifos.js` (num teste, num
+     recorte da página). Sem esta guarda a placa ficaria vazia — pior que
+     o emoji que ela veio substituir. */
+  const glifo = (nome, tam) => (
+    window.Glifos && Glifos.existe(nome)
+      ? Glifos.rico(nome, tam || 22)
+      : `<svg viewBox="0 0 24 24" width="${tam || 22}" height="${tam || 22}"
+           fill="none" stroke="currentColor" stroke-width="1.5"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+           ><path d="M12 2l8 10-8 10-8-10z"/></svg>`);
 
   const MODOS_BLOCO = [
     { v: 'TEMPO',       t: 'Tempo' },
@@ -345,7 +366,7 @@
         <div class="fp-naturezas" id="fp-naturezas">
           ${NATUREZAS.map(n => `
             <div class="fp-nat${n.v === 'PADRAO' ? ' on' : ''}" data-fp-nat="${n.v}">
-              <span class="ico">${n.ico}</span>
+              <span class="ico">${glifo(n.glifo)}</span>
               <span class="nome">${n.nome}</span>
               <span class="diz">${esc(n.diz)}</span>
             </div>`).join('')}
@@ -773,6 +794,7 @@
       this._natSel = nat;
       document.querySelectorAll('[data-fp-nat]').forEach(n =>
         n.classList.toggle('on', n.dataset.fpNat === nat));
+      this._lustrar(document.querySelector(`[data-fp-nat="${nat}"]`));
 
       const g = id => document.getElementById(id);
       const show = (id, on) => { const e = g(id); if (e) e.style.display = on ? '' : 'none'; };
@@ -803,6 +825,33 @@
         this._blocos = [{ titulo: '', modo: 'TEMPO', series: 3, min: 20, max: 30, unidade: 'min' }];
         this._renderBlocos();
       }
+    },
+
+    /* A LUZ QUE ATRAVESSA A PLACA — e que precisa TERMINAR.
+     *
+     * A classe é transitória de propósito. Presa em `.on`, a animação
+     * congelava no meio do cartão (o transform voltava a `none`, que é
+     * o centro) e nunca mais tocava, porque reescolher a mesma natureza
+     * não troca classe nenhuma.
+     *
+     * `animationend` é quem limpa — o navegador sabe a duração real,
+     * então ela pode mudar no CSS sem que este arquivo fique sabendo. O
+     * `setTimeout` é só a rede: em jsdom, e num navegador que respeita
+     * `prefers-reduced-motion` (onde não há animação e portanto não há
+     * evento), o `animationend` não vem. */
+    _lustrar(placa) {
+      if (!placa) return;
+      placa.classList.remove('lustrando');
+      void placa.offsetWidth;                 // reinicia a animação
+      placa.classList.add('lustrando');
+
+      clearTimeout(placa._lustro);
+      const apagar = () => {
+        clearTimeout(placa._lustro);
+        placa.classList.remove('lustrando');
+      };
+      placa.addEventListener('animationend', apagar, { once: true });
+      placa._lustro = setTimeout(apagar, 1600);
     },
 
     _renderBlocos() {
@@ -955,7 +1004,7 @@
         <div class="fp-missao">
           <span class="ico">${esc(m.icone || nat?.ico || '⚔️')}</span>
           <span class="tit">${esc(m.titulo)}${det.length ? `<small>${esc(det.join(' · '))}</small>` : ''}</span>
-          <span class="nat">${esc(nat?.nome || m.natureza)}</span>
+          <span class="nat">${glifo(nat?.glifo || 'padrao', 12)}${esc(nat?.nome || m.natureza)}</span>
           <span class="xp">${m.natureza === 'FLAVOR' ? '—' : '+' + m.xp_recompensa}</span>
           <button class="rm" data-fp-miss-rm="${i}" title="Tirar do quadro">✕</button>
         </div>`;

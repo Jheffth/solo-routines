@@ -179,6 +179,57 @@ const Glifos = {
            + '<path d="M10 19.4v-2M12 19.4v-2M14 19.4v-2"/>',
       luz: '<path d="M8.4 21.4h7.2" opacity=".85"/>',
     },
+    /* ── As naturezas pesadas ─────────────────────────────
+       Entraram com a Forja de Portões, que mostrava as nove
+       naturezas em emoji — justamente o que este arquivo existe
+       para não fazer. As quatro que faltavam ao alfabeto são
+       estas; as outras cinco (padrao, agendada, repeticao,
+       ampulheta, olho) já estavam aqui. */
+    circuito: {  // o anel partido em blocos — várias partes, um ciclo
+      /* Um anel SEGMENTADO, não um anel inteiro: é o desenho do
+         que o circuito é — quatro entregas que só fecham juntas.
+         E os cortes o separam do `repeticao`, que é anel contínuo
+         com pontas de seta e mora na placa vizinha. */
+      base: '<circle cx="12" cy="12" r="8.4"/>',
+      traco: '<path d="M13.46 3.73A8.4 8.4 0 0 1 20.27 10.54"/>'
+           + '<path d="M20.27 13.46A8.4 8.4 0 0 1 13.46 20.27"/>'
+           + '<path d="M10.54 20.27A8.4 8.4 0 0 1 3.73 13.46"/>'
+           + '<path d="M3.73 10.54A8.4 8.4 0 0 1 10.54 3.73"/>',
+      luz: '<circle cx="12" cy="12" r="2.2" opacity=".85"/>',
+    },
+    meta: {      // barras subindo até a linha do alvo
+      /* Deliberadamente NÃO é um alvo concêntrico: `circuito` e
+         `repeticao` já são anéis, e um terceiro círculo faria as
+         três placas virarem a mesma mancha de longe. Barras que
+         sobem até uma linha tracejada dizem "um número a
+         perseguir" e não se parecem com nada mais no alfabeto. */
+      /* As barras são RETÂNGULOS abertos embaixo, não hastes: em traço
+         de 1.5px, três linhas verticais leem como riscos soltos, não
+         como um gráfico subindo. Fechadas, viram massa e o desenho se
+         lê a 22px. */
+      base: '<path d="M5.2 20.6v-5.2h3v5.2zM10.5 20.6v-9.4h3v9.4zM15.8 20.6v-6.8h3v6.8z"/>',
+      traco: '<path d="M2.6 20.6h18.8"/>'
+           + '<path d="M5.2 20.6v-5.2h3v5.2"/>'
+           + '<path d="M10.5 20.6v-9.4h3v9.4"/>'
+           + '<path d="M15.8 20.6v-6.8h3v6.8"/>'
+           + '<path d="M3.4 6.4h17.2" stroke-dasharray="2.8 2.2"/>',
+      luz: '',
+    },
+    evento: {    // o brilho que surge sem avisar
+      /* Faísca, não raio: o raio já é o `status`, e o mesmo
+         desenho para duas ideias quebra o alfabeto. Duas
+         estrelas de tamanhos diferentes leem "surpresa". */
+      base: '<path d="M10.4 3.2c.72 4.1 2.68 6.06 6.78 6.78-4.1.72-6.06 2.68-6.78 6.78-.72-4.1-2.68-6.06-6.78-6.78 4.1-.72 6.06-2.68 6.78-6.78z"/>',
+      traco: '<path d="M10.4 3.2c.72 4.1 2.68 6.06 6.78 6.78-4.1.72-6.06 2.68-6.78 6.78-.72-4.1-2.68-6.06-6.78-6.78 4.1-.72 6.06-2.68 6.78-6.78z"/>'
+           + '<path d="M18.2 14.8c.28 1.6 1 2.32 2.6 2.6-1.6.28-2.32 1-2.6 2.6-.28-1.6-1-2.32-2.6-2.6 1.6-.28 2.32-1 2.6-2.6z"/>',
+      luz: '',
+    },
+    bem_estar: { // a gota — água, pausa, respiro
+      base: '<path d="M12 3.2c3.5 4.1 5.7 6.8 5.7 9.6a5.7 5.7 0 0 1-11.4 0c0-2.8 2.2-5.5 5.7-9.6z"/>',
+      traco: '<path d="M12 3.2c3.5 4.1 5.7 6.8 5.7 9.6a5.7 5.7 0 0 1-11.4 0c0-2.8 2.2-5.5 5.7-9.6z"/>',
+      luz: '<path d="M9.2 13.4a2.8 2.8 0 0 0 2.2 2.8" opacity=".85"/>',
+    },
+
     repeticao: {  // duas setas em ciclo — o ato que volta
       base: '<circle cx="12" cy="12" r="8.6"/>',
       traco: '<path d="M5 10.4a7.4 7.4 0 0 1 12.3-3.1l1.9 1.9"/>'

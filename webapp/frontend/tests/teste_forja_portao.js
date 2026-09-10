@@ -53,8 +53,16 @@ const ok = (cond, msg) => {
 };
 
 const RAIZ  = path.join(__dirname, '..');
-const fonte = fs.readFileSync(path.join(RAIZ, 'js', 'forja-portao.js'), 'utf8');
-const css   = fs.readFileSync(path.join(RAIZ, 'css', 'forja-portao.css'), 'utf8');
+const fonte  = fs.readFileSync(path.join(RAIZ, 'js', 'forja-portao.js'), 'utf8');
+const css    = fs.readFileSync(path.join(RAIZ, 'css', 'forja-portao.css'), 'utf8');
+/* AS REGRAS, SEM A PROSA. Este arquivo comenta bastante — inclusive
+   citando os seletores que foram REMOVIDOS, para explicar por quê. Um
+   assert que procura seletor no texto cru encontra o comentário e
+   reprova a própria correção que estava verificando. */
+const regras = css.replace(/\/\*[\s\S]*?\*\//g, '');
+/* O alfabeto DE VERDADE, não um dublê: é ele que este teste precisa
+   cobrar. Um stub passaria mesmo com um glifo faltando em glifos.js. */
+const glifos = fs.readFileSync(path.join(RAIZ, 'js', 'glifos.js'), 'utf8');
 
 /* Os campos que a forja ANTIGA mandava. Lista literal, copiada do
    `_salvar()` que foi substituído — é o contrato que "mantenha a lógica
@@ -92,6 +100,7 @@ function montar() {
   if (!win.requestAnimationFrame) win.requestAnimationFrame = (f) => win.setTimeout(f, 0);
 
   const ctx = dom.getInternalVMContext();
+  vm.runInContext(glifos, ctx);
   vm.runInContext(fonte, ctx);
   return { dom, win, F: win.ForjaPortao };
 }
@@ -411,6 +420,96 @@ async function rodar() {
        'campo vazio vira NULO, não 0 — zero seria um prazo de zero minutos');
     ok(g(b.win, 'fp-lt').textContent === 'só o fim do dia',
        'e a leitura diz que a travessia não tem prazo');
+  }
+
+  /* ── 7c. O ALFABETO, NÃO O EMOJI ───────────────────────────────── */
+  console.log('\n-- as placas falam o alfabeto do Sistema --');
+  {
+    const { win, F } = montar();
+    F.abrir(null, {});
+    const placas = [...win.document.querySelectorAll('[data-fp-nat]')];
+
+    ok(placas.length === 9, 'as nove naturezas estão na parede');
+
+    const semSvg = placas.filter(p => !p.querySelector('.ico svg'));
+    ok(semSvg.length === 0,
+       semSvg.length ? 'AINDA SEM SVG: ' + semSvg.map(p => p.dataset.fpNat).join(', ')
+                     : 'todas desenham um <svg>, nenhuma um emoji');
+
+    // Emoji sobrevive em Unicode: procurar o caractere é o único assert
+    // que pega a regressão de verdade.
+    const emojis = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/u;
+    const comEmoji = placas.filter(p => emojis.test(p.querySelector('.ico').textContent));
+    ok(comEmoji.length === 0,
+       comEmoji.length ? 'EMOJI SOBROU EM: ' + comEmoji.map(p => p.dataset.fpNat).join(', ')
+                       : 'e nenhum emoji sobrou no slot do ícone');
+
+    // O alfabeto tem de conhecer os nove nomes — sem isso, `_achar` cai
+    // no `padrao` e nove placas viram nove losangos iguais.
+    const nomes = ['padrao', 'agendada', 'circuito', 'meta', 'repeticao',
+                   'ampulheta', 'evento', 'bem_estar', 'olho'];
+    const ausentes = nomes.filter(n => !win.Glifos.existe(n));
+    ok(ausentes.length === 0,
+       ausentes.length ? 'FALTAM NO ALFABETO: ' + ausentes.join(', ')
+                       : 'os nove nomes existem em glifos.js');
+
+    const silhuetas = new Set(nomes.map(n => win.Glifos.paths(n)));
+    ok(silhuetas.size === 9,
+       `as nove silhuetas são DIFERENTES (${silhuetas.size}/9) — nome que falta `
+       + 'no alfabeto vira `padrao` em silêncio, e nove placas viram nove losangos');
+
+    ok(!/#[0-9a-f]{3,6}/i.test(win.Glifos.rico('circuito')),
+       'o glifo não traz cor própria: quem manda é o CSS, pelo currentColor');
+    ok(/currentColor/.test(win.Glifos.rico('meta')),
+       'e é por currentColor que ele acende no neon do rank');
+  }
+
+  /* ── 7d. O LUSTRO QUE CONGELOU ─────────────────────────────────── */
+  console.log('\n-- a luz da placa tem de terminar --');
+  {
+    const { win, F } = montar();
+    F.abrir(null, {});
+
+    ok(/\.fp-nat\.lustrando::after/.test(regras),
+       'a luz mora numa classe transitória, não em `.on`');
+    ok(!/\.fp-nat\.on::after/.test(regras),
+       'e NÃO mora mais em `.on` — presa ali, ela parava no meio do cartão '
+       + 'e nunca mais tocava');
+
+    const regra = regras.match(/\.fp-nat\.lustrando::after \{[^}]*\}/)[0];
+    ok(/animation:[^;]*forwards/.test(regra),
+       'a animação termina com `forwards` — sem ele o transform volta a '
+       + '`none`, que é exatamente o CENTRO da placa: a listra congelada');
+
+    const alvo = win.document.querySelector('[data-fp-nat="REPETICAO"]');
+    F._escolherNatureza('REPETICAO');
+    ok(alvo.classList.contains('lustrando'), 'escolher a placa acende a luz');
+    ok(alvo.classList.contains('on'), 'e a seleção é outra classe, permanente');
+
+    // O `animationend` do navegador é quem limpa; em jsdom ele não vem,
+    // e é por isso que existe a rede do setTimeout.
+    alvo.dispatchEvent(new win.Event('animationend'));
+    ok(!alvo.classList.contains('lustrando'),
+       'terminada, a luz se apaga — a placa não fica com a listra parada');
+    ok(alvo.classList.contains('on'),
+       'e a placa continua selecionada: apagar a luz não desmarca nada');
+
+    // Reescolher a MESMA natureza tem de reacender. Preso em `.on`, nada
+    // mudava de classe e a animação nunca reiniciava.
+    F._escolherNatureza('REPETICAO');
+    ok(alvo.classList.contains('lustrando'),
+       'reescolher a mesma natureza reacende — antes não reiniciava nunca');
+
+    // E a rede: sem `animationend`, o tempo limpa sozinho.
+    await new Promise(r => win.setTimeout(r, 1700));
+    ok(!alvo.classList.contains('lustrando'),
+       'sem `animationend` (jsdom, ou movimento reduzido), o tempo apaga a luz');
+
+    // Trocar de placa não deixa a anterior acesa.
+    F._escolherNatureza('META');
+    const meta = win.document.querySelector('[data-fp-nat="META"]');
+    ok(meta.classList.contains('lustrando') && !alvo.classList.contains('lustrando'),
+       'e trocar de natureza move a luz, sem deixar duas acesas');
   }
 
   /* ── 8. A CASCA ────────────────────────────────────────────────── */
