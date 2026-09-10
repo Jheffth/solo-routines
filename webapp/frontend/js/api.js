@@ -315,7 +315,13 @@ class API {
     entrar:       async (id)      => API.post('/dungeons/' + id + '/entrar', {}),
     entrarArquiteto: async (id)   => API.post('/dungeons/' + id + '/entrar-arquiteto', {}),
     heartbeat:    async (id, teste = false) => API.post('/dungeons/' + id + '/heartbeat' + (teste ? '?teste=true' : ''), {}),
+    /* Duas saídas. Num portão que não fecha, `sair` só suspende a sessão
+       (ele foi cuidar de outra dungeon e pode voltar); `encerrar` fecha o
+       dia de propósito e paga o clear. No portão com hora marcada as duas
+       fazem a mesma coisa, porque lá sair sempre foi encerrar. */
     sair:         async (id, teste = false) => API.post('/dungeons/' + id + '/sair' + (teste ? '?teste=true' : ''), {}),
+    encerrar:     async (id, teste = false) => API.post('/dungeons/' + id + '/sair?encerrar=true' + (teste ? '&teste=true' : ''), {}),
+    acervo:       async ()        => API.get('/dungeons/acervo/missoes'),
     fracassar:    async (id)      => API.post('/dungeons/' + id + '/fracassar', {}),
     resetar:      async (id)      => API.post('/dungeons/' + id + '/resetar', {}),
     cancelar:     async (id)      => API.post('/dungeons/' + id + '/cancelar', {}),

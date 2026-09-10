@@ -648,6 +648,24 @@ class Dungeon(Base):
     hora_saida             = Column(String(5), nullable=True)         # "HH:MM" (padrão)
     tolerancia_min         = Column(Integer, default=10)
 
+    # ── O PORTÃO QUE NÃO FECHA ───────────────────────────────────────
+    #
+    # "as dungeons devem ser uma experiência totalmente imersiva... aplique
+    #  também a lógica das dungeons que nunca fecham, que o user tem
+    #  liberdade de sair e entrar" — o Arquiteto.
+    #
+    # Com `sempre_aberta`, o portão ignora `hora_entrada`/`hora_saida`: não
+    # há atraso, não há no-show, não há penalidade de entrada. Ele existe
+    # enquanto a recorrência disser que existe, e o hunter entra e sai à
+    # vontade — inclusive para migrar para outra dungeon e voltar.
+    #
+    # NÃO É UMA DUNGEON SEM REGRA: as missões lá dentro mantêm os prazos
+    # delas, o rank de saída continua sendo calculado e o streak continua
+    # zerando quando o dia fecha sem clear. O que sai é a ANSIEDADE DO
+    # RELÓGIO DA PORTA, não a exigência do conteúdo.
+    sempre_aberta          = Column(Boolean, default=False, nullable=False,
+                                    server_default="0")
+
     # Agenda avançada
     # agenda_semanal: JSON {"0":{"aberto":true,"entrada":"08:00","saida":"17:30"},"2":{"aberto":false}}
     #   chave = weekday (0=seg..6=dom); dia ausente usa o padrão acima
@@ -705,8 +723,36 @@ class DungeonSessao(Base):
     tempo_total_min        = Column(Integer, default=0)               # acumulado via heartbeat
     ultimo_heartbeat_em    = Column(DateTime, nullable=True)
 
+    # ── IR E VIR ─────────────────────────────────────────────────────
+    #
+    # `entrada_em` guarda a PRIMEIRA travessia do dia; `saida_em`, a
+    # última. Com entrada e saída livres, esses dois deixaram de contar a
+    # história sozinhos — daí as visitas.
+    #
+    # O TEMPO CONTINUA SENDO SÓ O DE DENTRO. `tempo_total_min` soma o
+    # heartbeat, que só bate com a sessão ATIVA: sair para outra dungeon e
+    # voltar não infla o relógio com o tempo em que o hunter esteve fora.
+    # Contar da primeira entrada à última saída faria uma visita de dez
+    # minutos, retomada seis horas depois, valer seis horas.
+    visitas                = Column(Integer, default=0, nullable=False,
+                                    server_default="0")
+    reaberta_em            = Column(DateTime, nullable=True)
+
     pct_missoes_concluidas = Column(Float, default=0.0)               # snapshot na saída
     rank_obtido            = Column(String(2), nullable=True)         # S|A|B|C|D|F
+
+    # O CLEAR SE PAGA UMA VEZ POR DIA — mas pode ser MELHORADO.
+    #
+    # Num portão que não fecha, sair e voltar é livre, e cada encerramento
+    # resolve a sessão. Sem memória do que já foi pago, o hunter receberia
+    # o clear inteiro a cada ida e volta. Guardando o valor pago, o
+    # encerramento seguinte credita só a DIFERENÇA: quem voltou e concluiu
+    # mais missões sobe de rank e recebe o acréscimo; quem só girou a
+    # maçaneta recebe zero.
+    clear_xp_pago          = Column(Integer, default=0, nullable=False,
+                                    server_default="0")
+    clear_moedas_pago      = Column(Integer, default=0, nullable=False,
+                                    server_default="0")
 
     xp_ganho               = Column(Integer, default=0)
     xp_perdido             = Column(Integer, default=0)
@@ -743,6 +789,30 @@ class DungeonMissao(Base):
     janela_disparo_min     = Column(Integer, nullable=True)           # EVENTO_ALEATORIO
     janela_disparo_max     = Column(Integer, nullable=True)
     expira_em_min          = Column(Integer, default=5)               # evento some depois disso
+
+    # ── AS NATUREZAS PESADAS ─────────────────────────────────────────
+    #
+    # A `DungeonMissao` nasceu com seis naturezas próprias e ficou presa a
+    # elas: um portão não conseguia engolir um CIRCUITO (blocos com
+    # cordão) nem uma META (alvo numérico com aporte). O Arquiteto criava
+    # naturezas ricas para o mundo de fora e a masmorra continuava em
+    # "tarefas de um clique".
+    #
+    # POR QUE PAYLOAD E NÃO UNIFICAR COM TarefaDia: unificar é a resposta
+    # certa a prazo longo, e é uma migração de alto risco num módulo que
+    # ainda não tem um único teste. O payload dá as naturezas HOJE, no
+    # MESMO formato que `motors/circuito.py` e `motors/meta.py` já leem —
+    # então o dia da unificação vira cópia de campo, não tradução.
+    circuito_payload       = Column(Text, nullable=True)
+    circuito_feito         = Column(Text, nullable=True)
+    meta_alvo              = Column(Float, nullable=True)
+    meta_unidade           = Column(String(12), nullable=True)
+    meta_especie           = Column(String(12), nullable=True)
+    meta_modo              = Column(String(10), nullable=True)
+    meta_inicial           = Column(Float, nullable=True)
+    meta_atual             = Column(Float, nullable=False, default=0, server_default="0")
+    alvo_repeticoes        = Column(Integer, nullable=True)
+    repeticoes             = Column(Integer, nullable=False, default=0, server_default="0")
 
     ativo                  = Column(Boolean, default=True)
     criado_em              = Column(DateTime, default=datetime.utcnow)

@@ -187,6 +187,26 @@ COLUNAS = [
     ("execucao_dia", "circuito_feito",      "TEXT",                        "TEXT"),
     ("tarefas_dia",  "circuito_payload",    "TEXT",                        "TEXT"),
     ("tarefas_dia",  "circuito_feito",      "TEXT",                        "TEXT"),
+
+    # ── A DUNGEON ABERTA E AS NATUREZAS PESADAS ──────────────────────────
+    # `sempre_aberta`: o portão que não fecha — sem atraso, sem no-show, com
+    # entrada e saída livres. `visitas`/`reaberta_em`: o ir e vir do dia.
+    # O resto dá ao portão as naturezas que o mundo de fora já tinha.
+    ("dungeons",        "sempre_aberta",     "BOOLEAN NOT NULL DEFAULT 0",  "BOOLEAN NOT NULL DEFAULT FALSE"),
+    ("dungeon_sessoes", "visitas",           "INTEGER NOT NULL DEFAULT 0",  "INTEGER NOT NULL DEFAULT 0"),
+    ("dungeon_sessoes", "reaberta_em",       "DATETIME",                    "TIMESTAMP"),
+    ("dungeon_sessoes", "clear_xp_pago",     "INTEGER NOT NULL DEFAULT 0",  "INTEGER NOT NULL DEFAULT 0"),
+    ("dungeon_sessoes", "clear_moedas_pago", "INTEGER NOT NULL DEFAULT 0",  "INTEGER NOT NULL DEFAULT 0"),
+    ("dungeon_missoes", "circuito_payload",  "TEXT",                        "TEXT"),
+    ("dungeon_missoes", "circuito_feito",    "TEXT",                        "TEXT"),
+    ("dungeon_missoes", "meta_alvo",         "REAL",                        "DOUBLE PRECISION"),
+    ("dungeon_missoes", "meta_unidade",      "VARCHAR(12)",                 "VARCHAR(12)"),
+    ("dungeon_missoes", "meta_especie",      "VARCHAR(12)",                 "VARCHAR(12)"),
+    ("dungeon_missoes", "meta_modo",         "VARCHAR(10)",                 "VARCHAR(10)"),
+    ("dungeon_missoes", "meta_inicial",      "REAL",                        "DOUBLE PRECISION"),
+    ("dungeon_missoes", "meta_atual",        "REAL NOT NULL DEFAULT 0",     "DOUBLE PRECISION NOT NULL DEFAULT 0"),
+    ("dungeon_missoes", "alvo_repeticoes",   "INTEGER",                     "INTEGER"),
+    ("dungeon_missoes", "repeticoes",        "INTEGER NOT NULL DEFAULT 0",  "INTEGER NOT NULL DEFAULT 0"),
 ]
 
 

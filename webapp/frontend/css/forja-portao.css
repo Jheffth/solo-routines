@@ -1,0 +1,686 @@
+/* ══════════════════════════════════════════════════════════════════
+   A FORJA DE PORTÕES — onde uma Dungeon é martelada
+
+   O Arquiteto: "reformule com transparências e cores neon, efeitos e
+   glitches. Deve ser um portão realmente útil e prático para a criação
+   de dungeons realmente usáveis."
+
+   A forja antiga era um formulário só: vinte e cinco campos empilhados
+   numa grade, "auto" escrito em cinco deles e nenhuma pista do que
+   sairia dali. O problema nunca foi a falta de brilho — foi não dar
+   para VER o portão antes de forjá-lo.
+
+   Então a peça central desta tela não é um campo: é a PRÉVIA. Ela fica
+   sempre visível, à direita, e reage a cada tecla. O rank pinta a
+   janela inteira por `--fp-cor`; a dificuldade acende o multiplicador;
+   o interruptor do portão aberto apaga os horários na hora, porque num
+   portão sem porta eles não querem dizer mais nada.
+
+   A linguagem visual é a do resto do projeto, de propósito: o vidro do
+   dossiê, a borda viva de `conic-gradient` em máscara `xor` do bloco de
+   circuito, o neon dos cards. O que é novo aqui é o GLITCH — e ele
+   aparece só onde significa alguma coisa: no título, quando o portão
+   muda de rank, e na moldura, enquanto o Sistema recalcula.
+   ══════════════════════════════════════════════════════════════════ */
+
+@property --fp-giro { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+
+.fp-backdrop {
+  position: fixed; inset: 0; z-index: 4200;
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
+  background: rgba(3, 3, 9, .78);
+  -webkit-backdrop-filter: blur(9px) saturate(125%);
+  backdrop-filter: blur(9px) saturate(125%);
+  opacity: 0;
+  transition: opacity .24s ease;
+}
+.fp-backdrop.on { opacity: 1; }
+
+.fp-caixa {
+  --fp-cor: #7c3aed;
+  position: relative;
+  width: min(1080px, 100%);
+  height: min(90vh, 860px);
+  display: flex; flex-direction: column;
+  border-radius: 16px;
+  overflow: hidden;
+  /* O vidro. Sólido, a grade de portões atrás sumiria — e a forja é
+     sobre acrescentar um portão àquela grade, não sobre esquecê-la. */
+  background:
+    linear-gradient(158deg, rgba(20, 20, 34, .94), rgba(9, 9, 17, .97));
+  box-shadow:
+    0 30px 90px rgba(0, 0, 0, .68),
+    0 0 0 1px color-mix(in srgb, var(--fp-cor) 24%, transparent),
+    0 0 60px color-mix(in srgb, var(--fp-cor) 15%, transparent);
+  transform: translateY(18px) scale(.97);
+  opacity: 0;
+  transition: transform .32s cubic-bezier(.2, .9, .3, 1.1),
+              opacity .26s ease,
+              box-shadow .5s ease;
+}
+.fp-backdrop.on .fp-caixa { transform: none; opacity: 1; }
+
+/* A BORDA VIVA — mesma do dossiê e do bloco em curso do circuito. */
+.fp-borda {
+  position: absolute; inset: 0; border-radius: inherit;
+  padding: 1px; pointer-events: none; z-index: 6;
+  background: conic-gradient(from var(--fp-giro, 0deg),
+    transparent 0deg, transparent 228deg,
+    color-mix(in srgb, var(--fp-cor) 65%, transparent) 300deg,
+    var(--fp-cor) 336deg, transparent 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  animation: fp-gira 8s linear infinite;
+}
+@keyframes fp-gira { to { --fp-giro: 360deg; } }
+
+/* AS LINHAS DE VARREDURA — o véu de CRT. Sutil de propósito: a forja é
+   para trabalhar, e listras fortes cansam antes do terceiro campo. */
+.fp-scan {
+  position: absolute; inset: 0; pointer-events: none; z-index: 5;
+  opacity: .32;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, .028) 0 1px,
+    transparent 1px 3px);
+  mix-blend-mode: overlay;
+}
+
+/* ── O TOPO ─────────────────────────────────────────────────────── */
+.fp-topo {
+  position: relative; z-index: 4;
+  display: flex; align-items: center; gap: .8rem;
+  padding: .95rem 1.1rem .8rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--fp-cor) 18%, transparent);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--fp-cor) 12%, transparent), transparent);
+}
+
+.fp-titulo {
+  position: relative;
+  font-family: var(--font-section, inherit);
+  font-size: .92rem; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--text-primary, #fff);
+  text-shadow: 0 0 14px color-mix(in srgb, var(--fp-cor) 55%, transparent);
+}
+
+/* O GLITCH. Duas cópias do texto, deslocadas em canais vermelho e ciano,
+   recortadas em faixas. Só roda quando o JS põe `.glitch` — e ele põe
+   por meio segundo, quando o rank ou a dificuldade mudam. Um glitch
+   permanente vira ruído de fundo e para de comunicar. */
+.fp-titulo::before,
+.fp-titulo::after {
+  content: attr(data-txt);
+  position: absolute; inset: 0;
+  opacity: 0; pointer-events: none;
+}
+.fp-titulo.glitch::before {
+  opacity: .85; color: #ff2d6a; left: -2px;
+  clip-path: inset(12% 0 55% 0);
+  animation: fp-glitch-a .42s steps(2, end) 1;
+}
+.fp-titulo.glitch::after {
+  opacity: .85; color: #22d3ee; left: 2px;
+  clip-path: inset(58% 0 14% 0);
+  animation: fp-glitch-b .42s steps(2, end) 1;
+}
+@keyframes fp-glitch-a {
+  0%, 100% { transform: translate(0); }
+  20% { transform: translate(-3px, 1px); }
+  40% { transform: translate(2px, -1px); }
+  60% { transform: translate(-1px, 2px); }
+  80% { transform: translate(3px, 0); }
+}
+@keyframes fp-glitch-b {
+  0%, 100% { transform: translate(0); }
+  25% { transform: translate(3px, -1px); }
+  45% { transform: translate(-2px, 1px); }
+  65% { transform: translate(1px, -2px); }
+  85% { transform: translate(-3px, 0); }
+}
+
+.fp-selo-rank {
+  margin-left: auto;
+  display: inline-flex; align-items: center; gap: .4rem;
+  padding: .28rem .7rem;
+  border-radius: 999px;
+  font-size: .68rem; font-weight: 800; letter-spacing: .12em;
+  color: var(--fp-cor);
+  border: 1px solid color-mix(in srgb, var(--fp-cor) 42%, transparent);
+  background: color-mix(in srgb, var(--fp-cor) 12%, transparent);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--fp-cor) 60%, transparent);
+}
+
+.fp-x {
+  width: 30px; height: 30px; flex: 0 0 auto;
+  display: grid; place-items: center;
+  border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--border-subtle, #2a2a3a);
+  background: transparent; color: var(--text-muted, #8a8a9a);
+  font-size: .85rem;
+  transition: all .16s ease;
+}
+.fp-x:hover {
+  color: #fff; border-color: color-mix(in srgb, var(--fp-cor) 55%, transparent);
+  background: color-mix(in srgb, var(--fp-cor) 16%, transparent);
+}
+
+/* ── O TRILHO DE CÂMARAS ────────────────────────────────────────── */
+.fp-trilho {
+  position: relative; z-index: 4;
+  display: flex; gap: .3rem;
+  padding: .55rem 1.1rem;
+  border-bottom: 1px solid var(--border-subtle, #23233a);
+  overflow-x: auto; scrollbar-width: none;
+}
+.fp-trilho::-webkit-scrollbar { display: none; }
+
+.fp-passo {
+  flex: 0 0 auto;
+  display: inline-flex; align-items: center; gap: .45rem;
+  padding: .38rem .8rem;
+  border-radius: 999px; cursor: pointer;
+  font-size: .72rem; letter-spacing: .06em;
+  color: var(--text-muted, #8a8a9a);
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, .03);
+  transition: all .18s ease;
+  white-space: nowrap;
+}
+.fp-passo:hover { color: var(--text-secondary, #b8b8c8); }
+.fp-passo .n {
+  width: 18px; height: 18px; flex: 0 0 auto;
+  display: grid; place-items: center;
+  border-radius: 50%; font-size: .62rem; font-weight: 800;
+  background: rgba(255, 255, 255, .08);
+}
+.fp-passo.on {
+  color: #fff;
+  border-color: color-mix(in srgb, var(--fp-cor) 45%, transparent);
+  background: color-mix(in srgb, var(--fp-cor) 15%, transparent);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--fp-cor) 22%, transparent);
+}
+.fp-passo.on .n {
+  background: var(--fp-cor); color: #08080f;
+}
+.fp-passo.pronto .n::after { content: ''; }
+
+/* ── O CORPO: campos à esquerda, prévia à direita ───────────────── */
+.fp-corpo {
+  position: relative; z-index: 3;
+  flex: 1; min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+}
+
+.fp-campos {
+  min-height: 0; overflow-y: auto;
+  padding: 1rem 1.1rem 1.4rem;
+}
+
+.fp-camara { display: none; }
+.fp-camara.on { display: block; animation: fp-entra .26s ease both; }
+@keyframes fp-entra {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.fp-secao {
+  font-family: var(--font-section, inherit);
+  font-size: .68rem; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--text-secondary, #b8b8c8);
+  margin: 1.1rem 0 .5rem;
+  display: flex; align-items: center; gap: .5rem;
+}
+.fp-camara > .fp-secao:first-child { margin-top: 0; }
+.fp-secao::after {
+  content: ''; flex: 1; height: 1px;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--fp-cor) 30%, transparent), transparent);
+}
+
+.fp-grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: .7rem;
+}
+
+.fp-campo { display: flex; flex-direction: column; gap: .28rem; position: relative; }
+.fp-campo.full { grid-column: 1 / -1; }
+.fp-campo > label {
+  font-size: .66rem; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--text-muted, #8a8a9a);
+}
+.fp-campo > label .dica {
+  text-transform: none; letter-spacing: 0; opacity: .62; font-size: .68rem;
+}
+.fp-campo input,
+.fp-campo select,
+.fp-campo textarea {
+  width: 100%;
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid var(--border-subtle, #2a2a3a);
+  border-radius: 9px;
+  padding: .48rem .6rem;
+  color: var(--text-primary, #fff);
+  font-size: .82rem;
+  font-family: inherit;
+  transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
+}
+.fp-campo textarea { resize: vertical; min-height: 62px; }
+.fp-campo input:focus,
+.fp-campo select:focus,
+.fp-campo textarea:focus {
+  outline: none;
+  background: rgba(255, 255, 255, .06);
+  border-color: color-mix(in srgb, var(--fp-cor) 55%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--fp-cor) 13%, transparent);
+}
+.fp-campo input:disabled,
+.fp-campo select:disabled {
+  opacity: .35; cursor: not-allowed;
+}
+.fp-campo.mudo { opacity: .38; pointer-events: none; }
+
+/* ── O INTERRUPTOR ──────────────────────────────────────────────── */
+.fp-chave {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; gap: .8rem;
+  padding: .7rem .85rem;
+  border-radius: 11px; cursor: pointer;
+  border: 1px solid var(--border-subtle, #2a2a3a);
+  background: rgba(255, 255, 255, .025);
+  transition: all .2s ease;
+}
+.fp-chave:hover { border-color: color-mix(in srgb, var(--fp-cor) 35%, transparent); }
+.fp-chave.on {
+  border-color: color-mix(in srgb, var(--fp-cor) 55%, transparent);
+  background: color-mix(in srgb, var(--fp-cor) 10%, transparent);
+  box-shadow: inset 0 0 24px color-mix(in srgb, var(--fp-cor) 10%, transparent);
+}
+.fp-chave .bolha {
+  position: relative; flex: 0 0 auto;
+  width: 40px; height: 22px; border-radius: 999px;
+  background: rgba(255, 255, 255, .1);
+  transition: background .2s ease;
+}
+.fp-chave.on .bolha { background: var(--fp-cor); }
+.fp-chave .bolha::after {
+  content: ''; position: absolute; top: 3px; left: 3px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: #fff;
+  transition: transform .22s cubic-bezier(.3, .9, .3, 1.2);
+}
+.fp-chave.on .bolha::after { transform: translateX(18px); }
+.fp-chave .txt { display: flex; flex-direction: column; gap: .15rem; }
+.fp-chave .txt b {
+  font-size: .78rem; color: var(--text-primary, #fff); font-weight: 700;
+}
+.fp-chave .txt span { font-size: .68rem; color: var(--text-muted, #8a8a9a); }
+
+/* ── DIAS DA SEMANA ─────────────────────────────────────────────── */
+.fp-dias { display: flex; flex-wrap: wrap; gap: .3rem; }
+.fp-dia {
+  padding: .3rem .6rem; border-radius: 7px; cursor: pointer;
+  font-size: .7rem; user-select: none;
+  border: 1px solid var(--border-subtle, #2a2a3a);
+  color: var(--text-muted, #8a8a9a);
+  background: rgba(255, 255, 255, .03);
+  transition: all .15s ease;
+}
+.fp-dia:hover { color: var(--text-secondary, #b8b8c8); }
+.fp-dia.on {
+  color: #fff; border-color: color-mix(in srgb, var(--fp-cor) 55%, transparent);
+  background: color-mix(in srgb, var(--fp-cor) 20%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--fp-cor) 25%, transparent);
+}
+
+/* ── AGENDA SEMANAL ─────────────────────────────────────────────── */
+.fp-agenda { display: flex; flex-direction: column; gap: .3rem; }
+.fp-agenda-linha {
+  display: flex; align-items: center; gap: .5rem;
+  transition: opacity .18s ease;
+}
+.fp-agenda-linha .fp-dia { width: 48px; text-align: center; }
+.fp-agenda-linha input { flex: 1; min-width: 0; }
+.fp-agenda-linha .seta { color: var(--text-muted, #8a8a9a); font-size: .7rem; }
+
+/* ── CHIPS (folgas) ─────────────────────────────────────────────── */
+.fp-chips { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .45rem; }
+.fp-chip {
+  display: inline-flex; align-items: center; gap: .35rem;
+  padding: .22rem .55rem; border-radius: 999px;
+  font-size: .7rem; color: var(--text-secondary, #b8b8c8);
+  border: 1px solid var(--border-subtle, #2a2a3a);
+  background: rgba(255, 255, 255, .04);
+}
+.fp-chip .rm { cursor: pointer; color: #ff4d6a; font-weight: 800; }
+
+/* ── PLACAS DE NATUREZA (o quadro de missões) ───────────────────── */
+.fp-naturezas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: .45rem;
+}
+.fp-nat {
+  position: relative; overflow: hidden;
+  display: flex; flex-direction: column; gap: .2rem;
+  padding: .55rem .6rem;
+  border-radius: 10px; cursor: pointer;
+  border: 1px solid var(--border-subtle, #2a2a3a);
+  background: rgba(255, 255, 255, .03);
+  transition: all .18s ease;
+}
+.fp-nat:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--fp-cor) 38%, transparent); }
+.fp-nat .ico { font-size: 1.05rem; line-height: 1; }
+.fp-nat .nome {
+  font-size: .72rem; font-weight: 700; color: var(--text-primary, #fff);
+}
+.fp-nat .diz { font-size: .63rem; color: var(--text-muted, #8a8a9a); line-height: 1.25; }
+.fp-nat.on {
+  border-color: color-mix(in srgb, var(--fp-cor) 60%, transparent);
+  background: color-mix(in srgb, var(--fp-cor) 14%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--fp-cor) 20%, transparent);
+}
+.fp-nat.on::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(120deg, transparent 40%,
+    color-mix(in srgb, var(--fp-cor) 22%, transparent) 50%, transparent 60%);
+  animation: fp-lustro 1.6s ease-out 1;
+  pointer-events: none;
+}
+@keyframes fp-lustro {
+  from { transform: translateX(-120%); }
+  to   { transform: translateX(120%); }
+}
+
+/* ── LISTA DE MISSÕES FORJADAS ──────────────────────────────────── */
+.fp-missoes { display: flex; flex-direction: column; gap: .35rem; margin-top: .6rem; }
+.fp-missao {
+  display: flex; align-items: center; gap: .55rem;
+  padding: .45rem .6rem;
+  border-radius: 9px;
+  border: 1px solid var(--border-subtle, #2a2a3a);
+  background: rgba(255, 255, 255, .025);
+  border-left: 2px solid color-mix(in srgb, var(--fp-cor) 60%, transparent);
+  transition: all .16s ease;
+}
+.fp-missao:hover { background: rgba(255, 255, 255, .05); }
+.fp-missao .ico { font-size: .95rem; flex: 0 0 auto; }
+.fp-missao .tit {
+  flex: 1; min-width: 0;
+  font-size: .78rem; color: var(--text-primary, #fff);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.fp-missao .tit small {
+  display: block; font-size: .64rem; color: var(--text-muted, #8a8a9a);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.fp-missao .nat {
+  flex: 0 0 auto; font-size: .6rem; letter-spacing: .08em;
+  padding: .14rem .4rem; border-radius: 5px;
+  color: var(--fp-cor);
+  background: color-mix(in srgb, var(--fp-cor) 12%, transparent);
+}
+.fp-missao .xp {
+  flex: 0 0 auto; font-size: .7rem; font-weight: 700;
+  color: var(--green-ok, #4ade80);
+}
+.fp-missao .rm {
+  flex: 0 0 auto; width: 24px; height: 24px;
+  display: grid; place-items: center; cursor: pointer;
+  border-radius: 6px; border: 1px solid transparent;
+  color: var(--text-muted, #8a8a9a); font-size: .7rem;
+  background: transparent;
+  transition: all .15s ease;
+}
+.fp-missao .rm:hover {
+  color: #ff4d6a; border-color: rgba(255, 77, 106, .4);
+  background: rgba(255, 77, 106, .1);
+}
+
+.fp-vazio {
+  padding: .9rem; text-align: center;
+  font-size: .74rem; color: var(--text-muted, #8a8a9a);
+  border: 1px dashed var(--border-subtle, #2a2a3a);
+  border-radius: 10px;
+}
+
+/* ── BLOCOS DO CIRCUITO (dentro da forja de missão) ─────────────── */
+.fp-blocos { display: flex; flex-direction: column; gap: .4rem; }
+.fp-bloco {
+  display: grid;
+  grid-template-columns: 1.6fr .7fr .55fr .55fr .5fr auto;
+  gap: .35rem; align-items: center;
+  padding: .4rem;
+  border-radius: 9px;
+  border: 1px solid var(--border-subtle, #2a2a3a);
+  background: rgba(255, 255, 255, .022);
+}
+.fp-bloco input, .fp-bloco select {
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid var(--border-subtle, #2a2a3a);
+  border-radius: 7px; padding: .32rem .4rem;
+  color: var(--text-primary, #fff); font-size: .72rem;
+  min-width: 0; width: 100%;
+}
+.fp-bloco .rm {
+  width: 24px; height: 24px; border-radius: 6px; cursor: pointer;
+  border: 1px solid transparent; background: transparent;
+  color: var(--text-muted, #8a8a9a); font-size: .68rem;
+}
+.fp-bloco .rm:hover { color: #ff4d6a; background: rgba(255, 77, 106, .1); }
+.fp-faixa-prev {
+  grid-column: 1 / -1;
+  font-size: .64rem; color: var(--fp-cor);
+  padding-left: .2rem; letter-spacing: .04em;
+}
+
+/* ── O ACERVO (reaproveitar missões) ────────────────────────────── */
+.fp-acervo {
+  display: flex; flex-wrap: wrap; gap: .35rem;
+  max-height: 132px; overflow-y: auto;
+  padding: .1rem;
+}
+.fp-acervo-item {
+  display: inline-flex; align-items: center; gap: .35rem;
+  padding: .28rem .55rem; border-radius: 999px; cursor: pointer;
+  font-size: .7rem; color: var(--text-secondary, #b8b8c8);
+  border: 1px solid var(--border-subtle, #2a2a3a);
+  background: rgba(255, 255, 255, .03);
+  transition: all .15s ease;
+}
+.fp-acervo-item:hover {
+  color: #fff;
+  border-color: color-mix(in srgb, var(--fp-cor) 50%, transparent);
+  background: color-mix(in srgb, var(--fp-cor) 14%, transparent);
+  transform: translateY(-1px);
+}
+.fp-acervo-item .fonte { font-size: .6rem; opacity: .55; }
+
+/* ── A PRÉVIA ───────────────────────────────────────────────────── */
+.fp-previa {
+  min-height: 0; overflow-y: auto;
+  padding: 1rem .9rem;
+  border-left: 1px solid var(--border-subtle, #23233a);
+  background:
+    radial-gradient(120% 60% at 50% 0%,
+      color-mix(in srgb, var(--fp-cor) 11%, transparent), transparent 68%),
+    rgba(0, 0, 0, .22);
+}
+
+.fp-previa-rotulo {
+  font-family: var(--font-section, inherit);
+  font-size: .6rem; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--text-muted, #8a8a9a);
+  text-align: center; margin-bottom: .6rem;
+}
+
+/* O PORTÃO EM MINIATURA. Não é um card de verdade da grade — é o
+   retrato dele. O que importa é que o Arquiteto veja a cor, o ícone e o
+   horário assentarem juntos antes de gravar. */
+.fp-portao {
+  position: relative; overflow: hidden;
+  border-radius: 13px;
+  padding: 1rem .85rem .85rem;
+  text-align: center;
+  border: 1px solid color-mix(in srgb, var(--fp-cor) 32%, transparent);
+  background:
+    linear-gradient(170deg,
+      color-mix(in srgb, var(--fp-cor) 16%, transparent),
+      rgba(10, 10, 20, .85) 62%);
+  box-shadow: 0 0 34px color-mix(in srgb, var(--fp-cor) 16%, transparent);
+  transition: box-shadow .4s ease, border-color .4s ease;
+}
+.fp-portao::before {
+  content: ''; position: absolute; inset: auto -30% -55% -30%; height: 75%;
+  background: radial-gradient(60% 100% at 50% 0%,
+    color-mix(in srgb, var(--fp-cor) 30%, transparent), transparent 72%);
+  filter: blur(16px); pointer-events: none;
+}
+.fp-portao .ico {
+  font-size: 2.1rem; line-height: 1;
+  filter: drop-shadow(0 0 14px color-mix(in srgb, var(--fp-cor) 65%, transparent));
+}
+.fp-portao .nome {
+  margin-top: .5rem;
+  font-size: .92rem; font-weight: 800; color: #fff;
+  overflow-wrap: anywhere;
+}
+.fp-portao .lore {
+  margin-top: .25rem;
+  font-size: .68rem; color: var(--text-muted, #8a8a9a);
+  line-height: 1.35;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.fp-portao .selos {
+  margin-top: .6rem;
+  display: flex; flex-wrap: wrap; gap: .28rem; justify-content: center;
+}
+.fp-portao .selo {
+  font-size: .6rem; letter-spacing: .07em;
+  padding: .18rem .45rem; border-radius: 5px;
+  color: var(--text-secondary, #b8b8c8);
+  border: 1px solid var(--border-subtle, #2a2a3a);
+  background: rgba(255, 255, 255, .04);
+}
+.fp-portao .selo.destaque {
+  color: var(--fp-cor);
+  border-color: color-mix(in srgb, var(--fp-cor) 45%, transparent);
+  background: color-mix(in srgb, var(--fp-cor) 13%, transparent);
+}
+
+/* A LEITURA DO SISTEMA — o que a forja antiga chamava de "auto".
+   Aqui os números aparecem calculados, porque "auto" nunca disse a
+   ninguém que Rank A + Difícil multiplica tudo por 2,6. */
+.fp-leitura {
+  margin-top: .8rem;
+  border-radius: 11px;
+  border: 1px solid var(--border-subtle, #2a2a3a);
+  background: rgba(255, 255, 255, .022);
+  overflow: hidden;
+}
+.fp-leitura-topo {
+  padding: .45rem .65rem;
+  font-size: .6rem; letter-spacing: .15em; text-transform: uppercase;
+  color: var(--text-muted, #8a8a9a);
+  border-bottom: 1px solid var(--border-subtle, #2a2a3a);
+  background: rgba(255, 255, 255, .022);
+}
+.fp-linha {
+  display: flex; align-items: baseline; gap: .5rem;
+  padding: .34rem .65rem;
+  font-size: .72rem;
+}
+.fp-linha + .fp-linha { border-top: 1px solid rgba(255, 255, 255, .04); }
+.fp-linha .k { color: var(--text-muted, #8a8a9a); flex: 1; }
+.fp-linha .v { font-weight: 700; color: var(--text-primary, #fff); }
+.fp-linha .v.bom  { color: var(--green-ok, #4ade80); }
+.fp-linha .v.ruim { color: #ff6b81; }
+.fp-linha .v.neon {
+  color: var(--fp-cor);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--fp-cor) 55%, transparent);
+}
+
+/* O número que acabou de mudar pisca uma vez. */
+.fp-linha .v.pulsa { animation: fp-pulsa .5s ease 1; }
+@keyframes fp-pulsa {
+  0%   { transform: scale(1);    filter: brightness(1); }
+  35%  { transform: scale(1.16); filter: brightness(1.7); }
+  100% { transform: scale(1);    filter: brightness(1); }
+}
+
+.fp-aviso {
+  margin-top: .7rem;
+  padding: .5rem .6rem;
+  border-radius: 9px;
+  font-size: .68rem; line-height: 1.35;
+  color: #ffd08a;
+  border: 1px solid rgba(255, 176, 60, .28);
+  background: rgba(255, 176, 60, .08);
+}
+.fp-aviso.vazio { display: none; }
+
+/* ── O RODAPÉ ───────────────────────────────────────────────────── */
+.fp-rodape {
+  position: relative; z-index: 4;
+  display: flex; align-items: center; gap: .6rem;
+  padding: .75rem 1.1rem;
+  border-top: 1px solid color-mix(in srgb, var(--fp-cor) 16%, transparent);
+  background: linear-gradient(0deg,
+    color-mix(in srgb, var(--fp-cor) 9%, transparent), transparent);
+}
+.fp-btn {
+  padding: .5rem 1rem;
+  border-radius: 9px; cursor: pointer;
+  font-size: .76rem; font-weight: 700; letter-spacing: .05em;
+  font-family: inherit;
+  border: 1px solid var(--border-subtle, #2a2a3a);
+  background: rgba(255, 255, 255, .04);
+  color: var(--text-secondary, #b8b8c8);
+  transition: all .17s ease;
+}
+.fp-btn:hover:not(:disabled) {
+  color: #fff; border-color: color-mix(in srgb, var(--fp-cor) 45%, transparent);
+  background: color-mix(in srgb, var(--fp-cor) 12%, transparent);
+}
+.fp-btn:disabled { opacity: .3; cursor: not-allowed; }
+.fp-btn.principal {
+  margin-left: auto;
+  color: #08080f;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--fp-cor),
+    color-mix(in srgb, var(--fp-cor) 62%, #fff));
+  box-shadow: 0 0 22px color-mix(in srgb, var(--fp-cor) 32%, transparent);
+}
+.fp-btn.principal:hover:not(:disabled) {
+  color: #08080f;
+  filter: brightness(1.12);
+  box-shadow: 0 0 30px color-mix(in srgb, var(--fp-cor) 45%, transparent);
+}
+.fp-vaga { margin-left: auto; }
+
+/* ── ESTREITO ───────────────────────────────────────────────────── */
+@media (max-width: 860px) {
+  .fp-corpo { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+  .fp-previa {
+    border-left: none;
+    border-top: 1px solid var(--border-subtle, #23233a);
+    max-height: 40vh;
+  }
+  .fp-caixa { height: 94vh; }
+}
+
+/* Quem pediu menos movimento continua com a forja inteira, sem o giro,
+   o lustro nem o glitch. */
+@media (prefers-reduced-motion: reduce) {
+  .fp-borda { animation: none; }
+  .fp-titulo.glitch::before,
+  .fp-titulo.glitch::after { animation: none; opacity: 0; }
+  .fp-nat.on::after { animation: none; opacity: 0; }
+  .fp-linha .v.pulsa { animation: none; }
+  .fp-camara.on { animation: none; }
+}

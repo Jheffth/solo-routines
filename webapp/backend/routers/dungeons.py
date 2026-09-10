@@ -17,16 +17,17 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional, List
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone, time as dtime
 from motors import tempo
 
 from database import (
-    get_db, Usuario,
+    get_db, Usuario, Rotina,
     Dungeon, DungeonSessao, DungeonMissao, DungeonMissaoExecucao,
 )
 from auth.router import get_usuario_atual
 from motors.celebracao import anexar
 from motors.gamificacao import aplicar_xp
+from motors import circuito
 
 router = APIRouter(prefix="/dungeons", tags=["dungeons"])
 
@@ -49,8 +50,23 @@ _MULT_DIFIC  = {"FACIL": 0.75, "NORMAL": 1.0, "DIFICIL": 1.5, "LENDARIO": 2.5}
 # Proporção do xp_clear pago conforme o rank obtido na saída
 _MULT_CLEAR  = {"S": 1.0, "A": 0.8, "B": 0.6, "C": 0.4, "D": 0.25, "F": 0.0}
 
-# Naturezas que contam para o % de clear (eventos/bem-estar/flavor são bônus)
-_NATUREZAS_CONTAVEIS = ("PADRAO", "AGENDADA", "RESISTENCIA")
+# ── AS NATUREZAS DO PORTÃO ───────────────────────────────────────────────────
+#
+# Estas tuplas existem porque as mesmas listas de naturezas estavam escritas
+# à mão em vinte lugares deste arquivo. Cada natureza nova obrigava a caçar
+# todas elas, e uma esquecida não quebra nada de imediato: a missão só some
+# em silêncio de uma conta, de um armamento ou de uma punição. Nomeando os
+# GRUPOS, uma natureza nova entra numa linha e o resto do arquivo obedece.
+#
+# MANUAIS   — o hunter começa e termina no braço. São as que expiram COM
+#             punição se ele encerrar a sessão deixando-as para trás.
+# ARMADAS   — nascem junto com a sessão, na travessia do portão.
+# BONUS     — aparecem sozinhas, valem XP e nunca punem quem as ignora.
+# CONTAVEIS — as que decidem o % de clear e, com ele, o rank do dia.
+_NATUREZAS_MANUAIS   = ("PADRAO", "AGENDADA", "CIRCUITO", "META", "REPETICAO")
+_NATUREZAS_ARMADAS   = _NATUREZAS_MANUAIS + ("RESISTENCIA",)
+_NATUREZAS_BONUS     = ("EVENTO_ALEATORIO", "BEM_ESTAR")
+_NATUREZAS_CONTAVEIS = _NATUREZAS_ARMADAS
 
 # Sussurros do sistema (FLAVOR global — missões FLAVOR adicionam frases próprias)
 _SUSSURROS = [
@@ -115,6 +131,16 @@ class MissaoCreate(BaseModel):
     dias_semana:        Optional[List[int]] = None  # só aparece nesses dias (null = todos)
     hora_inicio:        Optional[str] = None        # AGENDADA: "15:00"
     hora_limite:        Optional[str] = None        # AGENDADA: "16:00"
+    # CIRCUITO: os blocos, no mesmo formato do mundo de fora (motors/circuito)
+    circuito_payload:   Optional[dict] = None
+    # META: um alvo numérico a perseguir dentro da sessão
+    meta_alvo:          Optional[float] = None
+    meta_unidade:       Optional[str]   = None      # "km", "pág", "L"...
+    meta_especie:       Optional[str]   = None      # SOMA | MEDIA | PICO
+    meta_modo:          Optional[str]   = None      # SUBIR | DESCER
+    meta_inicial:       Optional[float] = None
+    # REPETICAO: N vezes dentro da mesma travessia
+    alvo_repeticoes:    Optional[int]   = None
 
 
 class MissaoUpdate(BaseModel):
@@ -135,6 +161,13 @@ class MissaoUpdate(BaseModel):
     dias_semana:        Optional[List[int]] = None
     hora_inicio:        Optional[str] = None
     hora_limite:        Optional[str] = None
+    circuito_payload:   Optional[dict]  = None
+    meta_alvo:          Optional[float] = None
+    meta_unidade:       Optional[str]   = None
+    meta_especie:       Optional[str]   = None
+    meta_modo:          Optional[str]   = None
+    meta_inicial:       Optional[float] = None
+    alvo_repeticoes:    Optional[int]   = None
 
 
 class DungeonCreate(BaseModel):
@@ -150,6 +183,7 @@ class DungeonCreate(BaseModel):
     hora_entrada:          Optional[str]       = None
     hora_saida:            Optional[str]       = None
     tolerancia_min:        int                 = 10
+    sempre_aberta:         bool                = False  # o portão que não fecha
     agenda_semanal:        Optional[dict]      = None   # {"0":{"aberto":true,"entrada":"08:00","saida":"17:30"},...}
     folgas:                Optional[List[str]] = None   # ["2026-07-22", ...]
     categoria:             str                 = "Pessoal"
@@ -179,6 +213,7 @@ class DungeonUpdate(BaseModel):
     hora_entrada:          Optional[str]       = None
     hora_saida:            Optional[str]       = None
     tolerancia_min:        Optional[int]       = None
+    sempre_aberta:         Optional[bool]      = None
     agenda_semanal:        Optional[dict]      = None
     folgas:                Optional[List[str]] = None
     categoria:             Optional[str]       = None
@@ -302,6 +337,11 @@ def _verificar_no_show(db: Session, d: Dungeon, s: DungeonSessao, usuario: Usuar
     janela — quem atrasa entra (e é punido na entrada). Só fracassa quem
     não atravessou até a hora de SAÍDA do dia.
     """
+    # O PORTÃO QUE NÃO FECHA NÃO TEM NO-SHOW. Não há hora de saída para
+    # perder, então não há como chegar tarde demais — a dungeon existe o
+    # dia inteiro e o hunter entra quando puder.
+    if getattr(d, "sempre_aberta", False):
+        return s
     _h_entrada, h_saida = _horario_do_dia(d, s.data)
     if s.status != "PENDENTE" or not h_saida:
         return s
@@ -342,6 +382,18 @@ def _missao_to_dict(m: DungeonMissao) -> dict:
         "dias_semana": dias,
         "hora_inicio": getattr(m, "hora_inicio", None),
         "hora_limite": getattr(m, "hora_limite", None),
+        # `para_json` lê os ATRIBUTOS do objeto (`circuito_payload` e
+        # `circuito_feito`), não os valores crus. Na dungeon o desenho e o
+        # registro moram na mesma linha, então `m` faz os dois papéis.
+        "circuito": circuito.para_json(m, m),
+        "meta_alvo": getattr(m, "meta_alvo", None),
+        "meta_unidade": getattr(m, "meta_unidade", None),
+        "meta_especie": getattr(m, "meta_especie", None),
+        "meta_modo": getattr(m, "meta_modo", None),
+        "meta_inicial": getattr(m, "meta_inicial", None),
+        "meta_atual": getattr(m, "meta_atual", 0) or 0,
+        "alvo_repeticoes": getattr(m, "alvo_repeticoes", None),
+        "repeticoes": getattr(m, "repeticoes", 0) or 0,
     }
 
 
@@ -369,6 +421,11 @@ def _sessao_to_dict(s: DungeonSessao) -> dict:
         "modo_teste": bool(getattr(s, "modo_teste", False)),
         "entrada_em": s.entrada_em.isoformat() if s.entrada_em else None,
         "saida_em": s.saida_em.isoformat() if s.saida_em else None,
+        "reaberta_em": (s.reaberta_em.isoformat()
+                        if getattr(s, "reaberta_em", None) else None),
+        "visitas": int(getattr(s, "visitas", 0) or 0),
+        "clear_xp_pago": int(getattr(s, "clear_xp_pago", 0) or 0),
+        "clear_moedas_pago": int(getattr(s, "clear_moedas_pago", 0) or 0),
         "fracassada_em": s.fracassada_em.isoformat() if s.fracassada_em else None,
         "atraso_minutos": s.atraso_minutos or 0,
         "tempo_total_min": s.tempo_total_min or 0,
@@ -396,6 +453,7 @@ def _dungeon_to_dict(d: Dungeon, sessao: DungeonSessao = None, hoje: date = None
         "agenda_semanal": (json.loads(d.agenda_semanal) if getattr(d, "agenda_semanal", None) else None),
         "folgas": (json.loads(d.folgas) if getattr(d, "folgas", None) else []),
         "tolerancia_min": d.tolerancia_min,
+        "sempre_aberta": bool(getattr(d, "sempre_aberta", False)),
         "categoria": d.categoria, "rank": d.rank, "dificuldade": d.dificuldade,
         "icone": d.icone, "cor": d.cor, "tema_ambiente": d.tema_ambiente,
         "xp_entrada": d.xp_entrada, "xp_clear": d.xp_clear, "moedas_clear": d.moedas_clear,
@@ -422,8 +480,12 @@ def _criar_missao(d_id: int, p: MissaoCreate) -> DungeonMissao:
     # Naturezas passivas forçam tipo PASSIVA; AGENDADA é ativa; FLAVOR nunca dá XP
     if nat in ("RESISTENCIA", "EVENTO_ALEATORIO", "BEM_ESTAR", "FLAVOR"):
         tipo = "PASSIVA"
-    elif nat in ("PADRAO", "AGENDADA"):
+    elif nat in _NATUREZAS_MANUAIS:
         tipo = "ATIVA"
+    # `circuito.normalizar` nunca levanta: payload torto vira None e a missão
+    # continua existindo como uma missão comum. Um portão não pode ficar
+    # impossível de criar porque um bloco veio malformado.
+    desenho = circuito.normalizar(p.circuito_payload) if nat == "CIRCUITO" else None
     xp  = 0 if nat == "FLAVOR" else p.xp_recompensa
     mc  = 0 if nat == "FLAVOR" else p.moedas_recompensa
     pen = 0 if nat == "FLAVOR" else p.penalidade_xp
@@ -436,6 +498,15 @@ def _criar_missao(d_id: int, p: MissaoCreate) -> DungeonMissao:
         expira_em_min=p.expira_em_min or 5, ativo=True,
         dias_semana=json.dumps(p.dias_semana) if p.dias_semana else None,
         hora_inicio=p.hora_inicio, hora_limite=p.hora_limite,
+        # As naturezas pesadas viajam pelo mesmo motor do mundo de fora
+        circuito_payload=json.dumps(desenho) if desenho else None,
+        meta_alvo=p.meta_alvo if nat == "META" else None,
+        meta_unidade=p.meta_unidade if nat == "META" else None,
+        meta_especie=(p.meta_especie or "SOMA").upper() if nat == "META" else None,
+        meta_modo=(p.meta_modo or "SUBIR").upper() if nat == "META" else None,
+        meta_inicial=p.meta_inicial if nat == "META" else None,
+        meta_atual=(p.meta_inicial or 0) if nat == "META" else 0,
+        alvo_repeticoes=p.alvo_repeticoes if nat == "REPETICAO" else None,
     )
 
 
@@ -460,6 +531,14 @@ def listar_dungeons(
     ).all()
     for sp in pendentes_antigas:
         dp = sp.dungeon
+        # O PORTÃO QUE NÃO FECHA NÃO TEM NO-SHOW — nem com atraso de um dia.
+        # `_verificar_no_show` já respeita isso; esta varredura corria por
+        # fora e puniria o mesmo hunter pela porta dos fundos, cobrando a
+        # penalidade de entrada por um portão que nunca marcou hora.
+        if getattr(dp, "sempre_aberta", False):
+            sp.status      = "EXPIRADA"
+            sp.rank_obtido = None
+            continue
         pen = dp.penalidade_entrada_xp or 0
         sp.status        = "FRACASSADA"
         sp.fracassada_em = _agora()
@@ -476,10 +555,20 @@ def listar_dungeons(
     # (usuário fechou o app sem check-out — resolve sem crédito de clear)
     antigas = db.query(DungeonSessao).filter(
         DungeonSessao.usuario_id == usuario.id,
-        DungeonSessao.status == "ATIVA",
+        DungeonSessao.status.in_(("ATIVA", "SUSPENSA")),
         DungeonSessao.data < hoje,
     ).all()
     for sa in antigas:
+        # SUSPENDER NÃO É ESQUECER. Quem sai de um portão aberto sai de
+        # propósito, deixando o trabalho feito para trás — e o dia dele
+        # acaba com o clear pago, não confiscado. A regra do esquecimento
+        # continua valendo só para o portão comum, onde sair já era
+        # encerrar e ficar ATIVA de um dia para o outro é descuido.
+        if getattr(sa.dungeon, "sempre_aberta", False):
+            _resolver_sessao(db, sa.dungeon, sa, usuario,
+                             agora=datetime.combine(sa.data, dtime(23, 59, 59)),
+                             credita=True, auto=True)
+            continue
         execs_a = db.query(DungeonMissaoExecucao).filter(
             DungeonMissaoExecucao.dungeon_sessao_id == sa.id
         ).all()
@@ -531,6 +620,7 @@ def criar_dungeon(
         data_inicio=payload.data_inicio, data_fim=payload.data_fim,
         hora_entrada=payload.hora_entrada, hora_saida=payload.hora_saida,
         tolerancia_min=payload.tolerancia_min,
+        sempre_aberta=bool(payload.sempre_aberta),
         agenda_semanal=json.dumps(payload.agenda_semanal) if payload.agenda_semanal else None,
         folgas=json.dumps(payload.folgas) if payload.folgas else None,
         categoria=payload.categoria, rank=rank,
@@ -554,6 +644,71 @@ def criar_dungeon(
         db.commit()
 
     return _dungeon_to_dict(d, incluir_missoes=True)
+
+
+@router.get("/acervo/missoes")
+def acervo_de_missoes(
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_atual),
+):
+    """
+    O ACERVO — tudo que o hunter já escreveu, pronto para ser reaproveitado.
+
+    Pedido do Arquiteto: "considerando também reaproveitar e reformular as
+    missões". Toda missão que ele forja é uma frase pensada — o horário
+    certo, o XP calibrado, o ícone escolhido. Obrigá-lo a reescrever a
+    mesma coisa em cada portão novo é o tipo de atrito que faz alguém
+    parar de criar dungeons.
+
+    Devolve missões de OUTROS portões e as rotinas do mundo de fora,
+    achatadas no mesmo formato do quadro. Vem como MOLDE, nunca como
+    vínculo: alterar a cópia não toca no original, senão mudar o XP de um
+    portão mudaria o de outro sem ninguém pedir.
+    """
+    vistos = set()
+    acervo = []
+
+    q = (db.query(DungeonMissao, Dungeon.titulo)
+           .join(Dungeon, DungeonMissao.dungeon_id == Dungeon.id)
+           .filter(Dungeon.usuario_id == usuario.id,
+                   DungeonMissao.ativo == True)
+           .order_by(DungeonMissao.id.desc()))
+    for m, dtitulo in q.all():
+        chave = ((m.titulo or "").strip().lower(), m.natureza)
+        if chave in vistos:
+            continue
+        vistos.add(chave)
+        molde = _missao_to_dict(m)
+        molde.pop("id", None)
+        molde.pop("dungeon_id", None)
+        molde["fonte"] = dtitulo
+        acervo.append(molde)
+
+    # As rotinas do mundo de fora entram como PADRAO: elas não têm a
+    # mecânica do portão, só o texto e o peso. É molde, não migração.
+    rot = (db.query(Rotina)
+             .filter(Rotina.usuario_id == usuario.id,
+                     Rotina.ativo == True,
+                     Rotina.status == "ATIVA")
+             .order_by(Rotina.id.desc()).limit(40).all())
+    for r in rot:
+        chave = ((r.titulo or "").strip().lower(), "PADRAO")
+        if chave in vistos:
+            continue
+        vistos.add(chave)
+        acervo.append({
+            "titulo": r.titulo, "descricao": r.descricao,
+            "icone": getattr(r, "icone", None) or "⚔️",
+            "tipo": "ATIVA", "natureza": "PADRAO",
+            "xp_recompensa": r.xp_recompensa or 30,
+            "moedas_recompensa": r.moedas_recompensa or 3,
+            "penalidade_xp": None,
+            "expira_em_min": 5, "dias_semana": None,
+            "hora_inicio": None, "hora_limite": None,
+            "fonte": "Rotina",
+        })
+
+    return {"acervo": acervo[:120]}
 
 
 @router.get("/{dungeon_id}")
@@ -671,11 +826,17 @@ def atualizar_missao(
             data[campo] = data[campo].upper()
     if "dias_semana" in data:
         data["dias_semana"] = json.dumps(data["dias_semana"]) if data["dias_semana"] else None
+    if "circuito_payload" in data:
+        desenho = circuito.normalizar(data["circuito_payload"])
+        data["circuito_payload"] = json.dumps(desenho) if desenho else None
+    for campo in ("meta_especie", "meta_modo"):
+        if data.get(campo):
+            data[campo] = data[campo].upper()
     for k, v in data.items():
         setattr(m, k, v)
     if m.natureza in ("RESISTENCIA", "EVENTO_ALEATORIO", "BEM_ESTAR", "FLAVOR"):
         m.tipo = "PASSIVA"
-    elif m.natureza in ("PADRAO", "AGENDADA"):
+    elif m.natureza in _NATUREZAS_MANUAIS:
         m.tipo = "ATIVA"
     if m.natureza == "FLAVOR":
         m.xp_recompensa = 0
@@ -758,44 +919,78 @@ def entrar_dungeon(
     s = _obter_ou_criar_sessao(db, d, usuario.id, hoje)
     s = _verificar_no_show(db, d, s, usuario)
 
+    aberto = bool(getattr(d, "sempre_aberta", False))
+
     if s.status == "FRACASSADA":
         raise HTTPException(400, "O portão se fechou — você não o atravessou a tempo")
-    if s.status != "PENDENTE":
+
+    # JÁ ESTÁ LÁ DENTRO. Entrar duas vezes seguidas não é ir e vir — é um
+    # clique repetido, e atendê-lo zeraria a entrada da visita em curso.
+    if s.status == "ATIVA":
+        raise HTTPException(400, "Você já está dentro desta Dungeon")
+
+    # A REENTRADA É O PEDIDO DO ARQUITETO: "deixe que o user entre e saia
+    # de dungeons quando quiser, se ela estiver aberta". No portão comum a
+    # travessia continua sendo uma por dia — sair é encerrar. No portão que
+    # não fecha, sair é só sair, e voltar é permitido.
+    if s.status in ("CONCLUIDA", "SUSPENSA") and not aberto:
+        raise HTTPException(400, "Você já atravessou este portão hoje")
+
+    if s.status not in ("PENDENTE", "CONCLUIDA", "SUSPENSA"):
         raise HTTPException(400, f"Não é possível entrar — status: {s.status}")
 
-    # O portão só se abre NA hora de entrada — nunca antes (regra do Sistema)
-    h_abre, _hs = _horario_do_dia(d, hoje)
-    abre_em = _parse_hhmm(h_abre, hoje)
-    if abre_em and _agora() < abre_em:
-        raise HTTPException(400, f"O portão ainda está selado — abre às {h_abre}")
-
     agora = _agora()
-    
-    # Bloqueia entrada se for mais de 15 minutos antes do horário
-    if d.hora_entrada:
-        hr_check = _parse_hhmm(d.hora_entrada, hoje)
-        if hr_check:
-            abertura = hr_check - timedelta(minutes=15)
-            if agora < abertura:
-                raise HTTPException(400, f"O portão ainda está selado. Retorne mais próximo das {d.hora_entrada}.")
+
+    # A HORA DA PORTA só existe para quem tem porta. Aqui morava também uma
+    # SEGUNDA trava ("15 minutos antes"), e ela era código morto no caso
+    # normal — se a primeira passou, `agora >= abre_em`, e `abre_em - 15min`
+    # é anterior a isso. Pior: ela lia `d.hora_entrada` (o padrão) enquanto
+    # a primeira lia o horário DO DIA, então uma dungeon com agenda semanal
+    # própria ficava inentrável, recusada por um horário que não era o dela.
+    if not aberto:
+        # O portão só se abre NA hora de entrada — nunca antes (regra do Sistema)
+        h_abre, _hs = _horario_do_dia(d, hoje)
+        abre_em = _parse_hhmm(h_abre, hoje)
+        if abre_em and agora < abre_em:
+            raise HTTPException(400, f"O portão ainda está selado — abre às {h_abre}")
 
     mult  = _mult(d)
 
-    # Atraso em relação à hora de entrada (respeitando a agenda do dia)
+    # ATRASO SÓ EXISTE CONTRA UM HORÁRIO. No portão que não fecha não há
+    # hora marcada, então ninguém chega tarde — e sem atraso não há
+    # penalidade de entrada nem travessia "tolerada".
     atraso = 0
-    h_entrada_hoje, _ = _horario_do_dia(d, hoje)
-    prazo_entrada = _parse_hhmm(h_entrada_hoje, hoje)
-    if prazo_entrada and agora > prazo_entrada:
-        atraso = int((agora - prazo_entrada).total_seconds() // 60)
+    if not aberto:
+        # Atraso em relação à hora de entrada (respeitando a agenda do dia)
+        h_entrada_hoje, _ = _horario_do_dia(d, hoje)
+        prazo_entrada = _parse_hhmm(h_entrada_hoje, hoje)
+        if prazo_entrada and agora > prazo_entrada:
+            atraso = int((agora - prazo_entrada).total_seconds() // 60)
 
-    s.status         = "ATIVA"
-    s.entrada_em     = agora
-    s.atraso_minutos = atraso
+    # A VOLTA NÃO É UMA NOVA TRAVESSIA.
+    #
+    # Reentrar num portão aberto retoma a MESMA sessão do dia: o XP de
+    # entrada não é pago de novo e o streak não sobe de novo. Se pagasse,
+    # sair e voltar dez vezes renderia dez entradas — e a dungeon viraria
+    # uma máquina de XP acionada por um botão.
+    retorno = (s.status in ("CONCLUIDA", "SUSPENSA"))
+
+    s.status              = "ATIVA"
     s.ultimo_heartbeat_em = agora
+    s.visitas             = (getattr(s, "visitas", 0) or 0) + 1
+    if retorno:
+        # `entrada_em` guarda a PRIMEIRA travessia do dia e não se mexe:
+        # é dela que sai o atraso, e reescrevê-la apagaria o registro de
+        # que o hunter chegou na hora.
+        s.reaberta_em = agora
+        s.saida_em    = None          # ele voltou; a saída de antes não vale mais
+    else:
+        s.entrada_em     = agora
+        s.atraso_minutos = atraso
 
     eventos_xp = None
-    pontual    = atraso <= 0
-    tolerado   = 0 < atraso <= (d.tolerancia_min or 0)
+    pontual    = (not retorno) and atraso <= 0
+    tolerado   = (not retorno) and 0 < atraso <= (d.tolerancia_min or 0)
 
     if pontual:
         d.streak_atual = (d.streak_atual or 0) + 1
@@ -823,6 +1018,16 @@ def entrar_dungeon(
             usuario.xp_total = max(0, (usuario.xp_total or 0) - pen)
             usuario.xp_atual = max(0, (usuario.xp_atual or 0) - pen)
             s.xp_perdido = (s.xp_perdido or 0) + pen
+    elif retorno:
+        # VOLTAR NÃO É CHEGAR ATRASADO.
+        #
+        # Sem este ramo, o `else` abaixo pegaria toda reentrada: `pontual`
+        # e `tolerado` são falsos no retorno, então cada volta zeraria o
+        # streak da dungeon e cobraria a penalidade de atraso de novo. O
+        # hunter que saísse para outra masmorra e voltasse seria punido
+        # por ter voltado — o oposto exato da liberdade que o Arquiteto
+        # pediu.
+        pass
     else:
         # Atraso além da tolerância: o portão continua aberto — entra,
         # mas sem XP de entrada, com penalidade cheia e o streak quebra
@@ -837,7 +1042,7 @@ def entrar_dungeon(
     # (respeitando os dias da semana de cada missão)
     missoes = d.missoes.filter(DungeonMissao.ativo == True).all()
     for m in missoes:
-        if m.natureza in ("PADRAO", "AGENDADA", "RESISTENCIA") and _missao_eh_de_hoje(m, hoje):
+        if m.natureza in _NATUREZAS_ARMADAS and _missao_eh_de_hoje(m, hoje):
             ja = db.query(DungeonMissaoExecucao).filter(
                 DungeonMissaoExecucao.dungeon_missao_id == m.id,
                 DungeonMissaoExecucao.dungeon_sessao_id == s.id,
@@ -907,7 +1112,7 @@ def entrar_arquiteto(
 
     # Arma as missões normalmente
     for m in d.missoes.filter(DungeonMissao.ativo == True).all():
-        if m.natureza in ("PADRAO", "AGENDADA", "RESISTENCIA") and _missao_eh_de_hoje(m, hoje):
+        if m.natureza in _NATUREZAS_ARMADAS and _missao_eh_de_hoje(m, hoje):
             db.add(DungeonMissaoExecucao(
                 dungeon_missao_id=m.id, dungeon_sessao_id=s.id,
                 status="EM_PROGRESSO" if m.natureza == "RESISTENCIA" else "PENDENTE",
@@ -1023,7 +1228,7 @@ def heartbeat(
                         expirados.append(_exec_to_dict(e, m))
 
         # ── EVENTO_ALEATORIO / BEM_ESTAR: pop-ins temporários ──
-        elif m.natureza in ("EVENTO_ALEATORIO", "BEM_ESTAR"):
+        elif m.natureza in _NATUREZAS_BONUS:
             pendente = next((x for x in lst if x.status == "PENDENTE"), None)
 
             # 1. Expira pendentes velhos (sem punição — é opcional por design)
@@ -1116,7 +1321,7 @@ def cumprir_missao(
     agora = _agora()
 
     # Evento com prazo: confere se ainda vale
-    if m.natureza in ("EVENTO_ALEATORIO", "BEM_ESTAR") and e.disparada_em:
+    if m.natureza in _NATUREZAS_BONUS and e.disparada_em:
         exp = e.disparada_em + timedelta(minutes=m.expira_em_min or 5)
         if agora > exp:
             e.status = "EXPIRADA"
@@ -1182,7 +1387,7 @@ def _get_exec(db, exec_id, usuario) -> DungeonMissaoExecucao:
         raise HTTPException(404, "Execução de missão não encontrada")
     if e.sessao.status != "ATIVA":
         raise HTTPException(400, "A sessão da Dungeon não está ativa")
-    if e.missao.natureza not in ("PADRAO", "AGENDADA"):
+    if e.missao.natureza not in _NATUREZAS_MANUAIS:
         raise HTTPException(400, "Esta missão não tem ciclo manual")
     return e
 
@@ -1280,14 +1485,14 @@ def _resolver_sessao(db: Session, d: Dungeon, s: DungeonSessao, usuario: Usuario
 
     # Expira eventos ainda pendentes (sem punição — bônus é opcional por design)
     for e in execs:
-        if e.status == "PENDENTE" and e.missao.natureza in ("EVENTO_ALEATORIO", "BEM_ESTAR"):
+        if e.status == "PENDENTE" and e.missao.natureza in _NATUREZAS_BONUS:
             e.status = "EXPIRADA"
 
     # Missões contáveis deixadas para trás no check-out: expiram COM punição
     mult_pen = _mult(d)
     falhadas = []
     for e in execs:
-        if (e.missao.natureza in ("PADRAO", "AGENDADA")
+        if (e.missao.natureza in _NATUREZAS_MANUAIS
                 and e.status in ("PENDENTE", "EM_PROGRESSO", "PAUSADA")):
             e.status = "EXPIRADA"
             pen = _punir_missao(db, usuario, s, e, e.missao, mult_pen)
@@ -1297,7 +1502,7 @@ def _resolver_sessao(db: Session, d: Dungeon, s: DungeonSessao, usuario: Usuario
     contaveis  = [e for e in execs if e.missao.natureza in _NATUREZAS_CONTAVEIS]
     concluidas = [e for e in contaveis if e.status == "CONCLUIDA"]
     bonus_ext  = [e for e in execs
-                  if e.missao.natureza in ("EVENTO_ALEATORIO", "BEM_ESTAR")
+                  if e.missao.natureza in _NATUREZAS_BONUS
                   and e.status == "CONCLUIDA"]
     pct = (len(concluidas) / len(contaveis) * 100.0) if contaveis else 100.0
 
@@ -1311,13 +1516,27 @@ def _resolver_sessao(db: Session, d: Dungeon, s: DungeonSessao, usuario: Usuario
         rank = "A"
 
     mult     = _mult(d)
-    xp_clear = int((d.xp_clear or 0) * mult * _MULT_CLEAR[rank]) if credita else 0
-    mc_clear = int((d.moedas_clear or 0) * mult * _MULT_CLEAR[rank]) if credita else 0
+    xp_total_clear = int((d.xp_clear or 0) * mult * _MULT_CLEAR[rank]) if credita else 0
+    mc_total_clear = int((d.moedas_clear or 0) * mult * _MULT_CLEAR[rank]) if credita else 0
+
+    # SÓ A DIFERENÇA É PAGA.
+    #
+    # `xp_total_clear` é o clear a que a sessão tem direito AGORA, com o
+    # rank que ela tem agora. Num portão que não fecha o hunter pode
+    # encerrar, voltar, concluir mais missões e encerrar de novo — e o que
+    # ele recebe na segunda vez é o quanto o clear subiu, nunca o clear
+    # inteiro outra vez. Rank que cai não devolve XP: o piso é zero.
+    ja_xp    = int(getattr(s, "clear_xp_pago", 0) or 0)
+    ja_mc    = int(getattr(s, "clear_moedas_pago", 0) or 0)
+    xp_clear = max(0, xp_total_clear - ja_xp)
+    mc_clear = max(0, mc_total_clear - ja_mc)
 
     s.status                 = "CONCLUIDA"
     s.saida_em               = agora
     s.pct_missoes_concluidas = pct
     s.rank_obtido            = rank
+    s.clear_xp_pago          = max(ja_xp, xp_total_clear)
+    s.clear_moedas_pago      = max(ja_mc, mc_total_clear)
 
     eventos_xp = None
     if s.modo_teste:
@@ -1351,25 +1570,91 @@ def _resolver_sessao(db: Session, d: Dungeon, s: DungeonSessao, usuario: Usuario
         "moedas_sessao": s.moedas_ganhas or 0,
         "xp_clear": xp_clear,
         "moedas_clear": mc_clear,
+        "xp_clear_total": xp_total_clear,
+        "moedas_clear_total": mc_total_clear,
         "streak_dungeon": d.streak_atual or 0,
         "missoes_falhadas": falhadas,
     }
     return relatorio, eventos_xp
 
 
+def _suspender_sessao(db: Session, d: Dungeon, s: DungeonSessao,
+                      agora: datetime = None) -> dict:
+    """
+    ⏸ SAÍDA SEM ENCERRAMENTO — o hunter atravessa o portão de volta.
+
+    Num portão que não fecha, sair não é terminar. `_resolver_sessao` faz
+    três coisas irreversíveis: expira as missões pendentes COM punição,
+    fecha o rank do dia e paga o clear. Aplicar isso a quem só foi cuidar
+    de outra dungeon seria cobrar pedágio pela liberdade que o portão
+    aberto promete.
+
+    Aqui a sessão apenas ADORMECE: o relógio para, o progresso fica
+    inteiro, nada é punido e nada é pago. Ela volta a correr na próxima
+    travessia, e só é resolvida quando o hunter encerrar de propósito ou
+    quando o dia acabar por ele.
+    """
+    agora = agora or _agora()
+
+    ultimo = s.ultimo_heartbeat_em or s.entrada_em or agora
+    delta_min = max(0.0, min((agora - ultimo).total_seconds() / 60.0, 5.0))
+    s.tempo_total_min = int((s.tempo_total_min or 0) + round(delta_min))
+
+    s.status              = "SUSPENSA"
+    s.saida_em            = agora
+    s.ultimo_heartbeat_em = None
+
+    execs = db.query(DungeonMissaoExecucao).filter(
+        DungeonMissaoExecucao.dungeon_sessao_id == s.id
+    ).all()
+    contaveis  = [e for e in execs if e.missao.natureza in _NATUREZAS_CONTAVEIS]
+    concluidas = [e for e in contaveis if e.status == "CONCLUIDA"]
+    pendentes  = [e for e in contaveis
+                  if e.status in ("PENDENTE", "EM_PROGRESSO", "PAUSADA")]
+
+    db.commit()
+    db.refresh(s)
+
+    return {
+        "suspensa": True,
+        "modo_teste": bool(s.modo_teste),
+        "tempo_total_min": s.tempo_total_min,
+        "visitas": int(getattr(s, "visitas", 0) or 0),
+        "missoes_concluidas": len(concluidas),
+        "missoes_totais": len(contaveis),
+        "missoes_aguardando": len(pendentes),
+        "xp_sessao": s.xp_ganho or 0,
+        "xp_perdido": s.xp_perdido or 0,
+        "moedas_sessao": s.moedas_ganhas or 0,
+        "clear_ja_pago": int(getattr(s, "clear_xp_pago", 0) or 0),
+        "streak_dungeon": d.streak_atual or 0,
+    }
+
+
 def _verificar_saida_automatica(db: Session, d: Dungeon, s: DungeonSessao,
                                 usuario: Usuario) -> Optional[dict]:
     """
-    Check-out automático: se a sessão está ATIVA e o horário de saída do dia
-    já passou, o Sistema tira o hunter da dungeon sozinho, com clear normal.
+    Check-out automático: se a sessão está ATIVA (ou SUSPENSA, largada do
+    lado de fora de um portão aberto) e o horário de saída do dia já
+    passou, o Sistema tira o hunter da dungeon sozinho, com clear normal.
     Retorna o relatório se resolveu, senão None.
     """
-    if not s or s.status != "ATIVA":
+    if not s or s.status not in ("ATIVA", "SUSPENSA"):
         return None
+
     _h_ent, h_saida = _horario_do_dia(d, s.data)
-    if not h_saida:
-        return None
-    limite = _parse_hhmm(h_saida, s.data)
+    limite = _parse_hhmm(h_saida, s.data) if h_saida else None
+
+    # O PORTÃO ABERTO NÃO TEM HORA DE SAÍDA — TEM FIM DE DIA.
+    #
+    # Sem isto, uma sessão suspensa num portão sem `hora_saida` nunca seria
+    # resolvida: o dia vira, uma sessão nova é criada para a data de hoje, e
+    # a de ontem fica encalhada para sempre com o clear por pagar. A
+    # meia-noite da própria data é o limite natural — o crédito é do dia em
+    # que o trabalho foi feito, não do dia em que o Sistema percebeu.
+    if not limite and s.data < tempo.hoje():
+        limite = datetime.combine(s.data, dtime(23, 59, 59))
+
     if not limite or _agora() <= limite:
         return None
     relatorio, _ev = _resolver_sessao(db, d, s, usuario, agora=limite, credita=True, auto=True)
@@ -1380,10 +1665,18 @@ def _verificar_saida_automatica(db: Session, d: Dungeon, s: DungeonSessao,
 def sair_dungeon(
     dungeon_id: int,
     teste: bool = False,
+    encerrar: bool = False,
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(get_usuario_atual),
 ):
-    """Check-out: resolve a sessão, calcula o rank de clear e paga a recompensa."""
+    """
+    Check-out. Duas saídas, e a diferença é o portão:
+
+    - portão com hora marcada → sair É encerrar. Fechou, fechou.
+    - portão que não fecha     → sair só SUSPENDE (o hunter foi cuidar de
+      outra dungeon e pode voltar). Para fechar o dia de propósito e
+      receber o clear, `encerrar=true`.
+    """
     d = _get_dungeon(db, dungeon_id, usuario)
     hoje = tempo.hoje()
     if teste and usuario.nivel_acesso != "Arquiteto":
@@ -1392,6 +1685,15 @@ def sair_dungeon(
 
     if s.status != "ATIVA":
         raise HTTPException(400, f"Não é possível sair — status: {s.status}")
+
+    aberto = bool(getattr(d, "sempre_aberta", False))
+    if aberto and not encerrar:
+        relatorio = _suspender_sessao(db, d, s)
+        return {
+            "relatorio": relatorio,
+            "sessao": _sessao_to_dict(s),
+            "eventos_xp": None,
+        }
 
     relatorio, eventos_xp = _resolver_sessao(db, d, s, usuario)
     return anexar({
@@ -1552,7 +1854,7 @@ def score_dungeon(
             eh_contavel = m.natureza in _NATUREZAS_CONTAVEIS
             eh_falha = e.status in ("CANCELADA", "EXPIRADA") and eh_contavel
             if e.status == "CONCLUIDA":
-                tot["eventos" if m.natureza in ("EVENTO_ALEATORIO", "BEM_ESTAR") else "concluidas"] += 1
+                tot["eventos" if m.natureza in _NATUREZAS_BONUS else "concluidas"] += 1
             elif eh_falha:
                 tot["falhadas"] += 1
             # Filtros de exibição
