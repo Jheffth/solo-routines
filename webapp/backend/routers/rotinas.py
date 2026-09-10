@@ -12,6 +12,7 @@ from typing import Optional, List
 from datetime import date, datetime
 from motors import meta as motor_meta
 from motors import circuito as motor_circuito
+from motors import dossie as motor_dossie
 from motors import tempo
 from motors import economia, especiais
 
@@ -578,6 +579,34 @@ def atualizar_rotina(
     hoje = tempo.hoje()
     ed = _obter_ou_criar_exec_dia(db, r, usuario.id, hoje) if _eh_rotina_de_hoje(r, hoje) else None
     return _rotina_to_dict(r, exec_dia=ed)
+
+
+@router.get("/{rotina_id}/dossie")
+def dossie_rotina(
+    rotina_id: int,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_atual),
+):
+    """
+    A leitura longa do cartão — o que ele não cabe.
+
+    O cartão responde "o que fazer agora"; isto responde "como tenho me
+    saído nisso". Nada aqui é guardado: todo número é derivado das
+    instâncias na hora da leitura, porque uma coluna `vezes_concluida`
+    discordaria do histórico no primeiro Reerguer.
+    """
+    r = db.query(Rotina).filter(Rotina.id == rotina_id,
+                                Rotina.usuario_id == usuario.id).first()
+    if not r:
+        raise HTTPException(404, "Rotina não encontrada")
+    d = motor_dossie.de_rotina(db, usuario, r, tempo.hoje())
+    # O MEDIDOR só para o Arquiteto. Ver quantas falhas faltam para punir
+    # transformaria a punição num orçamento — a mesma razão de ele ficar
+    # escondido em O Pacto.
+    if (usuario.nivel_acesso or "") == "Arquiteto":
+        from motors import medidor
+        d["medidor"] = medidor.leitura(r, db=db)
+    return d
 
 
 @router.delete("/{rotina_id}")

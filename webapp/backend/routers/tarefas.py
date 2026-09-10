@@ -168,6 +168,24 @@ def tarefas_de_hoje(
     return [_tarefa_to_dict(t) for t in tarefas]
 
 
+@router.get("/{tarefa_id}/dossie")
+def dossie_tarefa(
+    tarefa_id: int,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_atual),
+):
+    """
+    A ficha da missão geral.
+
+    Não é a mesma forma da rotina, de propósito: uma missão geral
+    acontece UMA vez. Devolver taxa de 0% e corrente de 0 faria uma
+    missão cumprida parecer um fracasso.
+    """
+    from motors import dossie as motor_dossie
+    return motor_dossie.de_tarefa(db, usuario,
+                                  _get_ou_404(tarefa_id, usuario, db), tempo.hoje())
+
+
 @router.get("/{tarefa_id}")
 def obter_tarefa(
     tarefa_id: int,

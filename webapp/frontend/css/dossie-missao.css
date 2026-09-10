@@ -1,0 +1,283 @@
+/* ══════════════════════════════════════════════════════════════════
+   O DOSSIÊ — a janela de vidro
+
+   O Arquiteto pediu "bonito e moderno igual o card, de preferência com
+   transparências e visuais neon iguais aos cards".
+
+   Então ele não inventa linguagem: reusa a do cartão. A borda viva é o
+   mesmo `conic-gradient` girando dentro de máscara `xor` do bloco em
+   curso do circuito; o vidro é o `backdrop-filter` que a placa de
+   penitência já usa; a cor vem da PRIORIDADE, pela mesma tabela — o
+   dossiê de uma crítica chega magenta como o cartão dela.
+
+   `--dm-cor` é definida pelo JS no backdrop, e desce por herança.
+   ══════════════════════════════════════════════════════════════════ */
+.dm-backdrop {
+  position: fixed; inset: 0; z-index: 4000;
+  display: flex; align-items: center; justify-content: center;
+  padding: 1.2rem;
+  background: rgba(4, 4, 10, .72);
+  -webkit-backdrop-filter: blur(7px) saturate(120%);
+  backdrop-filter: blur(7px) saturate(120%);
+  opacity: 0;
+  transition: opacity .22s ease;
+}
+.dm-backdrop.on { opacity: 1; }
+
+.dm-caixa {
+  position: relative;
+  width: min(560px, 100%);
+  max-height: min(86vh, 780px);
+  display: flex; flex-direction: column;
+  border-radius: 14px;
+  overflow: hidden;
+  /* O VIDRO: fundo translúcido sobre o desfoque do backdrop. Sólido, a
+     janela viraria uma parede e o cartão que a originou sumiria — e o
+     dossiê é sobre ELE, então ele tem de continuar entrevisto atrás. */
+  background:
+    linear-gradient(160deg, rgba(22, 22, 38, .93), rgba(11, 11, 20, .96));
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, .6),
+    0 0 0 1px color-mix(in srgb, var(--dm-cor) 22%, transparent),
+    0 0 48px color-mix(in srgb, var(--dm-cor) 14%, transparent);
+  transform: translateY(14px) scale(.975);
+  opacity: 0;
+  transition: transform .3s cubic-bezier(.2, .9, .3, 1.1), opacity .24s ease;
+}
+.dm-backdrop.on .dm-caixa { transform: none; opacity: 1; }
+
+/* A BORDA VIVA — a mesma do bloco em curso do circuito. Máscara `xor`
+   para pintar só o perímetro, sem engordar o layout. */
+.dm-borda {
+  position: absolute; inset: 0; border-radius: inherit;
+  padding: 1px; pointer-events: none; z-index: 3;
+  background: conic-gradient(from var(--giro, 0deg),
+    transparent 0deg, transparent 235deg,
+    color-mix(in srgb, var(--dm-cor) 70%, transparent) 300deg,
+    var(--dm-cor) 335deg, transparent 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  animation: dm-gira 7s linear infinite;
+}
+@keyframes dm-gira { to { --giro: 360deg; } }
+
+/* O halo de neon atrás do topo. Elemento próprio — duas animações no
+   mesmo elemento se cancelam nesta base de código. */
+.dm-brilho {
+  position: absolute; inset: -40% -20% auto -20%; height: 60%;
+  pointer-events: none; z-index: 0;
+  background: radial-gradient(60% 100% at 50% 100%,
+    color-mix(in srgb, var(--dm-cor) 26%, transparent), transparent 70%);
+  filter: blur(18px);
+}
+
+/* ── O TOPO ─────────────────────────────────────────────────────── */
+.dm-topo {
+  position: relative; z-index: 2;
+  display: flex; align-items: center; gap: .7rem;
+  padding: 1rem 1.1rem .8rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--dm-cor) 16%, transparent);
+}
+/* O selo hexagonal — a forma do Sistema, a mesma do nó do circuito e da
+   moldura do avatar. */
+.dm-selo {
+  width: 30px; height: 34px; flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: center;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: var(--dm-cor);
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--dm-cor) 45%, transparent));
+}
+.dm-selo i {
+  width: 23px; height: 26px;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: #0b0b14;
+}
+.dm-tit { flex: 1; min-width: 0; }
+.dm-rot {
+  display: block;
+  font-family: var(--font-section); font-size: .54rem;
+  letter-spacing: .18em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--dm-cor) 80%, white 15%);
+}
+.dm-tit h3 {
+  margin: .1rem 0 0; font-size: 1rem; font-weight: 500;
+  line-height: 1.25; color: var(--text-primary);
+}
+.dm-x {
+  width: 30px; height: 30px; flex: 0 0 auto; cursor: pointer;
+  border-radius: 50%; font-size: 1.05rem; line-height: 1;
+  border: 1px solid rgba(255, 255, 255, .12);
+  background: rgba(255, 255, 255, .04); color: var(--text-muted);
+  transition: all .18s;
+}
+.dm-x:hover { color: var(--text-primary); border-color: var(--dm-cor); }
+
+/* ── O CORPO ────────────────────────────────────────────────────── */
+.dm-corpo {
+  position: relative; z-index: 2;
+  padding: 1rem 1.1rem 1.2rem;
+  overflow-y: auto;
+}
+
+/* AS PLACAS — quatro números que respondem juntos "como tenho me saído". */
+.dm-grade {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: .5rem; margin-bottom: 1rem;
+}
+.dm-placa {
+  padding: .6rem .7rem; border-radius: .55rem;
+  border: 1px solid rgba(255, 255, 255, .07);
+  background: linear-gradient(140deg, rgba(255, 255, 255, .04), rgba(255, 255, 255, .012));
+}
+.dm-placa-rot {
+  display: block;
+  font-family: var(--font-section); font-size: .5rem;
+  letter-spacing: .13em; text-transform: uppercase; color: var(--text-muted);
+}
+.dm-placa-val {
+  display: block; margin: .18rem 0 .05rem;
+  font-family: var(--font-section); font-size: 1.3rem; line-height: 1;
+  color: var(--text-primary); font-variant-numeric: tabular-nums;
+}
+.dm-placa-sub { font-size: .56rem; color: var(--text-muted); }
+.dm-placa.ok   { border-color: rgba(16, 185, 129, .32); }
+.dm-placa.ok   .dm-placa-val { color: #6ee7b7; text-shadow: 0 0 12px rgba(16, 185, 129, .35); }
+.dm-placa.meio .dm-placa-val { color: #fcd34d; }
+.dm-placa.ruim { border-color: rgba(239, 68, 68, .3); }
+.dm-placa.ruim .dm-placa-val { color: #fca5a5; }
+
+/* ── SEÇÕES ─────────────────────────────────────────────────────── */
+.dm-sec { margin-top: 1.1rem; }
+.dm-sec h4 {
+  margin: 0 0 .5rem;
+  font-family: var(--font-section); font-size: .58rem;
+  letter-spacing: .13em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--dm-cor) 78%, white 12%);
+  display: flex; align-items: center; gap: .45rem;
+}
+.dm-sec h4::after {
+  content: ''; flex: 1; height: 1px;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--dm-cor) 24%, transparent), transparent);
+}
+.dm-nota {
+  margin: 0 0 .55rem; font-size: .68rem; line-height: 1.6;
+  color: var(--text-muted);
+}
+.dm-nota b { font-weight: 700; }
+.dm-nota b.ok { color: #6ee7b7; }
+.dm-nota b.ruim { color: #fca5a5; }
+
+/* A FITA dos últimos dias. Só as instâncias que EXISTIRAM — dia em que a
+   rotina não foi pedida não vira quadradinho cinza, porque sugeriria uma
+   falta que não houve. */
+.dm-fita { display: flex; gap: 3px; flex-wrap: wrap; margin-bottom: .45rem; }
+.dm-fita-q {
+  width: 13px; height: 13px; border-radius: 3px; display: inline-block;
+  background: rgba(255, 255, 255, .08);
+}
+.dm-q-concluida  { background: #10b981; box-shadow: 0 0 5px rgba(16, 185, 129, .45); }
+.dm-q-fracassada { background: #ef4444; }
+.dm-q-confessada { background: #6366f1; }
+.dm-q-cancelada  { background: rgba(255, 255, 255, .14); }
+.dm-legenda {
+  display: flex; gap: .7rem; flex-wrap: wrap;
+  font-size: .55rem; color: var(--text-muted);
+}
+.dm-legenda span { display: inline-flex; align-items: center; gap: .25rem; }
+.dm-legenda .dm-fita-q { width: 8px; height: 8px; }
+
+/* POR DIA DA SEMANA — onde a rotina vive e onde ela morre. */
+.dm-semana { display: flex; flex-direction: column; gap: .28rem; }
+.dm-sem-linha {
+  display: grid; grid-template-columns: 3.6rem 1fr 2.2rem 1.8rem;
+  align-items: center; gap: .45rem;
+  font-size: .62rem; color: var(--text-secondary);
+}
+.dm-sem-dia { text-transform: capitalize; }
+.dm-sem-trilho {
+  height: 5px; border-radius: 3px; background: rgba(255, 255, 255, .06);
+  overflow: hidden;
+}
+.dm-sem-trilho > i {
+  display: block; height: 100%; border-radius: 3px;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--dm-cor) 55%, transparent), var(--dm-cor));
+  transition: width .4s ease;
+}
+.dm-sem-pct { text-align: right; font-family: var(--font-section); font-size: .58rem; }
+.dm-sem-n { text-align: right; color: var(--text-muted); font-size: .54rem; }
+
+/* A FICHA — pares rótulo/valor. */
+.dm-linhas { display: flex; flex-direction: column; }
+.dm-linha {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: .7rem; padding: .32rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, .045);
+  font-size: .7rem; color: var(--text-muted);
+}
+.dm-linha:last-child { border-bottom: 0; }
+.dm-linha b {
+  color: var(--text-primary); font-weight: 500;
+  font-family: var(--font-section); font-size: .68rem;
+  text-align: right;
+}
+.dm-linha b.ok { color: #6ee7b7; }
+.dm-linha b.ruim { color: #fca5a5; }
+
+/* A SEÇÃO DO ARQUITETO. Marcada, porque o que está aqui o hunter comum
+   não vê — e confundir as duas leituras seria mostrar a ele o orçamento
+   de falhas que a punição existe para não virar. */
+.dm-arq {
+  border: 1px dashed rgba(168, 85, 247, .3);
+  border-radius: .55rem; padding: .7rem .8rem;
+  background: rgba(124, 58, 237, .05);
+}
+.dm-arq-selo {
+  font-size: .48rem; letter-spacing: .1em; padding: .08rem .35rem;
+  border-radius: .2rem; background: rgba(168, 85, 247, .18);
+  border: 1px solid rgba(168, 85, 247, .4); color: #e9d5ff;
+}
+.dm-med { display: flex; align-items: center; gap: .5rem; margin-bottom: .3rem; }
+.dm-med-trilho {
+  flex: 1; height: 7px; border-radius: 4px;
+  background: rgba(255, 255, 255, .07); overflow: hidden;
+}
+.dm-med-trilho > i {
+  display: block; height: 100%;
+  background: linear-gradient(90deg, rgba(245, 158, 11, .8), rgba(239, 68, 68, .9));
+}
+.dm-med span {
+  font-family: var(--font-section); font-size: .56rem; color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ── ESPERA E ERRO ──────────────────────────────────────────────── */
+.dm-carregando { display: flex; gap: .35rem; justify-content: center; padding: 2rem 0; }
+.dm-carregando i {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--dm-cor);
+  animation: dm-pisca 1.1s ease-in-out infinite;
+}
+.dm-carregando i:nth-child(2) { animation-delay: .14s; }
+.dm-carregando i:nth-child(3) { animation-delay: .28s; }
+@keyframes dm-pisca { 0%, 80%, 100% { opacity: .2; } 40% { opacity: 1; } }
+.dm-erro {
+  padding: 1.5rem 0; text-align: center;
+  font-size: .72rem; color: #fca5a5;
+}
+
+@media (max-width: 560px) {
+  .dm-backdrop { padding: .6rem; align-items: flex-end; }
+  .dm-caixa { max-height: 90vh; border-radius: 14px 14px 0 0; }
+  .dm-grade { grid-template-columns: repeat(2, 1fr); }
+  .dm-sem-linha { grid-template-columns: 3.2rem 1fr 2rem 1.6rem; }
+}
+
+/* "Reduzir movimento": a janela aparece sem deslizar e a borda para de
+   girar. O neon fica — ele é cor, não movimento. */
+@media (prefers-reduced-motion: reduce) {
+  .dm-caixa { transition: opacity .15s ease; transform: none; }
+  .dm-borda { animation: none; }
+  .dm-carregando i { animation: none; opacity: .7; }
+}
