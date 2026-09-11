@@ -123,139 +123,74 @@ const Dungeons = {
       return;
     }
 
-    cont.innerHTML = this._lista.map((d, i) => this._gateHTML(d, i)).join('');
+    /* QUEM DESENHA O PORTÃO É A PEÇA, não esta página.
+       O `_gateHTML` que morava aqui montava HTML e decidia estado na
+       mesma função, e foi assim que ele ficou sem o caso `SUSPENSA`. A
+       leitura vive em `portao-estado.js` (testável sem DOM) e o desenho
+       em `portao.js`. */
+    Portao.montar(cont, this._lista, { arquiteto: this._ehArquiteto() });
 
-    // Bind
-    cont.querySelectorAll('[data-dg-entrar]').forEach(b =>
-      b.addEventListener('click', () => this._entrar(parseInt(b.dataset.dgEntrar))));
-    cont.querySelectorAll('[data-dg-arquiteto]').forEach(b =>
-      b.addEventListener('click', () => this._entrarArquiteto(parseInt(b.dataset.dgArquiteto))));
-    cont.querySelectorAll('[data-dg-resetar]').forEach(b =>
-      b.addEventListener('click', () => this._resetar(parseInt(b.dataset.dgResetar))));
-    cont.querySelectorAll('[data-dg-score]').forEach(b =>
+    cont.querySelectorAll('[data-pt-entrar]').forEach(b =>
+      b.addEventListener('click', () => this._entrar(parseInt(b.dataset.ptEntrar))));
+    cont.querySelectorAll('[data-pt-arquiteto]').forEach(b =>
+      b.addEventListener('click', () => this._entrarArquiteto(parseInt(b.dataset.ptArquiteto))));
+    cont.querySelectorAll('[data-pt-resetar]').forEach(b =>
+      b.addEventListener('click', () => this._resetar(parseInt(b.dataset.ptResetar))));
+    cont.querySelectorAll('[data-pt-score]').forEach(b =>
       b.addEventListener('click', () => {
-        const d = this._lista.find(x => x.id === parseInt(b.dataset.dgScore));
+        const d = this._lista.find(x => x.id === parseInt(b.dataset.ptScore));
         if (d && typeof DungeonScore !== 'undefined') DungeonScore.abrir(d);
       }));
-    cont.querySelectorAll('[data-dg-editar]').forEach(b =>
-      b.addEventListener('click', () => this._editar(parseInt(b.dataset.dgEditar))));
-    cont.querySelectorAll('[data-dg-excluir]').forEach(b =>
-      b.addEventListener('click', () => this._excluir(parseInt(b.dataset.dgExcluir))));
+    cont.querySelectorAll('[data-pt-editar]').forEach(b =>
+      b.addEventListener('click', () => this._editar(parseInt(b.dataset.ptEditar))));
+    cont.querySelectorAll('[data-pt-excluir]').forEach(b =>
+      b.addEventListener('click', () => this._excluir(parseInt(b.dataset.ptExcluir))));
+
+    this._manterRelogio();
   },
 
-  _statusInfo(d) {
-    const s = d.sessao_hoje;
-    const hEntrada = d.hora_entrada_hoje || d.hora_entrada;   // respeita a agenda do dia
-    const hSaida   = d.hora_saida_hoje   || d.hora_saida;
-    if (d.folga_hoje)   return { cls: 'FECHADA', txt: '🏖 Trancado — folga programada hoje', btn: false };
-    if (!d.devida_hoje) return { cls: 'FECHADA', txt: '🌑 Portão fechado hoje', btn: false };
+  /* ═══════════════════════════════════════════════════════════════
+     O RELÓGIO DA GRADE
 
-    // Helper: converte "HH:MM" em objeto Date de hoje
-    const toHoje = hhmm => {
-      if (!hhmm) return null;
-      const [h, m] = hhmm.split(':').map(Number);
-      const d = new Date(); d.setHours(h, m, 0, 0); return d;
-    };
-
-    const now = new Date();
-
-    // Se o horário de SAÍDA já passou e a sessão ainda não foi resolvida → portão perdido
-    const saida = toHoje(hSaida);
-    if (saida && now > saida && (!s || s.status === 'PENDENTE')) {
-      return { cls: 'FRACASSADA', txt: `☠️ Portão perdido — sem check-in até ${hSaida}`, btn: false };
-    }
-
-    // Estados da janela: selado (antes da entrada) → aberto (até entrada+tolerância)
-    // → aberto com atraso (punição na entrada, até a saída) → no-show (fecha na saída)
-    let selado = false, atrasado = false;
-    if (hEntrada && (!s || s.status === 'PENDENTE')) {
-      const entrada = toHoje(hEntrada);
-      if (now < entrada) selado = true;
-      else {
-        const prazo = new Date(entrada.getTime() + (d.tolerancia_min || 0) * 60000);
-        if (now > prazo) atrasado = true;
-      }
-    }
-    const txtAberto = atrasado
-      ? `⚠ Portão aberto — ATRASO em curso (punição na entrada)${hSaida ? ' · fecha às ' + hSaida : ''}`
-      : `🌀 Portão aberto${hEntrada ? ' — atravesse até ' + this._prazoTxt(d) : ' — atravesse'}`;
-    const clsAberto = atrasado ? 'ATRASADO' : 'ABERTO';
-
-    if (!s) {
-      return {
-        cls: selado ? 'PENDENTE' : clsAberto,
-        txt: selado ? `🔒 Portão selado — abre às ${hEntrada}` : txtAberto,
-        btn: !selado
-      };
-    }
-
-    switch (s.status) {
-      case 'PENDENTE':
-        return {
-          cls: selado ? 'PENDENTE' : clsAberto,
-          txt: selado ? `🔒 Portão selado — abre às ${hEntrada}` : txtAberto,
-          btn: !selado
-        };
-      case 'ATIVA':      return { cls: 'ATIVA',      txt: '⚔️ VOCÊ ESTÁ DENTRO — sessão ativa', btn: true, btnTxt: 'Retornar à Dungeon', escape: true };
-      case 'CONCLUIDA':  return { cls: 'CONCLUIDA',  txt: `✅ Clear de hoje — Rank ${s.rank_obtido || '-'} · +${s.xp_ganho} XP`, btn: false };
-      case 'FRACASSADA': return { cls: 'FRACASSADA', txt: `☠️ Portão perdido — ${s.xp_perdido > 0 ? '-' + s.xp_perdido + ' XP' : 'sem check-in'}`, btn: false };
-      case 'CANCELADA':  return { cls: 'CANCELADA',  txt: '✕ Sessão cancelada hoje', btn: false };
-    }
-    return { cls: 'FECHADA', txt: '—', btn: false };
+     O aro do portão É o prazo, e prazo que não anda é mentira: o
+     Arquiteto pode deixar a aba aberta a manhã inteira. A cada meio
+     minuto a grade relê o estado e repinta só o que mudou — o SVG
+     inteiro não é redesenhado, senão as brasas reiniciariam a
+     animação a cada tique e o portal ficaria tremendo.
+     ═══════════════════════════════════════════════════════════════ */
+  _manterRelogio() {
+    clearInterval(this._tique);
+    this._tique = setInterval(() => {
+      const cont = document.getElementById('lista-dungeons');
+      if (!cont || !cont.querySelector('.pt')) { clearInterval(this._tique); return; }
+      this._lista.forEach(d => this._repintar(d));
+    }, 30000);
   },
 
-  _gateHTML(d, i) {
-    const st = this._statusInfo(d);
-    const recor = d.tipo_permanencia === 'TEMPORARIA'
-      ? `⌛ ${d.data_inicio || '?'} → ${d.data_fim || '?'}`
-      : { DIARIA: '🔁 Diária', SEMANAL: '📆 Semanal', MENSAL: '🗓 Mensal', ANUAL: '🎯 Anual' }[d.tipo_recorrencia] || '🔁';
-    const hE = d.hora_entrada_hoje || d.hora_entrada;
-    const hS = d.hora_saida_hoje || d.hora_saida;
-    const janela = (hE || hS)
-      ? `<span class="dg-chip dg-chip-tempo">🕐 ${hE || '--:--'} → ${hS || '--:--'}</span>` : '';
+  _repintar(d) {
+    const el = document.querySelector(`.pt[data-pt="${d.id}"]`);
+    if (!el || typeof PortaoEstado === 'undefined') return;
+    const e = PortaoEstado.ler(d);
 
-    return `
-    <div class="dg-gate ${this._catClass(d.categoria)} dg-rank-${d.rank}" style="animation:dg-card-in .4s ease ${i * 0.06}s backwards">
-      <div class="dg-gate-aura"></div>
-      <div class="dg-gate-top">
-        <div class="dg-gate-icon">${d.icone || '🌀'}</div>
-        <div style="flex:1;min-width:0">
-          <div class="dg-gate-titulo">${d.titulo}</div>
-          <div class="dg-gate-sub">${d.categoria} · ${d.dificuldade}</div>
-        </div>
-        <span class="dg-rank-badge dg-badge-${d.rank}">${d.rank}</span>
-      </div>
-      <div class="dg-gate-meta">
-        <span class="dg-chip">${recor}</span>
-        ${janela}
-        <span class="dg-chip">🗡 ${d.total_missoes} missõe${d.total_missoes === 1 ? '' : 's'}</span>
-        ${d.streak_atual > 0 ? `<span class="dg-chip dg-streak">🔥 ${d.streak_atual} dias</span>` : ''}
-      </div>
-      <div class="dg-gate-status dg-st-${st.cls}">${st.txt}</div>
-      <div class="dg-gate-footer">
-        <button class="dg-btn-entrar" data-dg-entrar="${d.id}" ${st.btn ? '' : 'disabled'}>
-          ${st.btnTxt || 'Entrar na Dungeon'}
-        </button>
-        ${this._ehArquiteto() ? `
-        <button class="dg-btn-ico dg-btn-arquiteto" data-dg-arquiteto="${d.id}"
-          title="Entrada do Arquiteto — modo teste (nada é creditado)">⟁</button>
-        <button class="dg-btn-ico dg-btn-arquiteto" data-dg-resetar="${d.id}"
-          title="Reset do Arquiteto — apaga a sessão de hoje como se nunca tivesse acontecido">↺</button>` : ''}
-        <button class="dg-btn-ico" data-dg-score="${d.id}" title="Crônica do Portão — score permanente">📜</button>
-        <button class="dg-btn-ico" data-dg-editar="${d.id}" title="Editar / Missões">✎</button>
-        <button class="dg-btn-ico danger" data-dg-excluir="${d.id}" title="Destruir portão">🗑</button>
-      </div>
-    </div>`;
+    // Mudou de estado? Aí sim vale redesenhar a fenda inteira.
+    if (el.dataset.estado !== e.chave) { this._render(); return; }
+
+    const prazo = el.querySelector('.pt-prazo');
+    if (prazo) prazo.textContent = e.prazo;
+
+    if (e.pct != null) {
+      const L = Portao.LARC;
+      el.querySelectorAll('.pt-aro-bafo, .pt-aro, .pt-aro-miolo').forEach(p =>
+        p.setAttribute('stroke-dasharray', `${(L * e.pct).toFixed(0)} ${L.toFixed(0)}`));
+    }
   },
 
-  _prazoTxt(d) {
-    // Prazo de travessia = hora de entrada + tolerância
-    const hEntrada = d.hora_entrada_hoje || d.hora_entrada;
-    if (!hEntrada) return '';
-    const [h, m] = hEntrada.split(':').map(Number);
-    const t = new Date(); t.setHours(h, m + (d.tolerancia_min || 0), 0, 0);
-    return String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0');
-  },
+  /* `_statusInfo`, `_gateHTML` e `_prazoTxt` saíram daqui.
+     Os dois primeiros viraram `portao-estado.js` e `portao.js`; o
+     terceiro era o prazo calculado à mão, com uma regra que já não
+     batia com a do servidor (ignorava `duracao_max_min` e tratava a
+     tolerância como se fosse o fim da travessia). Quem calcula prazo
+     agora é `PortaoEstado.prazoDa`, espelhando `_prazo_da_sessao`. */
 
   _ehArquiteto() {
     try { return Auth.getUsuario()?.nivel_acesso === 'Arquiteto'; }

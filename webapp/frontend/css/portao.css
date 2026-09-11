@@ -1,0 +1,269 @@
+/* ══════════════════════════════════════════════════════════════════
+   O PORTÃO — a folha de estilo da fenda
+
+   O card antigo era um retângulo com o ícone da dungeon dentro. Aqui
+   não existe moldura em volta do portal: ele flutua no escuro da
+   página, e a única coisa com borda é a lápide de vidro embaixo.
+   Enquadrar a fenda num retângulo arredondado era o que a matava.
+
+   SOBRE O CUSTO. Dez dungeons são dez portais respirando ao mesmo
+   tempo, e brilho é caro. Três decisões seguram isso:
+
+     · OS FILTROS SÃO UM SÓ. `#ptNeon` e `#ptNeonLargo` vivem num SVG
+       oculto no documento e são referenciados por todos os portões. Um
+       filtro por portão multiplicaria o trabalho do compositor por dez
+       sem mudar um pixel.
+     · SÓ QUEM ESTÁ NA TELA SE MEXE. O JS põe `.pt-vivo` via
+       IntersectionObserver; sem essa classe, nenhuma animação roda.
+     · `transform` e `opacity` APENAS. Nada que force layout.
+
+   E quem pediu menos movimento fica com o portão inteiro, parado.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── A GRADE ─────────────────────────────────────────────────────── */
+.pt-grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(248px, 1fr));
+  gap: 1.6rem 1.1rem;
+  align-items: start;
+}
+
+/* ── O PORTÃO ────────────────────────────────────────────────────── */
+.pt {
+  --pt-nuc: #63b3ff;
+  --pt-fra: #7a6cff;
+  position: relative;
+  display: flex; flex-direction: column;
+  /* SEM moldura, SEM fundo. O portal é a peça; o resto é o escuro. */
+  background: none;
+  border: none;
+  padding: 0;
+  animation: pt-chega .5s cubic-bezier(.2, .9, .3, 1.05) backwards;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+@keyframes pt-chega {
+  from { opacity: 0; transform: translateY(14px) scale(.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+.pt-fenda {
+  position: relative;
+  line-height: 0;
+  /* a aura sangra para fora do quadro do SVG */
+  margin: 0 -6px -2px;
+}
+.pt-svg { display: block; width: 100%; height: auto; overflow: visible; }
+
+/* ── A RESPIRAÇÃO ────────────────────────────────────────────────── */
+/* Só com `.pt-vivo`: fora da tela, o portal é um desenho parado. */
+.pt-vivo .pt-bafo { animation: pt-respira 5.5s ease-in-out infinite; transform-origin: 50% 78%; }
+.pt-vivo .pt-halo { animation: pt-respira 4.2s ease-in-out infinite reverse; transform-origin: 50% 78%; }
+.pt-vivo .pt-iris { animation: pt-pulso 3.1s ease-in-out infinite; transform-origin: 50% 50%; }
+.pt-vivo .pt-poca { animation: pt-pulso 5.5s ease-in-out infinite; transform-origin: 50% 50%; }
+.pt-vivo .pt-greta { animation: pt-cintila 2.4s ease-in-out infinite; }
+
+@keyframes pt-respira {
+  0%, 100% { opacity: .82; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.05); }
+}
+@keyframes pt-pulso {
+  0%, 100% { opacity: .78; transform: scale(.97); }
+  50%      { opacity: 1;   transform: scale(1.06); }
+}
+@keyframes pt-cintila {
+  0%, 100% { opacity: .55; }
+  50%      { opacity: 1; }
+}
+
+/* AS BRASAS sobem da greta e esfriam no caminho. Cada uma tem a sua
+   duração e o seu atraso negativo, postos pelo JS — sem isso as vinte e
+   seis subiriam em formação, que é o contrário de brasa. */
+.pt-vivo .pt-brasa {
+  animation: pt-sobe var(--d, 5s) linear infinite;
+  animation-delay: var(--a, 0s);
+}
+@keyframes pt-sobe {
+  0%   { transform: translateY(14px); opacity: 0; }
+  14%  { opacity: 1; }
+  78%  { opacity: .55; }
+  100% { transform: translateY(-58px); opacity: 0; }
+}
+
+/* AS LASCAS giram devagar, cada uma no seu tempo. A rotação é em torno
+   do próprio centro — por isso o `transform-box: fill-box`, senão ela
+   giraria em volta da origem do SVG e atravessaria a tela. */
+.pt-vivo .pt-lasca {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pt-flutua var(--d, 20s) linear infinite;
+  animation-delay: var(--a, 0s);
+}
+@keyframes pt-flutua {
+  0%   { rotate: 0deg;   translate: 0 0; }
+  50%  { rotate: 180deg; translate: 0 -7px; }
+  100% { rotate: 360deg; translate: 0 0; }
+}
+
+/* O ARO: o miolo branco escorre devagar pelo trecho aceso, como carga
+   percorrendo um tubo. O comprimento do traço não muda — quem manda
+   nele é o `stroke-dasharray` inline, que é o prazo. */
+.pt-vivo .pt-aro-miolo { animation: pt-corrente 3.4s linear infinite; }
+@keyframes pt-corrente {
+  from { stroke-dashoffset: 0; }
+  to   { stroke-dashoffset: -22; }
+}
+.pt-vivo .pt-aro-bafo { animation: pt-cintila 3.8s ease-in-out infinite; }
+
+/* ── O SELO DE ESTADO ────────────────────────────────────────────── */
+.pt-selo {
+  --sc: #5cf2a0;
+  position: absolute; left: 50%; bottom: 15%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: .3rem .85rem;
+  font-family: var(--font-section, inherit);
+  font-size: .58rem; font-weight: 700; letter-spacing: .16em;
+  line-height: 1.1;
+  color: var(--sc);
+  background: rgba(5, 5, 12, .62);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  border: 1px solid color-mix(in srgb, var(--sc) 70%, transparent);
+  /* cantos chanfrados: nada de raio no mundo do Sistema */
+  clip-path: polygon(7px 0, 100% 0, calc(100% - 7px) 100%, 0 100%);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--sc) 30%, transparent);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--sc) 55%, transparent);
+}
+
+/* ── A LÁPIDE DE VIDRO ───────────────────────────────────────────── */
+.pt-lapide {
+  position: relative;
+  padding: .75rem .85rem .8rem;
+  /* A luz do portal entra por cima e morre em metade da altura. Descendo
+     até o fim, a lápide inteira ficava cor de barro — vidro sujo, não
+     vidro iluminado. */
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--pt-nuc) 16%, transparent) 0%,
+      color-mix(in srgb, var(--pt-nuc) 5%, transparent) 18%,
+      rgba(11, 11, 22, .88) 46%,
+      rgba(6, 6, 14, .95) 100%);
+  -webkit-backdrop-filter: blur(6px) saturate(120%);
+  backdrop-filter: blur(6px) saturate(120%);
+  border: 1px solid color-mix(in srgb, var(--pt-nuc) 34%, transparent);
+  clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px),
+                     calc(100% - 15px) 100%, 0 100%, 0 15px);
+}
+/* o chanfro aceso — é ele que dá leitura de vidro, mais que o desfoque */
+.pt-lapide::before {
+  content: ''; position: absolute; left: -1px; top: 15px;
+  width: 22px; height: 2.4px;
+  background: var(--pt-nuc);
+  transform: rotate(-45deg); transform-origin: left center;
+  box-shadow: 0 0 12px var(--pt-nuc), 0 0 4px #fff;
+}
+/* o fio de luz no topo */
+.pt-lapide::after {
+  content: ''; position: absolute; left: 15px; right: 0; top: 0;
+  height: 1px; background: rgba(255, 255, 255, .13);
+}
+
+.pt-titulo {
+  margin: 0; font-size: 1.02rem; font-weight: 700;
+  color: #fff; line-height: 1.2;
+  overflow-wrap: anywhere;
+  padding-right: 2.2rem;                 /* espaço das ferramentas */
+}
+.pt-sub {
+  margin: .2rem 0 0; font-size: .68rem;
+  color: #8286a0; text-transform: capitalize;
+}
+.pt-inf { color: var(--pt-nuc); text-transform: none; }
+
+.pt-prazo {
+  margin: .55rem 0 0;
+  font-size: .68rem; font-weight: 600; letter-spacing: .02em;
+  color: var(--pt-nuc);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--pt-nuc) 35%, transparent);
+}
+.pt-m-selado .pt-prazo, .pt-m-perdido .pt-prazo { text-shadow: none; }
+
+.pt-selos { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .5rem; }
+.pt-selo-min {
+  font-size: .6rem; color: #aab0c4;
+  padding: .17rem .45rem;
+  background: color-mix(in srgb, var(--pt-nuc) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pt-nuc) 28%, transparent);
+  clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
+}
+
+/* ── AS FERRAMENTAS ──────────────────────────────────────────────── */
+/* Ficam quietas até a mão chegar perto. Num toque (sem hover) elas
+   aparecem sempre, porque lá não existe "chegar perto". */
+.pt-ferramentas {
+  position: absolute; top: .5rem; right: .5rem;
+  display: flex; gap: .12rem;
+  opacity: 0; transition: opacity .18s ease;
+}
+.pt:hover .pt-ferramentas,
+.pt:focus-within .pt-ferramentas { opacity: 1; }
+@media (hover: none) { .pt-ferramentas { opacity: .7; } }
+
+.pt-fer {
+  width: 24px; height: 24px; padding: 0;
+  display: grid; place-items: center; cursor: pointer;
+  background: rgba(255, 255, 255, .05);
+  border: 1px solid rgba(255, 255, 255, .1);
+  color: #8286a0;
+  transition: all .15s ease;
+}
+.pt-fer svg { display: block; }
+.pt-fer:hover {
+  color: #fff;
+  border-color: color-mix(in srgb, var(--pt-nuc) 55%, transparent);
+  background: color-mix(in srgb, var(--pt-nuc) 18%, transparent);
+}
+.pt-fer.perigo:hover { color: #ff4d6a; border-color: rgba(255, 77, 106, .5); background: rgba(255, 77, 106, .12); }
+
+/* ── A AÇÃO ──────────────────────────────────────────────────────── */
+.pt-acao {
+  position: relative;
+  margin-top: .5rem;
+  padding: .62rem .8rem;
+  font-family: var(--font-section, inherit);
+  font-size: .74rem; font-weight: 800; letter-spacing: .13em;
+  color: #0a0a12; cursor: pointer;
+  border: none;
+  background: linear-gradient(135deg, var(--pt-nuc), var(--pt-fra));
+  clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--pt-fra) 40%, transparent);
+  transition: filter .16s ease, box-shadow .2s ease, transform .1s ease;
+}
+.pt-acao::before {
+  content: ''; position: absolute; left: 10px; right: 0; top: 0;
+  height: 1.2px; background: rgba(255, 255, 255, .4);
+}
+.pt-acao:hover:not(:disabled) {
+  filter: brightness(1.14);
+  box-shadow: 0 0 34px color-mix(in srgb, var(--pt-fra) 60%, transparent);
+}
+.pt-acao:active:not(:disabled) { transform: translateY(1px); }
+.pt-acao:disabled {
+  cursor: not-allowed;
+  color: #63637a;
+  background: rgba(255, 255, 255, .035);
+  border: 1px solid color-mix(in srgb, var(--pt-nuc) 22%, transparent);
+  box-shadow: none;
+}
+.pt-acao:disabled::before { display: none; }
+
+/* ── QUEM PEDIU MENOS MOVIMENTO ──────────────────────────────────── */
+/* Fica com o portão inteiro — aura, brasas, lascas e aro — parado. */
+@media (prefers-reduced-motion: reduce) {
+  .pt { animation: none; }
+  .pt-vivo .pt-bafo, .pt-vivo .pt-halo, .pt-vivo .pt-iris,
+  .pt-vivo .pt-poca, .pt-vivo .pt-greta, .pt-vivo .pt-brasa,
+  .pt-vivo .pt-lasca, .pt-vivo .pt-aro-miolo, .pt-vivo .pt-aro-bafo {
+    animation: none;
+  }
+}
