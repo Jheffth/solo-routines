@@ -357,10 +357,6 @@ function rodar() {
 
     ok(typeof P.travessia === 'function', 'a travessia é da PEÇA, não do interior');
 
-    /* jsdom não faz layout, então `getBoundingClientRect` devolve zeros;
-       o que dá para cobrar aqui é a estrutura e a COR — que é o ponto:
-       a animação antiga usava o tema da CATEGORIA e não tinha relação
-       nenhuma com o portão clicado. */
     P.travessia(el);
     const ov = win.document.getElementById('pt-travessia');
     ok(!!ov, 'a travessia monta o véu');
@@ -368,20 +364,46 @@ function rodar() {
        'NA COR DO PORTÃO, lida do próprio elemento — não do tema da categoria');
     ok(ov.style.getPropertyValue('--pt-fra') === '#ff3d6e', 'com a franja junto');
 
-    if (ov.querySelector('.pt-tv-fenda')) {
-      ok(!!ov.querySelector('.pt-tv-fenda svg'),
-         'a fenda CLONADA é que cresce — é aquele portal, não um anel genérico');
-      ok(!!ov.querySelector('.pt-tv-onda'), 'a onda de choque');
-      ok(!!ov.querySelector('.pt-tv-clarao'), 'e o clarão do instante de atravessar');
-    } else {
-      ok(ov.classList.contains('seco'),
-         'sem retângulo de origem (jsdom não faz layout), cai no corte seco');
-    }
+    /* NÃO HÁ MAIS ZOOM, E ESTES ASSERTS SÃO O GUARDA DISSO.
+       A versão anterior clonava a fenda da grade e dava `scale()` nela,
+       ancorada na base do portão CLICADO — assimétrica por construção,
+       porque aquele ponto fica em qualquer canto da tela. O Arquiteto
+       recusou: "simplesmente dá um zoom no portal, fica feio". */
+    ok(!ov.querySelector('.pt-tv-fenda'),
+       'a fenda da grade NÃO é clonada — clonar e ampliar era o zoom recusado');
+    ok(!/--ox|--oy|scale\(var\(--k/.test(regras),
+       'e as variáveis da âncora fora do centro sumiram do CSS junto');
 
-    ok(/transform-origin:\s*var\(--ox\) var\(--oy\)/.test(regras),
-       'o crescimento é ancorado na BASE do arco — é por onde se entra');
+    ok(!!ov.querySelector('.tv-palco .tv-svg'),
+       'um portão NOVO é desenhado, já no tamanho final');
+    ok(!!ov.querySelector('.tv-costura'), 'a costura que rasga o centro');
+    ok(ov.querySelectorAll('.tv-metade').length === 2,
+       'as DUAS metades do arco — é a simetria virando estrutura');
+    ok(!!ov.querySelector('.tv-inunda'), 'a luz que inunda do centro');
+    ok(!!ov.querySelector('.tv-clarao'), 'e o clarão do instante de atravessar');
+
+    /* A SIMETRIA É ARITMÉTICA, NÃO SORTE.
+       As duas metades têm comprimentos reais levemente diferentes (a
+       perna reta mais a curva não fecham no mesmo número dos dois lados
+       por arredondamento). `pathLength="100"` normaliza os dois, então o
+       traço corre de 100 a 0 no mesmo tempo dos dois lados. Sem isso uma
+       metade chegaria ao ápice antes da outra — exatamente a assimetria
+       que estamos consertando. */
+    const metades = [...ov.querySelectorAll('.tv-metade')];
+    ok(metades.every(m => m.getAttribute('pathLength') === '100'),
+       'normalizadas por `pathLength`, senão uma chegaria ao topo antes da outra');
+    ok(/\.tv-metade[\s\S]{0,200}animation:\s*tv-desenha/.test(regras),
+       'e as duas correm a MESMA animação, com o mesmo atraso');
+
+    /* O CENTRO É O CENTRO DA TELA, sem conta de pixel para errar. */
+    ok(/#pt-travessia\s*\{[^}]*place-items:\s*center/.test(regras),
+       'o palco é centrado pelo layout, não por coordenada calculada');
+    const eixo = P.TV;
+    ok(eixo.cx === 200,
+       'e o arco é desenhado no eixo do quadro de 400 — simétrico por desenho');
+
     ok(/#pt-travessia\.seco/.test(regras),
-       'e quem pediu menos movimento leva um corte, não um segundo e meio de cerimônia');
+       'quem pediu menos movimento leva um corte, não um segundo e meio de cerimônia');
 
     ov.remove();
   }

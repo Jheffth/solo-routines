@@ -331,97 +331,165 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   A TRAVESSIA — o portal engole a tela
+   A TRAVESSIA — o portal SE ABRE
 
-   A animação antiga eram três anéis no centro, na cor da CATEGORIA: não
-   tinha relação com o portão clicado nem na cor nem no lugar, e por isso
-   parecia tela de carregamento, não travessia.
+   A VERSÃO ANTERIOR CLONAVA A FENDA DA GRADE E DAVA `scale()` NELA.
+   O Arquiteto: "não está simétrica, ela simplesmente dá um zoom no
+   portal, fica feio, soa mal feito". Os dois defeitos eram estruturais:
 
-   Aqui a fenda clonada nasce EXATAMENTE onde ela está na grade
-   (`--x/--y/--w/--h`, medidos no clique) e cresce ancorada na BASE do
-   arco (`--ox/--oy`) — que é por onde se entra. A cor vem do portão.
+     · a âncora era a base do portão CLICADO, em qualquer canto da
+       tela. Crescer a partir dali é assimétrico por construção —
+       nenhum easing conserta um ponto de fuga fora do centro;
+     · ampliar um desenho feito para 272px expõe tudo: traço grosso,
+       brasas do tamanho de moedas, gradiente esticado. Zoom não
+       esconde, zoom REVELA.
+
+   Aqui não há ampliação de coisa nenhuma. Um portão NOVO é desenhado
+   no centro, já no tamanho final, e ele SE ABRE. O palco é `grid` com
+   `place-items:center`: o centro é o centro da tela, sem conta de
+   pixel para errar.
    ══════════════════════════════════════════════════════════════════ */
 #pt-travessia {
   position: fixed; inset: 0; z-index: 9000;
   pointer-events: none; overflow: hidden;
-  contain: strict;
-}
-
-/* 1. A fenda cresce da posição dela até engolir tudo. */
-.pt-tv-fenda {
-  position: absolute;
-  left: var(--x); top: var(--y);
-  width: var(--w); height: var(--h);
-  transform-origin: var(--ox) var(--oy);
-  transform: scale(1);
-  opacity: 1;
-  will-change: transform;
-}
-#pt-travessia.on .pt-tv-fenda {
-  animation: pt-engole 1.15s cubic-bezier(.6, 0, .35, 1) forwards;
-}
-.pt-tv-fenda svg { width: 100%; height: 100%; display: block; }
-@keyframes pt-engole {
-  0%   { transform: scale(1);                   opacity: 1; }
-  22%  { transform: scale(.93);                 opacity: 1; }  /* a inspiração */
-  100% { transform: scale(var(--k, 30));        opacity: .65; }
-}
-
-/* 2. O vazio escurece por dentro, acompanhando o crescimento. */
-.pt-tv-vazio {
-  position: absolute; inset: 0;
-  background: radial-gradient(120% 90% at 50% 78%,
-    color-mix(in srgb, var(--pt-nuc) 22%, transparent) 0%,
-    color-mix(in srgb, var(--pt-fra) 16%, transparent) 32%,
-    #05050b 78%);
+  display: grid; place-items: center;
+  background: #05050b;
   opacity: 0;
 }
-#pt-travessia.on .pt-tv-vazio {
-  animation: pt-escurece 1.15s cubic-bezier(.5, 0, .3, 1) forwards;
+#pt-travessia.on { animation: tv-veu .3s ease forwards; }
+@keyframes tv-veu { to { opacity: 1; } }
+
+.tv-palco {
+  width: min(78vh, 78vw, 620px);
+  aspect-ratio: 1;
+  line-height: 0;
 }
-@keyframes pt-escurece {
+.tv-svg { width: 100%; height: 100%; overflow: visible; }
+
+/* ── 1. A COSTURA ────────────────────────────────────────────────
+   Um fio de luz rasga o centro, crescendo para CIMA E PARA BAIXO ao
+   mesmo tempo. `transform-origin: center` no eixo Y é o que garante
+   isso: um só elemento, dois sentidos, simetria sem esforço. */
+.tv-costura {
+  transform-box: fill-box; transform-origin: center;
+  transform: scaleY(0); opacity: 0;
+}
+#pt-travessia.on .tv-costura {
+  animation: tv-rasga .42s cubic-bezier(.25, .8, .3, 1) .06s forwards;
+}
+@keyframes tv-rasga {
+  0%   { transform: scaleY(0)    scaleX(1); opacity: 0; }
+  18%  { opacity: 1; }
+  60%  { transform: scaleY(1)    scaleX(1); opacity: 1; }
+  100% { transform: scaleY(1)    scaleX(.3); opacity: 0; }
+}
+
+/* ── 2. O ARCO SE DESENHA ────────────────────────────────────────
+   As duas metades partem da BASE e sobem juntas até o ápice. Mesmo
+   `animation`, mesmo tempo, caminhos espelhados: a simetria é do
+   desenho, não de ajuste. `pathLength="100"` no SVG normaliza os dois
+   comprimentos — sem ele, uma metade chegaria ao topo antes da outra
+   por diferença de arredondamento, e seria justamente o defeito que
+   o Arquiteto apontou. */
+.tv-metade {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  opacity: 0;
+}
+#pt-travessia.on .tv-metade {
+  animation: tv-desenha .52s cubic-bezier(.3, .7, .25, 1) .30s forwards;
+}
+@keyframes tv-desenha {
+  0%   { stroke-dashoffset: 100; opacity: 0; }
+  10%  { opacity: 1; }
+  100% { stroke-dashoffset: 0;   opacity: 1; }
+}
+
+/* A soleira: o chão do portal, que se abre do centro para os lados. */
+.tv-soleira {
+  transform-box: fill-box; transform-origin: center;
+  transform: scaleX(0); opacity: 0;
+}
+#pt-travessia.on .tv-soleira {
+  animation: tv-soleira .4s cubic-bezier(.25, .8, .3, 1) .26s forwards;
+}
+@keyframes tv-soleira {
+  0%   { transform: scaleX(0); opacity: 0; }
+  30%  { opacity: 1; }
+  100% { transform: scaleX(1); opacity: .85; }
+}
+
+/* ── 3. O VAZIO SE ACENDE ────────────────────────────────────────
+   De baixo para cima, de onde a luz nasce — o mesmo gradiente do
+   portão da grade, para a travessia não apresentar outro portal. */
+.tv-vazio, .tv-iris {
+  transform-box: fill-box; transform-origin: 50% 100%;
+  transform: scaleY(.05); opacity: 0;
+}
+#pt-travessia.on .tv-vazio {
+  animation: tv-acende .55s cubic-bezier(.3, .8, .3, 1) .44s forwards;
+}
+#pt-travessia.on .tv-iris {
+  animation: tv-acende .5s cubic-bezier(.3, .8, .3, 1) .58s forwards;
+}
+@keyframes tv-acende {
+  0%   { transform: scaleY(.05); opacity: 0; }
+  100% { transform: scaleY(1);   opacity: 1; }
+}
+
+/* ── 4. O PORTAL SE ABRE ─────────────────────────────────────────
+   O arco se afasta e some. Escala pequena, de propósito: o que inunda
+   a tela é a LUZ, não o desenho. Ampliar o arco até cobrir tudo seria
+   voltar ao zoom que foi recusado. */
+#pt-travessia.on .tv-palco {
+  animation: tv-abre .42s cubic-bezier(.5, 0, .4, 1) .86s forwards;
+}
+@keyframes tv-abre {
+  0%   { transform: scale(1);    opacity: 1; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+
+/* A luz que inunda: um disco na cor do portão, do centro às bordas.
+   `scale` de um círculo a partir do centro é simétrico por definição —
+   é a mesma ideia da onda anterior, mas ancorada onde devia estar. */
+.tv-inunda {
+  position: absolute; left: 50%; top: 50%;
+  width: 40vmax; height: 40vmax; margin: -20vmax 0 0 -20vmax;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    #fff 0%,
+    color-mix(in srgb, var(--pt-nuc) 88%, #fff) 22%,
+    var(--pt-nuc) 46%,
+    color-mix(in srgb, var(--pt-fra) 85%, transparent) 72%,
+    transparent 100%);
+  transform: scale(0); opacity: 0;
+}
+#pt-travessia.on .tv-inunda {
+  animation: tv-inunda .58s cubic-bezier(.4, 0, .3, 1) .82s forwards;
+}
+@keyframes tv-inunda {
+  0%   { transform: scale(0);   opacity: 0; }
+  22%  { opacity: .95; }
+  100% { transform: scale(4.2); opacity: 1; }
+}
+
+/* O clarão do instante de atravessar. */
+.tv-clarao {
+  position: absolute; inset: 0;
+  background: #fff;
+  opacity: 0;
+}
+#pt-travessia.on .tv-clarao {
+  animation: tv-clarao .34s ease-out 1.02s forwards;
+}
+@keyframes tv-clarao {
   0%   { opacity: 0; }
-  45%  { opacity: .25; }
+  45%  { opacity: .88; }
   100% { opacity: 1; }
 }
 
-/* 3. A onda de choque na cor do rank — parte da base do portal. */
-.pt-tv-onda {
-  position: absolute;
-  left: calc(var(--x) + var(--ox)); top: calc(var(--y) + var(--oy));
-  width: 10px; height: 10px; margin: -5px 0 0 -5px;
-  border-radius: 50%;
-  border: 2px solid var(--pt-nuc);
-  box-shadow: 0 0 40px var(--pt-fra), inset 0 0 30px var(--pt-nuc);
-  opacity: 0;
-}
-#pt-travessia.on .pt-tv-onda {
-  animation: pt-onda .95s cubic-bezier(.15, .7, .3, 1) .18s forwards;
-}
-@keyframes pt-onda {
-  0%   { transform: scale(1);   opacity: 0; border-width: 3px; }
-  12%  { opacity: .95; }
-  100% { transform: scale(320); opacity: 0; border-width: 1px; }
-}
-
-/* 4. O clarão branco no fim — o instante de atravessar. */
-.pt-tv-clarao {
-  position: absolute; inset: 0;
-  background: radial-gradient(60% 50% at 50% 62%,
-    #fff 0%, color-mix(in srgb, var(--pt-nuc) 70%, #fff) 28%, transparent 72%);
-  opacity: 0;
-}
-#pt-travessia.on .pt-tv-clarao {
-  animation: pt-clarao .55s ease-out .72s forwards;
-}
-@keyframes pt-clarao {
-  0%   { opacity: 0;   transform: scale(.9); }
-  38%  { opacity: .92; transform: scale(1); }
-  100% { opacity: 0;   transform: scale(1.06); }
-}
-
-/* O portão de origem recua enquanto o clone cresce: sem isso, ele
-   continuaria visível por trás da própria travessia. */
+/* O portão de origem recua: sem isso ele continuaria visível atrás do
+   véu por um instante, e a grade "piscaria" no meio da cerimônia. */
 .pt-atravessando { opacity: 0; transition: opacity .22s ease; }
 
 /* A VERSÃO SECA. Quem pediu menos movimento não pode ficar preso a um
@@ -448,8 +516,10 @@
   .pt:hover .pt-lampejo,
   .pt:focus-within .pt-lampejo { animation: none; opacity: .5; stroke-dasharray: none; }
   .pt:hover .pt-fenda { transform: none; }
-  #pt-travessia.on .pt-tv-fenda,
-  #pt-travessia.on .pt-tv-onda,
-  #pt-travessia.on .pt-tv-clarao { animation: none; opacity: 0; }
-  #pt-travessia.on .pt-tv-vazio { animation: none; opacity: 1; }
+  #pt-travessia.on .tv-palco,
+  #pt-travessia.on .tv-costura, #pt-travessia.on .tv-soleira,
+  #pt-travessia.on .tv-metade,  #pt-travessia.on .tv-vazio,
+  #pt-travessia.on .tv-iris,    #pt-travessia.on .tv-inunda,
+  #pt-travessia.on .tv-clarao { animation: none; }
+  #pt-travessia.on { animation: none; opacity: 1; }
 }

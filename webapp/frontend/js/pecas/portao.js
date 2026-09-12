@@ -418,36 +418,64 @@
   }
 
   /* ═══════════════════════════════════════════════════════════════
-     A TRAVESSIA — atravessar o portal, não abrir um modal
+     A TRAVESSIA — o portal SE ABRE, não dá zoom
 
-     A animação antiga (`_portalFX`) eram três anéis concêntricos no
-     centro da tela, pintados pelo tema da CATEGORIA. Dois problemas:
-     ela não tinha relação nenhuma com o portão clicado — nem na cor,
-     nem no lugar — e por isso não parecia que o hunter atravessava
-     AQUELE portal. Parecia uma tela de carregamento.
+     DUAS TENTATIVAS ERRADAS ANTES DESTA, e as duas pelo mesmo motivo
+     de fundo: eu estava animando o objeto errado.
 
-     Aqui o portal clicado é o protagonista. A fenda dele é clonada na
-     posição exata em que está na grade e cresce até engolir a tela,
-     ancorada na BASE do arco — que é por onde se entra. A cor é a do
-     próprio portão, lida do elemento; nada é escolhido duas vezes.
+     1ª — três anéis concêntricos no centro, pintados pelo tema da
+     CATEGORIA. Sem relação com o portão clicado, nem na cor nem no
+     lugar: parecia tela de carregamento.
 
-     Três tempos:
-       1. o portão inspira — encolhe de leve e o aro flameja;
-       2. a fenda cresce da posição dela até cobrir tudo, com o vazio
-          escurecendo por dentro;
-       3. o clarão branco, a onda de choque na cor do rank, e o preto.
+     2ª — clonar a fenda da grade e crescê-la com `scale()`. O Arquiteto
+     matou em uma frase: "não está simétrica, ela simplesmente dá um
+     zoom no portal". Estava certo, e o problema era estrutural, não de
+     ajuste fino:
 
-     `prefers-reduced-motion` pula a cerimônia e resolve em 120ms — quem
-     pediu menos movimento não pode ficar preso a uma animação de um
-     segundo e meio a cada travessia.
+       · a âncora era a base do portão CLICADO, que fica em qualquer
+         canto da tela. Crescer a partir dali é assimétrico por
+         construção — nenhum easing conserta;
+       · ampliar um desenho feito para 272px expõe tudo: traço grosso,
+         brasas do tamanho de moedas, gradiente esticado. Zoom não
+         esconde, zoom REVELA.
+
+     AQUI NÃO HÁ ZOOM. Um portão NOVO é desenhado no centro da tela, já
+     no tamanho final, e ele se ABRE:
+
+       1. a COSTURA — um fio de luz vertical rasga o centro, crescendo
+          para cima e para baixo ao mesmo tempo;
+       2. o ARCO SE DESENHA — as duas metades partem da base e sobem
+          juntas até se encontrarem no ápice. São dois caminhos
+          espelhados com o mesmo tempo, então a simetria é garantida
+          pelo desenho, não pela sorte;
+       3. o VAZIO SE ACENDE de baixo para cima, de onde a luz nasce;
+       4. o portal SE ABRE — o arco se afasta e some enquanto a luz
+          inunda a tela do centro para as bordas.
+
+     A cor é a do portão clicado, lida do elemento. É a única coisa que
+     sobrevive das tentativas anteriores, porque era a única certa.
      ═══════════════════════════════════════════════════════════════ */
-  const DUR_TRAVESSIA = 1150;
+  const DUR_TRAVESSIA = 1250;
+
+  /* O ARCO DO CENTRO, num quadro próprio de 400×400.
+     Mesma regra de curva do portão da grade (controle na altura do
+     ápice, topo REDONDO) — a travessia não pode apresentar um portão de
+     outra família. O que muda é só a escala: desenhado grande desde o
+     início, não ampliado depois. */
+  const TV = { cx: 200, ay: 56, by: 344, hw: 112, k: 150 };
+  const TV_ESQ = `M${TV.cx - TV.hw},${TV.by} L${TV.cx - TV.hw},${TV.ay + TV.k} `
+               + `Q${TV.cx - TV.hw},${TV.ay + TV.k * 0.12} ${TV.cx},${TV.ay}`;
+  const TV_DIR = `M${TV.cx + TV.hw},${TV.by} L${TV.cx + TV.hw},${TV.ay + TV.k} `
+               + `Q${TV.cx + TV.hw},${TV.ay + TV.k * 0.12} ${TV.cx},${TV.ay}`;
+  const TV_FIL = `M${TV.cx - TV.hw},${TV.by} L${TV.cx - TV.hw},${TV.ay + TV.k} `
+               + `Q${TV.cx - TV.hw},${TV.ay + TV.k * 0.12} ${TV.cx},${TV.ay} `
+               + `Q${TV.cx + TV.hw},${TV.ay + TV.k * 0.12} ${TV.cx + TV.hw},${TV.ay + TV.k} `
+               + `L${TV.cx + TV.hw},${TV.by} Z`;
 
   function travessia(elPortao) {
     const menos = window.matchMedia
       && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    const fendaEl = elPortao && elPortao.querySelector('.pt-fenda');
     const est = elPortao ? getComputedStyle(elPortao) : null;
     const nuc = (est && est.getPropertyValue('--pt-nuc').trim()) || '#63b3ff';
     const fra = (est && est.getPropertyValue('--pt-fra').trim()) || '#7a6cff';
@@ -458,7 +486,7 @@
     ov.style.setProperty('--pt-nuc', nuc);
     ov.style.setProperty('--pt-fra', fra);
 
-    if (menos || !fendaEl) {
+    if (menos) {
       ov.className = 'seco';
       document.body.appendChild(ov);
       requestAnimationFrame(() => ov.classList.add('on'));
@@ -466,47 +494,63 @@
       return Promise.resolve();
     }
 
-    /* A FENDA COMEÇA ONDE ELA ESTÁ. Sem o retângulo de origem, o clone
-       nasceria no canto da tela e o efeito perderia a única coisa que o
-       faz significar alguma coisa: sair DAQUELE portão. */
-    const r = fendaEl.getBoundingClientRect();
-    /* A base do arco, em pixels de tela — é o ponto por onde se entra, e
-       por isso é a âncora do crescimento. `VB.by / VB.h` é onde a base
-       mora dentro do viewBox. */
-    const baseY = (VB.by / VB.h) * r.height;
-    /* Um retângulo de altura ou largura zero (portão numa aba oculta, ou
-       jsdom, que não faz layout) daria `Infinity` — e `scale(Infinity)`
-       não é uma animação, é um elemento sumido. */
-    const bruta = Math.max(innerWidth / r.width, innerHeight / r.height) * 2.6;
-    const escala = Number.isFinite(bruta) ? bruta : 3;
-
-    ov.style.setProperty('--x', r.left + 'px');
-    ov.style.setProperty('--y', r.top + 'px');
-    ov.style.setProperty('--w', r.width + 'px');
-    ov.style.setProperty('--h', r.height + 'px');
-    ov.style.setProperty('--ox', (r.width / 2) + 'px');
-    ov.style.setProperty('--oy', baseY + 'px');
-    ov.style.setProperty('--k', escala.toFixed(2));
-
+    /* `pathLength="100"` normaliza os dois caminhos: as metades têm
+       comprimentos reais diferentes (a perna reta mais a curva não dão
+       o mesmo número dos dois lados por arredondamento), e sem isso uma
+       chegaria ao ápice antes da outra. Normalizadas, os dois traços
+       correm de 100 a 0 no mesmo tempo — a simetria vira aritmética. */
     ov.innerHTML =
-        `<div class="pt-tv-fenda">${fendaEl.querySelector('.pt-svg').outerHTML}</div>`
-      + `<div class="pt-tv-vazio"></div>`
-      + `<div class="pt-tv-onda"></div>`
-      + `<div class="pt-tv-clarao"></div>`;
+      `<div class="tv-palco">
+        <svg class="tv-svg" viewBox="0 0 400 400" aria-hidden="true">
+          <defs>
+            <radialGradient id="tvVazio" cx="50%" cy="88%" r="86%">
+              <stop offset="0"    stop-color="${nuc}" stop-opacity=".85"/>
+              <stop offset="34%"  stop-color="${fra}" stop-opacity=".42"/>
+              <stop offset="76%"  stop-color="#120f26" stop-opacity=".92"/>
+              <stop offset="100%" stop-color="#04040a" stop-opacity="1"/>
+            </radialGradient>
+            <filter id="tvNeon" x="-80%" y="-80%" width="260%" height="260%">
+              <feGaussianBlur stdDeviation="5" result="b"/>
+              <feMerge><feMergeNode in="b"/><feMergeNode in="b"/>
+                       <feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+
+          <path class="tv-vazio" d="${TV_FIL}" fill="url(#tvVazio)"/>
+          <ellipse class="tv-iris" cx="${TV.cx}" cy="${TV.by - 26}"
+                   rx="${TV.hw * .8}" ry="44" fill="url(#tvVazio)"/>
+
+          <path class="tv-metade tv-esq" d="${TV_ESQ}" pathLength="100"
+                fill="none" stroke="${nuc}" stroke-width="4"
+                stroke-linecap="round" filter="url(#tvNeon)"/>
+          <path class="tv-metade tv-dir" d="${TV_DIR}" pathLength="100"
+                fill="none" stroke="${nuc}" stroke-width="4"
+                stroke-linecap="round" filter="url(#tvNeon)"/>
+
+          <line class="tv-costura" x1="${TV.cx}" y1="${TV.ay}"
+                x2="${TV.cx}" y2="${TV.by}" stroke="#fff" stroke-width="3"
+                stroke-linecap="round" filter="url(#tvNeon)"/>
+          <line class="tv-soleira" x1="${TV.cx - TV.hw}" y1="${TV.by}"
+                x2="${TV.cx + TV.hw}" y2="${TV.by}" stroke="#fff"
+                stroke-width="3" stroke-linecap="round" filter="url(#tvNeon)"/>
+        </svg>
+      </div>
+      <div class="tv-inunda"></div>
+      <div class="tv-clarao"></div>`;
     document.body.appendChild(ov);
 
-    elPortao.classList.add('pt-atravessando');
+    if (elPortao) elPortao.classList.add('pt-atravessando');
     requestAnimationFrame(() => ov.classList.add('on'));
 
     return new Promise(resolve => {
       setTimeout(resolve, DUR_TRAVESSIA - 250);
       setTimeout(() => {
         ov.remove();
-        elPortao.classList.remove('pt-atravessando');
+        if (elPortao) elPortao.classList.remove('pt-atravessando');
       }, DUR_TRAVESSIA + 400);
     });
   }
 
   window.Portao = { html, fenda, montar, garantirFiltros, observar, travessia,
-                    VB, LARC, DARC, DUR_TRAVESSIA, _dado: dado };
+                    VB, TV, LARC, DARC, DUR_TRAVESSIA, _dado: dado };
 })();
