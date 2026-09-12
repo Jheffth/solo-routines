@@ -249,6 +249,20 @@
       o.push(`<path d="${DARC}" fill="none" stroke="#8c93ab" stroke-opacity=".3" stroke-width="1"/>`);
     }
 
+    /* ── O LAMPEJO: a luz que dá a volta quando a mão chega ───────
+       Fica no desenho sempre, apagado. É um traço CURTO correndo o aro
+       inteiro — deliberadamente diferente do prazo, que é um arco longo
+       e parado. Assim o portão "percebe" o cursor sem que ninguém
+       confunda o gesto com progresso de tempo. */
+    if (!morto) {
+      o.push(`<path class="pt-lampejo" d="${DARC}" fill="none" stroke="#fff" stroke-width="2.6" `
+           + `stroke-linecap="round" stroke-dasharray="26 ${LARC.toFixed(0)}" `
+           + `filter="url(#ptNeon)" style="--larc:${LARC.toFixed(0)}"/>`);
+      o.push(`<path class="pt-lampejo pt-lampejo-cor" d="${DARC}" fill="none" stroke="${nuc}" `
+           + `stroke-width="7" stroke-linecap="round" stroke-dasharray="26 ${LARC.toFixed(0)}" `
+           + `filter="url(#ptNeonLargo)" style="--larc:${LARC.toFixed(0)}"/>`);
+    }
+
     return `<svg class="pt-svg" viewBox="0 0 ${VB.w} ${VB.h}" aria-hidden="true">`
          + defs(u, nuc, fra, vivo, mat) + o.join('') + `</svg>`;
   }
@@ -319,12 +333,14 @@
       </div>
 
       <div class="pt-lapide">
-        <div class="pt-ferramentas">${ferramentas}</div>
         <h3 class="pt-titulo">${esc(d.titulo)}</h3>
         <p class="pt-sub">${esc(d.categoria || '')} · ${esc((d.dificuldade || '').toLowerCase())}${
           d.sempre_aberta ? ' · <span class="pt-inf">∞ nunca fecha</span>' : ''}</p>
         <p class="pt-prazo">${esc(e.prazo)}</p>
-        <div class="pt-selos">${selos}</div>
+        <div class="pt-rodape">
+          <div class="pt-selos">${selos}</div>
+          <div class="pt-ferramentas">${ferramentas}</div>
+        </div>
       </div>
 
       <button class="pt-acao" data-pt-entrar="${d.id}" ${e.ativo ? '' : 'disabled'}>
@@ -401,6 +417,96 @@
     return container;
   }
 
-  window.Portao = { html, fenda, montar, garantirFiltros, observar,
-                    VB, LARC, DARC, _dado: dado };
+  /* ═══════════════════════════════════════════════════════════════
+     A TRAVESSIA — atravessar o portal, não abrir um modal
+
+     A animação antiga (`_portalFX`) eram três anéis concêntricos no
+     centro da tela, pintados pelo tema da CATEGORIA. Dois problemas:
+     ela não tinha relação nenhuma com o portão clicado — nem na cor,
+     nem no lugar — e por isso não parecia que o hunter atravessava
+     AQUELE portal. Parecia uma tela de carregamento.
+
+     Aqui o portal clicado é o protagonista. A fenda dele é clonada na
+     posição exata em que está na grade e cresce até engolir a tela,
+     ancorada na BASE do arco — que é por onde se entra. A cor é a do
+     próprio portão, lida do elemento; nada é escolhido duas vezes.
+
+     Três tempos:
+       1. o portão inspira — encolhe de leve e o aro flameja;
+       2. a fenda cresce da posição dela até cobrir tudo, com o vazio
+          escurecendo por dentro;
+       3. o clarão branco, a onda de choque na cor do rank, e o preto.
+
+     `prefers-reduced-motion` pula a cerimônia e resolve em 120ms — quem
+     pediu menos movimento não pode ficar preso a uma animação de um
+     segundo e meio a cada travessia.
+     ═══════════════════════════════════════════════════════════════ */
+  const DUR_TRAVESSIA = 1150;
+
+  function travessia(elPortao) {
+    const menos = window.matchMedia
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const fendaEl = elPortao && elPortao.querySelector('.pt-fenda');
+    const est = elPortao ? getComputedStyle(elPortao) : null;
+    const nuc = (est && est.getPropertyValue('--pt-nuc').trim()) || '#63b3ff';
+    const fra = (est && est.getPropertyValue('--pt-fra').trim()) || '#7a6cff';
+
+    document.getElementById('pt-travessia')?.remove();
+    const ov = document.createElement('div');
+    ov.id = 'pt-travessia';
+    ov.style.setProperty('--pt-nuc', nuc);
+    ov.style.setProperty('--pt-fra', fra);
+
+    if (menos || !fendaEl) {
+      ov.className = 'seco';
+      document.body.appendChild(ov);
+      requestAnimationFrame(() => ov.classList.add('on'));
+      setTimeout(() => ov.remove(), 700);
+      return Promise.resolve();
+    }
+
+    /* A FENDA COMEÇA ONDE ELA ESTÁ. Sem o retângulo de origem, o clone
+       nasceria no canto da tela e o efeito perderia a única coisa que o
+       faz significar alguma coisa: sair DAQUELE portão. */
+    const r = fendaEl.getBoundingClientRect();
+    /* A base do arco, em pixels de tela — é o ponto por onde se entra, e
+       por isso é a âncora do crescimento. `VB.by / VB.h` é onde a base
+       mora dentro do viewBox. */
+    const baseY = (VB.by / VB.h) * r.height;
+    /* Um retângulo de altura ou largura zero (portão numa aba oculta, ou
+       jsdom, que não faz layout) daria `Infinity` — e `scale(Infinity)`
+       não é uma animação, é um elemento sumido. */
+    const bruta = Math.max(innerWidth / r.width, innerHeight / r.height) * 2.6;
+    const escala = Number.isFinite(bruta) ? bruta : 3;
+
+    ov.style.setProperty('--x', r.left + 'px');
+    ov.style.setProperty('--y', r.top + 'px');
+    ov.style.setProperty('--w', r.width + 'px');
+    ov.style.setProperty('--h', r.height + 'px');
+    ov.style.setProperty('--ox', (r.width / 2) + 'px');
+    ov.style.setProperty('--oy', baseY + 'px');
+    ov.style.setProperty('--k', escala.toFixed(2));
+
+    ov.innerHTML =
+        `<div class="pt-tv-fenda">${fendaEl.querySelector('.pt-svg').outerHTML}</div>`
+      + `<div class="pt-tv-vazio"></div>`
+      + `<div class="pt-tv-onda"></div>`
+      + `<div class="pt-tv-clarao"></div>`;
+    document.body.appendChild(ov);
+
+    elPortao.classList.add('pt-atravessando');
+    requestAnimationFrame(() => ov.classList.add('on'));
+
+    return new Promise(resolve => {
+      setTimeout(resolve, DUR_TRAVESSIA - 250);
+      setTimeout(() => {
+        ov.remove();
+        elPortao.classList.remove('pt-atravessando');
+      }, DUR_TRAVESSIA + 400);
+    });
+  }
+
+  window.Portao = { html, fenda, montar, garantirFiltros, observar, travessia,
+                    VB, LARC, DARC, DUR_TRAVESSIA, _dado: dado };
 })();

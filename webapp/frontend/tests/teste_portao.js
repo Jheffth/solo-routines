@@ -56,10 +56,21 @@ const ok = (cond, msg) => {
 const RAIZ = path.join(__dirname, '..');
 const ler  = (...p) => fs.readFileSync(path.join(RAIZ, ...p), 'utf8');
 const css  = ler('css', 'portao.css');
+/* AS REGRAS, SEM A PROSA. Este CSS comenta bastante, inclusive citando
+   seletores que foram removidos para explicar por quê. Um assert que
+   procura seletor no texto cru encontra o comentário e aprova (ou
+   reprova) a coisa errada. */
+const regras = css.replace(/\/\*[\s\S]*?\*\//g, '');
 
 function montar() {
+  /* `pretendToBeVisual` é o que dá `requestAnimationFrame` ao jsdom — e a
+     travessia agenda o `.on` nele. Sem isso, o teste quebrava no meio da
+     travessia por falta de um global que existe em todo navegador; é
+     defeito da bancada, não da peça. É também o que as outras bancadas
+     desta pasta já usam (teste_pecas, teste_modal_auras). */
   const dom = new JSDOM('<!doctype html><html><body></body></html>',
-    { runScripts: 'outside-only', url: 'http://localhost/' });
+    { runScripts: 'outside-only', pretendToBeVisual: true,
+      url: 'http://localhost/' });
   const win = dom.window;
   const ctx = dom.getInternalVMContext();
   vm.runInContext(ler('js', 'glifos.js'), ctx);
@@ -270,6 +281,109 @@ function rodar() {
     const outro = P.fenda(Object.assign({}, d, { id: 2 }),
                           win.PortaoEstado.ler(d, hoje(12, 0)));
     ok(outro !== a1, 'mas dois portões diferentes têm brasas diferentes');
+  }
+
+  /* ── 8b. AS FERRAMENTAS NÃO PISAM NO NOME ──────────────────────── */
+  console.log('\n-- o nome do portão é do hunter --');
+  {
+    /* DEFEITO REAL, VISTO NA TELA: as ferramentas moravam em
+       `position:absolute` no canto da lápide. Com "Estúdio" cabia; com
+       "Libanus Restaurante" o nome passava por baixo dos botões e os
+       dois viravam um borrão. Nenhum `padding-right` conserta, porque o
+       número de botões muda (o Arquiteto vê cinco) e o nome é do hunter. */
+    const d = base({ titulo: 'Libanus Restaurante Árabe e Cia',
+                     sessao_hoje: { status: 'PENDENTE' } });
+    win.document.body.innerHTML = P.html(d, { agora: hoje(10, 0), arquiteto: true });
+    const el = win.document.querySelector('.pt');
+
+    const fer = el.querySelector('.pt-ferramentas');
+    const est = win.getComputedStyle(fer);
+    ok(est.position !== 'absolute',
+       'as ferramentas saíram do `absolute` — era ele que as punha sobre o nome');
+    ok(!!el.querySelector('.pt-rodape .pt-ferramentas'),
+       'elas têm linha própria no pé da lápide');
+    ok(!el.querySelector('.pt-titulo .pt-fer'),
+       'e nenhuma delas vive dentro do título');
+
+    const titulo = el.querySelector('.pt-titulo');
+    ok(titulo.textContent === 'Libanus Restaurante Árabe e Cia',
+       'o nome chega inteiro, por mais longo que seja');
+    ok(!/padding-right/.test(win.getComputedStyle(titulo).cssText || '')
+       || win.getComputedStyle(titulo).paddingRight !== '2.2rem',
+       'sem reservar um vão fixo que nunca seria o certo para 3 e para 5 botões');
+
+    ok(/\.pt-ferramentas\s*\{[^}]*opacity:\s*\.28/.test(regras),
+       'ficam discretas em repouso, mas SEMPRE ocupando o espaço delas — '
+       + 'aparecer via `opacity` é o que evita o salto de layout no hover');
+  }
+
+  /* ── 8c. O HOVER ───────────────────────────────────────────────── */
+  console.log('\n-- o portão percebe a mão --');
+  {
+    const d = base({ sessao_hoje: { status: 'ATIVA', entrada_em: iso(8, 0), tempo_total_min: 60 } });
+    win.document.body.innerHTML = P.html(d, { agora: hoje(12, 0) });
+    const svg = win.document.querySelector('.pt-svg');
+
+    const lampejos = svg.querySelectorAll('.pt-lampejo');
+    ok(lampejos.length === 2, 'o lampejo existe no desenho, em duas camadas (miolo e cor)');
+    ok(/\.pt-lampejo\s*\{[^}]*opacity:\s*0/.test(regras),
+       'apagado em repouso — ele só existe para o hover');
+    ok(/\.pt:hover \.pt-lampejo[\s\S]{0,200}pt-volta/.test(regras),
+       'e no hover ele dá a VOLTA no aro');
+
+    /* O LAMPEJO NÃO PODE SER CONFUNDIDO COM O PRAZO. Os dois vivem no
+       mesmo contorno: o prazo é um arco LONGO e parado, o lampejo é um
+       traço CURTO em movimento. Se o traço do hover fosse comprido, o
+       hunter leria "o tempo pulou" toda vez que passasse o mouse. */
+    const dash = lampejos[0].getAttribute('stroke-dasharray');
+    const curto = parseFloat(dash.split(' ')[0]);
+    ok(curto < P.LARC * 0.06,
+       `o traço do hover é CURTO (${curto} de ${P.LARC.toFixed(0)}) — comprido, viraria prazo`);
+
+    ok(/\.pt:hover \.pt-fenda\s*\{[^}]*scale\(1\.0/.test(regras),
+       'a fenda inspira de leve');
+    ok(/\.pt-m-selado:hover \.pt-fenda[\s\S]{0,120}transform:\s*none/.test(regras),
+       'e portão morto NÃO reage — pedra não percebe ninguém');
+    ok(/\.pt:hover \.pt-brasa[\s\S]{0,80}\* \.6/.test(regras),
+       'as brasas sobem mais rápido');
+  }
+
+  /* ── 8d. A TRAVESSIA ───────────────────────────────────────────── */
+  console.log('\n-- atravessar o portal --');
+  {
+    const d = base({ sessao_hoje: { status: 'PENDENTE' } });
+    win.document.body.innerHTML = P.html(d, { agora: hoje(10, 0) });
+    const el = win.document.querySelector('.pt');
+
+    ok(typeof P.travessia === 'function', 'a travessia é da PEÇA, não do interior');
+
+    /* jsdom não faz layout, então `getBoundingClientRect` devolve zeros;
+       o que dá para cobrar aqui é a estrutura e a COR — que é o ponto:
+       a animação antiga usava o tema da CATEGORIA e não tinha relação
+       nenhuma com o portão clicado. */
+    P.travessia(el);
+    const ov = win.document.getElementById('pt-travessia');
+    ok(!!ov, 'a travessia monta o véu');
+    ok(ov.style.getPropertyValue('--pt-nuc') === '#ff9a3c',
+       'NA COR DO PORTÃO, lida do próprio elemento — não do tema da categoria');
+    ok(ov.style.getPropertyValue('--pt-fra') === '#ff3d6e', 'com a franja junto');
+
+    if (ov.querySelector('.pt-tv-fenda')) {
+      ok(!!ov.querySelector('.pt-tv-fenda svg'),
+         'a fenda CLONADA é que cresce — é aquele portal, não um anel genérico');
+      ok(!!ov.querySelector('.pt-tv-onda'), 'a onda de choque');
+      ok(!!ov.querySelector('.pt-tv-clarao'), 'e o clarão do instante de atravessar');
+    } else {
+      ok(ov.classList.contains('seco'),
+         'sem retângulo de origem (jsdom não faz layout), cai no corte seco');
+    }
+
+    ok(/transform-origin:\s*var\(--ox\) var\(--oy\)/.test(regras),
+       'o crescimento é ancorado na BASE do arco — é por onde se entra');
+    ok(/#pt-travessia\.seco/.test(regras),
+       'e quem pediu menos movimento leva um corte, não um segundo e meio de cerimônia');
+
+    ov.remove();
   }
 
   /* ── 9. A CURVA CONGELADA ──────────────────────────────────────── */

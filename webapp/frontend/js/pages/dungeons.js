@@ -200,7 +200,7 @@ const Dungeons = {
   _entrarArquiteto(id) {
     const d = this._lista.find(x => x.id === id);
     if (!d || !this._ehArquiteto()) return;
-    if (typeof DungeonInterior !== 'undefined') DungeonInterior.abrir(d, { arquiteto: true });
+    this._atravessar(d, { arquiteto: true });
   },
 
   async _resetar(id) {
@@ -223,7 +223,30 @@ const Dungeons = {
   _entrar(id) {
     const d = this._lista.find(x => x.id === id);
     if (!d) return;
-    if (typeof DungeonInterior !== 'undefined') DungeonInterior.abrir(d);
+    this._atravessar(d, {});
+  },
+
+  /* ═══════════════════════════════════════════════════════════════
+     ATRAVESSAR
+
+     A cerimônia é do PORTÃO, não do interior: é a fenda clicada que
+     cresce até engolir a tela, na cor dela e a partir do lugar em que
+     ela está na grade. Por isso `Portao.travessia` roda aqui, onde o
+     elemento existe — lá dentro ele já não está mais na tela.
+
+     `viaPortao` avisa o interior para não disparar os anéis antigos:
+     duas aberturas empilhadas dariam dois pretos seguidos.
+     ═══════════════════════════════════════════════════════════════ */
+  async _atravessar(d, opts) {
+    if (typeof DungeonInterior === 'undefined') return;
+    const el = document.querySelector(`.pt[data-pt="${d.id}"]`);
+
+    if (el && typeof Portao !== 'undefined' && Portao.travessia) {
+      await Portao.travessia(el);
+      DungeonInterior.abrir(d, Object.assign({ viaPortao: true }, opts));
+    } else {
+      DungeonInterior.abrir(d, opts);
+    }
   },
 
 

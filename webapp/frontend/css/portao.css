@@ -172,7 +172,6 @@
   margin: 0; font-size: 1.02rem; font-weight: 700;
   color: #fff; line-height: 1.2;
   overflow-wrap: anywhere;
-  padding-right: 2.2rem;                 /* espaço das ferramentas */
 }
 .pt-sub {
   margin: .2rem 0 0; font-size: .68rem;
@@ -188,7 +187,21 @@
 }
 .pt-m-selado .pt-prazo, .pt-m-perdido .pt-prazo { text-shadow: none; }
 
-.pt-selos { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .5rem; }
+/* ── O RODAPÉ DA LÁPIDE ──────────────────────────────────────────
+   AS FERRAMENTAS MORAVAM SOBRE O TÍTULO, em `position:absolute` no
+   canto. Funcionava com "Estúdio" e quebrava com "Libanus Restaurante":
+   o nome passava por baixo dos botões e os dois viravam um borrão.
+   Nenhum `padding-right` resolve isso, porque o número de botões muda
+   (o Arquiteto vê cinco) e o nome é do hunter.
+
+   Agora elas têm linha própria, no pé da lápide, longe do nome e longe
+   do botão de atravessar. Sem sobreposição possível e sem salto de
+   layout quando aparecem. */
+.pt-rodape {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: .5rem; margin-top: .5rem;
+}
+.pt-selos { display: flex; flex-wrap: wrap; gap: .3rem; flex: 1; min-width: 0; }
 .pt-selo-min {
   font-size: .6rem; color: #aab0c4;
   padding: .17rem .45rem;
@@ -198,16 +211,16 @@
 }
 
 /* ── AS FERRAMENTAS ──────────────────────────────────────────────── */
-/* Ficam quietas até a mão chegar perto. Num toque (sem hover) elas
-   aparecem sempre, porque lá não existe "chegar perto". */
+/* Quietas até a mão chegar perto — mas SEMPRE ocupando o espaço delas.
+   Aparecer via `opacity`, e não via `display`, é o que evita o salto de
+   layout: a lápide tem a mesma altura com e sem o cursor em cima. */
 .pt-ferramentas {
-  position: absolute; top: .5rem; right: .5rem;
-  display: flex; gap: .12rem;
-  opacity: 0; transition: opacity .18s ease;
+  display: flex; gap: .15rem; flex: 0 0 auto;
+  opacity: .28; transition: opacity .2s ease;
 }
 .pt:hover .pt-ferramentas,
 .pt:focus-within .pt-ferramentas { opacity: 1; }
-@media (hover: none) { .pt-ferramentas { opacity: .7; } }
+@media (hover: none) { .pt-ferramentas { opacity: .75; } }
 
 .pt-fer {
   width: 24px; height: 24px; padding: 0;
@@ -257,6 +270,168 @@
 }
 .pt-acao:disabled::before { display: none; }
 
+/* ══════════════════════════════════════════════════════════════════
+   O HOVER — o portão percebe a mão
+
+   A ideia inteira está numa coisa: UMA LUZ DÁ A VOLTA NO ARO. Um traço
+   curto e branco correndo o contorno todo, de baixo a baixo.
+
+   Ele é curto de propósito. O prazo também vive no aro, mas é um arco
+   LONGO e PARADO; se o hover usasse a mesma linguagem, o hunter leria
+   "o tempo pulou" toda vez que passasse o mouse. Curto e em movimento
+   não se confunde com comprido e imóvel.
+
+   O resto acompanha em volume, sem inventar gesto novo: a fenda inspira,
+   a aura incha, a íris acende, as brasas sobem mais rápido e a lápide
+   clareia. Portão morto não reage — pedra não percebe ninguém.
+   ══════════════════════════════════════════════════════════════════ */
+.pt-lampejo {
+  opacity: 0;
+  stroke-dashoffset: 0;
+  pointer-events: none;
+}
+.pt:hover .pt-lampejo,
+.pt:focus-within .pt-lampejo {
+  opacity: .95;
+  animation: pt-volta 1.15s cubic-bezier(.45, 0, .25, 1) infinite;
+}
+.pt:hover .pt-lampejo-cor,
+.pt:focus-within .pt-lampejo-cor { opacity: .5; }
+@keyframes pt-volta {
+  from { stroke-dashoffset: calc(var(--larc, 700) * 1px); }
+  to   { stroke-dashoffset: 0; }
+}
+
+/* A FENDA INSPIRA. Escala mínima e de propósito: o portal é feito de
+   luz difusa, e crescer demais o transformaria num cartaz. */
+.pt-fenda {
+  transition: transform .35s cubic-bezier(.2, .9, .3, 1.1),
+              filter .35s ease;
+}
+.pt:hover .pt-fenda { transform: scale(1.035) translateY(-3px); }
+.pt-m-selado:hover .pt-fenda,
+.pt-m-perdido:hover .pt-fenda { transform: none; }
+
+/* A aura incha e a íris acende — mais volume, mesmo gesto. */
+.pt:hover .pt-bafo { animation-duration: 3.4s; opacity: 1; }
+.pt:hover .pt-halo { animation-duration: 2.8s; }
+.pt:hover .pt-iris { animation-duration: 1.7s; }
+.pt:hover .pt-brasa { animation-duration: calc(var(--d, 5s) * .6); }
+.pt:hover .pt-greta { animation-duration: 1.2s; }
+
+/* A lápide clareia e o botão puxa a atenção. */
+.pt-lapide { transition: border-color .3s ease, box-shadow .3s ease; }
+.pt:hover .pt-lapide {
+  border-color: color-mix(in srgb, var(--pt-nuc) 62%, transparent);
+  box-shadow: 0 0 26px color-mix(in srgb, var(--pt-fra) 18%, transparent);
+}
+.pt:hover .pt-acao:not(:disabled) {
+  filter: brightness(1.1);
+  box-shadow: 0 0 30px color-mix(in srgb, var(--pt-fra) 52%, transparent);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   A TRAVESSIA — o portal engole a tela
+
+   A animação antiga eram três anéis no centro, na cor da CATEGORIA: não
+   tinha relação com o portão clicado nem na cor nem no lugar, e por isso
+   parecia tela de carregamento, não travessia.
+
+   Aqui a fenda clonada nasce EXATAMENTE onde ela está na grade
+   (`--x/--y/--w/--h`, medidos no clique) e cresce ancorada na BASE do
+   arco (`--ox/--oy`) — que é por onde se entra. A cor vem do portão.
+   ══════════════════════════════════════════════════════════════════ */
+#pt-travessia {
+  position: fixed; inset: 0; z-index: 9000;
+  pointer-events: none; overflow: hidden;
+  contain: strict;
+}
+
+/* 1. A fenda cresce da posição dela até engolir tudo. */
+.pt-tv-fenda {
+  position: absolute;
+  left: var(--x); top: var(--y);
+  width: var(--w); height: var(--h);
+  transform-origin: var(--ox) var(--oy);
+  transform: scale(1);
+  opacity: 1;
+  will-change: transform;
+}
+#pt-travessia.on .pt-tv-fenda {
+  animation: pt-engole 1.15s cubic-bezier(.6, 0, .35, 1) forwards;
+}
+.pt-tv-fenda svg { width: 100%; height: 100%; display: block; }
+@keyframes pt-engole {
+  0%   { transform: scale(1);                   opacity: 1; }
+  22%  { transform: scale(.93);                 opacity: 1; }  /* a inspiração */
+  100% { transform: scale(var(--k, 30));        opacity: .65; }
+}
+
+/* 2. O vazio escurece por dentro, acompanhando o crescimento. */
+.pt-tv-vazio {
+  position: absolute; inset: 0;
+  background: radial-gradient(120% 90% at 50% 78%,
+    color-mix(in srgb, var(--pt-nuc) 22%, transparent) 0%,
+    color-mix(in srgb, var(--pt-fra) 16%, transparent) 32%,
+    #05050b 78%);
+  opacity: 0;
+}
+#pt-travessia.on .pt-tv-vazio {
+  animation: pt-escurece 1.15s cubic-bezier(.5, 0, .3, 1) forwards;
+}
+@keyframes pt-escurece {
+  0%   { opacity: 0; }
+  45%  { opacity: .25; }
+  100% { opacity: 1; }
+}
+
+/* 3. A onda de choque na cor do rank — parte da base do portal. */
+.pt-tv-onda {
+  position: absolute;
+  left: calc(var(--x) + var(--ox)); top: calc(var(--y) + var(--oy));
+  width: 10px; height: 10px; margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  border: 2px solid var(--pt-nuc);
+  box-shadow: 0 0 40px var(--pt-fra), inset 0 0 30px var(--pt-nuc);
+  opacity: 0;
+}
+#pt-travessia.on .pt-tv-onda {
+  animation: pt-onda .95s cubic-bezier(.15, .7, .3, 1) .18s forwards;
+}
+@keyframes pt-onda {
+  0%   { transform: scale(1);   opacity: 0; border-width: 3px; }
+  12%  { opacity: .95; }
+  100% { transform: scale(320); opacity: 0; border-width: 1px; }
+}
+
+/* 4. O clarão branco no fim — o instante de atravessar. */
+.pt-tv-clarao {
+  position: absolute; inset: 0;
+  background: radial-gradient(60% 50% at 50% 62%,
+    #fff 0%, color-mix(in srgb, var(--pt-nuc) 70%, #fff) 28%, transparent 72%);
+  opacity: 0;
+}
+#pt-travessia.on .pt-tv-clarao {
+  animation: pt-clarao .55s ease-out .72s forwards;
+}
+@keyframes pt-clarao {
+  0%   { opacity: 0;   transform: scale(.9); }
+  38%  { opacity: .92; transform: scale(1); }
+  100% { opacity: 0;   transform: scale(1.06); }
+}
+
+/* O portão de origem recua enquanto o clone cresce: sem isso, ele
+   continuaria visível por trás da própria travessia. */
+.pt-atravessando { opacity: 0; transition: opacity .22s ease; }
+
+/* A VERSÃO SECA. Quem pediu menos movimento não pode ficar preso a um
+   segundo e meio de cerimônia a cada entrada — leva o corte, só isso. */
+#pt-travessia.seco {
+  background: #05050b;
+  opacity: 0; transition: opacity .12s linear;
+}
+#pt-travessia.seco.on { opacity: 1; }
+
 /* ── QUEM PEDIU MENOS MOVIMENTO ──────────────────────────────────── */
 /* Fica com o portão inteiro — aura, brasas, lascas e aro — parado. */
 @media (prefers-reduced-motion: reduce) {
@@ -266,4 +441,15 @@
   .pt-vivo .pt-lasca, .pt-vivo .pt-aro-miolo, .pt-vivo .pt-aro-bafo {
     animation: none;
   }
+  /* O hover e a travessia continuam EXISTINDO, sem o movimento: o
+     lampejo vira um aro aceso parado, a fenda não escala e a entrada é
+     um corte. Tirar o retorno visual junto com a animação deixaria a
+     interface muda para quem já vê menos pistas. */
+  .pt:hover .pt-lampejo,
+  .pt:focus-within .pt-lampejo { animation: none; opacity: .5; stroke-dasharray: none; }
+  .pt:hover .pt-fenda { transform: none; }
+  #pt-travessia.on .pt-tv-fenda,
+  #pt-travessia.on .pt-tv-onda,
+  #pt-travessia.on .pt-tv-clarao { animation: none; opacity: 0; }
+  #pt-travessia.on .pt-tv-vazio { animation: none; opacity: 1; }
 }

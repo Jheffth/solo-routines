@@ -25,9 +25,16 @@ const DungeonInterior = {
     this._garantirDOM();
     this._modoTeste = !!opts.arquiteto;
 
-    // Tema provisório para o efeito de portal
-    this._aplicarTema(dungeonResumo, document.getElementById('dg-portal-fx'));
-    this._portalFX();
+    /* A TRAVESSIA JÁ ACONTECEU LÁ FORA.
+       Quando a entrada veio de um portão da grade, a fenda dele já
+       cresceu e engoliu a tela — na cor dele e a partir do lugar dele.
+       Disparar os anéis aqui empilharia duas aberturas e o hunter veria
+       dois pretos seguidos. `_portalFX` fica para quem entrar por outro
+       caminho, sem um portão na tela para clonar. */
+    if (!opts.viaPortao) {
+      this._aplicarTema(dungeonResumo, document.getElementById('dg-portal-fx'));
+      this._portalFX();
+    }
 
     try {
       if (this._modoTeste) {
@@ -47,6 +54,9 @@ const DungeonInterior = {
       return;
     }
 
+    /* A ESPERA É A DOS ANÉIS, NÃO DO SERVIDOR. Vindo da travessia, ela
+       já consumiu o tempo da cerimônia lá fora — somar os 850ms daqui
+       deixaria o hunter olhando para o preto mais de dois segundos. */
     setTimeout(() => {
       const el = document.getElementById('dungeon-interior');
       this._aplicarTema(this._dungeon, el);
@@ -74,7 +84,7 @@ const DungeonInterior = {
         // Sessão já resolvida hoje — mostra só o estado
         this._renderCheckin(true);
       }
-    }, 850);
+    }, opts.viaPortao ? 120 : 850);
   },
 
   _portalFX() {
