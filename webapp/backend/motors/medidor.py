@@ -71,12 +71,25 @@ def cheio(rotina) -> bool:
 
 def encher(db, rotina, quanto: float | None = None, regras: dict | None = None) -> dict:
     """
-    Enche a barra e diz se ela transbordou AGORA.
+    Enche a barra e diz como ela ficou.
 
-    `transbordou` e verdadeiro so na chamada que cruzou os 100. Uma barra
-    que ja estava cheia e enchida de novo devolve `False` — senao cada
-    leitura do extrato dispararia uma penitencia pela mesma barra, que e
-    o defeito de escopo que ja custou caro no `_talvez_punir`.
+    DOIS SINAIS, E A DIFERENCA ENTRE ELES FOI UM BUG CARO:
+
+      `transbordou`  — cruzou os 100 NESTA chamada. E um EVENTO.
+      `cheio`        — esta em 100 agora, tendo cruzado quando for. E um
+                       ESTADO.
+
+    O gatilho do fechamento usava `transbordou`, e o modo observacao
+    (`medidor_dispara = 0`) enche as barras sem julgar. Resultado: as
+    barras que encheram durante a observacao GASTARAM o evento — o
+    `transbordou` foi calculado, descartado pelo `if` desligado, e nunca
+    mais volta, porque `antes` ja e 100.
+
+    O Arquiteto encontrou tres barras em 100 que, ao ligar a chave,
+    jamais disparariam. A barra parecia cheia na tela e estava muda.
+
+    `transbordou` continua existindo e continua significando a mesma
+    coisa — quem decide qual sinal usar e quem julga.
     """
     antes = carga(rotina)
     passo = quanto_enche(rotina, regras, db) if quanto is None else max(0.0, float(quanto))
@@ -90,6 +103,7 @@ def encher(db, rotina, quanto: float | None = None, regras: dict | None = None) 
         "para":      round(depois, 1),
         "passo":     round(passo, 1),
         "transbordou": depois >= CHEIO and antes < CHEIO,
+        "cheio":       depois >= CHEIO,
     }
 
 

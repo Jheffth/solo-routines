@@ -484,23 +484,37 @@ def _talvez_punir(db: Session, usuario: Usuario, falhas: list, hoje) -> dict | N
 def _encher_medidores(db, medidor, falhas) -> dict | None:
     """
     Enche a barra de cada rotina que falhou. Devolve a PRIMEIRA que
-    transbordou agora, ou None.
+    esta CHEIA, ou None.
+
+    ANTES ELE DEVOLVIA SO QUEM TRANSBORDOU NESTA CHAMADA, E ISSO ERA UM
+    BUG. O modo observacao enche as barras sem julgar; a barra que
+    encheu com a chave desligada gastou o evento `transbordou` — ele foi
+    calculado, descartado pelo `if` desligado, e nunca mais volta,
+    porque a partir dali `antes` ja e 100.
+
+    O Arquiteto encontrou tres barras em 100 que, ao ligar a chave,
+    jamais disparariam: as tres que ele mais queria que cobrassem.
+
+    A CONDICAO E A BARRA CHEIA; A OCASIAO E A FALHA. Por isso o laco
+    continua percorrendo SO as falhas do dia: uma barra cheia de uma
+    rotina que ele voltou a cumprir nao cobra nada. Ela espera a proxima
+    falha daquela rotina — que e quando a insistencia se confirma.
 
     SO ROTINA TEM MEDIDOR. Missao geral e divida, nao insistencia: ela
     vence e continua la, no vermelho, ate ser feita — nao ha "de novo"
     para medir. Por isso a falha dela chega com `rotina_id: None`.
 
     A CRITICA VEM PRIMEIRO na ordem de retorno. Se num mesmo fechamento
-    uma critica e uma media transbordarem, e a critica que deve nomear a
-    divida e dobrar a pena — sortear a ordem faria o mesmo dia ruim punir
-    com pesos diferentes conforme o acaso.
+    uma critica e uma media estiverem cheias, e a critica que deve nomear
+    a divida e dobrar a pena — sortear a ordem faria o mesmo dia ruim
+    punir com pesos diferentes conforme o acaso.
 
     Nunca derruba o fechamento: medidor e mostrador, e um mostrador
     quebrado nao pode impedir o dia de fechar.
     """
     from database import Rotina
     regras = economia.enchimento_regras(db)
-    transbordos = []
+    cheias = []
     for f in (falhas or []):
         rid = f.get("rotina_id")
         if not rid:
@@ -509,14 +523,14 @@ def _encher_medidores(db, medidor, falhas) -> dict | None:
         if not r:
             continue
         try:
-            if medidor.encher(db, r, regras=regras)["transbordou"]:
-                transbordos.append(f)
+            if medidor.encher(db, r, regras=regras)["cheio"]:
+                cheias.append(f)
         except Exception as e:
             print(f"[MEDIDOR] rotina {rid} nao encheu: {e}")
-    if not transbordos:
+    if not cheias:
         return None
-    transbordos.sort(key=lambda x: 0 if x.get("critica") else 1)
-    return transbordos[0]
+    cheias.sort(key=lambda x: 0 if x.get("critica") else 1)
+    return cheias[0]
 
 
 def _cobrar(db, usuario, penitencia, alvo, dia_julgado, gatilho, dobrar):
@@ -533,6 +547,34 @@ def _cobrar(db, usuario, penitencia, alvo, dia_julgado, gatilho, dobrar):
                           rotina_id=alvo.get("rotina_id"))
     r["gatilho"] = gatilho
     r["dia_julgado"] = str(dia_julgado)
+
+    # ── A BARRA QUE COBROU, ESVAZIA ───────────────────────────────
+    #
+    # E o par obrigatorio da correcao em `_encher_medidores`. Agora que o
+    # gatilho e o ESTADO "cheia" e nao o evento "transbordou", uma barra
+    # que cobrasse e continuasse cheia cobraria DE NOVO na proxima falha
+    # da mesma rotina, e na seguinte, todo dia, ate a penitencia ser
+    # quitada. Trocariamos silencio por perseguicao — pior que o bug.
+    #
+    # Zerar aqui tambem e o que a barra significa: ela mede INSISTENCIA
+    # ate disparar. Disparou, a insistencia acumulada virou divida e a
+    # contagem recomeca. Manter os 100 seria cobrar duas vezes pela
+    # mesma teimosia.
+    #
+    # `penitencia.quitar` continua zerando por conta dele
+    # (`zerar_por_penitencia`): aqui a barra ja estara em zero, e la ele
+    # cobre o caminho das Regras A e B, onde o medidor nao foi o gatilho.
+    if gatilho == "medidor" and alvo.get("rotina_id"):
+        try:
+            from database import Rotina
+            from motors import medidor as _med
+            rot = db.query(Rotina).filter(Rotina.id == alvo["rotina_id"]).first()
+            if rot:
+                _med.esvaziar(db, rot)
+        except Exception as e:
+            # Mostrador quebrado nao pode desfazer uma cobranca ja feita.
+            print(f"[MEDIDOR] nao esvaziou apos cobrar: {e}")
+
     return r
 
 

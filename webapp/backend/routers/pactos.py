@@ -329,7 +329,15 @@ def encher_medidor(rotina_id: int, corpo: MedidorIn | None = None,
     res = medidor.encher(db, r, quanto=passo)
 
     punicao = None
-    if res["transbordou"]:
+    # A BARRA CHEIA COBRA — E ENTAO ESVAZIA.
+    #
+    # Era `res["transbordou"]`, o evento "cruzou agora". Mesmo defeito do
+    # fechamento: uma barra que ja chegou a 100 nunca mais transborda, e
+    # o `+` do Arquiteto ficava mudo justamente nas barras que ele mais
+    # queria auditar. Agora o gatilho e o ESTADO, e o `esvaziar` logo
+    # abaixo e o que impede o `+` de cobrar de novo a cada clique numa
+    # barra cheia — o mesmo par que `_cobrar` faz no fechamento.
+    if res["cheio"]:
         # O mesmo caminho do fechamento: mesma função, mesmos efeitos.
         punicao = penitencia.cobrar(
             db, usuario, r.titulo, tempo.hoje(),
@@ -337,6 +345,7 @@ def encher_medidor(rotina_id: int, corpo: MedidorIn | None = None,
             dobrar=(r.prioridade or "").upper() == "CRITICA",
             rotina_id=r.id, teste=True)
         punicao["gatilho"] = "medidor_teste"
+        medidor.esvaziar(db, r)
 
     db.commit()
     return {"ok": True, "medidor": medidor.leitura(r, db=db),

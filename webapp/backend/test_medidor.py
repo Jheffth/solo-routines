@@ -271,6 +271,76 @@ def rodar():
        "e a resposta diz à interface que ela deve esconder")
     ok(lst["dispara"] is False, "e se encher pune ou apenas mede")
 
+    # ══════════════════════════════════════════════════════════════
+    # A BARRA QUE ENCHEU NA OBSERVAÇÃO E FICOU MUDA
+    #
+    # Defeito real, achado pelo Arquiteto numa foto da tela: três barras
+    # em 100 que jamais disparariam ao ligar `medidor_dispara`.
+    #
+    # A causa: o gatilho era `transbordou`, que só é verdadeiro na
+    # chamada que CRUZA os 100. O modo observação enche as barras e
+    # descarta o julgamento — então a travessia era GASTA ali, e a
+    # partir dali `antes` já é 100 e o evento nunca mais volta. A barra
+    # continuava cheia na tela e muda no motor.
+    #
+    # A correção troca o gatilho de EVENTO para ESTADO, e o par
+    # obrigatório disso é esvaziar ao cobrar — senão a barra cheia
+    # cobraria todo dia, e trocaríamos silêncio por perseguição.
+    # ══════════════════════════════════════════════════════════════
+    print("\n-- a barra que encheu com a chave desligada --")
+    limpar(db, u)
+    from motors import fechamento
+
+    rx = nova_rotina(db, u, "Acordar às 06:00", "ALTA", "NORMAL")
+
+    # Enche até 100 "durante a observação": o transbordo é consumido.
+    medidor.encher(db, rx, quanto=100)
+    db.commit(); db.refresh(rx)
+    ok(medidor.carga(rx) == 100, "a barra chegou a 100 no modo observação")
+
+    de_novo = medidor.encher(db, rx, quanto=30)
+    ok(de_novo["transbordou"] is False,
+       "encher de novo NÃO transborda — o evento foi gasto e não volta")
+    ok(de_novo["cheio"] is True,
+       "mas ela ESTÁ cheia, e é este o sinal que o gatilho passou a usar")
+
+    falha = {"rotina_id": rx.id, "titulo": rx.titulo, "xp": 10, "critica": False}
+    alvo = fechamento._encher_medidores(db, medidor, [falha])
+    ok(alvo is not None,
+       "O CONSERTO: a barra cheia é devolvida ao julgamento mesmo sem "
+       "transbordar agora — antes disso, ela ficava muda para sempre")
+    ok(alvo["rotina_id"] == rx.id, "e é a rotina certa que nomeia a dívida")
+
+    # A barra cheia de uma rotina que ele VOLTOU a cumprir não cobra:
+    # a condição é a barra, mas a ocasião é a falha.
+    vazio = fechamento._encher_medidores(db, medidor, [])
+    ok(vazio is None,
+       "sem falha no dia, barra cheia não cobra — ela espera a próxima "
+       "falha daquela rotina, que é quando a insistência se confirma")
+
+    # ── COBROU, ESVAZIOU ──────────────────────────────────────────
+    print("\n-- cobrar esvazia a barra --")
+    limpar(db, u)
+    ry = nova_rotina(db, u, "Fio dental", "MEDIA", "NORMAL")
+    medidor.encher(db, ry, quanto=100)
+    db.commit(); db.refresh(ry)
+
+    from motors import penitencia as _pen
+    alvo2 = {"rotina_id": ry.id, "titulo": ry.titulo, "xp": 10, "critica": False}
+    fechamento._cobrar(db, u, _pen, alvo2, dia_julgado=hoje,
+                       gatilho="medidor", dobrar=False)
+    db.commit(); db.refresh(ry)
+
+    ok(medidor.carga(ry) == 0,
+       "a barra que cobrou zera NA HORA — cheia, ela cobraria de novo a "
+       "cada falha, todo dia, até a penitência ser quitada")
+
+    # E zerada, ela volta a precisar encher do começo para cobrar outra vez.
+    alvo3 = fechamento._encher_medidores(db, medidor, [alvo2])
+    ok(alvo3 is None,
+       "e uma falha isolada depois disso não cobra: a contagem recomeça "
+       "do zero, que é o que a barra significa")
+
     u.nivel_acesso = "Arquiteto"
     db.commit()
     limpar(db, u)
