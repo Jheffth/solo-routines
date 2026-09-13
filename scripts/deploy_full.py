@@ -8,12 +8,15 @@ Uso: python scripts/deploy_full.py
 """
 import os
 import sys
-import paramiko
 import posixpath
 
-HOST     = '169.58.116.61'
-USER     = 'root'
-PASSWORD = '1601Jcs332503'
+# A pasta scripts/ entra no path explicitamente: rodar `python
+# scripts/deploy_full.py` ja a coloca la, mas importar este modulo de
+# qualquer outro lugar nao — e o selo depende desses dois imports.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from ssh_contabo import HOST, conectar  # a senha NUNCA mais mora aqui
+
 REMOTE_BASE = '/root/app'
 LOCAL_BASE  = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # raiz do projeto
 
@@ -76,6 +79,38 @@ def commit_atual():
         return "desconhecido"
 
 
+def selar():
+    """
+    GRAVA O SELO ANTES DE ENVIAR — e por isso ninguem precisa lembrar.
+
+    O rodape mostrava "1.6.0 / RENDER / Commit: unknown" com o VERSION
+    marcando 1.8.0 e o servidor no Contabo. A causa de fundo: o endpoint
+    tentava descobrir versao e commit DENTRO do conteiner, onde nao ha
+    .git, nao ha o binario do git, e o arquivo VERSION nunca foi copiado
+    (ele mora na raiz, fora do contexto de build, que e `webapp/`).
+
+    Quem sabe essas duas coisas e esta maquina. Entao ela escreve
+    `webapp/backend/build_info.json`, que o `git ls-files webapp/` ja
+    lista e o SFTP ja envia lendo o disco -- sem commit novo a cada
+    deploy.
+
+    Automatico de proposito. Um passo manual antes do deploy e um passo
+    que um dia sera esquecido, e o esquecimento aqui produz um numero
+    errado com cara de certo, que e o pior defeito possivel num selo.
+    """
+    try:
+        from selar_build import selar as _selar
+        s = _selar()
+        print(f"[SELO] v{s['versao']}  #{s['sha']}"
+              + ("  (arvore suja)" if s['sujo'] else ""))
+    except SystemExit:
+        raise
+    except Exception as e:
+        print(f"[SELO] AVISO: nao consegui selar o build ({e}).")
+        print("[SELO] O rodape vai subir marcado como 'sem selo'.")
+
+
+selar()
 conferir_arvore()
 COMMIT = commit_atual()
 print(f"[DEPLOY] Enviando commit: {COMMIT}")
@@ -107,11 +142,8 @@ def main():
     print(f"  {len(ARQUIVOS)} arquivo(s) a enviar")
     print(f"{'='*60}\n")
 
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
     try:
-        ssh.connect(HOST, username=USER, password=PASSWORD, timeout=15)
+        ssh = conectar()
     except Exception as e:
         print(f"[ERRO] Falha ao conectar: {e}")
         sys.exit(1)

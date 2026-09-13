@@ -192,7 +192,16 @@ def rodar():
     # ── Quitar zera o medidor ───────────────────────────────────────
     print("\n-- a dívida paga zera a barra --")
     db.refresh(ra)
-    ok(medidor.carga(ra) == 100, "a barra da rotina punida está cheia")
+    # Cobrar já esvaziou na hora (é o par obrigatório do gatilho por ESTADO),
+    # e a falha seguinte do mesmo dia devolveu só um passo: 0 + 40. É esse
+    # recomeço do zero que impede a barra cheia de cobrar todo dia.
+    ok(medidor.carga(ra) == 40,
+       f"cobrar esvaziou a barra; nela sobrou só o passo da falha seguinte "
+       f"({medidor.carga(ra)})")
+    # Para provar que QUITAR também zera, ela precisa estar cheia de novo —
+    # que é o caso real: ela cobrou, ele reincidiu, a dívida segue aberta.
+    medidor.encher(db, ra, quanto=100)
+    db.commit(); db.refresh(ra)
     penitencia.quitar(db, u, div)
     db.commit(); db.refresh(ra)
     ok(medidor.carga(ra) == 0,
@@ -225,8 +234,10 @@ def rodar():
     ok(resp["punicao"] is None, "sem transbordo, nada é cobrado")
 
     resp = rp.encher_medidor(rm.id, corpo=rp.MedidorIn(quanto=100), db=db, usuario=u)
-    ok(resp["medidor"]["carga"] == 100, "e com valor explícito enche até o topo")
-    ok(resp["punicao"] is not None, "o transbordo DISPAROU a punição de verdade")
+    ok(resp["de"] == 25 and resp["medidor"]["carga"] == 0,
+       f"com valor explícito enche até o topo, cobra e volta a zero "
+       f"({resp['de']} → 100 → {resp['medidor']['carga']})")
+    ok(resp["punicao"] is not None, "a barra cheia DISPAROU a punição de verdade")
     ok(len(resp["punicao"]["criadas"]) > 0, "com cartão criado — não é simulação")
 
     criada = db.query(TarefaDia).filter_by(usuario_id=u.id, natureza="PUNICAO").first()
@@ -289,7 +300,6 @@ def rodar():
     # ══════════════════════════════════════════════════════════════
     print("\n-- a barra que encheu com a chave desligada --")
     limpar(db, u)
-    from motors import fechamento
 
     rx = nova_rotina(db, u, "Acordar às 06:00", "ALTA", "NORMAL")
 

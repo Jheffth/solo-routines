@@ -42,7 +42,7 @@ start http://localhost:8000
 echo.
 echo ════════════════════════════════════════════════════════
 echo  Sistema iniciado! Acesse: http://localhost:8000
-echo  Login: admin  ^|  Senha: admin123
+echo  Login: admin  ^|  Senha: veja o log do [SEED] no primeiro boot
 echo  Para encerrar: Ctrl+C
 echo ════════════════════════════════════════════════════════
 echo.

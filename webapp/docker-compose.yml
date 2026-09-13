@@ -1,18 +1,52 @@
 name: solo-app
 
+# ══════════════════════════════════════════════════════════════════
+#  OS SEGREDOS SAÍRAM DAQUI.
+#
+#  Este arquivo é versionado. Até agora ele carregava, em texto puro, a
+#  senha do Postgres e a SECRET_KEY de produção — a chave que assina os
+#  tokens. Quem clonasse o repositório assinava token de qualquer usuário,
+#  inclusive o do Arquiteto. Não é uma falha teórica: é a diferença entre
+#  "precisa da sua senha" e "precisa de trinta segundos".
+#
+#  Agora os valores vêm de `webapp/.env`, que o .gitignore já barra. O
+#  Compose lê esse arquivo sozinho para resolver os `${...}` abaixo — não
+#  precisa de `env_file:`, e nada muda no jeito de subir.
+#
+#  ORDEM OBRIGATÓRIA NO SERVIDOR: criar `/root/app/webapp/.env` ANTES do
+#  próximo `docker compose up`. Sem o arquivo, a SECRET_KEY chega vazia, o
+#  config.py levanta RuntimeError de propósito (para não assinar token com
+#  chave improvisada) e o contêiner não sobe. `webapp/.env.example` tem o
+#  molde. O site continua no ar até você reconstruir — dá tempo.
+#
+#  E TROQUE OS DOIS VALORES ao movê-los. Eles estiveram no git; tirar do
+#  arquivo não os tira do histórico. Enquanto forem os mesmos, continuam
+#  comprometidos.
+# ══════════════════════════════════════════════════════════════════
+
 services:
   api:
-    build: .
+    build:
+      context: .
+      args:
+        # Vazios por padrão. O caminho normal do selo é o
+        # backend/build_info.json gravado por scripts/selar_build.py;
+        # estes só existem para um CI passar os valores direto.
+        APP_VERSAO: ${APP_VERSAO:-}
+        APP_SHA: ${APP_SHA:-}
     container_name: solo_routines
     restart: always
     environment:
-      # Conexão com o banco gerado na Fase 2
-      - DATABASE_URL=postgresql://admin:Db_Solo_2026!@solo_db:5432/solo_routines_db
-      # Chave segura para gerar sessões e JWT
-      - SECRET_KEY=k2_Sol0_R0utin3s_!Producao_Segura_2026!_X9
-      - AMBIENTE=production
-      - CORS_ORIGINS=https://soloroutines.duckdns.org
-      - OAUTH_REDIRECT_BASE=https://soloroutines.duckdns.org
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@solo_db:5432/${POSTGRES_DB}
+      - SECRET_KEY=${SECRET_KEY}
+      - AMBIENTE=${AMBIENTE:-production}
+      # A CASA, separada do REGIME. O rodapé anunciou "RENDER" de dentro do
+      # Contabo durante meses porque o front traduzia "production" para o
+      # nome do hospedeiro antigo, cravado em JavaScript. Agora quem diz
+      # onde o app está é o próprio servidor.
+      - HOSPEDEIRO=${HOSPEDEIRO:-Contabo}
+      - CORS_ORIGINS=${CORS_ORIGINS:-https://soloroutines.duckdns.org}
+      - OAUTH_REDIRECT_BASE=${OAUTH_REDIRECT_BASE:-https://soloroutines.duckdns.org}
     volumes:
       - solo_uploads:/app/backend/uploads
     networks:

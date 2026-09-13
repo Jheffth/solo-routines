@@ -48,16 +48,42 @@ Não estamos mais usando o Render. O deploy não é mais automático apenas dand
 
 **Para aplicar mudanças na produção:**
 
+> ### ⚠️ A senha root estava escrita aqui
+>
+> Esta seção trazia a senha de root em texto puro, e este arquivo é
+> versionado. Ela foi removida do texto — mas **continua no histórico do
+> git** e, portanto, **continua comprometida até ser trocada no painel do
+> Contabo**. Apagar a linha não desfaz o vazamento; trocar a senha desfaz.
+>
+> Depois de trocar, o melhor passo é não precisar mais dela: instale sua
+> chave pública (`ssh-copy-id root@<ip>`) e desligue o login por senha
+> (`PasswordAuthentication no` em `/etc/ssh/sshd_config`). Aí nenhum script
+> nem documento precisa guardar segredo nenhum.
+
+### Antes de qualquer deploy
+
+```bash
+python scripts/selar_build.py    # grava VERSION + commit em backend/build_info.json
+```
+
+Sem isso o rodapé sobe marcado como **"sem selo"** — de propósito. O servidor
+não consegue descobrir o commit sozinho (o `/root/app/` não é repositório
+git), então quem sela é a sua máquina. O selo precisa ir junto no commit: o
+deploy move só o que está em `git ls-files`.
+
 ### Opção 1: Script Automático via Python
 1. Rode o script local `python scripts/deploy_contabo.py`.
-2. Este script acessa o servidor usando suas credenciais (IP: `169.58.116.61`, usuário: `root`, senha: `1601Jcs332503`), sincroniza os arquivos via SFTP, e reconstrói a imagem Docker.
-*(Lembre-se de ajustar o script se novos arquivos precisarem ser enviados, ou configure um rsync).*
+2. O script conecta em `169.58.116.61` como `root`, preferindo **chave SSH**.
+   Se não houver chave, ele pede a senha no terminal (ou lê de
+   `SOLO_DEPLOY_SENHA`). Nada de credencial gravada em arquivo.
+3. Ele reconstrói a imagem Docker. **A sincronia dos arquivos é por SFTP e
+   acontece antes** — o script não a faz.
 
 ### Opção 2: Manual via SSH
 1. **Transferir os arquivos modificados:**
    Use SCP ou um cliente FTP (como FileZilla/Termius) para enviar os arquivos da sua máquina para o diretório `/root/app/` no Contabo.
 2. **Acessar o servidor:**
-   `ssh root@169.58.116.61` (senha: `1601Jcs332503`)
+   `ssh root@169.58.116.61`
 3. **Reiniciar os contêineres:**
    ```bash
    cd /root/app/webapp
@@ -113,9 +139,14 @@ Sempre que um agente criar um desses elementos:
 | **IP / Host** | `169.58.116.61` |
 | **Domínio** | `soloroutines.duckdns.org` |
 | **Usuário SSH** | `root` |
-| **Senha SSH** | `1601Jcs332503` |
+| **Senha SSH** | *fora do repositório* — chave SSH, ou `SOLO_DEPLOY_SENHA` |
 | **Diretório App** | `/root/app/` |
 | **Diretório Docker**| `/root/app/webapp/` |
+
+A senha não mora mais em arquivo nenhum do projeto. Os scripts pedem a
+conexão a `scripts/ssh_contabo.py`, que tenta chave SSH primeiro e só
+pergunta no terminal se não houver. Se você instalar sua chave pública no
+servidor, nada mais precisa ser digitado — nem existir.
 
 ---
 

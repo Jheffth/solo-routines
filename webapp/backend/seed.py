@@ -4,6 +4,7 @@ from database import (
 )
 from auth.service import hash_senha
 from datetime import datetime
+import os
 
 
 # ── Conquistas de Dungeon (forjadas depois do seed original) ──────────────────
@@ -223,10 +224,31 @@ def popular_banco():
         print("[SEED] Criando dados iniciais do Solo Routines...")
 
         # ── Usuário Arquiteto (criado antes do admin, inviolável) ──
+        #
+        # A SENHA DO ARQUITETO ESTAVA ESCRITA AQUI, em texto puro, num
+        # arquivo versionado — e é a conta `inviolavel=True`, a que manda em
+        # tudo. Quem clonasse o repositório entrava como você.
+        #
+        # Agora vem de `SEED_ARQUITETO_SENHA`. Sem a variável, o seed gera
+        # uma senha aleatória e a imprime UMA vez no log do primeiro boot:
+        # melhor um susto de "onde está minha senha" do que uma conta de
+        # dono com senha pública. Troque-a no perfil depois de entrar.
+        #
+        # E ela também está no histórico do git. Se for parecida com senhas
+        # suas de outros lugares, troque nesses lugares também.
+        _senha_arq = os.getenv("SEED_ARQUITETO_SENHA", "").strip()
+        if not _senha_arq:
+            import secrets as _s
+            _senha_arq = _s.token_urlsafe(12)
+            print("[SEED] ─────────────────────────────────────────────")
+            print(f"[SEED] Senha inicial do Arquiteto: {_senha_arq}")
+            print("[SEED] Anote agora. Ela nao sera exibida de novo.")
+            print("[SEED] ─────────────────────────────────────────────")
+
         arquiteto = Usuario(
             nome           = "Jefferson",
             login          = "Jh3ffth",
-            senha_hash     = hash_senha("1601Jcs33@2503"),
+            senha_hash     = hash_senha(_senha_arq),
             classe         = "National Level",
             titulo         = "O Arquiteto do Sistema",
             xp_total       = 999999,
@@ -245,10 +267,21 @@ def popular_banco():
         db.add(arquiteto)
 
         # ── Usuário admin ──────────────────────────────────────
+        #
+        # `admin` / `admin123` num servidor exposto na internet é a primeira
+        # combinação que qualquer varredura automática tenta, e esta conta é
+        # nível "Criador". Mesmo tratamento do Arquiteto: vem de
+        # `SEED_ADMIN_SENHA` ou nasce aleatória e aparece uma vez no log.
+        _senha_admin = os.getenv("SEED_ADMIN_SENHA", "").strip()
+        if not _senha_admin:
+            import secrets as _s2
+            _senha_admin = _s2.token_urlsafe(12)
+            print(f"[SEED] Senha inicial do admin: {_senha_admin}")
+
         admin = Usuario(
             nome="Administrador",
             login="admin",
-            senha_hash=hash_senha("admin123"),
+            senha_hash=hash_senha(_senha_admin),
             classe="S-Rank",
             titulo="Monarca das Sombras",
             xp_total=0,
@@ -393,7 +426,8 @@ def popular_banco():
         db.commit()
         _sincronizar_transferiveis(db)
         print("[SEED] ✅ Dados iniciais criados com sucesso!")
-        print("[SEED] Login: admin | Senha: admin123")
+        print("[SEED] Logins: Jh3ffth (Arquiteto) e admin.")
+        print("[SEED] As senhas foram impressas acima, uma unica vez.")
     except Exception as e:
         db.rollback()
         print(f"[SEED] ❌ Erro: {e}")

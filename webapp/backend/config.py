@@ -27,12 +27,44 @@ if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 APP_NAME = os.getenv("APP_NAME", "Solo Routines")
+
+
 def _ler_versao_arquivo() -> str:
+    """A versão declarada, em ordem de confiança.
+
+    O `return "1.6.0"` que havia aqui era um número CRAVADO, e foi ele que
+    apareceu no rodapé durante meses enquanto o arquivo VERSION dizia 1.8.0.
+
+    Dentro do contêiner o caminho abaixo aterrissa em `/VERSION`, que não
+    existe: o `VERSION` mora na raiz do repositório e o contexto de build é
+    `webapp/`, então ele nunca foi copiado para a imagem. A busca falhava, o
+    literal respondia, e o literal era plausível — que é o que torna esse
+    tipo de erro tão caro. Ninguém desconfia de "1.6.0".
+
+    Agora o valor bom vem de `backend/build_info.json`, gravado por
+    `scripts/selar_build.py` na máquina onde o VERSION existe. Sem ele, esta
+    função devolve um marcador que ninguém confunde com versão.
+    """
+    import json
     import pathlib
-    arq = pathlib.Path(__file__).parent.parent.parent / "VERSION"
+
+    aqui = pathlib.Path(__file__).resolve().parent
+
+    selo = aqui / "build_info.json"
+    if selo.exists():
+        try:
+            v = json.loads(selo.read_text(encoding="utf-8")).get("versao")
+            if v:
+                return str(v).strip()
+        except Exception:
+            pass
+
+    arq = aqui.parent.parent / "VERSION"
     if arq.exists():
         return arq.read_text(encoding="utf-8").strip()
-    return "1.6.0"
+
+    return "sem selo"
+
 
 APP_VERSION = _ler_versao_arquivo()
 
