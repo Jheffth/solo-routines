@@ -122,15 +122,81 @@ const DungeonInterior = {
     if (typeof Dashboard !== 'undefined' && App.currentPage === 'dashboard') Dashboard.carregar();
   },
 
+  /* ══════════════════ TECLADO ══════════════════
+     A dungeon é para trabalhar, não para navegar. Quem está dentro tem
+     as mãos no teclado e não devia precisar mirar o mouse num botão a
+     cada missão.
+
+       Esc     minimiza (a sessão continua ativa lá dentro)
+       1 … 9   age na missão N: inicia se parada, cumpre se em curso
+       Espaço  inicia/pausa a missão em curso
+       F       modo foco
+
+     A GUARDA DO CAMPO DE TEXTO é o que impede isso de virar defeito:
+     sem ela, digitar "1" numa caixa de busca cumpriria uma missão. */
   _bindTeclas() {
-    this._escHandler = (e) => {
-      if (e.key !== 'Escape' || !this._aberto) return;
+    this._escHandler = (ev) => {
+      if (!this._aberto) return;
       if (document.getElementById('dg-clear-report')?.classList.contains('on')) return;
-      // ESC apenas minimiza o interior — a sessão continua ativa.
-      // O check-out de verdade é o botão "Sair da Dungeon" (ou o horário de saída).
-      this.fechar();
+
+      const alvo = ev.target;
+      const digitando = alvo && (
+        /^(INPUT|TEXTAREA|SELECT)$/.test(alvo.tagName) || alvo.isContentEditable);
+      if (digitando) return;
+      if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+
+      if (ev.key === 'Escape') {
+        // ESC apenas minimiza — o check-out de verdade é o botão
+        // "Encerrar" (ou o horário de saída).
+        this.fechar();
+        return;
+      }
+
+      if (ev.key === 'f' || ev.key === 'F') { ev.preventDefault(); this._toggleFoco(); return; }
+
+      /* AS AÇÕES SÓ VALEM COM A SESSÃO ATIVA. Numa sessão já resolvida
+         os cards ainda estão na tela, e um "1" distraído tentaria agir
+         sobre algo que o servidor vai recusar. */
+      if (this._sessao?.status !== 'ATIVA') return;
+
+      const acionaveis = this._execs.filter(e =>
+        !this._BONUS.includes(e.missao.natureza) &&
+        ['PENDENTE', 'EM_PROGRESSO', 'PAUSADA'].includes(e.status));
+
+      if (ev.key === ' ') {
+        const emCurso = acionaveis.find(e => e.status === 'EM_PROGRESSO');
+        if (emCurso) { ev.preventDefault(); this._acaoExec('pausar', emCurso.id); return; }
+        const parada = acionaveis.find(e => e.status !== 'EM_PROGRESSO');
+        if (parada) {
+          ev.preventDefault();
+          this._acaoExec(parada.status === 'PAUSADA' ? 'retomar' : 'iniciar', parada.id);
+        }
+        return;
+      }
+
+      if (/^[1-9]$/.test(ev.key)) {
+        const alvoExec = acionaveis[parseInt(ev.key, 10) - 1];
+        if (!alvoExec) return;
+        ev.preventDefault();
+        if (alvoExec.status === 'EM_PROGRESSO') this._cumprir(alvoExec.id);
+        else this._acaoExec(alvoExec.status === 'PAUSADA' ? 'retomar' : 'iniciar', alvoExec.id);
+      }
     };
     document.addEventListener('keydown', this._escHandler);
+  },
+
+  /* ══════════════════ MODO FOCO ══════════════════
+     Esconde tudo menos a missão em curso e os relógios. Quem entra numa
+     dungeon entra justamente para não se distrair — e o quadro cheio,
+     com feed e passivas, é distração legítima na hora errada. */
+  _toggleFoco() {
+    const el = document.getElementById('dungeon-interior');
+    if (!el) return;
+    const on = el.classList.toggle('dg-foco');
+    const btn = document.getElementById('dg-btn-foco');
+    if (btn) btn.classList.toggle('on', on);
+    this._log(on ? 'Modo foco: só o que está em curso.'
+                 : 'Modo foco desligado.', 'sussurro');
   },
 
   /* ══════════════════ TELA DE CHECK-IN ══════════════════ */
@@ -201,6 +267,18 @@ const DungeonInterior = {
   _renderHUD(ativa) {
     const d = this._dungeon;
     const hud = document.getElementById('dg-hud');
+
+    /* O RELÓGIO SÓ APARECE SE HOUVER PRAZO — e prazo tem duas fontes.
+       A condição era `d.hora_saida`, então um portão que não fecha com
+       `duracao_max_min` (o único caso em que o limite de travessia é a
+       ÚNICA regra de tempo que existe) não mostrava contagem nenhuma. */
+    const temPrazo = !!(d.hora_saida_hoje || d.hora_saida || d.duracao_max_min);
+    /* Num portão que não fecha, SAIR não é ENCERRAR: o servidor suspende
+       a sessão, o prazo continua correndo e o progresso fica de pé. As
+       duas ações precisam de dois botões — com um só, o hunter que saiu
+       para outra dungeon via o Relatório de Clear e achava que o dia
+       tinha acabado. */
+    const aberto = !!d.sempre_aberta;
     hud.innerHTML = `
       <div class="dg-hud-id">
         <div class="dg-hud-icon">${d.icone || '🌀'}</div>
@@ -213,25 +291,34 @@ const DungeonInterior = {
       ${ativa ? `
       <div class="dg-hud-mid">
         <div class="dg-clock"><div class="lbl">Tempo na Dungeon</div><div class="val" id="dg-cron">00:00:00</div></div>
-        ${d.hora_saida ? `<div class="dg-clock"><div class="lbl">Fecha em</div><div class="val" id="dg-countdown">--:--</div></div>` : ''}
+        ${temPrazo ? `<div class="dg-clock"><div class="lbl">Fecha em</div><div class="val" id="dg-countdown">--:--</div></div>` : ''}
+        <div class="dg-projecao" id="dg-projecao"></div>
         <div class="dg-counter"><div class="num xp" id="dg-hud-xp">+${this._sessao?.xp_ganho || 0}</div><div class="lbl">XP Sessão</div></div>
         <div class="dg-counter"><div class="num mc" id="dg-hud-mc">+${this._sessao?.moedas_ganhas || 0}</div><div class="lbl">Moedas</div></div>
       </div>` : '<div class="dg-hud-mid"></div>'}
       <div class="dg-hud-actions">
         <button class="dg-btn-ico" id="dg-btn-score" title="Crônica do Portão — score permanente">📜</button>
+        ${ativa ? '<button class="dg-btn-ico" id="dg-btn-foco" title="Modo foco (F) — só a missão em curso">◎</button>' : ''}
         <button class="dg-btn-ico" id="dg-btn-som" title="Som ambiente">${this._audioOn ? '🔊' : '🔇'}</button>
         <button class="dg-btn-ico" id="dg-btn-fs" title="Tela cheia">⛶</button>
-        ${ativa
-          ? '<button class="dg-btn-sair" id="dg-btn-sair">⟁ Sair da Dungeon</button>'
-          : '<button class="dg-btn-sair" id="dg-btn-fechar">✕ Voltar</button>'}
+        ${!ativa ? '<button class="dg-btn-sair" id="dg-btn-fechar">✕ Voltar</button>'
+          : aberto
+            ? '<button class="dg-btn-suspender" id="dg-btn-suspender" '
+              + 'title="Sai da dungeon sem encerrar o dia. O progresso fica e o prazo continua correndo.">'
+              + '⟲ Sair</button>'
+              + '<button class="dg-btn-sair" id="dg-btn-encerrar" '
+              + 'title="Fecha o dia desta dungeon e recebe o clear.">⟁ Encerrar</button>'
+            : '<button class="dg-btn-sair" id="dg-btn-encerrar">⟁ Sair da Dungeon</button>'}
       </div>`;
 
     document.getElementById('dg-btn-fs')?.addEventListener('click', () => this._toggleFullscreen());
     document.getElementById('dg-btn-score')?.addEventListener('click', () => {
       if (typeof DungeonScore !== 'undefined') DungeonScore.abrir(this._dungeon);
     });
+    document.getElementById('dg-btn-foco')?.addEventListener('click', () => this._toggleFoco());
     document.getElementById('dg-btn-som')?.addEventListener('click', () => this._toggleAudio());
-    document.getElementById('dg-btn-sair')?.addEventListener('click', () => this._confirmarSaida());
+    document.getElementById('dg-btn-suspender')?.addEventListener('click', () => this._sair(false));
+    document.getElementById('dg-btn-encerrar')?.addEventListener('click', () => this._sair(true));
     document.getElementById('dg-btn-fechar')?.addEventListener('click', () => this.fechar());
   },
 
@@ -255,13 +342,28 @@ const DungeonInterior = {
     this._renderMissoes();
   },
 
+  /* AS NATUREZAS QUE O QUADRO CONHECE.
+     Estas duas listas são a correção de um defeito grave: o filtro era
+     uma LISTA BRANCA de `['PADRAO','AGENDADA']`, e CIRCUITO, META e
+     REPETIÇÃO — que o servidor arma e que CONTAM para o rank de clear —
+     simplesmente não apareciam. O hunter forjava um circuito, entrava,
+     não via nada, saía com rank D por missões que a tela nunca mostrou.
+
+     Por isso agora a regra é por EXCLUSÃO, não por inclusão: o que não
+     for passiva nem bônus vai para o quadro ativo, inclusive natureza
+     que ainda não existe. Lista branca esquece; lista negra não. */
+  _PASSIVAS: ['RESISTENCIA'],
+  _BONUS:    ['EVENTO_ALEATORIO', 'BEM_ESTAR', 'FLAVOR'],
+
   _renderMissoes() {
     const ativas   = document.getElementById('dg-col-ativas');
     const passivas = document.getElementById('dg-col-passivas');
     if (!ativas) return;
 
-    const padrao = this._execs.filter(e => ['PADRAO', 'AGENDADA'].includes(e.missao.natureza));
-    const resist = this._execs.filter(e => e.missao.natureza === 'RESISTENCIA');
+    const padrao = this._execs.filter(e =>
+      !this._PASSIVAS.includes(e.missao.natureza) &&
+      !this._BONUS.includes(e.missao.natureza));
+    const resist = this._execs.filter(e => this._PASSIVAS.includes(e.missao.natureza));
 
     ativas.innerHTML = padrao.length ? padrao.map((e, i) => this._mcardHTML(e, i)).join('')
       : '<div style="font-size:.78rem;color:var(--text-muted);padding:.5rem 0">Nenhuma missão ativa neste quadro.</div>';
@@ -327,18 +429,138 @@ const DungeonInterior = {
 
     const emCurso = e.status === 'EM_PROGRESSO' ? ' emcurso' : '';
     const apagada = ['CANCELADA', 'EXPIRADA'].includes(e.status) || jaExpirou ? ' done' : '';
+    const risco = m.penalidade_xp ?? Math.floor((m.xp_recompensa || 0) / 2);
+
+    /* O GLIFO DA NATUREZA no lugar do emoji de fallback. O `icone` que o
+       hunter escolheu continua valendo — ele é a identidade da missão;
+       o glifo entra quando ele não escolheu, e a natureza vira um selo
+       à parte, que é onde essa informação pertence. */
+    const g = this._glifo(m.natureza);
+    const cabeca = m.icone
+      ? `<span class="emoji">${m.icone}</span>`
+      : g;
+
     return `
-      <div class="dg-mcard${e.status === 'CONCLUIDA' ? ' done' : apagada}${emCurso}" style="animation-delay:${i * .07}s">
-        <div class="ico">${m.icone || (agendada ? '🕒' : '⚔️')}</div>
+      <article class="dg-mcard${e.status === 'CONCLUIDA' ? ' done' : apagada}${emCurso}"
+               style="animation-delay:${i * .07}s" data-dg-card="${e.id}">
+        <span class="dg-mc-borda"></span>
+        <div class="ico">${cabeca}</div>
         <div class="info">
-          <div class="titulo">${m.titulo}${e.status === 'PAUSADA' ? ' <span style="color:var(--gold-bright);font-size:.7rem">(pausada)</span>' : ''}</div>
+          <div class="titulo">${m.titulo}${e.status === 'PAUSADA' ? ' <span class="dg-mc-pausada">pausada</span>' : ''}</div>
           ${m.descricao ? `<div class="desc">${m.descricao}</div>` : ''}
           ${janela}
-          <div class="rec">+${m.xp_recompensa} XP · +${m.moedas_recompensa} 💰
-            <span style="color:var(--red-crit);opacity:.85">· ⚠ −${m.penalidade_xp ?? Math.floor((m.xp_recompensa || 0) / 2)} XP se falhar</span></div>
+          ${this._corpoNatureza(m)}
+          <div class="dg-mc-placas">
+            <span class="pl nat">${g}${this._rotuloNatureza(m.natureza)}</span>
+            <span class="pl xp">+${m.xp_recompensa} XP</span>
+            ${m.moedas_recompensa ? `<span class="pl mo">+${m.moedas_recompensa}</span>` : ''}
+            ${risco > 0 ? `<span class="pl risco">−${risco} se falhar</span>` : ''}
+          </div>
         </div>
-        <div style="display:flex;gap:.35rem;align-items:center;flex-shrink:0">${acoes}</div>
-      </div>`;
+        <div class="dg-mc-lado">
+          ${emCurso ? `<div class="dg-mc-crono" data-crono="${e.id}">--:--</div>` : ''}
+          <div class="dg-mc-acoes">${acoes}</div>
+        </div>
+      </article>`;
+  },
+
+  /* O alfabeto do Sistema, com queda para o losango genérico se
+     `glifos.js` não tiver carregado — placa vazia é pior que emoji. */
+  _GLIFO_NAT: {
+    PADRAO: 'padrao', AGENDADA: 'agendada', CIRCUITO: 'circuito',
+    META: 'meta', REPETICAO: 'repeticao', RESISTENCIA: 'ampulheta',
+    EVENTO_ALEATORIO: 'evento', BEM_ESTAR: 'bem_estar', FLAVOR: 'olho',
+  },
+  _ROTULO_NAT: {
+    PADRAO: 'Padrão', AGENDADA: 'Agendada', CIRCUITO: 'Circuito',
+    META: 'Meta', REPETICAO: 'Repetição', RESISTENCIA: 'Resistência',
+    EVENTO_ALEATORIO: 'Evento', BEM_ESTAR: 'Bem-estar', FLAVOR: 'Sussurro',
+  },
+  _glifo(natureza, tam) {
+    const nome = this._GLIFO_NAT[natureza] || 'padrao';
+    if (window.Glifos && Glifos.existe(nome)) return Glifos.linha(nome, tam || 15);
+    return `<svg viewBox="0 0 24 24" width="${tam || 15}" height="${tam || 15}" fill="none"
+      stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"
+      ><path d="M12 2l8 10-8 10-8-10z"/></svg>`;
+  },
+  _rotuloNatureza(n) { return this._ROTULO_NAT[n] || n; },
+
+  /* ══════════════════ O CRONÔMETRO DO CARD ══════════════════
+     O servidor não devolve QUANDO a execução foi iniciada — `iniciar`
+     só muda o status. Em vez de esperar uma coluna nova, o início fica
+     no `localStorage`, exatamente como `missao-card.js` já faz com os
+     blocos do circuito: a marca é do navegador, some no fim e não
+     precisa de migração.
+
+     É por isso que ele não sobrevive a trocar de máquina — e não
+     precisa: o tempo que vale, o da sessão, quem guarda é o servidor. */
+  _chaveCrono: (id) => 'dgcrono:' + id,
+
+  _cronoLigar(id) {
+    try { localStorage.setItem(this._chaveCrono(id), String(Date.now())); } catch (_) {}
+  },
+  _cronoDesligar(id) {
+    try { localStorage.removeItem(this._chaveCrono(id)); } catch (_) {}
+  },
+  _cronoValor(id) {
+    try {
+      const t = parseInt(localStorage.getItem(this._chaveCrono(id)), 10);
+      return isNaN(t) ? null : t;
+    } catch (_) { return null; }
+  },
+
+  /* O QUE CADA NATUREZA PRECISA DIZER DE SI.
+     Aparecer no quadro não basta: um circuito de quatro blocos exibido
+     como uma linha de texto continua sendo uma missão que o hunter não
+     entende. Aqui cada natureza mostra o SEU conteúdo.
+
+     ESTA É A LEITURA, NÃO O REGISTRO. Marcar bloco a bloco do circuito e
+     somar na meta exigem endpoints que a dungeon ainda não tem (lá fora
+     isso vive em `execucoes`, que é outro caminho). Enquanto eles não
+     existem, a missão é cumprida inteira — mas pelo menos o hunter vê o
+     que combinou consigo mesmo antes de dar por feita. */
+  _corpoNatureza(m) {
+    const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+    if (m.natureza === 'CIRCUITO') {
+      const etapas = (m.circuito && m.circuito.blocos) || [];
+      if (!etapas.length) return '';
+      return `<div class="dg-nat-blocos">${etapas.map(b => {
+        const faixa = b.min != null && b.max != null && b.max !== b.min
+          ? `${b.min}–${b.max}` : (b.min != null ? String(b.min) : '');
+        const un  = b.unidade ? ' ' + b.unidade : '';
+        const ser = b.series ? `${b.series} × ` : '';
+        return `<span class="dg-bloco${b.feito ? ' feito' : ''}">`
+             + `${esc(b.titulo)}<b>${esc(ser + faixa + un)}</b></span>`;
+      }).join('')}</div>`;
+    }
+
+    if (m.natureza === 'META' && m.meta_alvo != null) {
+      const pct = Math.max(0, Math.min(100,
+        ((m.meta_atual || 0) / (m.meta_alvo || 1)) * 100));
+      const un = m.meta_unidade ? ' ' + m.meta_unidade : '';
+      return `<div class="dg-nat-meta">
+          <div class="barra"><span style="width:${pct.toFixed(0)}%"></span></div>
+          <div class="num">${m.meta_atual || 0} / ${m.meta_alvo}${esc(un)}</div>
+        </div>`;
+    }
+
+    if (m.natureza === 'REPETICAO' && m.alvo_repeticoes) {
+      const feitas = m.repeticoes || 0;
+      /* Os pips param em 12 porque depois disso ninguém conta bolinha:
+         vira mancha. Acima disso, o número faz o trabalho sozinho. */
+      if (m.alvo_repeticoes <= 12) {
+        let pips = '';
+        for (let k = 0; k < m.alvo_repeticoes; k++) {
+          pips += `<i class="${k < feitas ? 'on' : ''}"></i>`;
+        }
+        return `<div class="dg-nat-pips">${pips}<b>${feitas}/${m.alvo_repeticoes}</b></div>`;
+      }
+      return `<div class="dg-nat-pips"><b>${feitas} de ${m.alvo_repeticoes} vezes</b></div>`;
+    }
+
+    return '';
   },
 
   async _acaoExec(acao, execId) {
@@ -354,6 +576,13 @@ const DungeonInterior = {
       const idx = this._execs.findIndex(e => e.id === execId);
       if (idx >= 0) this._execs[idx] = resp.execucao;
       if (resp.sessao) { this._sessao = resp.sessao; }
+
+      /* O relógio do card começa no `iniciar` e no `retomar`, e morre em
+         qualquer saída. Pausar apaga junto: um cronômetro que continua
+         correndo com a missão parada conta uma coisa que não aconteceu. */
+      if (acao === 'iniciar' || acao === 'retomar') this._cronoLigar(execId);
+      else this._cronoDesligar(execId);
+
       this._renderMissoes();
       if (acao === 'cancelar' && resp.penalidade > 0) {
         this._log(`${rotulos[acao]}: ${resp.execucao.missao.titulo} — o Sistema cobra o preço: −${resp.penalidade} XP`, 'perda');
@@ -372,6 +601,7 @@ const DungeonInterior = {
       const idx = this._execs.findIndex(e => e.id === execId);
       if (idx >= 0) this._execs[idx] = resp.execucao;
       this._sessao = resp.sessao;
+      this._cronoDesligar(execId);
       this._atualizarContadores();
       this._renderMissoes();
       const m = resp.execucao.missao;
@@ -416,23 +646,51 @@ const DungeonInterior = {
       el.textContent = `${h}:${m}:${ss}`;
     }
 
-    // Contagem regressiva até hora_saida
+    /* ── A CONTAGEM REGRESSIVA ──────────────────────────────────────
+       ERA A TERCEIRA CÓPIA DIVERGENTE DA REGRA DE PRAZO. Lia
+       `d.hora_saida` cru: ignorava `hora_saida_hoje` (a agenda semanal
+       do dia) e ignorava `duracao_max_min` — o limite de travessia que
+       o Arquiteto pediu, e que num portão que não fecha é o ÚNICO
+       prazo que existe. E quando o prazo vencia, escrevia "ABERTO",
+       que é exatamente o contrário do que tinha acontecido.
+
+       Agora chama `PortaoEstado.prazoDa`, o mesmo espelho de
+       `_prazo_da_sessao` que a grade usa. Uma regra, um lugar. */
     const cd = document.getElementById('dg-countdown');
-    if (cd && d.hora_saida) {
-      const [hh, mm] = d.hora_saida.split(':').map(Number);
-      const alvo = new Date(agoraSync); 
-      alvo.setHours(hh, mm, 0, 0);
-      let diff = Math.floor((alvo.getTime() - agoraSync) / 1000);
-      if (diff <= 0) {
-        cd.textContent = 'ABERTO';
-        cd.classList.add('warn');
+    if (cd && typeof PortaoEstado !== 'undefined') {
+      const agora = new Date(agoraSync);
+      const prazo = PortaoEstado.prazoDa(d, s, agora);
+      if (!prazo) {
+        cd.textContent = '∞';
+        cd.classList.remove('warn');
       } else {
-        const h = String(Math.floor(diff / 3600)).padStart(2, '0');
-        const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
-        cd.textContent = `${h}:${m}`;
-        cd.classList.toggle('warn', diff < 900);
+        const diff = Math.floor((prazo.getTime() - agoraSync) / 1000);
+        if (diff <= 0) {
+          cd.textContent = 'VENCIDO';
+          cd.classList.add('warn');
+        } else {
+          const h = String(Math.floor(diff / 3600)).padStart(2, '0');
+          const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
+          cd.textContent = `${h}:${m}`;
+          cd.classList.toggle('warn', diff < 900);
+        }
       }
     }
+
+    /* Os cronômetros dos cards em curso. Contam do `iniciar`, não da
+       entrada na dungeon — é o tempo daquela missão, não do dia. */
+    document.querySelectorAll('[data-crono]').forEach(el => {
+      const t0 = this._cronoValor(el.dataset.crono);
+      if (!t0) { el.textContent = '--:--'; return; }
+      const seg = Math.max(0, Math.floor((Date.now() - t0) / 1000));
+      const h = Math.floor(seg / 3600);
+      const m = String(Math.floor((seg % 3600) / 60)).padStart(2, '0');
+      const s2 = String(seg % 60).padStart(2, '0');
+      el.textContent = h > 0 ? `${h}:${m}:${s2}` : `${m}:${s2}`;
+    });
+
+    // O rank que ele levaria se saísse agora
+    this._atualizarProjecao();
 
     // Timers dos eventos pop-in
     document.querySelectorAll('.dg-evento [data-expira]').forEach(t => {
@@ -482,6 +740,65 @@ const DungeonInterior = {
     const mc = document.getElementById('dg-hud-mc');
     if (xp) xp.textContent = '+' + (this._sessao?.xp_ganho || 0);
     if (mc) mc.textContent = '+' + (this._sessao?.moedas_ganhas || 0);
+    this._atualizarProjecao();
+  },
+
+  /* ══════════════════ O RANK PROJETADO ══════════════════
+     "Se você sair agora: rank B."
+
+     Hoje o hunter só descobre o rank DEPOIS de sair, quando já não dá
+     para mudar nada. Mas a conta inteira já está no cliente — as
+     execuções contáveis e o mesmo `_MULT_CLEAR` do servidor — então
+     esconder isso até o fim não protegia nada, só tirava dele a única
+     informação capaz de mudar a decisão de ficar mais dez minutos.
+
+     E ela vem com o que FALTA para o próximo degrau, que é a parte
+     acionável: "rank B · faltam 2 para A" diz o que fazer; "rank B"
+     sozinho só informa.
+
+     A tabela é a de `routers/dungeons.py`. Se ela mudar lá e não aqui,
+     o interior passa a prometer um rank que não vem — é o preço de
+     antecipar a conta, e é o mesmo preço que a prévia da Forja paga. */
+  _FAIXAS: [[90, 'S'], [70, 'A'], [50, 'B'], [30, 'C'], [0, 'D']],
+  _CONTAVEIS: ['PADRAO', 'AGENDADA', 'CIRCUITO', 'META', 'REPETICAO', 'RESISTENCIA'],
+
+  _projecao() {
+    const cont = this._execs.filter(e => this._CONTAVEIS.includes(e.missao.natureza));
+    if (!cont.length) return null;
+
+    const feitas = cont.filter(e => e.status === 'CONCLUIDA').length;
+    const pct = (feitas / cont.length) * 100;
+    let rank = 'D';
+    for (const [piso, r] of this._FAIXAS) { if (pct >= piso) { rank = r; break; } }
+
+    /* O ATRASO REBAIXA O S PARA A — a mesma regra do servidor. Sem ela a
+       projeção prometeria um S que o clear não entrega, e descobrir isso
+       no relatório seria pior do que nunca ter visto a projeção. */
+    if ((this._sessao?.atraso_minutos || 0) > 0 && rank === 'S') rank = 'A';
+
+    let faltam = 0, proximo = null;
+    for (let k = this._FAIXAS.length - 1; k >= 0; k--) {
+      const [piso, r] = this._FAIXAS[k];
+      if (piso > pct) {
+        proximo = r;
+        faltam = Math.max(1, Math.ceil((piso / 100) * cont.length) - feitas);
+        break;
+      }
+    }
+    return { rank, pct, feitas, total: cont.length, faltam, proximo };
+  },
+
+  _atualizarProjecao() {
+    const el = document.getElementById('dg-projecao');
+    if (!el) return;
+    const p = this._projecao();
+    if (!p) { el.innerHTML = ''; return; }
+
+    const falta = p.proximo
+      ? `<span class="falta">falta${p.faltam === 1 ? '' : 'm'} ${p.faltam} para ${p.proximo}</span>`
+      : '<span class="falta topo">o topo</span>';
+    el.innerHTML = `<span class="lbl">Se sair agora</span>`
+      + `<span class="rk r-${p.rank}">${p.rank}</span>${falta}`;
   },
 
   /* ══════════════════ EVENTOS / SUSSURROS ══════════════════ */
@@ -542,18 +859,37 @@ const DungeonInterior = {
   },
 
   /* ══════════════════ SAÍDA / RELATÓRIO DE CLEAR ══════════ */
-  _confirmarSaida() {
-    // Saída direta, sem modal de confirmação (o Modal travava a tela sob o
-    // interior em tela cheia). O Relatório de Clear já é a "cerimônia" de saída.
-    this._sair();
-  },
+  /* Saída direta, sem modal de confirmação (o Modal travava a tela sob o
+     interior em tela cheia). O Relatório de Clear já é a "cerimônia". */
+  _confirmarSaida() { this._sair(true); },
 
-  async _sair() {
+  /* SAIR E ENCERRAR SÃO COISAS DIFERENTES.
+     Num portão que não fecha, `sair` sem `encerrar` SUSPENDE: o servidor
+     não pune as pendentes, não fecha o rank e não paga o clear — o
+     hunter foi cuidar de outra dungeon e pode voltar. Mostrar o
+     Relatório de Clear nesse caso seria mentir: é a tela de fim de dia.
+     Aqui a suspensão sai em silêncio, com um aviso do que continua
+     correndo lá dentro. */
+  async _sair(encerrar) {
     try {
-      const resp = await API.dungeons.sair(this._dungeon.id, this._modoTeste);
+      const resp = encerrar
+        ? await API.dungeons.encerrar(this._dungeon.id, this._modoTeste)
+        : await API.dungeons.sair(this._dungeon.id, this._modoTeste);
+
       this._pararLoops();
       this._sessao = resp.sessao;
-      this._mostrarClear(resp.relatorio);
+
+      const r = resp.relatorio || {};
+      if (r.suspensa) {
+        const resta = r.minutos_restantes != null
+          ? ` O prazo continua: restam ${r.minutos_restantes} min.`
+          : '';
+        SoloDialog.toast('⟲ Você saiu. O progresso ficou intacto.' + resta, 'info');
+        this.fechar();
+        return;
+      }
+
+      this._mostrarClear(r);
       this._fxEventosXP(resp.eventos_xp);
     } catch (err) {
       SoloDialog.toast(err.message || String(err), 'error');

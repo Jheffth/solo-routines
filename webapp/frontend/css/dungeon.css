@@ -593,16 +593,26 @@
 }
 
 /* ── Corpo do interior ───────────────────────────────────── */
+/* AS COLUNAS ERAM FIXAS em `1fr 1fr 320px`. A coluna de passivas fica
+   VAZIA na maioria das dungeons (só RESISTENCIA entra nela) e mesmo
+   assim comia um terço da tela; em 1366×768 o feed de 320px levava
+   metade do espaço útil. Com `auto-fit`, as colunas somem quando não
+   cabem e as missões ficam com a largura inteira — que é onde o olho
+   precisa estar. */
 .dg-body {
   position: relative;
   z-index: 4;
   flex: 1;
   display: grid;
-  grid-template-columns: 1fr 1fr 320px;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
   gap: 1.1rem;
   padding: 1.1rem 1.4rem 1.4rem;
   overflow-y: auto;
   min-height: 0;
+  align-content: start;
+}
+@media (min-width: 1180px) {
+  .dg-body { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 300px; }
 }
 @media (max-width: 1100px) { .dg-body { grid-template-columns: 1fr 1fr; } .dg-col-feed { grid-column: 1 / -1; } }
 @media (max-width: 720px)  { .dg-body { grid-template-columns: 1fr; } }
@@ -621,28 +631,159 @@
   background: linear-gradient(90deg, color-mix(in srgb, var(--dg-a,#7c3aed) 40%, transparent), transparent);
 }
 
-/* Cartão de missão ativa */
+/* ══════════════════════════════════════════════════════════════════
+   O CARTÃO DE MISSÃO — padrão de excelência
+
+   O card antigo era um retângulo achatado: gradiente sutil, borda de
+   22%, um emoji de 1.3rem e o XP como texto solto. Ao lado do que o
+   projeto já faz em `missao-card.js` — vidro, borda viva em
+   `conic-gradient` sob máscara `xor`, cronômetro, placas — ele parecia
+   de outra época do projeto.
+
+   Aqui ele fala a MESMA língua do portão e do circuito, sem virar
+   cópia: vidro com `backdrop-filter`, cantos chanfrados em vez de raio,
+   a borda viva SÓ enquanto a missão está em curso, e o XP e a punição
+   como placas — não como frase.
+   ══════════════════════════════════════════════════════════════════ */
+@property --dg-giro { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+
 .dg-mcard {
-  background: linear-gradient(160deg, rgba(255,255,255,.03), rgba(0,0,0,.25));
-  border: 1px solid color-mix(in srgb, var(--dg-a, #7c3aed) 22%, transparent);
-  border-radius: 13px;
+  position: relative;
+  background:
+    linear-gradient(158deg,
+      color-mix(in srgb, var(--dg-a, #7c3aed) 10%, transparent) 0%,
+      rgba(12, 12, 22, .78) 44%,
+      rgba(7, 7, 14, .86) 100%);
+  -webkit-backdrop-filter: blur(7px) saturate(118%);
+  backdrop-filter: blur(7px) saturate(118%);
+  border: 1px solid color-mix(in srgb, var(--dg-a, #7c3aed) 26%, transparent);
+  /* Cantos chanfrados: a linguagem do portão. O raio de 13px era do
+     card antigo e não existe em mais nenhuma peça nova. */
+  clip-path: polygon(13px 0, 100% 0, 100% calc(100% - 13px),
+                     calc(100% - 13px) 100%, 0 100%, 0 13px);
   padding: .85rem .95rem;
   margin-bottom: .7rem;
-  display: flex; align-items: center; gap: .8rem;
-  transition: all var(--transition-base);
+  display: flex; align-items: flex-start; gap: .8rem;
+  transition: border-color .2s ease, box-shadow .25s ease, transform .2s ease;
   animation: dg-card-in .4s ease backwards;
 }
-.dg-mcard:hover { border-color: var(--dg-a); box-shadow: 0 0 16px var(--dg-soft); }
+.dg-mcard:hover {
+  border-color: color-mix(in srgb, var(--dg-a, #7c3aed) 65%, transparent);
+  box-shadow: 0 0 22px var(--dg-soft);
+  transform: translateY(-1px);
+}
 @keyframes dg-card-in { from { opacity: 0; transform: translateY(10px); } }
 
-.dg-mcard .ico { font-size: 1.3rem; flex-shrink: 0; }
+/* O chanfro aceso — o mesmo fio de luz da lápide do portão. */
+.dg-mcard::before {
+  content: ''; position: absolute; left: -1px; top: 13px;
+  width: 19px; height: 2px;
+  background: var(--dg-a, #7c3aed);
+  transform: rotate(-45deg); transform-origin: left center;
+  box-shadow: 0 0 10px var(--dg-glow);
+  pointer-events: none;
+}
+
+/* A BORDA VIVA. Existe no DOM sempre e só ACENDE em curso — o mesmo
+   `conic-gradient` sob máscara `xor` do bloco do circuito e do dossiê,
+   que pinta só o perímetro sem engordar o layout. */
+.dg-mc-borda {
+  position: absolute; inset: 0;
+  padding: 1px; pointer-events: none;
+  opacity: 0; transition: opacity .3s ease;
+  background: conic-gradient(from var(--dg-giro, 0deg),
+    transparent 0deg, transparent 230deg,
+    color-mix(in srgb, var(--dg-a, #7c3aed) 60%, transparent) 300deg,
+    var(--dg-a, #7c3aed) 338deg, transparent 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  clip-path: inherit;
+}
+.dg-mcard.emcurso .dg-mc-borda {
+  opacity: 1;
+  animation: dg-gira 4.5s linear infinite;
+}
+@keyframes dg-gira { to { --dg-giro: 360deg; } }
+
+.dg-mcard .ico {
+  flex-shrink: 0; line-height: 0;
+  color: var(--dg-a, #a78bfa);
+  padding-top: .1rem;
+}
+.dg-mcard .ico .emoji { font-size: 1.3rem; line-height: 1; }
+.dg-mcard .ico svg { width: 20px; height: 20px; display: block; }
+.dg-mcard.emcurso .ico { filter: drop-shadow(0 0 7px var(--dg-glow)); }
+
 .dg-mcard .info { flex: 1; min-width: 0; }
-.dg-mcard .titulo { font-family: var(--font-section); font-weight: 600; font-size: .92rem; color: var(--text-primary); }
+.dg-mcard .titulo {
+  font-family: var(--font-section);
+  font-weight: 600; font-size: .92rem;
+  color: var(--text-primary);
+}
+.dg-mc-pausada {
+  font-size: .62rem; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--gold-bright); margin-left: .35rem;
+}
 .dg-mcard .desc { font-size: .72rem; color: var(--text-muted); margin-top: .1rem; }
-.dg-mcard .rec { font-family: var(--font-section); font-size: .68rem; color: var(--gold-bright); margin-top: .2rem; }
+
+/* ── AS PLACAS ────────────────────────────────────────────────────
+   O XP, as moedas e o risco eram uma frase só: "+30 XP · +3 💰 · ⚠ −15
+   XP se falhar". Como placas, o olho separa ganho de risco sem ler. */
+.dg-mc-placas {
+  display: flex; flex-wrap: wrap; gap: .3rem;
+  margin-top: .45rem;
+}
+.dg-mc-placas .pl {
+  display: inline-flex; align-items: center; gap: .28rem;
+  font-family: var(--font-section);
+  font-size: .63rem; font-weight: 700; letter-spacing: .04em;
+  padding: .2rem .45rem;
+  clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
+  white-space: nowrap;
+}
+.dg-mc-placas .pl svg { width: 12px; height: 12px; display: block; }
+.dg-mc-placas .nat {
+  color: var(--text-secondary);
+  background: rgba(148, 163, 184, .09);
+  border: 1px solid rgba(148, 163, 184, .22);
+}
+.dg-mc-placas .xp {
+  color: var(--gold-bright, #fbbf24);
+  background: rgba(251, 191, 36, .1);
+  border: 1px solid rgba(251, 191, 36, .3);
+}
+.dg-mc-placas .mo {
+  color: var(--cyan-glow, #22d3ee);
+  background: rgba(34, 211, 238, .09);
+  border: 1px solid rgba(34, 211, 238, .28);
+}
+.dg-mc-placas .risco {
+  color: var(--red-crit, #ef4444);
+  background: rgba(239, 68, 68, .08);
+  border: 1px solid rgba(239, 68, 68, .26);
+}
+
+/* ── O LADO DIREITO: cronômetro e ações ─────────────────────────── */
+.dg-mc-lado {
+  display: flex; flex-direction: column; align-items: flex-end;
+  gap: .4rem; flex-shrink: 0;
+}
+.dg-mc-acoes { display: flex; gap: .35rem; align-items: center; }
+
+/* O relógio da MISSÃO, não o do dia. Conta do `iniciar`. */
+.dg-mc-crono {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: .82rem; font-weight: 700;
+  letter-spacing: .06em;
+  color: var(--dg-a, #a78bfa);
+  text-shadow: 0 0 10px var(--dg-glow);
+  font-variant-numeric: tabular-nums;
+}
 
 .dg-mcard.done { opacity: .55; }
 .dg-mcard.done .titulo { text-decoration: line-through; color: var(--text-muted); }
+.dg-mcard.done::before { opacity: .3; }
 
 .dg-btn-cumprir {
   font-family: var(--font-section);
@@ -682,15 +823,193 @@
 .dg-exec-tag.can  { color: var(--text-muted);  border: 1px solid rgba(148,163,184,.3); background: rgba(148,163,184,.06); }
 .dg-exec-tag.wait { color: var(--cyan-glow);   border: 1px solid rgba(34,211,238,.35); background: rgba(34,211,238,.07); }
 
-/* Missão em curso: borda viva pulsando */
+/* Missão em curso: o cartão respira sob a borda viva.
+   A pulsação ficou SÓ no `box-shadow` porque a borda agora é um
+   elemento próprio girando — duas animações no mesmo elemento se
+   cancelam nesta base de código, e essa lição já custou caro no
+   circuito. */
 .dg-mcard.emcurso {
-  border-color: var(--dg-a);
-  box-shadow: 0 0 12px var(--dg-soft), inset 0 0 18px rgba(0,0,0,.3);
-  animation: dg-mcard-curso 2.4s ease-in-out infinite;
+  border-color: color-mix(in srgb, var(--dg-a, #7c3aed) 55%, transparent);
+  animation: dg-card-in .4s ease backwards, dg-mcard-curso 2.6s ease-in-out infinite;
 }
 @keyframes dg-mcard-curso {
-  0%,100% { box-shadow: 0 0 8px var(--dg-soft); }
-  50%     { box-shadow: 0 0 20px var(--dg-glow); }
+  0%,100% { box-shadow: 0 0 10px var(--dg-soft), inset 0 0 20px rgba(0,0,0,.32); }
+  50%     { box-shadow: 0 0 26px var(--dg-glow), inset 0 0 20px rgba(0,0,0,.32); }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   O RANK PROJETADO — "se sair agora"
+
+   A informação que mais muda comportamento no interior, e que não
+   existia: o hunter só descobria o rank DEPOIS de sair, quando já não
+   dava para fazer nada. "Rank B · faltam 2 para A" é acionável; o
+   relatório de clear, por definição, chega tarde demais para agir.
+   ══════════════════════════════════════════════════════════════════ */
+.dg-projecao {
+  display: flex; align-items: center; gap: .45rem;
+  padding: .3rem .6rem;
+  background: rgba(255, 255, 255, .03);
+  border: 1px solid color-mix(in srgb, var(--dg-a, #7c3aed) 24%, transparent);
+  clip-path: polygon(7px 0, 100% 0, calc(100% - 7px) 100%, 0 100%);
+}
+.dg-projecao:empty { display: none; }
+.dg-projecao .lbl {
+  font-family: var(--font-section);
+  font-size: .56rem; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--text-muted);
+}
+.dg-projecao .rk {
+  font-family: var(--font-section);
+  font-size: 1.1rem; font-weight: 800; line-height: 1;
+  transition: color .4s ease, text-shadow .4s ease;
+}
+.dg-projecao .rk.r-S { color: #ffd34d; text-shadow: 0 0 12px rgba(255,211,77,.6); }
+.dg-projecao .rk.r-A { color: #ff9a3c; text-shadow: 0 0 12px rgba(255,154,60,.5); }
+.dg-projecao .rk.r-B { color: #cf8bff; text-shadow: 0 0 12px rgba(207,139,255,.5); }
+.dg-projecao .rk.r-C { color: #63b3ff; text-shadow: 0 0 12px rgba(99,179,255,.45); }
+.dg-projecao .rk.r-D { color: #8286a0; }
+.dg-projecao .falta {
+  font-size: .62rem; color: var(--text-secondary);
+  border-left: 1px solid rgba(148,163,184,.22);
+  padding-left: .45rem;
+}
+.dg-projecao .falta.topo { color: var(--gold-bright, #fbbf24); }
+
+/* ══════════════════════════════════════════════════════════════════
+   MODO FOCO
+
+   Esconde tudo menos o que está em curso. Quem entra numa dungeon entra
+   para não se distrair — e o quadro cheio, com feed e passivas, é
+   distração legítima na hora errada.
+
+   `display:none` nas colunas, e não `opacity`: o que está escondido não
+   pode continuar ocupando a tela nem receber clique.
+   ══════════════════════════════════════════════════════════════════ */
+#dungeon-interior.dg-foco .dg-col-feed,
+#dungeon-interior.dg-foco .dg-col:nth-child(2) { display: none; }
+#dungeon-interior.dg-foco .dg-body { grid-template-columns: minmax(0, 720px); justify-content: center; }
+#dungeon-interior.dg-foco .dg-mcard:not(.emcurso) { display: none; }
+/* Se nada estiver em curso, o foco não pode virar uma tela vazia — o
+   quadro inteiro volta, e o rótulo da coluna explica por quê. */
+#dungeon-interior.dg-foco .dg-col:first-child:not(:has(.dg-mcard.emcurso)) .dg-mcard { display: flex; }
+#dungeon-interior.dg-foco .dg-col h3::before {
+  content: '◎ ';
+  color: var(--dg-a, #a78bfa);
+}
+.dg-btn-ico.on {
+  color: var(--dg-a, #a78bfa);
+  border-color: var(--dg-a, #a78bfa);
+  box-shadow: 0 0 12px var(--dg-glow);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   O CORPO DAS NATUREZAS PESADAS
+
+   CIRCUITO, META e REPETIÇÃO não apareciam no quadro: o filtro era uma
+   lista branca de PADRAO/AGENDADA. Agora aparecem — e aparecer mudas
+   seria meia correção. Um circuito de quatro blocos exibido como uma
+   linha de texto continua sendo uma missão que ninguém entende.
+
+   Isto é a LEITURA do combinado, não o registro: marcar bloco a bloco e
+   somar na meta exigem endpoints que a dungeon ainda não tem.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* CIRCUITO — os blocos como plaquetas, não como lista */
+.dg-nat-blocos {
+  display: flex; flex-wrap: wrap; gap: .3rem;
+  margin-top: .35rem;
+}
+.dg-bloco {
+  display: inline-flex; align-items: baseline; gap: .3rem;
+  font-size: .66rem;
+  padding: .18rem .45rem;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--dg-a, #7c3aed) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--dg-a, #7c3aed) 26%, transparent);
+  /* cantos chanfrados: a linguagem do portão, não o raio do card antigo */
+  clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
+}
+.dg-bloco b {
+  font-weight: 700;
+  color: var(--dg-a, #a78bfa);
+}
+.dg-bloco.feito {
+  color: var(--green-done, #34d399);
+  border-color: color-mix(in srgb, var(--green-done, #34d399) 45%, transparent);
+  background: color-mix(in srgb, var(--green-done, #34d399) 10%, transparent);
+}
+.dg-bloco.feito b { color: var(--green-done, #34d399); }
+
+/* META — barra e placar */
+.dg-nat-meta {
+  display: flex; align-items: center; gap: .55rem;
+  margin-top: .4rem;
+}
+.dg-nat-meta .barra {
+  flex: 1; min-width: 60px; height: 5px;
+  background: rgba(148, 163, 184, .16);
+  border-radius: 3px; overflow: hidden;
+}
+.dg-nat-meta .barra span {
+  display: block; height: 100%;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--dg-a, #7c3aed) 70%, #fff),
+    var(--dg-a, #7c3aed));
+  box-shadow: 0 0 8px var(--dg-glow);
+  transition: width .6s cubic-bezier(.2, .9, .3, 1);
+}
+.dg-nat-meta .num {
+  font-family: var(--font-section);
+  font-size: .68rem; font-weight: 700;
+  color: var(--dg-a, #a78bfa);
+  white-space: nowrap;
+}
+
+/* REPETIÇÃO — pips, porque contar bolinha é mais rápido que ler número */
+.dg-nat-pips {
+  display: flex; align-items: center; flex-wrap: wrap; gap: .25rem;
+  margin-top: .4rem;
+}
+.dg-nat-pips i {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--dg-a, #7c3aed) 40%, transparent);
+  background: transparent;
+  transition: all .25s ease;
+}
+.dg-nat-pips i.on {
+  background: var(--dg-a, #7c3aed);
+  box-shadow: 0 0 7px var(--dg-glow);
+  border-color: var(--dg-a, #7c3aed);
+}
+.dg-nat-pips b {
+  margin-left: .3rem;
+  font-family: var(--font-section);
+  font-size: .66rem; font-weight: 700;
+  color: var(--text-muted);
+}
+
+/* ── SAIR ≠ ENCERRAR ──────────────────────────────────────────────
+   No portão que não fecha são duas ações com consequências opostas, e
+   elas não podem parecer o mesmo botão. "Encerrar" fica vermelho, que é
+   o peso de fechar o dia; "Sair" fica neutro, porque sair não custa
+   nada — é a liberdade que o portão aberto promete. */
+.dg-btn-suspender {
+  font-family: var(--font-section);
+  font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+  font-size: .72rem;
+  padding: .55rem 1rem;
+  border-radius: 9px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  background: rgba(148, 163, 184, .08);
+  border: 1px solid rgba(148, 163, 184, .32);
+  transition: all var(--transition-fast);
+}
+.dg-btn-suspender:hover {
+  color: #fff;
+  border-color: var(--dg-a, var(--purple-main));
+  background: var(--dg-soft, rgba(124, 58, 237, .14));
 }
 
 /* Anel de progresso (RESISTENCIA) */
