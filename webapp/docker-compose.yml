@@ -39,6 +39,9 @@ services:
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@solo_db:5432/${POSTGRES_DB}
       - SECRET_KEY=${SECRET_KEY}
+      # Cifra o refresh token do Google Calendar. Vazia = o botao de
+      # conectar agenda nao aparece, e o resto do app segue igual.
+      - CALENDARIO_CHAVE=${CALENDARIO_CHAVE:-}
       - AMBIENTE=${AMBIENTE:-production}
       # A CASA, separada do REGIME. O rodapé anunciou "RENDER" de dentro do
       # Contabo durante meses porque o front traduzia "production" para o

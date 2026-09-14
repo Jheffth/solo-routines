@@ -1,0 +1,239 @@
+/* ══════════════════════════════════════════════════════════════════
+   A AGENDA — o cartão de conexão com o Google Calendar
+
+   Discreto de propósito. É uma integração opcional numa tela que já tem
+   o cartão do hunter, o radar e o heatmap; um bloco gritando "CONECTE
+   SUA AGENDA" competiria com o conteúdo que o hunter veio ver.
+
+   O estado conectado ganha a cor do sistema; o desconectado fica neutro.
+   ══════════════════════════════════════════════════════════════════ */
+
+.ag-card {
+  border: 1px solid rgba(255, 255, 255, .07);
+  background:
+    linear-gradient(135deg, rgba(124, 58, 237, .05), transparent 60%),
+    rgba(13, 13, 26, .5);
+}
+.ag-card.conectada {
+  border-color: rgba(16, 185, 129, .22);
+  background:
+    linear-gradient(135deg, rgba(16, 185, 129, .06), transparent 60%),
+    rgba(13, 13, 26, .5);
+}
+
+.ag-topo {
+  display: flex;
+  align-items: flex-start;
+  gap: .9rem;
+  margin-bottom: .9rem;
+}
+
+.ag-glifo {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 46px; height: 46px;
+  border-radius: 12px;
+  color: var(--text-muted);
+  border: 1px solid rgba(255, 255, 255, .09);
+  background: rgba(255, 255, 255, .03);
+}
+.ag-glifo.on {
+  color: #10b981;
+  border-color: rgba(16, 185, 129, .3);
+  background: rgba(16, 185, 129, .08);
+  box-shadow: 0 0 18px rgba(16, 185, 129, .14);
+}
+
+.ag-titulo {
+  font-family: var(--font-section);
+  font-size: 1.02rem;
+  margin: 0 0 .18rem;
+  display: flex; align-items: center; gap: .5rem;
+}
+.ag-selo {
+  font-size: .56rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  padding: .12rem .42rem;
+  border-radius: 5px;
+  color: #10b981;
+  background: rgba(16, 185, 129, .12);
+  border: 1px solid rgba(16, 185, 129, .28);
+}
+.ag-sub {
+  margin: 0;
+  font-size: .82rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ── As promessas ─────────────────────────────────────────────────
+   Elas estão na tela porque "conectar sua agenda" é um pedido de
+   confiança, e confiança se ganha dizendo o limite ANTES, não depois. */
+.ag-promessas {
+  list-style: none;
+  margin: .9rem 0 1.1rem;
+  padding: 0;
+  display: grid;
+  gap: .5rem;
+}
+.ag-promessas li {
+  position: relative;
+  padding-left: 1.1rem;
+  font-size: .8rem;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+.ag-promessas li::before {
+  content: '';
+  position: absolute;
+  left: 0; top: .52em;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--purple-main, #7c3aed);
+}
+.ag-promessas b { color: var(--text-secondary); font-weight: 650; }
+
+/* ── O erro fica À VISTA ──────────────────────────────────────────
+   Integração que falha calada é pior que integração que não existe:
+   o hunter para de receber aviso e nunca descobre o motivo. */
+.ag-erro {
+  display: grid;
+  gap: .2rem;
+  margin: .2rem 0 .9rem;
+  padding: .6rem .8rem;
+  border-radius: 9px;
+  border: 1px solid rgba(239, 68, 68, .28);
+  background: rgba(239, 68, 68, .07);
+  font-size: .78rem;
+  line-height: 1.5;
+}
+.ag-erro b { color: #ef4444; }
+.ag-erro span { color: var(--text-muted); }
+
+/* ── Preferências ─────────────────────────────────────────────── */
+.ag-prefs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin: .3rem 0 .9rem;
+}
+.ag-chave {
+  display: inline-flex;
+  align-items: center;
+  gap: .42rem;
+  padding: .36rem .7rem;
+  border-radius: 99px;
+  cursor: pointer;
+  font-size: .78rem;
+  color: var(--text-secondary);
+  border: 1px solid rgba(255, 255, 255, .09);
+  background: rgba(255, 255, 255, .03);
+  transition: border-color .18s, background .18s;
+}
+.ag-chave:hover { border-color: rgba(124, 58, 237, .35); }
+.ag-chave input { accent-color: var(--purple-main, #7c3aed); cursor: pointer; }
+
+.ag-aviso-linha {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  flex-wrap: wrap;
+  font-size: .8rem;
+  color: var(--text-muted);
+  margin-bottom: .8rem;
+}
+
+/* ── OS CONTROLES SÃO PRÓPRIOS, e não por capricho ────────────────
+   Este projeto NÃO tem `.btn`, `.btn-primary` nem `.input` globais —
+   o `dungeon.css` diz isso por escrito na linha 41. Cada componente
+   desenha os seus (`.dg-btn-*`, `.hp-acao`, `.fp-*`), e um botão com
+   `class="btn btn-primary"` sai cinza, com fonte de sistema, no meio
+   de uma tela toda em vidro escuro.
+   A primeira versão deste cartão cometeu exatamente esse erro.       */
+.ag-num {
+  width: 5.5rem;
+  padding: .34rem .55rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  background: rgba(0, 0, 0, .35);
+  color: var(--text-primary);
+  font-family: var(--font-section);
+  font-size: .84rem;
+  font-weight: 600;
+}
+.ag-num:focus {
+  outline: none;
+  border-color: rgba(124, 58, 237, .6);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, .14);
+}
+
+.ag-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .48rem .95rem;
+  border-radius: 9px;
+  cursor: pointer;
+  font-family: var(--font-section);
+  font-size: .78rem;
+  font-weight: 600;
+  letter-spacing: .02em;
+  color: var(--text-secondary);
+  border: 1px solid rgba(255, 255, 255, .12);
+  background: rgba(255, 255, 255, .04);
+  transition: border-color .18s, background .18s, color .18s, transform .12s;
+}
+.ag-btn:hover {
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, .24);
+  background: rgba(255, 255, 255, .07);
+}
+.ag-btn:active { transform: translateY(1px); }
+.ag-btn:disabled { opacity: .55; cursor: default; transform: none; }
+
+/* O botão que leva o hunter para fora do Solo. É o único destaque do
+   cartão — tudo mais aqui é secundário em relação a ele. */
+.ag-btn-on {
+  color: #fff;
+  border-color: rgba(124, 58, 237, .5);
+  background: linear-gradient(135deg,
+    rgba(124, 58, 237, .3), rgba(124, 58, 237, .14));
+  box-shadow: 0 0 18px rgba(124, 58, 237, .16);
+}
+.ag-btn-on:hover {
+  border-color: rgba(168, 85, 247, .75);
+  background: linear-gradient(135deg,
+    rgba(168, 85, 247, .4), rgba(124, 58, 237, .2));
+  box-shadow: 0 0 26px rgba(124, 58, 237, .3);
+}
+
+.ag-nota {
+  font-size: .74rem;
+  line-height: 1.55;
+  color: var(--text-muted);
+  padding: .55rem .75rem;
+  border-radius: 8px;
+  border: 1px dashed rgba(255, 255, 255, .1);
+  background: rgba(255, 255, 255, .02);
+  margin: 0 0 .9rem;
+}
+
+.ag-acoes { display: flex; gap: .5rem; flex-wrap: wrap; }
+.ag-quando {
+  margin: .6rem 0 0;
+  font-size: .7rem;
+  color: var(--text-muted);
+}
+.ag-btn.ag-perigo { color: #ef4444; }
+.ag-btn.ag-perigo:hover {
+  color: #ff6b6b;
+  border-color: rgba(239, 68, 68, .45);
+  background: rgba(239, 68, 68, .08);
+}
+
+@media (max-width: 640px) {
+  .ag-topo { gap: .65rem; }
+  .ag-glifo { width: 38px; height: 38px; }
+}

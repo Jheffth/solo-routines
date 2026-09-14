@@ -1119,6 +1119,110 @@ class IdentidadeOAuth(Base):
     )
 
 
+class ContaCalendario(Base):
+    """
+    A AGENDA DO HUNTER — o elo de longo prazo com o Google Calendar.
+
+    POR QUE NÃO CABE EM `IdentidadeOAuth`
+
+    Aquela tabela responde "quem é este hunter no Google?" e guarda o que
+    basta para isso: provedor, id e e-mail. Nenhum token — de propósito. O
+    login pede `access_type="online"`, recebe um acesso de uma hora, lê o
+    perfil e joga fora. Não há segredo de longo prazo para guardar, e essa
+    é a razão de o login ser barato de proteger.
+
+    Escrever na agenda dias depois é outro bicho. Exige `access_type=
+    "offline"` e um REFRESH TOKEN, que é acesso contínuo à conta de outra
+    pessoa — um segredo que vive aqui até o hunter desconectar. Misturar
+    isso com a identidade faria uma tabela sem segredo nenhum virar uma
+    tabela de segredos, e o cuidado se aplicaria a quem não precisa dele.
+
+    O REFRESH TOKEN VAI CIFRADO, e não é preciosismo: quem o tem escreve e
+    apaga eventos na agenda do hunter sem pedir licença. Este projeto já
+    carrega uma dívida exatamente desse tipo (senha root versionada em
+    `scripts/deploy_contabo.py` desde `8b1f269`); não vale abrir outra.
+    Quem cifra é `motors/cofre.py`.
+
+    `calendario_id` É A AGENDA QUE O APP CRIOU, e o escopo
+    `calendar.app.created` só alcança agendas criadas pelo próprio app. Sem
+    este campo não há como voltar nela — e sem ela o Solo perderia o acesso
+    ao que ele mesmo escreveu.
+
+    `provedor` já nasce aqui para o dia em que existir Apple ou Outlook. A
+    tabela custa o mesmo com a coluna e sem ela.
+    """
+    __tablename__ = "contas_calendario"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    usuario_id    = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    provedor      = Column(String(20), nullable=False, default="google")
+
+    calendario_id = Column(String(200), nullable=True)   # a agenda criada pelo app
+    email         = Column(String(200), nullable=True)   # qual conta Google está ligada
+
+    refresh_cif   = Column(Text, nullable=True)          # CIFRADO. Nunca em claro.
+    access_cif    = Column(Text, nullable=True)          # cache do token de 1h
+    expira_em     = Column(DateTime, nullable=True)      # quando o access morre
+    escopos       = Column(Text, nullable=True)          # o que o hunter autorizou
+
+    # Preferências de sincronia. Ficam aqui, e não num JSON solto, porque o
+    # hunter mexe nelas e a tela precisa ler cada uma sem desempacotar nada.
+    sinc_dungeons = Column(Boolean, default=True)
+    sinc_rotinas  = Column(Boolean, default=True)
+    sinc_tarefas  = Column(Boolean, default=True)
+    sinc_pactos   = Column(Boolean, default=True)
+    aviso_min     = Column(Integer, default=30)          # minutos antes do lembrete
+
+    ativo         = Column(Boolean, default=True)
+    conectado_em  = Column(DateTime, default=datetime.utcnow)
+    ultima_sync   = Column(DateTime, nullable=True)
+    # O ÚLTIMO ERRO FICA GUARDADO E VISÍVEL. Integração que falha calada é
+    # pior do que integração que não existe: o hunter para de receber aviso
+    # e nunca descobre por quê.
+    ultimo_erro   = Column(Text, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("usuario_id", "provedor", name="uq_calendario_usuario"),
+    )
+
+
+class EventoCalendario(Base):
+    """
+    O ELO entre uma missão do Solo e um evento no Google.
+
+    POR QUE ESTA TABELA EXISTE, SE O EVENTO JÁ CARREGA O VÍNCULO
+
+    Ela é a via rápida. O vínculo também vai gravado dentro do evento, em
+    `extendedProperties.private.solo_id` — mas achar um evento por ali
+    custa uma busca na API a cada sincronia. Com a tabela, é um SELECT.
+
+    E a redundância tem um segundo papel, que é o importante: se este banco
+    perder o vínculo (restauração de backup, hunter reconectando a conta),
+    dá para varrer a agenda e REENCONTRAR cada evento pelo `solo_id`, em
+    vez de criar tudo de novo. Evento duplicado é o defeito clássico dessas
+    integrações e o pior deles — ninguém percebe até a agenda estar com
+    três cópias de cada rotina.
+
+    `revisao` é o hash do que gerou o evento. Se ele não mudou, não há
+    PATCH a fazer: é o que impede a sincronia de reescrever a agenda
+    inteira toda vez.
+    """
+    __tablename__ = "eventos_calendario"
+
+    id          = Column(Integer, primary_key=True, index=True)
+    conta_id    = Column(Integer, ForeignKey("contas_calendario.id"), nullable=False, index=True)
+    origem      = Column(String(20), nullable=False)   # rotina | tarefa | dungeon | pacto
+    origem_id   = Column(Integer, nullable=False, index=True)
+    evento_id   = Column(String(200), nullable=False)  # o id no Google
+    revisao     = Column(String(64), nullable=True)
+    criado_em   = Column(DateTime, default=datetime.utcnow)
+    atualizado_em = Column(DateTime, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("conta_id", "origem", "origem_id", name="uq_evento_origem"),
+    )
+
+
 # ==============================================================================
 # CONFIGURAÇÕES DO APP (Logo, Fontes, Tema)
 # ==============================================================================

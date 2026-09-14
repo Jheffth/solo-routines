@@ -191,6 +191,37 @@ def callback_social(provedor: str, request: Request,
     if not code or not state:
         return _erro_front("Resposta inválida do provedor.")
 
+    # ── O DESVIO DA AGENDA ────────────────────────────────────────────
+    #
+    # Este callback atende DOIS fluxos que só parecem o mesmo. O de login
+    # termina criando sessão; o da agenda começa com o hunter já dentro do
+    # Solo e termina guardando um refresh token.
+    #
+    # Eles compartilham o endereço porque o `redirect_uri` cadastrado no
+    # Google Cloud é este — um segundo exigiria mexer no console e esperar
+    # propagar, por zero ganho. Quem separa os dois é o dono do `state`:
+    # se ele não está no `_ESTADOS` daqui, pode ser da agenda.
+    #
+    # A ORDEM IMPORTA: consultar o estado do calendário ANTES de consumir
+    # o daqui. Ao contrário, um `state` de agenda cairia no `pop` abaixo,
+    # voltaria None e o hunter veria "sessão expirada" numa conexão que
+    # estava perfeitamente válida.
+    if provedor == "google":
+        try:
+            from routers import calendario as cal
+            ctx_cal = cal.consumir_estado(state)
+        except Exception as e:
+            print(f"[OAUTH] router de calendario indisponivel: {e}")
+            ctx_cal = None
+        if ctx_cal:
+            try:
+                cal.concluir_conexao(db, ctx_cal["usuario_id"], code)
+            except Exception as e:
+                db.rollback()
+                print(f"[CALENDARIO] falha ao concluir conexao: {e}")
+                return _voltar_front("sr_cal_erro=" + urllib.parse.quote(str(e)))
+            return _voltar_front("sr_cal=ok")
+
     _limpar_estados()
     ctx = _ESTADOS.pop(state, None)   # uso único: consome o state
     if not ctx or ctx["provedor"] != provedor:

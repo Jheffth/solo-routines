@@ -30,6 +30,12 @@ const Perfil = {
       if (dados.heatmap)           this.renderHeatmap(dados.heatmap);
       if (dados.conquistas)        this.renderConquistas(dados.conquistas);
 
+      /* A AGENDA se monta sozinha e em silêncio: ela decide se aparece
+         (só aparece se o servidor puder cumprir) e não pode derrubar o
+         perfil se o endpoint dela falhar — é uma integração opcional
+         pendurada numa tela que tem de abrir de qualquer jeito. */
+      if (typeof Agenda !== 'undefined') Agenda.montar().catch(() => {});
+
       this._dadosCarregados = true;
     } catch (err) {
       console.error('[Perfil] Erro ao carregar:', err);

@@ -15,6 +15,12 @@ httpx==0.26.0
 python-dateutil==2.9.0
 cloudinary==1.40.0
 
+# Cifra do refresh token do Google Calendar (motors/cofre.py).
+# Ja vinha de carona no python-jose[cryptography], mas agora e dependencia
+# DIRETA: declarar e o que impede uma atualizacao do jose de levar embora
+# a biblioteca que guarda os segredos da agenda.
+cryptography>=42.0
+
 # ── Forja de insignias e auras (scripts/forjar_insignia.py) ──
 drawsvg>=2.0        # motor da Forja: monta o SVG
 Jinja2>=3.0         # motor da Forja: gabaritos dos .js

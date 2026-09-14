@@ -24,6 +24,7 @@
   <link rel="stylesheet" href="css/forja-missao.css?v=8">
   <link rel="stylesheet" href="css/forja-portao.css?v=2">
   <link rel="stylesheet" href="css/portao.css?v=3">
+  <link rel="stylesheet" href="css/agenda.css">
   <link rel="stylesheet" href="css/painel-admin.css">
   <link rel="stylesheet" href="css/materiais.css">
   <link rel="stylesheet" href="css/loja.css?v=frag1">
@@ -1184,6 +1185,14 @@
             <!-- Formulário de edição: span total -->
             <div id="perfil-form-edicao"></div>
 
+            <!-- A AGENDA. Fica no PERFIL e não em Configurações porque a
+                 conexão é de cada hunter com a conta Google dele — a tela
+                 de Configurações é do Arquiteto e vale para o app inteiro.
+                 O cartão só aparece se o servidor puder cumprir (ver
+                 `agenda.js`): botão que não funciona é pior que botão
+                 ausente. -->
+            <div id="perfil-agenda"></div>
+
             <!-- Gráficos: grid 2 colunas -->
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:1.5rem">
 
@@ -1581,6 +1590,7 @@
   <script src="js/pages/dungeon-score.js"></script>
   <script src="js/pages/loja.js?v=frag2"></script>
   <script src="js/pages/perfil.js"></script>
+  <script src="js/pages/agenda.js"></script>
   <script src="js/pages/gerencial.js"></script>
   <script src="js/pages/painel-admin.js"></script>
   <script src="js/pages/materiais.js"></script>

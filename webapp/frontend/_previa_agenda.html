@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<title>Prévia — cartão da agenda</title>
+<!-- PRÉVIA DESCARTÁVEL. Existe só para OLHAR o cartão antes de entregar,
+     usando o CSS de verdade do projeto. O GUIA_ANIMACOES_SISTEMA manda
+     ver antes de entregar, e componente novo julgado só pelo código é
+     como a placa de META saiu ilegível da primeira vez.
+     Apagar depois: não faz parte do app. -->
+<link rel="stylesheet" href="css/design-system.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/pages.css">
+<link rel="stylesheet" href="css/agenda.css">
+<style>
+  body { background:#050508; padding:2rem; font-family:var(--font-body,system-ui); }
+  .col { max-width: 760px; margin: 0 auto; display:grid; gap:2rem; }
+  h2.rot { color:#6b7280; font:600 .7rem/1 monospace; letter-spacing:.2em;
+           text-transform:uppercase; margin:0 0 .5rem; }
+</style></head>
+<body><div class="col">
+  <div><h2 class="rot">1 · desconectado</h2><div id="a"></div></div>
+  <div><h2 class="rot">2 · conectado</h2><div id="b"></div></div>
+  <div><h2 class="rot">3 · conectado, com erro</h2><div id="c"></div></div>
+</div>
+
+<script>
+  // Dublês mínimos: a prévia só desenha, não chama nada.
+  window.API = { get: async () => ({}), post: async () => ({}), put: async () => ({}) };
+  window.SoloDialog = { toast(){}, confirm: async () => false };
+</script>
+<script src="js/pages/agenda.js"></script>
+<script>
+  const base = {
+    disponivel: true, conectado: false, email: null, agenda: false,
+    ultimo_erro: null,
+    preferencias: { dungeons:true, rotinas:true, tarefas:false, pactos:true, aviso_min:30 },
+  };
+  const põe = (id, d) => {
+    const c = document.getElementById(id);
+    c.innerHTML = Agenda._html(d);
+  };
+  põe('a', base);
+  põe('b', { ...base, conectado:true, email:'jcs.costa.santos@gmail.com', agenda:true });
+  põe('c', { ...base, conectado:true, email:'jcs.costa.santos@gmail.com', agenda:true,
+             ultimo_erro:'O acesso à sua agenda foi revogado no Google. Reconecte.' });
+</script>
+</body></html>

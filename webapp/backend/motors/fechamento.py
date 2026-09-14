@@ -841,6 +841,23 @@ def rodar(ate: date | None = None, verbose: bool = True) -> dict:
                 db.rollback()
                 total["erros"] += 1
                 print(f"[FECHAMENTO] ⚠ hunter {u.login}: {e}")
+
+        # ── A AGENDA DO GOOGLE ────────────────────────────────────────
+        #
+        # Depois do fechamento, e nunca antes: a materialização acabou de
+        # criar as instâncias do dia, e sincronizar antes disso mandaria
+        # para a agenda um retrato velho.
+        #
+        # DENTRO DE UM `try` PRÓPRIO, e larguíssimo. Isto é uma integração
+        # OPCIONAL pendurada no motor que fecha o dia do hunter — se o
+        # Google estiver fora do ar, o fechamento não pode nem hesitar.
+        try:
+            from motors import calendario_sinc
+            n = calendario_sinc.sincronizar_todas(db)
+            if n and verbose:
+                print(f"[FECHAMENTO] {n} agenda(s) do Google sincronizada(s).")
+        except Exception as e:
+            print(f"[FECHAMENTO] agenda do Google ignorada: {e}")
     finally:
         db.close()
 
