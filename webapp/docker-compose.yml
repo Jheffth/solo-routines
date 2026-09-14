@@ -42,6 +42,8 @@ services:
       # Cifra o refresh token do Google Calendar. Vazia = o botao de
       # conectar agenda nao aparece, e o resto do app segue igual.
       - CALENDARIO_CHAVE=${CALENDARIO_CHAVE:-}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
       - AMBIENTE=${AMBIENTE:-production}
       # A CASA, separada do REGIME. O rodapé anunciou "RENDER" de dentro do
       # Contabo durante meses porque o front traduzia "production" para o
