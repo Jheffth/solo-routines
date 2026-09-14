@@ -68,7 +68,12 @@ def _versao() -> str:
     if not arq.exists():
         print("[SELO] ERRO: nao achei o arquivo VERSION na raiz.")
         sys.exit(1)
-    v = arq.read_text(encoding="utf-8").strip()
+    # utf-8-SIG, não utf-8: o VERSION foi salvo pelo Windows COM BOM, e
+    # `utf-8` puro devolve o caractere invisível U+FEFF grudado no número.
+    # O primeiro selo saiu com "﻿1.8.0" — o rodapé mostraria "v1.8.0"
+    # com um fantasma na frente, e a comparação com qualquer outra string
+    # de versão falharia sem que nada parecesse errado na tela.
+    v = arq.read_text(encoding="utf-8-sig").strip().lstrip("﻿")
     if not v:
         print("[SELO] ERRO: o arquivo VERSION esta vazio.")
         sys.exit(1)

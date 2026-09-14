@@ -412,8 +412,45 @@ const MissaoCard = {
     const pct = Math.max(0, Math.min(1, m.meta_progresso || 0)) * 100;
     const medicao = (m.meta_modo || '') === 'MEDICAO';
     const passo = m.meta_passo || 1;
-    const encerrada = ['CONCLUIDA', 'CANCELADA', 'FRACASSADA']
-      .includes((m.status_hoje || m.status || '').toUpperCase());
+    const st = (m.status_hoje || m.status || '').toUpperCase();
+
+    /* ═══════════════════════════════════════════════════════════════
+       BATER O ALVO NÃO FECHA MAIS A META — QUEM FECHA É O RELÓGIO
+
+       Esta linha era:
+
+           const encerrada = ['CONCLUIDA','CANCELADA','FRACASSADA']...
+
+       e `CONCLUIDA` ali dentro era o defeito. No instante em que o
+       hunter alcançava o alvo, a missão era concluída pelo servidor, o
+       cartão lia o status novo e apagava o campo de lançar. Quem
+       tinha feito R$ 100 numa manhã que ia até as 11h ficava proibido
+       de registrar os R$ 48 seguintes: o Sistema premiava chegar e
+       punia continuar.
+
+       Agora a permissão vem do backend em `meta_janela_aberta`, que
+       olha o PRAZO da missão (`hora_fim`/`hora_limite`, ou a virada do
+       dia quando não há) em vez do status. CONCLUIDA e aberta é um
+       estado legítimo e comum: é a meta batida com tempo de sobra.
+
+       O `undefined` cai na regra antiga de propósito — um cartão
+       renderizado a partir de um payload velho (cache, aba aberta
+       desde antes do deploy) não pode liberar um campo que o servidor
+       vai recusar. ═══════════════════════════════════════════════ */
+    const morta = ['CANCELADA', 'FRACASSADA'].includes(st);
+    const janela = (m.meta_janela_aberta === undefined || m.meta_janela_aberta === null)
+      ? !['CONCLUIDA', 'CANCELADA', 'FRACASSADA'].includes(st)
+      : !!m.meta_janela_aberta;
+    const encerrada = morta || !janela;
+
+    /* A SUPERAÇÃO. `meta_progresso` é cortado em 1.0 porque é ele que dá
+       a largura da barra; `meta_fracao_total` é a verdade sem teto. Sem
+       os dois, 148% e 100% desenhariam igual e seriam escritos igual —
+       e superar a meta ficaria invisível, que é o oposto do pedido. */
+    const excedente = Number(m.meta_excedente || 0);
+    const fracao = Number(m.meta_fracao_total || m.meta_progresso || 0);
+    const superou = !medicao && excedente > 0;
+    const pctEscrito = superou ? fracao * 100 : pct;
 
     /* Atalhos. Na MEDIÇÃO eles não existem: ninguém "soma meio quilo" a
        uma pesagem — a balança diz o número, e sugerir incrementos ali
@@ -432,22 +469,35 @@ const MissaoCard = {
         ${a.valor > 0 && !medicao ? '+' : ''}${this._esc(this._numMeta(a.valor, m))}
       </span>`).join('');
 
-    return `<div class="mc-meta">
+    /* O SELO. Só aparece quando há excedente de verdade — um selo que
+       nasce em "+0,00" ao bater o alvo redondo viraria ruído em toda
+       meta cumprida. E o texto muda com a janela: enquanto há tempo é
+       um convite ("acima da meta"), depois é o veredito do turno. */
+    const selo = !superou ? '' : `
+      <div class="mc-meta-super${janela ? '' : ' fechado'}">
+        <span class="mc-meta-super-rot">${janela ? 'acima da meta' : 'total do turno'}</span>
+        <b class="mc-meta-super-val">+${this._esc(m.meta_excedente_texto || '')}</b>
+        <span class="mc-meta-super-pct">${(fracao * 100).toFixed(0)}% do alvo</span>
+      </div>`;
+
+    return `<div class="mc-meta${superou ? ' superada' : ''}">
       <div class="mc-meta-placar">
         <b class="mc-meta-atual">${this._esc(m.meta_texto || '0')}</b>
         <span class="mc-meta-de">de</span>
         <span class="mc-meta-alvo">${this._esc(m.meta_alvo_texto || '')}</span>
-        <span class="mc-meta-pct">${pct.toFixed(0)}%</span>
+        <span class="mc-meta-pct">${pctEscrito.toFixed(0)}%</span>
       </div>
 
-      <div class="mc-meta-trilha" title="${pct.toFixed(1)}%">
+      <div class="mc-meta-trilha" title="${pctEscrito.toFixed(1)}%">
         <div class="mc-meta-fill" style="width:${pct}%"></div>
       </div>
 
-      ${encerrada ? '' : `<div class="mc-meta-entrada">
+      ${selo}
+
+      ${encerrada ? '' : `<div class="mc-meta-entrada${m.meta_alcancada ? ' alem' : ''}">
         <input type="text" inputmode="${m.meta_teclado || 'decimal'}"
                class="mc-meta-input" data-mc-meta-input="${chave}"
-               placeholder="${medicao ? 'Nova medição' : 'Somar valor'}"
+               placeholder="${medicao ? 'Nova medição' : (m.meta_alcancada ? 'Somar mais' : 'Somar valor')}"
                aria-label="${medicao ? 'Nova medição' : 'Valor a somar'}">
         <button type="button" class="mc-meta-ok" data-mc-acao="meta-somar"
                 data-mc-id="${chave}">${medicao ? 'Registrar' : 'Somar'}</button>

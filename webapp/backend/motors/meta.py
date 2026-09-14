@@ -257,6 +257,85 @@ def alcancada(atual, alvo, inicial=None, modo_meta=ACUMULO) -> bool:
     return atual >= alvo
 
 
+def excedente(atual, alvo, modo_meta=ACUMULO) -> float:
+    """
+    Quanto passou do alvo. Zero se não passou.
+
+    SÓ FAZ SENTIDO NO ACÚMULO. Na medição o "excedente" seria a distância
+    para além de um peso-alvo — e quem mira 78 kg e chega a 76 não
+    superou a meta em 2 kg de um jeito que dê para somar ao lado do
+    número; superou de um jeito que só a própria leitura conta. Devolver
+    zero aqui é o mesmo que dizer "esta conta não se aplica", e evita um
+    selo de "104%" numa balança, que não quer dizer nada.
+    """
+    if modo_meta == MEDICAO:
+        return 0.0
+    try:
+        alvo = float(alvo)
+    except (TypeError, ValueError):
+        return 0.0
+    return max(0.0, float(atual or 0) - alvo)
+
+
+def fracao_total(atual, alvo, inicial=None, modo_meta=ACUMULO) -> float:
+    """
+    A fração SEM TETO — 1.48 para quem fez 148 de uma meta de 100.
+
+    `progresso()` corta em 1.0 de propósito: é ele que dá a largura da
+    barra, e uma barra de 148% vazaria o cartão. Mas o número escrito ao
+    lado precisa da verdade inteira, senão superar a meta fica
+    indistinguível de empatar com ela — que é exatamente o que esta
+    função existe para impedir.
+    """
+    if modo_meta == MEDICAO:
+        return progresso(atual, alvo, inicial, modo_meta)
+    try:
+        alvo = float(alvo)
+    except (TypeError, ValueError):
+        return 0.0
+    if alvo == 0:
+        return 0.0
+    return max(0.0, float(atual or 0) / alvo)
+
+
+def janela_aberta(regra, acumulador, agora, hoje) -> bool:
+    """
+    A META AINDA ACEITA VALORES?
+
+    Esta função é o coração do pedido do Arquiteto:
+
+        "quando eu atinjo a meta elas auto concluem. Mude. Elas podem até
+        ganhar o status de concluída, porém, se ainda houver tempo, ela
+        deve permitir que eu continue lançando valores."
+
+    Bater o alvo passou a ser um MARCO, não um portão que se fecha. O que
+    fecha a meta é o RELÓGIO — e só ele.
+
+    A janela é o prazo da própria missão: `hora_fim` na rotina,
+    `hora_limite` na missão geral. Sem prazo declarado, vale até a virada
+    do dia, que é o limite que o resto do Sistema já usa para tudo.
+
+    E o dia tem de ser HOJE. Um acumulador de ontem está fora da janela
+    por definição, mesmo que a hora do relógio ainda não tenha passado —
+    senão 07:00 de hoje reabriria a meta de ontem que fechava às 08:00.
+    """
+    data = getattr(acumulador, "data", None) or getattr(acumulador, "data_prevista", None)
+    if data is not None and data != hoje:
+        return False
+
+    limite = (getattr(regra, "hora_fim", None)
+              or getattr(regra, "hora_limite", None))
+    if not limite:
+        return True  # sem prazo: a janela é o dia inteiro
+
+    try:
+        h, m = str(limite).split(":")[:2]
+        fim = agora.replace(hour=int(h), minute=int(m), second=59, microsecond=0)
+    except (ValueError, TypeError):
+        return True  # prazo ilegível não pode fechar a porta na cara do hunter
+    return agora <= fim
+
+
 def aplicar(anterior, valor, modo_meta=ACUMULO) -> float:
     """
     O acumulado depois de registrar `valor`.

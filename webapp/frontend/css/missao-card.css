@@ -2405,6 +2405,73 @@
   transition: width .55s cubic-bezier(.22, 1, .36, 1);
 }
 
+/* ══════════════════════════════════════════════════════════════
+   O SELO DA SUPERAÇÃO
+
+   A barra para em 100% — ela mede o caminho até o alvo, e um
+   preenchimento de 148% vazaria o cartão ou exigiria uma segunda
+   trilha. Então o que passou do alvo é dito em PALAVRA, aqui, e a
+   barra cheia ganha um brilho que a barra recém-completa não tem.
+
+   Sem isso, bater a meta e superá-la em metade desenhariam igual: a
+   mesma barra cheia, o mesmo verde. O hunter que fez R$ 148 de R$ 100
+   veria a tela de quem fez exatamente R$ 100 — e o esforço a mais
+   simplesmente não existiria na interface.
+   ══════════════════════════════════════════════════════════════ */
+.mc-meta-super {
+  display: flex;
+  align-items: baseline;
+  gap: .45rem;
+  flex-wrap: wrap;
+  margin-top: .5rem;
+  padding: .34rem .6rem;
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--mc-cor) 34%, transparent);
+  background: linear-gradient(100deg,
+    color-mix(in srgb, var(--mc-cor) 14%, transparent),
+    transparent 70%);
+}
+.mc-meta-super-rot {
+  font-size: .6rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.mc-meta-super-val {
+  font-family: var(--font-section);
+  font-size: .95rem;
+  font-weight: 800;
+  color: var(--mc-cor);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--mc-cor) 45%, transparent);
+}
+.mc-meta-super-pct {
+  margin-left: auto;
+  font-size: .66rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+/* Janela vencida: o selo vira registro, não convite. Sai o brilho,
+   fica o número — é o total do turno, e ele não muda mais. */
+.mc-meta-super.fechado {
+  background: rgba(255,255,255,.04);
+  border-color: rgba(255,255,255,.1);
+}
+.mc-meta-super.fechado .mc-meta-super-val { text-shadow: none; }
+
+/* A trilha cheia de quem superou pulsa devagar. É o único sinal na
+   barra de que ali houve mais do que o pedido. */
+.mc-meta.superada .mc-meta-fill {
+  animation: mc-meta-transbordo 2.8s ease-in-out infinite;
+}
+@keyframes mc-meta-transbordo {
+  0%, 100% { box-shadow: 0 0 10px color-mix(in srgb, var(--mc-cor) 55%, transparent); }
+  50%      { box-shadow: 0 0 18px color-mix(in srgb, var(--mc-cor) 90%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mc-meta.superada .mc-meta-fill { animation: none; }
+}
+
 /* ── A ENTRADA ──────────────────────────────────────────────── */
 .mc-meta-entrada {
   display: flex;
@@ -2412,6 +2479,13 @@
   gap: .4rem;
   flex-wrap: wrap;
   margin-top: .6rem;
+}
+
+/* Alvo já batido e janela ainda aberta — o campo continua ali, mas
+   discreto: a missão está cumprida, o que vier é extra. */
+.mc-meta-entrada.alem .mc-meta-input {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--mc-cor) 22%, transparent);
 }
 .mc-meta-input {
   flex: 1 1 8rem;

@@ -92,6 +92,13 @@ def _campos_meta(regra, acumulador) -> dict:
         "meta_unidade": None, "meta_passo": None, "meta_progresso": None,
         "meta_texto": None, "meta_alvo_texto": None, "meta_casas": None,
         "meta_teclado": None,
+        # Da superação. Saem sempre, pelo mesmo motivo dos de cima: o
+        # cartão lê `meta_janela_aberta` para decidir se mostra o campo
+        # de lançar, e `undefined` de um lado e `false` do outro daria
+        # comportamento diferente em telas que desenham o mesmo cartão.
+        "meta_excedente": None, "meta_excedente_texto": None,
+        "meta_fracao_total": None, "meta_janela_aberta": False,
+        "meta_prazo": None,
     }
     if not motor_meta.eh_meta_valida(regra):
         return dict(VAZIO)
@@ -124,6 +131,22 @@ def _campos_meta(regra, acumulador) -> dict:
         # vezes, uma em cada linguagem.
         "meta_casas":      e["casas"],
         "meta_teclado":    e["teclado"],
+
+        # ── A SUPERAÇÃO ──────────────────────────────────────────────
+        #
+        # Bater o alvo virou um MARCO, não um portão. Enquanto o prazo
+        # não vence, o hunter continua lançando — e é `meta_janela_aberta`
+        # que o cartão consulta para manter o campo vivo. Antes ele
+        # deduzia isso do status (`CONCLUIDA` ⇒ calado), que é o que
+        # impedia ir além da meta.
+        "meta_excedente":       motor_meta.excedente(atual, alvo, modo),
+        "meta_excedente_texto": motor_meta.formatar(
+            motor_meta.excedente(atual, alvo, modo), esp, un),
+        "meta_fracao_total":    motor_meta.fracao_total(atual, alvo, ini, modo),
+        "meta_janela_aberta":   motor_meta.janela_aberta(
+            regra, acumulador, tempo.agora(), tempo.hoje()),
+        "meta_prazo":           (getattr(regra, "hora_fim", None)
+                                 or getattr(regra, "hora_limite", None)),
     }
 
 

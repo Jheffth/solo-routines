@@ -78,7 +78,9 @@ def _versao_do_arquivo() -> str:
     try:
         arq = _BACKEND.parent.parent / "VERSION"
         if arq.exists():
-            return arq.read_text(encoding="utf-8").strip()
+            # utf-8-sig: o arquivo tem BOM, e `utf-8` puro cola um U+FEFF
+            # invisível no começo do número.
+            return arq.read_text(encoding="utf-8-sig").strip().lstrip("﻿")
     except Exception:
         pass
     return ""

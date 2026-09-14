@@ -61,7 +61,9 @@ def _ler_versao_arquivo() -> str:
 
     arq = aqui.parent.parent / "VERSION"
     if arq.exists():
-        return arq.read_text(encoding="utf-8").strip()
+        # utf-8-sig: o VERSION tem BOM; `utf-8` puro devolveria o número
+        # com um U+FEFF invisível grudado na frente.
+        return arq.read_text(encoding="utf-8-sig").strip().lstrip("﻿")
 
     return "sem selo"
 

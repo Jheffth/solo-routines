@@ -1053,6 +1053,26 @@ def _corpo_meta(regra, acumulador, aportes, extra=None) -> dict:
         "meta_alvo_texto": motor_meta.formatar(alvo, esp, un),
         "meta_aportes":    aportes,
         "status":          getattr(acumulador, "status", None),
+
+        # ── A SUPERAÇÃO ──────────────────────────────────────────────
+        #
+        # `meta_progresso` continua cortado em 1.0: é ele que dá a
+        # largura da barra. Estes três campos são a verdade sem teto,
+        # para o cartão poder escrever "148%" ao lado de uma barra cheia
+        # sem que uma coisa contradiga a outra.
+        #
+        # `meta_janela_aberta` é o que decide se o campo de lançar
+        # aparece. O cartão NÃO deve mais deduzir isso do status: foi
+        # exatamente essa dedução (`CONCLUIDA` ⇒ calado) que impedia o
+        # hunter de ir além do alvo.
+        "meta_excedente":      motor_meta.excedente(atual, alvo, modo),
+        "meta_excedente_texto": motor_meta.formatar(
+            motor_meta.excedente(atual, alvo, modo), esp, un),
+        "meta_fracao_total":   motor_meta.fracao_total(atual, alvo, ini, modo),
+        "meta_janela_aberta":  motor_meta.janela_aberta(
+            regra, acumulador, tempo.agora(), tempo.hoje()),
+        "meta_prazo":          (getattr(regra, "hora_fim", None)
+                                or getattr(regra, "hora_limite", None)),
     }
     if extra:
         corpo.update(extra)
@@ -1085,6 +1105,23 @@ def meta_registrar(payload: MetaRegistrarRequest,
 
     if getattr(acum, "status", None) in ("CANCELADA", "FRACASSADA"):
         raise HTTPException(400, "Esta missão já foi encerrada.")
+
+    # ── A JANELA, e não o alvo, é quem fecha a meta ──────────────────
+    #
+    # Antes, bater o alvo concluía a missão e a conclusão calava o
+    # cartão: o campo sumia e não havia como lançar mais nada. O
+    # Arquiteto pediu o contrário — bater o alvo é um MARCO, e enquanto
+    # houver tempo o hunter pode continuar somando e se sobressair.
+    #
+    # Quem encerra agora é o relógio. E encerrar de verdade importa:
+    # sem esta trava, um aporte às 23h entraria numa meta cujo prazo
+    # venceu às 08h, e o total do turno passaria a incluir dinheiro que
+    # não foi ganho naquele turno.
+    if not motor_meta.janela_aberta(regra, acum, tempo.agora(), tempo.hoje()):
+        limite = getattr(regra, "hora_fim", None) or getattr(regra, "hora_limite", None)
+        raise HTTPException(400,
+            f"O prazo desta meta encerrou{f' às {limite}' if limite else ''}. "
+            f"O total do dia está fechado.")
 
     modo = motor_meta.modo(getattr(regra, "meta_modo", None),
                            getattr(regra, "meta_especie", None))
@@ -1166,6 +1203,13 @@ def meta_desfazer(payload: MetaDesfazerRequest,
         raise HTTPException(400, "Informe rotina_id ou tarefa_id")
 
     regra, acum = _alvo_de_meta(db, usuario, payload.rotina_id, payload.tarefa_id)
+
+    # A MESMA JANELA DO REGISTRO. Desfazer é escrever no total do turno
+    # de trás para a frente; se lançar depois do prazo é proibido,
+    # apagar também tem de ser — senão o total fechado ainda muda, só
+    # que para baixo.
+    if not motor_meta.janela_aberta(regra, acum, tempo.agora(), tempo.hoje()):
+        raise HTTPException(400, "O prazo desta meta encerrou. O total do dia está fechado.")
 
     q = db.query(MetaAporte)
     if isinstance(acum, ExecucaoDia):
