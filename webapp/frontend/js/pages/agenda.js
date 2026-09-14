@@ -52,6 +52,23 @@
       this._ligar(caixa);
     },
 
+    /* NÃO HÁ INTERRUPTOR DE PACTOS, e a ausência é deliberada: a tabela
+       de pactos não tem data nenhuma. Ela é um cardápio de penitências
+       que o Sistema serve quando o hunter falha, não uma agenda de
+       vencimentos. Um interruptor que não sincroniza nada seria só mais
+       um botão mentiroso.
+
+       ESTA NOTA MORA AQUI, FORA DO HTML, e há um motivo caro por trás.
+       A primeira versão dela era um comentário `<!-- -->` dentro do
+       template literal abaixo, citando o nome da tabela entre CRASES —
+       do jeito que se escreve nome de coisa em prosa técnica. A crase
+       fechou o template literal no meio, e o resto do arquivo virou lixo
+       sintático: `SyntaxError: Unexpected identifier`.
+
+       O cartão simplesmente não existia. Nenhum erro na tela, nenhum
+       aviso — `window.Agenda` ficava `undefined` e o perfil carregava
+       normalmente sem ele. Comentário dentro de template literal é
+       território minado; comentário de JS, não. */
     _html(d) {
       const erro = d.ultimo_erro ? `
         <div class="ag-erro">
@@ -114,13 +131,6 @@
               <input type="checkbox" data-ag-pref="tarefas" ${p.tarefas ? 'checked' : ''}>
               <span>Missões com prazo</span></label>
           </div>
-
-          <!-- PACTOS NÃO ESTÃO AQUI, e a ausência é deliberada. A tabela
-               `pactos` não tem data nenhuma: ela é um CARDÁPIO de
-               penitências que o Sistema serve quando o hunter falha, não
-               uma agenda de vencimentos. Um interruptor "Pactos" que não
-               sincronizasse nada seria só mais um botão mentiroso. -->
-
 
           <div class="ag-aviso-linha">
             <label for="ag-aviso">Avisar com antecedência de</label>
