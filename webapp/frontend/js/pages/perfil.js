@@ -193,129 +193,159 @@ const Perfil = {
   },
 
   // ── Formulário de edição ────────────────────────────────
+  /* ══════════════════════════════════════════════════════════
+     OS GLIFOS DO PERFIL
+
+     Esta página era o último canto do app escrito em emoji. Dois
+     defeitos que o glifo não tem: quem desenha o emoji é o SISTEMA
+     OPERACIONAL — o mesmo caractere é uma coisa no Windows e outra no
+     Mac, e nenhuma delas foi desenhada para este app — e ele não
+     herda a cor do texto, então fica sempre com a paleta de outra
+     pessoa dentro da nossa.
+
+     `_g` degrada para vazio se o alfabeto não estiver carregado: um
+     ícone ausente é um detalhe, um `undefined` no meio do HTML é uma
+     tela quebrada. */
+  _g(nome, tam = 16) {
+    try {
+      return (typeof Glifos !== 'undefined' && Glifos.linha)
+        ? Glifos.linha(nome, tam) : '';
+    } catch (_) { return ''; }
+  },
+
+  /* As rubricas das seções vivem como `data-` no HTML e são montadas
+     aqui — assim o índice fica legível e o desenho, num lugar só. */
+  _montarRubricas() {
+    document.querySelectorAll('#page-perfil .pf-rubrica').forEach(el => {
+      if (el.dataset.pronta) return;
+      const nota = el.dataset.nota
+        ? `<span class="pf-rubrica-nota">${el.dataset.nota}</span>` : '';
+      el.innerHTML = `
+        <span class="pf-rubrica-glifo">${this._g(el.dataset.glifo, 17)}</span>
+        <h3 class="pf-rubrica-titulo">${el.dataset.titulo || ''}</h3>
+        ${nota}
+        <span class="pf-rubrica-fio"></span>`;
+      el.dataset.pronta = '1';
+    });
+
+    const vitrine = document.getElementById('btn-ver-vitrine');
+    if (vitrine && vitrine.dataset.glifoBt && !vitrine.dataset.pronta) {
+      vitrine.innerHTML = this._g(vitrine.dataset.glifoBt, 15)
+                        + '<span>' + vitrine.textContent.trim() + '</span>';
+      vitrine.dataset.pronta = '1';
+    }
+  },
+
   renderFormEdicao(dados) {
     const cont = document.getElementById('perfil-form-edicao');
     if (!cont) return;
 
+    this._montarRubricas();
     const isArquiteto = dados.nivel_acesso === 'Arquiteto';
 
     cont.innerHTML = `
-      <div style="
-        background:var(--bg-card);border:1px solid rgba(124,58,237,.2);
-        border-radius:1rem;padding:1.5rem 2rem;margin-top:1.5rem
-      ">
-        <div style="font-family:var(--font-section);font-size:.8rem;font-weight:700;
-          letter-spacing:.12em;text-transform:uppercase;color:var(--purple-glow);
-          margin-bottom:1.2rem;display:flex;align-items:center;gap:.5rem">
-          &#9998; Editar Informações
+      <div class="pf-ficha">
+        <div class="pf-rubrica pf-rubrica--ficha" data-pronta="1">
+          <span class="pf-rubrica-glifo">${this._g('editar', 17)}</span>
+          <h3 class="pf-rubrica-titulo">Identidade</h3>
+          <span class="pf-rubrica-nota">como o Sistema te chama</span>
+          <span class="pf-rubrica-fio"></span>
         </div>
 
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1rem">
-
-          <!-- Nome -->
-          <div class="form-group">
-            <label class="form-label">Nome de exibição</label>
-            <input type="text" id="pf-edit-nome" class="form-input"
+        <div class="pf-grade">
+          <div class="pf-campo">
+            <label class="pf-rot" for="pf-edit-nome">Nome de exibição</label>
+            <input type="text" id="pf-edit-nome" class="pf-input"
               value="${dados.nome || ''}" placeholder="Seu nome">
           </div>
 
-          <!-- Título -->
-          <div class="form-group">
-            <label class="form-label">Título</label>
-            <input type="text" id="pf-edit-titulo" class="form-input"
-              value="${dados.titulo || ''}" placeholder="Ex: O Arquiteto do Sistema">
+          <div class="pf-campo">
+            <label class="pf-rot" for="pf-edit-titulo">Título</label>
+            <input type="text" id="pf-edit-titulo" class="pf-input"
+              value="${dados.titulo || ''}" placeholder="O Arquiteto do Sistema">
           </div>
 
-          <!-- Classe -->
-          <div class="form-group">
-            <label class="form-label">Classe / Rank</label>
-            <input type="text" id="pf-edit-classe" class="form-input"
-              value="${dados.classe || ''}" placeholder="Ex: National Level">
+          <div class="pf-campo">
+            <label class="pf-rot" for="pf-edit-classe">Classe / Rank</label>
+            <input type="text" id="pf-edit-classe" class="pf-input"
+              value="${dados.classe || ''}" placeholder="National Level">
           </div>
 
-          <!-- Foto de Perfil (arquivo local) -->
-          <div class="form-group">
-            <label class="form-label">Foto de Perfil</label>
-            <div style="display:flex;gap:.5rem;align-items:center">
-              <button type="button" class="btn btn-sm" onclick="Perfil.escolherFoto()" style="
-                font-family:var(--font-section);font-size:.75rem;padding:.5rem .9rem;border-radius:.5rem;
-                border:1px solid rgba(124,58,237,.4);background:rgba(124,58,237,.12);
-                color:var(--purple-glow);cursor:pointer">
-                📷 Escolher do dispositivo
+          <div class="pf-campo">
+            <span class="pf-rot">Retrato</span>
+            <div class="pf-foto-acoes">
+              <button type="button" class="pf-bt" onclick="Perfil.escolherFoto()">
+                ${this._g('camera', 15)}<span>Escolher arquivo</span>
               </button>
               ${dados.avatar_url ? `
-              <button type="button" class="btn btn-sm" onclick="Perfil.removerFoto()" style="
-                font-family:var(--font-section);font-size:.75rem;padding:.5rem .9rem;border-radius:.5rem;
-                border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.07);
-                color:#f87171;cursor:pointer">
-                ✕ Remover
+              <button type="button" class="pf-bt pf-bt--perigo" onclick="Perfil.removerFoto()">
+                ${this._g('excluir', 15)}<span>Remover</span>
               </button>` : ''}
             </div>
-            <div style="font-size:.65rem;color:var(--text-muted);margin-top:.35rem">
-              PNG, JPG, GIF ou WEBP · máx. 5 MB · ou clique direto na foto lá em cima
+            <p class="pf-dica">
+              PNG, JPG, GIF ou WEBP · até 5 MB · ou clique direto no retrato acima
+            </p>
+          </div>
+        </div>
+
+        ${isArquiteto ? `
+        <!-- OS PODERES FICAM SEPARADOS, e não misturados com o nome.
+             Editar "Nome de exibição" é cosmético; reescrever o XP total
+             é mexer na economia do Sistema. Eram oito campos na mesma
+             grade, com a mesma cara — e a única diferença era um
+             "(Arquiteto)" em letra miúda na etiqueta. Agora a fronteira
+             é visível antes de o cursor chegar no campo. -->
+        <div class="pf-poderes">
+          <div class="pf-rubrica pf-rubrica--poderes" data-pronta="1">
+            <span class="pf-rubrica-glifo">${this._g('caveira', 17)}</span>
+            <h3 class="pf-rubrica-titulo">Poderes do Arquiteto</h3>
+            <span class="pf-rubrica-nota">escrevem direto na economia</span>
+            <span class="pf-rubrica-fio"></span>
+          </div>
+
+          <div class="pf-grade">
+            <div class="pf-campo pf-campo--nivel">
+              <label class="pf-rot" for="pf-edit-nivel">
+                ${this._g('xp', 13)}<span>Nível</span>
+              </label>
+              <input type="number" id="pf-edit-nivel" class="pf-input"
+                value="${dados.nivel_atual || 1}" min="1" max="9999">
+            </div>
+
+            <div class="pf-campo pf-campo--mana">
+              <label class="pf-rot" for="pf-edit-moedas">
+                ${this._g('moeda', 13)}<span>Mana Coins</span>
+              </label>
+              <input type="number" id="pf-edit-moedas" class="pf-input"
+                value="${dados.moedas || 0}" min="0">
+            </div>
+
+            <div class="pf-campo pf-campo--xp">
+              <label class="pf-rot" for="pf-edit-xp">
+                ${this._g('combate', 13)}<span>XP total</span>
+              </label>
+              <input type="number" id="pf-edit-xp" class="pf-input"
+                value="${dados.xp_total || 0}" min="0">
             </div>
           </div>
 
-          ${isArquiteto ? `
-          <!-- Nível (Arquiteto) -->
-          <div class="form-group">
-            <label class="form-label" style="color:var(--purple-glow)">
-              &#9889; Nível <span style="font-size:.65rem;color:var(--text-muted)">(Arquiteto)</span>
-            </label>
-            <input type="number" id="pf-edit-nivel" class="form-input"
-              value="${dados.nivel_atual || 1}" min="1" max="9999"
-              style="border-color:rgba(168,85,247,.4)">
-          </div>
-
-          <!-- Mana Coins (Arquiteto) -->
-          <div class="form-group">
-            <label class="form-label" style="color:var(--gold-xp)">
-              &#128176; Mana Coins <span style="font-size:.65rem;color:var(--text-muted)">(Arquiteto)</span>
-            </label>
-            <input type="number" id="pf-edit-moedas" class="form-input"
-              value="${dados.moedas || 0}" min="0"
-              style="border-color:rgba(245,158,11,.4)">
-          </div>
-
-          <!-- XP Total (Arquiteto) -->
-          <div class="form-group">
-            <label class="form-label" style="color:var(--cyan-skill)">
-              &#11088; XP Total <span style="font-size:.65rem;color:var(--text-muted)">(Arquiteto)</span>
-            </label>
-            <input type="number" id="pf-edit-xp" class="form-input"
-              value="${dados.xp_total || 0}" min="0"
-              style="border-color:rgba(6,182,212,.4)">
-          </div>
-
-          <!-- Ações Rápidas (Arquiteto) -->
-          <div style="grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; align-items: flex-start;">
-            <button type="button" class="btn btn-sm" onclick="Perfil.nerfarArquiteto()" style="
-              width: auto;
-              font-family:var(--font-section);font-size:.75rem;padding:.5rem 1rem;border-radius:.5rem;
-              border:1px solid rgba(239,68,68,.4);background:rgba(239,68,68,.1);
-              color:#fca5a5;cursor:pointer; transition: all 0.2s ease;">
-              &#9888; Nerfar Arquiteto
+          <div class="pf-poderes-acoes">
+            <button type="button" class="pf-bt pf-bt--perigo" onclick="Perfil.nerfarArquiteto()">
+              ${this._g('menos', 15)}<span>Nerfar</span>
             </button>
-            <button type="button" class="btn btn-sm" onclick="Perfil.buffarArquiteto()" style="
-              width: auto;
-              font-family:var(--font-section);font-size:.75rem;padding:.5rem 1rem;border-radius:.5rem;
-              border:1px solid rgba(245,158,11,.4);background:rgba(245,158,11,.1);
-              color:var(--gold-xp);cursor:pointer; transition: all 0.2s ease;">
-              &#9889; Buffar Arquiteto
+            <button type="button" class="pf-bt pf-bt--ouro" onclick="Perfil.buffarArquiteto()">
+              ${this._g('mais', 15)}<span>Buffar</span>
             </button>
           </div>
-          ` : ''}
+        </div>` : ''}
 
-        </div>
-
-        <!-- Botões -->
-        <div style="display:flex;gap:.75rem;margin-top:1.5rem;justify-content:flex-end">
-          <button class="btn btn-ghost btn-sm" onclick="Perfil.carregar()" style="font-family:var(--font-section)">
-            &#8635; Cancelar
+        <div class="pf-rodape">
+          <button type="button" class="pf-bt" onclick="Perfil.carregar()">
+            ${this._g('cancelada', 15)}<span>Descartar</span>
           </button>
-          <button class="btn btn-primary btn-sm" id="pf-btn-salvar"
-            onclick="Perfil.salvarEdicao()" style="font-family:var(--font-section)">
-            &#128190; Salvar Alterações
+          <button type="button" class="pf-bt pf-bt--on" id="pf-btn-salvar"
+            onclick="Perfil.salvarEdicao()">
+            ${this._g('salvar', 15)}<span>Salvar alterações</span>
           </button>
         </div>
       </div>
@@ -324,8 +354,14 @@ const Perfil = {
 
   // ── Salvar edição ───────────────────────────────────────
   async salvarEdicao() {
+    /* O RÓTULO MORA NUM `<span>`, e trocar só ele é proposital: o botão
+       carrega um SVG ao lado, e `btn.textContent = '...'` apagaria o
+       glifo junto. Ele não voltaria — o botão só é redesenhado no
+       `carregar()` seguinte, e um salvamento que falha não recarrega
+       nada. Ficaria um botão pelado até o F5. */
     const btn = document.getElementById('pf-btn-salvar');
-    if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
+    const rot = btn?.querySelector('span');
+    if (btn) { btn.disabled = true; if (rot) rot.textContent = 'Salvando...'; }
 
     const dados = this._dadosUsuario;
     const isArquiteto = dados?.nivel_acesso === 'Arquiteto';
@@ -371,14 +407,23 @@ const Perfil = {
         const sbNome = document.getElementById('sidebar-nome');
         if (sbNome && payload.nome) sbNome.textContent = payload.nome;
 
-        // Feedback visual
-        if (btn) { btn.disabled = false; btn.innerHTML = '&#10003; Salvo!'; btn.style.background = '#10b981'; }
+        // Feedback visual — só o rótulo e uma classe. Reescrever o
+        // `innerHTML` aqui era o que apagava o glifo e o trazia de volta
+        // como emoji, desfazendo a modernização a cada salvamento.
+        if (btn) {
+          btn.disabled = false;
+          btn.classList.add('salvou');
+          if (rot) rot.textContent = 'Salvo';
+        }
         setTimeout(() => {
-          if (btn) { btn.innerHTML = '&#128190; Salvar Alterações'; btn.style.background = ''; btn.disabled = false; }
+          if (btn) {
+            btn.classList.remove('salvou');
+            if (rot) rot.textContent = 'Salvar alterações';
+          }
         }, 2000);
       }
     } catch (err) {
-      if (btn) { btn.disabled = false; btn.innerHTML = '&#128190; Salvar Alterações'; }
+      if (btn) { btn.disabled = false; if (rot) rot.textContent = 'Salvar alterações'; }
       SoloDialog.toast('Erro ao salvar: ' + (err.message || err), 'error');
     }
   },

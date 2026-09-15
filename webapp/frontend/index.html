@@ -25,6 +25,7 @@
   <link rel="stylesheet" href="css/forja-portao.css?v=2">
   <link rel="stylesheet" href="css/portao.css?v=3">
   <link rel="stylesheet" href="css/agenda.css">
+  <link rel="stylesheet" href="css/perfil.css">
   <link rel="stylesheet" href="css/painel-admin.css">
   <link rel="stylesheet" href="css/materiais.css">
   <link rel="stylesheet" href="css/loja.css?v=frag1">
@@ -1160,9 +1161,8 @@
             <div class="sys-plate-actions">
               <!-- Esta ficha é a de edição. A vitrine que os outros veem é
                    outra tela — sem este atalho, não havia como conferi-la. -->
-              <button class="hp-acao hp-acao-mini" id="btn-ver-vitrine">
-                &#128065; Ver minha vitrine
-              </button>
+              <button class="hp-acao hp-acao-mini" id="btn-ver-vitrine"
+                      data-glifo-bt="olho">Ver minha vitrine</button>
             </div>
           </div>
 
@@ -1197,10 +1197,15 @@
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:1.5rem">
 
               <!-- Radar de habilidades -->
+              <!-- AS RUBRICAS. Os quatro títulos desta página eram emoji
+                   solto (⚡ 📈 📅 🏆). Emoji tem dois defeitos que o glifo
+                   não tem: quem o desenha é o SISTEMA OPERACIONAL, então o
+                   mesmo caractere é uma coisa no Windows e outra no Mac; e
+                   ele não herda a cor do texto, ficando sempre com a paleta
+                   de outra pessoa dentro da nossa. `pf-rubrica` é montada
+                   pelo perfil.js com os glifos do projeto. -->
               <div class="card">
-                <h3 style="font-family:var(--font-section);margin-bottom:1rem">
-                  &#9889; Habilidades por Categoria
-                </h3>
+                <div class="pf-rubrica" data-glifo="radar" data-titulo="Habilidades por categoria"></div>
                 <div class="chart-container" style="height:300px">
                   <canvas id="chart-radar"></canvas>
                 </div>
@@ -1208,9 +1213,8 @@
 
               <!-- XP mensal -->
               <div class="card">
-                <h3 style="font-family:var(--font-section);margin-bottom:1rem">
-                  &#128200; Evolução de XP (12 Meses)
-                </h3>
+                <div class="pf-rubrica" data-glifo="grafico" data-titulo="Evolução de XP"
+                     data-nota="12 meses"></div>
                 <div class="chart-container" style="height:300px">
                   <canvas id="chart-xp-mensal"></canvas>
                 </div>
@@ -1218,17 +1222,14 @@
 
               <!-- Heatmap anual: span 2 colunas -->
               <div class="card" style="grid-column:span 2">
-                <h3 style="font-family:var(--font-section);margin-bottom:1rem">
-                  &#128197; Atividade Anual
-                </h3>
+                <div class="pf-rubrica" data-glifo="calendario" data-titulo="Atividade anual"
+                     data-nota="cada quadro é um dia"></div>
                 <div id="heatmap-container"></div>
               </div>
 
               <!-- Conquistas: span 2 colunas -->
               <div class="card" style="grid-column:span 2">
-                <h3 style="font-family:var(--font-section);margin-bottom:1rem">
-                  &#127942; Conquistas
-                </h3>
+                <div class="pf-rubrica" data-glifo="trofeu" data-titulo="Conquistas"></div>
                 <div id="perfil-conquistas"
                   style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem">
                 </div>

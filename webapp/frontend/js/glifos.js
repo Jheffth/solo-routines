@@ -390,6 +390,72 @@ const Glifos = {
       traco: '<path d="M12 2l8 10-8 10-8-10z"/>',
       luz: '',
     },
+
+    /* ══════════════════════════════════════════════════════════
+       OS SEIS DO PERFIL
+
+       A aba do Perfil era o último canto do app escrito em emoji:
+       ⚡ nos títulos, 💰 nas etiquetas, 💾 nos botões. Emoji tem dois
+       defeitos que o glifo não tem — ele é DESENHADO PELO SISTEMA
+       OPERACIONAL (o mesmo 🏆 é uma taça chapada no Windows e uma
+       taça 3D no Mac, e nenhuma das duas combina com o resto), e ele
+       NÃO HERDA A COR do texto, então fica sempre com a paleta de
+       outra pessoa no meio da nossa.
+
+       Os seis abaixo fecham a lacuna. Mesma grade de 24, mesma
+       convenção `base`/`traco`/`luz`, mesmo traço de 1.8.
+       ══════════════════════════════════════════════════════════ */
+
+    radar: {   // habilidades por categoria — o hexágono e os eixos
+      base: '<path d="M12 2.6 20.1 7.3v9.4L12 21.4 3.9 16.7V7.3z"/>',
+      traco: '<path d="M12 2.6 20.1 7.3v9.4L12 21.4 3.9 16.7V7.3z"/>'
+           + '<path d="M12 6.2 17 9.1v5.8L12 17.8 7 14.9V9.1z"/>'
+           + '<path d="M12 2.6v18.8M3.9 7.3l16.2 9.4M20.1 7.3 3.9 16.7"/>',
+      luz: '<circle cx="12" cy="12" r="1.3" opacity=".95"/>',
+    },
+
+    grafico: {  // evolução — barras subindo
+      base: '<path d="M4 20V9.5h4V20zM10 20V4.5h4V20zM16 20v-7.5h4V20z"/>',
+      traco: '<path d="M3.2 20.4h17.6"/>'
+           + '<rect x="4.4" y="12.2" width="3.6" height="7.2" rx="1"/>'
+           + '<rect x="10.2" y="7.6" width="3.6" height="11.8" rx="1"/>'
+           + '<rect x="16" y="4.2" width="3.6" height="15.2" rx="1"/>',
+      luz: '<rect x="16" y="4.2" width="3.6" height="3" rx="1" opacity=".9"/>',
+    },
+
+    calendario: {  // atividade anual
+      base: '<rect x="3.2" y="5" width="17.6" height="15.8" rx="2.4"/>',
+      traco: '<rect x="3.2" y="5" width="17.6" height="15.8" rx="2.4"/>'
+           + '<path d="M3.2 10h17.6M8.2 2.8V6.4M15.8 2.8V6.4"/>',
+      // Três dias acesos: é o heatmap em miniatura, e é o que faz o
+      // glifo dizer "atividade" em vez de só "data".
+      luz: '<rect x="6.6" y="12.4" width="2.4" height="2.4" rx=".6" opacity=".95"/>'
+         + '<rect x="10.8" y="12.4" width="2.4" height="2.4" rx=".6" opacity=".6"/>'
+         + '<rect x="10.8" y="16.2" width="2.4" height="2.4" rx=".6" opacity=".85"/>',
+    },
+
+    trofeu: {   // conquistas
+      base: '<path d="M7 3.4h10v5.2a5 5 0 0 1-10 0z"/>'
+          + '<path d="M9.4 14h5.2l.8 3.6H8.6z"/><rect x="6.8" y="18" width="10.4" height="2.6" rx="1"/>',
+      traco: '<path d="M7 3.4h10v5.4a5 5 0 0 1-10 0z"/>'
+           + '<path d="M7 5.2H4.6v1.6a3.4 3.4 0 0 0 2.8 3.3M17 5.2h2.4v1.6a3.4 3.4 0 0 1-2.8 3.3"/>'
+           + '<path d="M12 13.8v3.4M9 20.6h6"/>',
+      luz: '<circle cx="12" cy="6.6" r="1.4" opacity=".95"/>',
+    },
+
+    salvar: {   // gravar alterações
+      base: '<path d="M4 4h12.5L20 7.5V20H4z"/>',
+      traco: '<path d="M4.2 4.2h12l3.6 3.6V19.8H4.2z"/>'
+           + '<path d="M8 4.2h7.2v4.6H8zM7.2 19.8v-5.6h9.6v5.6"/>',
+      luz: '<rect x="12.6" y="5.4" width="1.8" height="2.4" rx=".5" opacity=".9"/>',
+    },
+
+    camera: {   // trocar a foto de perfil
+      base: '<rect x="2.6" y="6.6" width="18.8" height="13.4" rx="2.6"/>',
+      traco: '<path d="M2.8 9a2.4 2.4 0 0 1 2.4-2.4h2.1l1.3-2.2h6.8l1.3 2.2h2.1A2.4 2.4 0 0 1 21.2 9v8.6a2.4 2.4 0 0 1-2.4 2.4H5.2a2.4 2.4 0 0 1-2.4-2.4z"/>'
+           + '<circle cx="12" cy="13.2" r="3.8"/>',
+      luz: '<circle cx="12" cy="13.2" r="1.5" opacity=".9"/>',
+    },
   },
 
   /* O complemento entra no MESMO catálogo. Fundir aqui, e não

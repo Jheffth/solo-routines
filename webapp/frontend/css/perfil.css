@@ -1,0 +1,266 @@
+/* ══════════════════════════════════════════════════════════════════
+   A ABA DO PERFIL
+
+   ELA ERA A ÚLTIMA ILHA DE EMOJI DO APP. Os títulos eram ⚡ 📈 📅 🏆,
+   as etiquetas do formulário eram 💰 ⭐ ⚡, os botões eram 💾 ↻ ⚠.
+   Emoji tem dois defeitos que o glifo não tem:
+
+     · quem o DESENHA é o sistema operacional — o mesmo 🏆 é uma taça
+       chapada no Windows e uma taça 3D no Mac, e nenhuma das duas foi
+       feita para esta paleta;
+     · ele NÃO HERDA A COR do texto, então fica sempre com a cor de
+       outra pessoa no meio da nossa.
+
+   E o formulário tinha um problema mais sério que o visual: oito
+   campos na mesma grade, com a mesma aparência, sendo que três deles
+   REESCREVEM A ECONOMIA DO SISTEMA. A única marca era um "(Arquiteto)"
+   em letra miúda. Agora eles moram num bloco próprio, com moldura e
+   cor de aviso — a fronteira é visível antes de o cursor chegar lá.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── A RUBRICA — o cabeçalho de seção ──────────────────────────────
+   Glifo numa placa, título, nota opcional e um fio que ocupa o resto
+   da linha. O fio é o que faz quatro cartões diferentes parecerem
+   partes da mesma página. */
+.pf-rubrica {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  margin-bottom: 1.1rem;
+}
+
+.pf-rubrica-glifo {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  color: var(--purple-glow, #a855f7);
+  border: 1px solid rgba(124, 58, 237, .26);
+  background: rgba(124, 58, 237, .09);
+}
+
+.pf-rubrica-titulo {
+  margin: 0;
+  font-family: var(--font-section);
+  font-size: .92rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  color: var(--text-primary);
+}
+
+.pf-rubrica-nota {
+  font-size: .66rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* O fio esvanece para a direita: uma régua sólida cortaria o cartão em
+   dois, e a ideia é ancorar o título, não dividir a caixa. */
+.pf-rubrica-fio {
+  flex: 1 1 auto;
+  height: 1px;
+  min-width: 1.5rem;
+  background: linear-gradient(90deg, rgba(124, 58, 237, .32), transparent);
+}
+
+/* ── A FICHA ───────────────────────────────────────────────────── */
+.pf-ficha {
+  margin-top: 1.5rem;
+  padding: 1.4rem 1.6rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, .07);
+  background:
+    linear-gradient(140deg, rgba(124, 58, 237, .05), transparent 55%),
+    var(--bg-card, rgba(13, 13, 26, .6));
+}
+
+.pf-grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 1rem 1.1rem;
+}
+
+.pf-campo { display: flex; flex-direction: column; gap: .38rem; min-width: 0; }
+
+.pf-rot {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .66rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.pf-rot svg { flex: none; opacity: .9; }
+
+.pf-input {
+  width: 100%;
+  padding: .55rem .75rem;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  background: rgba(0, 0, 0, .3);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: .88rem;
+  transition: border-color .18s, box-shadow .18s, background .18s;
+}
+.pf-input::placeholder { color: var(--text-muted); opacity: .55; }
+.pf-input:focus {
+  outline: none;
+  background: rgba(0, 0, 0, .42);
+  border-color: rgba(124, 58, 237, .6);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, .13);
+}
+
+.pf-dica {
+  margin: .1rem 0 0;
+  font-size: .65rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.pf-foto-acoes { display: flex; gap: .45rem; flex-wrap: wrap; }
+
+/* ── OS BOTÕES ─────────────────────────────────────────────────────
+   Próprios, porque este projeto NÃO TEM `.btn` global — está escrito
+   em dungeon.css, linha 41. Um `class="btn btn-primary"` aqui sairia
+   cinza, com fonte de sistema, no meio de uma tela de vidro escuro. */
+.pf-bt {
+  display: inline-flex;
+  align-items: center;
+  gap: .42rem;
+  padding: .48rem .9rem;
+  border-radius: 9px;
+  cursor: pointer;
+  font-family: var(--font-section);
+  font-size: .76rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border: 1px solid rgba(255, 255, 255, .12);
+  background: rgba(255, 255, 255, .04);
+  transition: border-color .18s, background .18s, color .18s, transform .12s;
+}
+.pf-bt svg { flex: none; }
+.pf-bt:hover {
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, .24);
+  background: rgba(255, 255, 255, .07);
+}
+.pf-bt:active { transform: translateY(1px); }
+.pf-bt:disabled { opacity: .55; cursor: default; transform: none; }
+
+.pf-bt--on {
+  color: #fff;
+  border-color: rgba(124, 58, 237, .5);
+  background: linear-gradient(135deg, rgba(124,58,237,.32), rgba(124,58,237,.14));
+  box-shadow: 0 0 18px rgba(124, 58, 237, .16);
+}
+.pf-bt--on:hover {
+  border-color: rgba(168, 85, 247, .78);
+  background: linear-gradient(135deg, rgba(168,85,247,.42), rgba(124,58,237,.2));
+  box-shadow: 0 0 26px rgba(124, 58, 237, .3);
+}
+/* Confirmação de salvo: só a cor muda, e o glifo continua lá. */
+.pf-bt--on.salvou {
+  border-color: rgba(16, 185, 129, .6);
+  background: linear-gradient(135deg, rgba(16,185,129,.34), rgba(16,185,129,.16));
+  box-shadow: 0 0 22px rgba(16, 185, 129, .24);
+}
+
+.pf-bt--perigo { color: #f87171; border-color: rgba(239, 68, 68, .28); }
+.pf-bt--perigo:hover {
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, .5);
+  background: rgba(239, 68, 68, .09);
+}
+
+.pf-bt--ouro { color: var(--gold-xp, #f59e0b); border-color: rgba(245, 158, 11, .28); }
+.pf-bt--ouro:hover {
+  border-color: rgba(245, 158, 11, .55);
+  background: rgba(245, 158, 11, .1);
+}
+
+/* ── OS PODERES DO ARQUITETO ───────────────────────────────────────
+   Bloco separado, moldura âmbar, faixa na borda esquerda. Estes três
+   campos não editam texto: eles reescrevem nível, moedas e XP direto.
+   Misturá-los com "Nome de exibição" era tratar uma alavanca de
+   economia como se fosse um campo de bio. */
+.pf-poderes {
+  margin-top: 1.5rem;
+  padding: 1.1rem 1.2rem 1.2rem;
+  border-radius: 12px;
+  border: 1px solid rgba(245, 158, 11, .2);
+  border-left: 3px solid rgba(245, 158, 11, .55);
+  background:
+    linear-gradient(120deg, rgba(245, 158, 11, .06), transparent 60%),
+    rgba(0, 0, 0, .18);
+}
+.pf-poderes .pf-rubrica-glifo {
+  color: var(--gold-xp, #f59e0b);
+  border-color: rgba(245, 158, 11, .3);
+  background: rgba(245, 158, 11, .1);
+}
+.pf-poderes .pf-rubrica-fio {
+  background: linear-gradient(90deg, rgba(245, 158, 11, .3), transparent);
+}
+
+/* Cada poder guarda a cor do recurso que mexe — o mesmo roxo do nível,
+   o mesmo ouro da mana, o mesmo ciano do XP que o app já usa. */
+.pf-campo--nivel .pf-rot { color: var(--purple-glow, #a855f7); }
+.pf-campo--nivel .pf-input:focus { border-color: rgba(168, 85, 247, .65); }
+.pf-campo--mana  .pf-rot { color: var(--gold-xp, #f59e0b); }
+.pf-campo--mana  .pf-input:focus {
+  border-color: rgba(245, 158, 11, .65);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, .12);
+}
+.pf-campo--xp    .pf-rot { color: var(--cyan-skill, #06b6d4); }
+.pf-campo--xp    .pf-input:focus {
+  border-color: rgba(6, 182, 212, .65);
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, .12);
+}
+
+/* NÚMERO NÃO PRECISA DE 400px. Na grade de três colunas cada campo
+   ganhava a largura inteira da coluna, e um campo de quatro dígitos
+   esticado até a outra ponta do cartão parece um campo de texto que
+   alguém esqueceu de preencher. A caixa sugere o tamanho do que se
+   espera dentro dela. */
+.pf-campo--nivel .pf-input,
+.pf-campo--mana  .pf-input,
+.pf-campo--xp    .pf-input {
+  max-width: 11rem;
+  font-family: var(--font-section);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .02em;
+}
+
+.pf-poderes-acoes {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+/* ── O RODAPÉ ──────────────────────────────────────────────────── */
+.pf-rodape {
+  display: flex;
+  gap: .55rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid rgba(255, 255, 255, .06);
+}
+
+/* ── O BOTÃO DA VITRINE ────────────────────────────────────────── */
+#btn-ver-vitrine { display: inline-flex; align-items: center; gap: .4rem; }
+#btn-ver-vitrine svg { flex: none; }
+
+@media (max-width: 640px) {
+  .pf-ficha { padding: 1.1rem 1rem; }
+  .pf-rubrica-nota { display: none; }
+  .pf-rodape { justify-content: stretch; }
+  .pf-rodape .pf-bt { flex: 1 1 auto; justify-content: center; }
+}
