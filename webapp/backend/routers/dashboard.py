@@ -1,8 +1,10 @@
 """
 Router de Dashboard — dados consolidados para a tela principal.
 """
+import hashlib
+
 from fastapi import APIRouter, Depends
-from sqlalchemy import func
+from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 from datetime import date, timedelta
 from motors import tempo
@@ -64,6 +66,77 @@ def dashboard_stats(
         "xp_semana":       xp_semana,
     }
 
+
+
+@router.get("/pulso")
+def pulso(db: Session = Depends(get_db),
+          usuario: Usuario = Depends(get_usuario_atual)):
+    """
+    UM NÚMERO QUE MUDA QUANDO ALGO MUDA. E só isso.
+
+    O PROBLEMA QUE ELE RESOLVE
+
+    "Cumpro missões no celular, chego em casa e o computador não mudou."
+    A ronda do front recarregava a PÁGINA INTEIRA a cada 60 segundos —
+    caro, e ainda assim lento: até um minuto de atraso, e um minuto é
+    tempo de sobra para o hunter concluir que a tela está quebrada.
+
+    Baixar a ronda para 15s com o mesmo método multiplicaria por quatro
+    um custo que, na esmagadora maioria das vezes, existe para descobrir
+    que NADA mudou. A saída é separar a PERGUNTA da RESPOSTA: perguntar
+    fica barato o bastante para ser frequente, e só quando a resposta
+    muda é que se paga o preço de recarregar.
+
+    POR QUE UMA IMPRESSÃO DIGITAL E NÃO UM CONTADOR
+
+    Um contador de revisão por usuário seria mais elegante — e exigiria
+    incrementá-lo em cada ponto que escreve. São dezenas de lugares, e o
+    lugar que alguém esquecer produz uma tela que não atualiza e não
+    avisa. Esta função pergunta ao banco o que ele já sabe: agregados
+    sobre colunas indexadas, sem tocar em nada que já existe.
+
+    O QUE ENTRA NA CONTA é o que o hunter VÊ. XP, moedas, nível e
+    corrente pintam o cartão; as contagens do dia pintam o extrato e as
+    placas. Missão concluída sem XP nenhum ainda move a contagem de
+    concluídas — por isso as duas coisas estão aqui, e não só o XP.
+
+    O QUE NÃO ENTRA: qualquer coisa que mude sozinha com o relógio. Um
+    `datetime.now()` aqui dentro faria o pulso mudar a cada chamada, e a
+    tela recarregaria para sempre, a cada 15 segundos, sem motivo.
+    """
+    hoje = tempo.hoje()
+
+    ed_total, ed_feitas = db.query(
+        func.count(ExecucaoDia.id),
+        func.sum(case((ExecucaoDia.status == "CONCLUIDA", 1), else_=0)),
+    ).filter(
+        ExecucaoDia.usuario_id == usuario.id,
+        ExecucaoDia.data == hoje,
+    ).first()
+
+    td_total, td_feitas = db.query(
+        func.count(TarefaDia.id),
+        func.sum(case((TarefaDia.status == "CONCLUIDA", 1), else_=0)),
+    ).filter(
+        TarefaDia.usuario_id == usuario.id,
+        TarefaDia.data_prevista == hoje,
+    ).first()
+
+    marcas = (
+        usuario.xp_total, usuario.moedas, usuario.nivel_atual,
+        usuario.streak_atual,
+        ed_total or 0, ed_feitas or 0,
+        td_total or 0, td_feitas or 0,
+        hoje.isoformat(),   # a virada do dia também é uma mudança
+    )
+    revisao = hashlib.sha1(
+        "|".join(str(m) for m in marcas).encode("utf-8")
+    ).hexdigest()[:12]
+
+    # Resposta minúscula de propósito: é ela que o hunter pede a cada 15
+    # segundos. Qualquer campo a mais aqui é banda gasta para nada na
+    # esmagadora maioria das chamadas.
+    return {"rev": revisao}
 
 
 @router.get("/corrente")

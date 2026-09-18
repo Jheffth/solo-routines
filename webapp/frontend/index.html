@@ -1606,6 +1606,10 @@
   <script src="js/pages/sala-poderes.js"></script>
   <script src="js/pages/hunter-publico.js"></script>
   <script src="js/busca-hunters.js"></script>
+  <!-- ANTES do app.js: é ele quem chama `SoloSinc.iniciar()`, e um
+       `window.SoloSinc` ainda indefinido faria a sincronia nascer morta
+       sem nenhum erro na tela. -->
+  <script src="js/sincronia.js"></script>
   <script src="js/app.js?v=7"></script>
   <script src="js/version.js"></script>
   <script>

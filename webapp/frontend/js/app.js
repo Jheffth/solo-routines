@@ -261,11 +261,35 @@ const App = {
       if (fora > 15000) pedir(0);
     });
 
-    // 3 · a ronda
+    /* 3 · A RONDA SAIU DAQUI — foi para `js/sincronia.js`.
+
+       Ela recarregava a PÁGINA INTEIRA a cada 60 segundos. Cara demais
+       para ser frequente e, ainda assim, lenta: até um minuto de
+       atraso para ver no computador o que foi feito no celular.
+
+       E ela não cobria o caso que mais incomodava: o computador que
+       DORME com a aba em primeiro plano. A aba nunca fica oculta,
+       então `visibilitychange` nunca dispara; e `setInterval` suspende
+       junto com a máquina, retomando a contagem de onde parou em vez
+       de compensar as horas perdidas. Ninguém avisava nada.
+
+       O módulo novo pergunta de 15 em 15 segundos por um pulso de ~20
+       bytes e só recarrega quando a resposta muda — mais reativo e
+       mais barato ao mesmo tempo. E percebe o sono pelo RELÓGIO DE
+       PAREDE: salto grande entre dois tiques significa que a máquina
+       dormiu, e aí a tela é refeita na hora. */
     clearInterval(this._sincRonda);
-    this._sincRonda = setInterval(() => {
-      if (!document.hidden && !ocupado()) this.atualizarPaginaAtual();
-    }, 60000);
+    this._sincRonda = null;
+    if (window.SoloSinc) {
+      // `ocupado()` vale para o módulo também: recarregar por baixo de
+      // um formulário aberto leva junto o que o Arquiteto digitou.
+      const recarregarOriginal = SoloSinc.recarregar.bind(SoloSinc);
+      SoloSinc.recarregar = (motivo) => {
+        if (ocupado()) { SoloSinc.anotar('adiado:ocupado', { motivo }); return; }
+        recarregarOriginal(motivo);
+      };
+      SoloSinc.iniciar();
+    }
   },
 
   /* Recarrega os dados da página em foco (útil após ganhos de XP) */
