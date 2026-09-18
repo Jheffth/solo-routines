@@ -26,6 +26,7 @@
   <link rel="stylesheet" href="css/portao.css?v=3">
   <link rel="stylesheet" href="css/agenda.css">
   <link rel="stylesheet" href="css/perfil.css">
+  <link rel="stylesheet" href="css/dashboard-extrato.css">
   <link rel="stylesheet" href="css/painel-admin.css">
   <link rel="stylesheet" href="css/materiais.css">
   <link rel="stylesheet" href="css/loja.css?v=frag1">
@@ -723,8 +724,15 @@
                 margin-bottom:.7rem;padding:.4rem .7rem;border-radius:.5rem;
                 border:1px solid rgba(124,58,237,.18);background:rgba(124,58,237,.06)"></div>
 
-              <!-- Lista de missões, agrupada por dia, com scroll -->
-              <div id="lista-rotinas-hoje" style="max-height:380px;overflow-y:auto;overflow-x:hidden">
+              <!-- Lista de missões, agrupada por dia, com scroll.
+                   A ALTURA SAIU DAQUI. Era `max-height:380px` cravado em
+                   estilo inline, e foi isso que abriu o buraco quando a
+                   placa de Penitência nasceu na coluna da direita: a linha
+                   da grade cresce até o mais alto dos dois lados, o cartão
+                   do extrato esticou junto, e a lista continuou parada nos
+                   380px. O resto virou vazio. Quem manda na altura agora é
+                   `#card-rotinas-hoje` em css/dashboard-extrato.css. -->
+              <div id="lista-rotinas-hoje">
                 <div class="empty-state">
                   <div class="empty-icon">&#128260;</div>
                   <div>Carregando extrato...</div>

@@ -71,9 +71,9 @@ const DominioLancadoFX = {
         ${Array.from({length: 8}).map((_, i) => {
           const delay = (Math.random() * 4).toFixed(2);
           const a = (Math.PI / 4) * i;
-          return \`<g style="animation-delay: \${delay}s">
-            <path d="M 150 150 L \${150 + 100 * Math.cos(a)} \${150 + 100 * Math.sin(a)}" stroke="#34d399" stroke-width="3" fill="none" filter="url(#\${u}_glow)"/>
-          </g>\`;
+          return `<g style="animation-delay: ${delay}s">
+            <path d="M 150 150 L ${150 + 100 * Math.cos(a)} ${150 + 100 * Math.sin(a)}" stroke="#34d399" stroke-width="3" fill="none" filter="url(#${u}_glow)"/>
+          </g>`;
         }).join('')}
       </g>
 
@@ -81,7 +81,7 @@ const DominioLancadoFX = {
       <g class="dl-giro">
         ${Array.from({length: 12}).map((_, i) => {
           const a = (Math.PI / 6) * i;
-          return \`<circle cx="\${150 + 120 * Math.cos(a)}" cy="\${150 + 120 * Math.sin(a)}" r="4" fill="#a7f3d0" filter="url(#\${u}_glow)"/>\`;
+          return `<circle cx="${150 + 120 * Math.cos(a)}" cy="${150 + 120 * Math.sin(a)}" r="4" fill="#a7f3d0" filter="url(#${u}_glow)"/>`;
         }).join('')}
       </g>
     </svg>`;

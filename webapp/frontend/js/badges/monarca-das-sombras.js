@@ -60,7 +60,7 @@ const MonarcaDasSombrasFX = {
       <g class="mds-giro-rapido">
         ${Array.from({length: 4}).map((_, i) => {
           const a = (Math.PI / 2) * i;
-          return \`<path d="M 150 150 L \${150 + 12 * Math.cos(a - 0.1)} \${150 + 12 * Math.sin(a - 0.1)} L \${150 + 140 * Math.cos(a)} \${150 + 140 * Math.sin(a)} L \${150 + 12 * Math.cos(a + 0.1)} \${150 + 12 * Math.sin(a + 0.1)} Z" fill="url(#\${u}_metal)" filter="url(#\${u}_glow)"/>\`;
+          return `<path d="M 150 150 L ${150 + 12 * Math.cos(a - 0.1)} ${150 + 12 * Math.sin(a - 0.1)} L ${150 + 140 * Math.cos(a)} ${150 + 140 * Math.sin(a)} L ${150 + 12 * Math.cos(a + 0.1)} ${150 + 12 * Math.sin(a + 0.1)} Z" fill="url(#${u}_metal)" filter="url(#${u}_glow)"/>`;
         }).join('')}
       </g>
 
@@ -84,7 +84,7 @@ const MonarcaDasSombrasFX = {
           const cx = 50 + Math.random() * 200;
           const cy = 50 + Math.random() * 200;
           const r = 2 + Math.random() * 3;
-          return \`<g style="animation-delay: \${delay}s; animation-duration: \${dur}s"><circle cx="\${cx}" cy="\${cy}" r="\${r}" fill="#c084fc" filter="url(#\${u}_glow_forte)" opacity="0.7"/></g>\`;
+          return `<g style="animation-delay: ${delay}s; animation-duration: ${dur}s"><circle cx="${cx}" cy="${cy}" r="${r}" fill="#c084fc" filter="url(#${u}_glow_forte)" opacity="0.7"/></g>`;
         }).join('')}
       </g>
     </svg>`;

@@ -1,0 +1,90 @@
+/* ══════════════════════════════════════════════════════════════════
+   O EXTRATO ACOMPANHA A COLUNA VIZINHA
+
+   O QUE QUEBROU, E POR QUE SÓ QUEBROU AGORA
+
+   O Dashboard é uma grade de três colunas. O extrato ocupa duas; a
+   terceira empilha as placas, a Corrente e — desde que as punições
+   começaram a cair — a placa de Penitência.
+
+   Linha de grade cresce até o mais alto dos seus itens, e o padrão é
+   `stretch`. O cartão do extrato passou a medir 868px porque o VIZINHO
+   ficou com 868px. Só que a lista lá dentro estava cravada em
+
+       style="max-height:380px"
+
+   escrito quando as duas colunas tinham mais ou menos a mesma altura.
+   Ela não cresceu junto, e sobraram ~490px de vazio dentro de um
+   cartão que parecia ter o conteúdo cortado no meio.
+
+   NINGUÉM ERROU AO ESCREVER AQUELE 380. Ele estava certo até alguém
+   mexer no outro lado — que é o defeito de toda medida fixa: ela não
+   erra quando é escrita, erra quando o vizinho muda. E o vizinho
+   sempre muda.
+
+   ── A MECÂNICA DA CORREÇÃO ────────────────────────────────────────
+
+   Tirar o teto e deixar a lista crescer NÃO resolve: linha de grade é
+   dimensionada pelo conteúdo, então o cartão passaria a medir os
+   10.392px da lista inteira e empurraria a página. (Foi o que
+   aconteceu na primeira tentativa: 868 → 10.579px.)
+
+   O que se quer é o oposto: o extrato deve ACEITAR a altura da linha
+   sem DEFINI-LA. É o que `height: 0` + `min-height: 100%` fazem —
+   altura zero não contribui para o cálculo da linha, e o mínimo de
+   100% preenche o que a linha acabar tendo.
+
+   O piso mora em `grid-template-rows`, e não em `grid-auto-rows`: esta
+   grade tem três linhas, e as duas de baixo medem 288px e 257px. Um
+   piso global as inflaria para 470 e criaria dois buracos novos para
+   consertar um.
+
+   Medido no navegador, nos dois estados:
+     com Penitência   → linha 868px, lista 682px (era 380), rolando
+     sem Penitência   → linha 470px, lista 283px, rolando
+   ══════════════════════════════════════════════════════════════════ */
+
+/* O piso, só na primeira linha. As demais seguem em `auto`. */
+.dashboard-grid { grid-template-rows: minmax(470px, auto); }
+
+#card-rotinas-hoje {
+  display: flex;
+  flex-direction: column;
+
+  /* A DUPLA QUE FAZ O TRUQUE. `height: 0` tira o cartão da conta da
+     altura da linha; `min-height: 100%` manda ele preencher o que a
+     linha tiver. Sem o primeiro, a lista inteira definiria a linha;
+     sem o segundo, o cartão ficaria literalmente com zero de altura. */
+  height: 0;
+  min-height: 100%;
+
+  /* Rede de segurança: se algum filho escapar do fluxo flex, ele é
+     cortado aqui em vez de vazar por cima da Corrente. */
+  overflow: hidden;
+}
+
+#lista-rotinas-hoje {
+  flex: 1 1 auto;
+
+  /* `min-height: 0` É OBRIGATÓRIO e não pode virar um número. Um filho
+     flex se recusa a ficar menor que o próprio conteúdo enquanto o
+     mínimo for `auto` — e aí `overflow: auto` nunca chega a valer,
+     porque a caixa cresce em vez de cortar.
+
+     A primeira versão desta folha escreveu `min-height: 0` e, três
+     linhas abaixo, `min-height: 380px` como "piso". A segunda venceu,
+     o truque morreu, e o cartão foi de 868px para 10.579px na hora. O
+     piso tinha de ser na LINHA, que é onde ele está agora. */
+  min-height: 0;
+
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Espremido, a grade vira uma coluna só: não há vizinho para
+   acompanhar, e um piso de 470px come a dobra inteira num celular. */
+@media (max-width: 900px) {
+  .dashboard-grid { grid-template-rows: none; }
+  #card-rotinas-hoje { height: auto; min-height: 0; }
+  #lista-rotinas-hoje { min-height: 0; max-height: 60vh; }
+}
