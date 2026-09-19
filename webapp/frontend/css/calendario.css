@@ -392,24 +392,188 @@
    pastilhas viram tarjas ilegíveis. Some com o texto e fica só o ponto
    colorido: a célula passa a dizer QUANTO e DE QUE TIPO, e o painel do
    dia diz o resto. */
+/* ══════════════════════════════════════════════════════════════════
+   A AGENDA — a tela do celular
+
+   A primeira versão espremia a grade de sete colunas e trocava as
+   pastilhas por pontinhos. Era inútil, e o Arquiteto disse por quê: os
+   pontos mostram que EXISTE algo, nunca O QUÊ. Com 12 ocorrências por
+   dia, os 42 quadradinhos ficavam idênticos — papel de parede, não
+   calendário.
+
+   Não há truque de layout que faça sete colunas de texto caberem em
+   380px. O que cabe é UMA coluna, e uma coluna pede agenda.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── A FAIXA ───────────────────────────────────────────────────────
+   Devolve o panorama que a lista sozinha perde: dá para ver que a
+   semana que vem é pesada sem rolar a agenda inteira. */
+.cal-faixa {
+  display: flex; gap: 5px;
+  overflow-x: auto;
+  padding: .2rem .1rem .5rem;
+  margin-bottom: .6rem;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+.cal-faixa::-webkit-scrollbar { height: 3px; }
+.cal-faixa::-webkit-scrollbar-thumb { background: rgba(168,85,247,.4); border-radius: 9px; }
+
+.cal-fd {
+  flex: 0 0 auto;
+  width: 44px;
+  scroll-snap-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: .35rem .2rem .3rem;
+  border-radius: 10px; cursor: pointer;
+  border: 1px solid rgba(255,255,255,.07);
+  background: rgba(255,255,255,.02);
+  transition: border-color .18s, background .18s, transform .12s;
+}
+.cal-fd-sem {
+  font-size: .52rem; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--text-muted);
+}
+.cal-fd-num {
+  font-family: var(--font-section);
+  font-size: 1rem; font-weight: 700; line-height: 1;
+  color: #f2ece0;
+  text-shadow: 0 1px 2px rgba(0,0,0,.6);
+}
+.cal-fd .cal-densidade { width: 100%; margin-top: .2rem; }
+.cal-fd-nada {
+  display: block; width: 100%; height: 3px; margin-top: .2rem;
+  border-radius: 99px; background: rgba(255,255,255,.05);
+}
+.cal-fd.vazio { opacity: .45; }
+.cal-fd.futuro .cal-fd-num { opacity: .8; }
+.cal-fd.hoje {
+  border-color: rgba(168,85,247,.6);
+  background: rgba(124,58,237,.14);
+}
+.cal-fd.hoje .cal-fd-num { color: #fff; text-shadow: 0 0 14px rgba(168,85,247,.9); }
+.cal-fd.sel { border-color: rgba(168,85,247,.85); transform: translateY(-2px); }
+
+/* ── A LISTA ───────────────────────────────────────────────────── */
+.cal-agenda { display: grid; gap: .5rem; }
+
+.cal-ag-dia {
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.06);
+  background: rgba(255,255,255,.015);
+  overflow: hidden;
+  scroll-margin-top: .6rem;
+}
+.cal-ag-dia.hoje {
+  border-color: rgba(168,85,247,.5);
+  background: rgba(124,58,237,.07);
+}
+.cal-ag-dia.pisca { animation: cal-pisca .9s ease-out; }
+@keyframes cal-pisca {
+  0%   { box-shadow: 0 0 0 0 rgba(168,85,247,.5); }
+  100% { box-shadow: 0 0 0 14px rgba(168,85,247,0); }
+}
+
+/* O CABEÇALHO GRUDA NO TOPO. Rolando uma lista de trinta dias, saber
+   QUE DIA se está lendo é a única coisa que não pode sumir. */
+.cal-ag-cab {
+  position: sticky; top: 0; z-index: 2;
+  display: flex; align-items: baseline; gap: .5rem;
+  padding: .5rem .7rem;
+  background: rgba(10,10,18,.92);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.cal-ag-num {
+  font-family: var(--font-section);
+  font-size: 1.3rem; font-weight: 700; line-height: 1;
+  color: #f2ece0;
+  text-shadow: 0 1px 2px rgba(0,0,0,.6), 0 0 14px rgba(242,236,224,.16);
+}
+.cal-ag-dia.hoje .cal-ag-num {
+  color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.6), 0 0 18px rgba(168,85,247,.85);
+}
+.cal-ag-sem { font-size: .76rem; color: var(--text-muted); }
+.cal-ag-selo {
+  font-size: .52rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--purple-glow, #a855f7);
+}
+.cal-ag-conta {
+  margin-left: auto;
+  font-size: .62rem; font-weight: 700;
+  color: var(--text-muted);
+  padding: .1rem .4rem; border-radius: 99px;
+  background: rgba(255,255,255,.06);
+}
+
+.cal-ag-itens { display: grid; }
+
+/* O ITEM TEM ALTURA DE DEDO. 44px é o mínimo confortável para toque —
+   e, mais importante, o título cabe inteiro em vez de virar reticência. */
+.cal-ag-item {
+  display: flex; align-items: center; gap: .6rem;
+  width: 100%; min-height: 44px;
+  padding: .5rem .7rem;
+  text-align: left; cursor: pointer;
+  border: none; border-left: 3px solid transparent;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: .82rem; line-height: 1.35;
+}
+.cal-ag-item:last-child { border-bottom: none; }
+.cal-ag-item:active { background: rgba(124,58,237,.12); }
+
+.cal-ag-item--rotina  { border-left-color: rgba(124,58,237,.7); }
+.cal-ag-item--dungeon { border-left-color: rgba(245,158,11,.7); }
+.cal-ag-item--tarefa  { border-left-color: rgba(56,189,248,.7); }
+
+/* PREVISÃO continua se declarando — a regra vale igual aqui. A borda
+   tracejada à esquerda é o equivalente da pastilha vazada da grade. */
+.cal-ag-item.prev {
+  border-left-style: dashed;
+  opacity: .78;
+}
+.cal-ag-item.ok .cal-ag-txt { color: #6ee7b7; }
+.cal-ag-item.ko .cal-ag-txt {
+  color: #fca5a5;
+  text-decoration: line-through; text-decoration-color: rgba(239,68,68,.5);
+}
+
+.cal-ag-hora {
+  flex: none; min-width: 4.6rem;
+  font-family: var(--font-section);
+  font-size: .7rem; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.cal-ag-item.prev .cal-ag-hora { color: var(--text-secondary); }
+.cal-ag-txt { flex: 1 1 auto; min-width: 0; }
+.cal-ag-rank {
+  flex: none; font-family: var(--font-section);
+  font-size: .68rem; font-weight: 800; color: var(--gold-xp, #f59e0b);
+}
+
+/* Os dias sem nada viram UMA linha em vez de trinta seções mortas que
+   fazem a rolagem parecer o dobro do tamanho. */
+.cal-ag-pulo {
+  padding: .4rem .7rem;
+  font-size: .68rem; letter-spacing: .06em;
+  color: var(--text-muted);
+  text-align: center;
+  border-radius: 8px;
+  border: 1px dashed rgba(255,255,255,.08);
+}
+
 @media (max-width: 760px) {
-  .cal-dia { min-height: 62px; padding: .3rem .25rem .25rem; }
-  /* O número continua sendo o maior elemento da célula — num dia de
-     62px ele é a única coisa legível, e é o que faz a grade ainda
-     servir de calendário. */
-  .cal-num { font-size: .9rem; margin-bottom: .25rem; }
-  .cal-dia.hoje .cal-num::after { content: ''; }
-  /* Abrir a célula não cabe aqui: 90px de largura não seguram uma lista
-     de missões. No estreito volta o painel, que tem a tela toda. */
-  .cal-dia.aberto { min-height: 62px; box-shadow: none; }
-  .cal-dia.aberto .cal-num { font-size: .9rem; opacity: 1; }
-  .cal-gaveta { display: none; }
-  .cal-pastilhas { display: flex; flex-wrap: wrap; gap: 2px; }
-  .cal-p {
-    width: 6px; height: 6px; padding: 0; border-radius: 50%;
-    font-size: 0; overflow: hidden;
-  }
-  .cal-p b { display: none; }
-  .cal-mais { font-size: .5rem; }
+  /* A grade não é encolhida — ela simplesmente não é montada. */
+  .cal-topo { flex-wrap: wrap; }
+  .cal-mes h2 { font-size: 1.1rem; }
+  .cal-painel { margin-top: .8rem; padding: .9rem 1rem; }
   .cal-it-hora { min-width: 4rem; }
+}
+
+/* Da tablet para cima a agenda some e a grade manda. */
+@media (min-width: 761px) {
+  .cal-faixa, .cal-agenda { display: none; }
 }

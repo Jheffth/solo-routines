@@ -106,9 +106,45 @@
         return;
       }
 
-      cx.innerHTML = this._cabecalho() + this._grade(dados) + this._legenda();
+      /* ── DUAS TELAS, NÃO UMA ENCOLHIDA ────────────────────────
+         A primeira versão espremia a grade de sete colunas no celular e
+         trocava as pastilhas por pontinhos. O resultado é inútil, e o
+         Arquiteto disse isso com todas as letras: os pontos mostram que
+         EXISTE algo, nunca O QUÊ, e com 12 ocorrências por dia todo dia
+         fica idêntico. Uma grade de 42 células iguais não é calendário,
+         é papel de parede.
+
+         Num aparelho estreito não há largura para sete colunas de
+         texto — e não adianta insistir. O que cabe é uma coluna, e uma
+         coluna pede AGENDA: dia a dia, na vertical, com os títulos
+         legíveis. A faixa de dias no topo devolve o panorama que a
+         lista sozinha perderia. */
+      cx.innerHTML = this._estreito()
+        ? this._cabecalho() + this._faixa(dados) + this._agenda(dados)
+        : this._cabecalho() + this._grade(dados) + this._legenda();
+
       this._ligar(cx);
+      if (this._estreito()) this._ligarAgenda(cx);
       this._vizinhos();
+      this._observarLargura();
+    },
+
+    /* O limiar mora AQUI e o CSS o repete. Dois números diferentes
+       criariam uma faixa de largura em que o JS monta a agenda e o CSS
+       estiliza a grade — ou o contrário. */
+    _estreito() {
+      return window.matchMedia('(max-width: 760px)').matches;
+    },
+
+    /* Girar o aparelho atravessa o limiar, e a tela montada para a outra
+       largura fica quebrada até alguém navegar. Repinta só quando
+       CRUZA — repintar a cada pixel de resize seria um desperdício. */
+    _observarLargura() {
+      if (this._mq) return;
+      this._mq = window.matchMedia('(max-width: 760px)');
+      const trocou = () => { this._diaAberto = null; this._pintar(); };
+      if (this._mq.addEventListener) this._mq.addEventListener('change', trocou);
+      else this._mq.addListener(trocou);
     },
 
     _cabecalho() {
@@ -156,6 +192,124 @@
         </div>`;
       }
       return html + '</div>';
+    },
+
+    /* ══════════════════════════════════════════════════════════════
+       A AGENDA — a tela do celular
+
+       Uma coluna, dia a dia, com os títulos inteiros. É o formato que
+       cabe num aparelho estreito sem mentir: não há truque de layout
+       que faça sete colunas de texto caberem em 380px.
+       ══════════════════════════════════════════════════════════════ */
+
+    /* A FAIXA devolve o panorama que a lista sozinha perde. Cada dia é
+       um botão estreito com o número e uma barra de densidade — dá para
+       ver "a semana que vem é pesada" sem rolar a agenda inteira. */
+    _faixa(dados) {
+      const ini = new Date(this._ref.getFullYear(), this._ref.getMonth(), 1);
+      const fim = new Date(this._ref.getFullYear(), this._ref.getMonth() + 1, 0);
+      const SD = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+      let h = '<div class="cal-faixa" role="tablist">';
+      for (let d = new Date(ini); d <= fim; d.setDate(d.getDate() + 1)) {
+        const iso = this._iso(d);
+        const lista = dados.dias[iso] || [];
+        const res = dados.resumos[iso] || {};
+        const cls = ['cal-fd'];
+        if (iso === dados.hoje) cls.push('hoje');
+        if (iso > dados.hoje) cls.push('futuro');
+        if (!lista.length) cls.push('vazio');
+        h += `<button type="button" class="${cls.join(' ')}" data-cal-ir-dia="${iso}">
+          <span class="cal-fd-sem">${SD[d.getDay()]}</span>
+          <span class="cal-fd-num">${d.getDate()}</span>
+          ${lista.length ? this._densidade(res, lista) : '<i class="cal-fd-nada"></i>'}
+        </button>`;
+      }
+      return h + '</div>';
+    },
+
+    _agenda(dados) {
+      const ini = new Date(this._ref.getFullYear(), this._ref.getMonth(), 1);
+      const fim = new Date(this._ref.getFullYear(), this._ref.getMonth() + 1, 0);
+      const SEMANA = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+
+      let h = '<div class="cal-agenda">';
+      let vazios = 0;
+
+      for (let d = new Date(ini); d <= fim; d.setDate(d.getDate() + 1)) {
+        const iso = this._iso(d);
+        const lista = dados.dias[iso] || [];
+
+        /* DIA VAZIO NÃO GANHA SEÇÃO. Trinta cabeçalhos com "nada" fazem
+           a rolagem parecer o dobro do tamanho e escondem os dias que
+           importam entre linhas mortas. Eles viram uma contagem. */
+        if (!lista.length) { vazios++; continue; }
+        if (vazios) {
+          h += `<div class="cal-ag-pulo">${vazios} ${vazios === 1 ? 'dia livre' : 'dias livres'}</div>`;
+          vazios = 0;
+        }
+
+        const hoje = iso === dados.hoje;
+        const futuro = iso > dados.hoje;
+        h += `<section class="cal-ag-dia${hoje ? ' hoje' : ''}${futuro ? ' futuro' : ''}"
+                 id="ag-${iso}">
+          <header class="cal-ag-cab">
+            <span class="cal-ag-num">${d.getDate()}</span>
+            <span class="cal-ag-sem">${SEMANA[d.getDay()]}</span>
+            ${hoje ? '<span class="cal-ag-selo">hoje</span>' : ''}
+            <span class="cal-ag-conta">${lista.length}</span>
+          </header>
+          <div class="cal-ag-itens">`;
+
+        for (const o of lista) {
+          const cls = ['cal-ag-item', 'cal-ag-item--' + o.origem];
+          if (!o.real) cls.push('prev');
+          if (o.status === 'CONCLUIDA') cls.push('ok');
+          if (o.status === 'FRACASSADA' || o.status === 'FRACASSADA_FATAL') cls.push('ko');
+          const hora = o.hora_inicio
+            ? `${o.hora_inicio}${o.hora_fim ? '–' + o.hora_fim : ''}`
+            : '—';
+          h += `<button type="button" class="${cls.join(' ')}"
+                  data-cal-ir="${o.origem}">
+            <span class="cal-ag-hora">${hora}</span>
+            <span class="cal-ag-txt">${this._esc(o.titulo)}</span>
+            ${o.rank ? `<span class="cal-ag-rank">${o.rank}</span>` : ''}
+          </button>`;
+        }
+        h += '</div></section>';
+      }
+      if (vazios) {
+        h += `<div class="cal-ag-pulo">${vazios} ${vazios === 1 ? 'dia livre' : 'dias livres'}</div>`;
+      }
+      return h + '</div>';
+    },
+
+    _ligarAgenda(cx) {
+      cx.querySelectorAll('[data-cal-ir-dia]').forEach(b => {
+        b.onclick = () => this._irAteDia(b.dataset.calIrDia);
+      });
+      cx.querySelectorAll('.cal-ag-item[data-cal-ir]').forEach(b => {
+        b.onclick = () => this._ir(b.dataset.calIr);
+      });
+
+      // Abre no dia de hoje quando ele está neste mês — é o que o hunter
+      // veio ver, e rolar até setembro/dia 19 à mão é atrito puro.
+      const dados = this._cache[this._chave(this._ref)];
+      const alvo = cx.querySelector('#ag-' + (dados?.hoje || ''));
+      if (alvo) {
+        setTimeout(() => alvo.scrollIntoView({ block: 'start', behavior: 'auto' }), 60);
+        cx.querySelector(`[data-cal-ir-dia="${dados.hoje}"]`)?.classList.add('sel');
+      }
+    },
+
+    _irAteDia(iso) {
+      const sec = document.getElementById('ag-' + iso);
+      document.querySelectorAll('.cal-fd.sel').forEach(x => x.classList.remove('sel'));
+      document.querySelector(`[data-cal-ir-dia="${iso}"]`)?.classList.add('sel');
+      if (sec) {
+        sec.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        sec.classList.add('pisca');
+        setTimeout(() => sec.classList.remove('pisca'), 900);
+      }
     },
 
     _pastilhas(lista) {
