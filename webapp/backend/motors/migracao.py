@@ -17,6 +17,23 @@ from sqlalchemy import inspect, text
 
 # (tabela, coluna, tipo_sqlite, tipo_postgres)
 COLUNAS = [
+    # ── Vínculo com os bots ──────────────────────────────────────────
+    # A tabela `usuarios` JÁ EXISTE, então `create_all()` não a altera —
+    # e é exatamente por isso que estas seis linhas precisam estar aqui.
+    # Sem elas o modelo pede colunas que o banco não tem, e toda consulta
+    # a `Usuario` quebra: o app inteiro cai, não só os bots.
+    #
+    # Sem UNIQUE aqui de propósito: acrescentar índice único numa tabela
+    # povoada é outra operação, e `_garantir_indices_unicos` já cuida
+    # dela mais abaixo. Misturar as duas faria o ALTER falhar em banco
+    # que por acaso tenha duplicata.
+    ("usuarios", "telegram_chat_id",      "VARCHAR(32)", "VARCHAR(32)"),
+    ("usuarios", "telegram_nome",         "VARCHAR(64)", "VARCHAR(64)"),
+    ("usuarios", "telegram_vinculado_em", "DATETIME",    "TIMESTAMP"),
+    ("usuarios", "whatsapp_jid",          "VARCHAR(64)", "VARCHAR(64)"),
+    ("usuarios", "whatsapp_numero",       "VARCHAR(30)", "VARCHAR(30)"),
+    ("usuarios", "whatsapp_vinculado_em", "DATETIME",    "TIMESTAMP"),
+
     # Dungeons
     ("dungeon_sessoes",           "modo_teste",          "BOOLEAN NOT NULL DEFAULT 0",  "BOOLEAN NOT NULL DEFAULT FALSE"),
     ("dungeons",                  "agenda_semanal",      "TEXT",                        "TEXT"),

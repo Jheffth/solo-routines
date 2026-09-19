@@ -55,6 +55,26 @@ class Usuario(Base):
     nivel_acesso    = Column(String(20), default="User")     # Arquiteto | Criador | Admin | User
     inviolavel      = Column(Boolean, default=False)         # Arquiteto: não pode ser excluído/modificado
     ativo           = Column(Boolean, default=True)
+
+    # ── OS BOTS ──────────────────────────────────────────────────────
+    #
+    # ÚNICOS, e é a coluna que impede o pior defeito possível aqui: dois
+    # hunters com o mesmo `chat_id` fariam o bot responder a conversa de
+    # um com os dados do outro. O banco recusa antes de a regra precisar
+    # ser lembrada em cada caminho de código.
+    #
+    # Isto substitui o `_get_usuario()` do bot_telegram.py, que devolvia
+    # "o primeiro usuário ativo (modo solo — 1 usuário)". Funcionava
+    # quando havia um hunter; com a agenda do Google já aberta a
+    # qualquer um, virou incoerência silenciosa — um recebe aviso, os
+    # outros não, e nada na tela explica.
+    telegram_chat_id      = Column(String(32), unique=True, nullable=True, index=True)
+    telegram_nome         = Column(String(64), nullable=True)   # só para exibir
+    telegram_vinculado_em = Column(DateTime, nullable=True)
+
+    whatsapp_jid          = Column(String(64), unique=True, nullable=True, index=True)
+    whatsapp_numero       = Column(String(30), nullable=True)
+    whatsapp_vinculado_em = Column(DateTime, nullable=True)
     criado_em       = Column(DateTime, default=datetime.utcnow)
     ultimo_acesso   = Column(DateTime, nullable=True)
     # Relíquias do altar: JSON com os códigos que o hunter escolheu exibir
@@ -1116,6 +1136,65 @@ class IdentidadeOAuth(Base):
 
     __table_args__ = (
         UniqueConstraint("provedor", "provedor_id", name="uq_oauth_provedor_id"),
+    )
+
+
+class CodigoVinculo(Base):
+    """
+    O CÓDIGO DE SEIS DÍGITOS que liga um hunter a um bot.
+
+    POR QUE NÃO BASTA O `chat_id`
+
+    Qualquer pessoa pode escrever para o bot no Telegram. O `chat_id` que
+    chega prova que ALGUÉM falou, nunca QUEM. Sem um segredo curto que só
+    o dono da conta consegue ver — porque ele aparece na tela do app, já
+    autenticado — o bot não tem como saber de quem é aquela conversa.
+
+    Por isso o código nasce no PAINEL e é consumido no BOT, e não o
+    contrário: gerar o próprio código de dentro do bot seria um laço.
+    Quem já está lá não precisa; quem não está não consegue pedir.
+
+    AS TRÊS DEFESAS, E CADA UMA COBRE UM BURACO DIFERENTE
+
+    · validade curta — um código vazado ontem não serve hoje;
+    · uso único — consumido, morre;
+    · limite de tentativas por origem — seis dígitos são um milhão de
+      combinações, e um milhão de palpites é coisa de segundos para um
+      script. Tentativa limitada é o que transforma "improvável" em
+      "impossível na prática".
+
+    Desenho emprestado do Solo CMV, que já resolveu isto em produção.
+    """
+    __tablename__ = "codigos_vinculo"
+
+    id          = Column(Integer, primary_key=True, index=True)
+    usuario_id  = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    canal       = Column(String(20), nullable=False)   # telegram | whatsapp
+    codigo      = Column(String(8), nullable=False, index=True)
+    expira_em   = Column(DateTime, nullable=False)
+    usado_em    = Column(DateTime, nullable=True)
+    criado_em   = Column(DateTime, default=datetime.utcnow)
+
+
+class TentativaVinculo(Base):
+    """
+    Quantas vezes cada origem errou o código, e até quando está de castigo.
+
+    Mora em tabela e não em memória de propósito: o processo reinicia a
+    cada deploy, e um limite que zera no deploy é um limite que o atacante
+    consegue zerar sozinho — basta esperar.
+    """
+    __tablename__ = "tentativas_vinculo"
+
+    id          = Column(Integer, primary_key=True, index=True)
+    canal       = Column(String(20), nullable=False, index=True)
+    origem      = Column(String(64), nullable=False, index=True)   # chat_id ou jid
+    erros       = Column(Integer, default=0)
+    bloqueado_ate = Column(DateTime, nullable=True)
+    atualizado_em = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("canal", "origem", name="uq_tentativa_canal_origem"),
     )
 
 

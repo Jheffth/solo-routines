@@ -35,6 +35,7 @@ from routers.economia import router as economia_router
 from routers.auras    import router as auras_router
 from routers.versao   import router as versao_router
 from routers.calendario import router as calendario_router
+from routers.bots       import router as bots_router
 from routers.pagamentos import router as pagamentos_router
 
 # ==============================================================================
@@ -102,6 +103,7 @@ app.include_router(economia_router,      prefix="/api")
 app.include_router(auras_router,         prefix="/api")
 app.include_router(pagamentos_router,    prefix="/api")
 app.include_router(calendario_router,    prefix="/api")
+app.include_router(bots_router,           prefix="/api")
 app.include_router(versao_router)
 
 # ==============================================================================

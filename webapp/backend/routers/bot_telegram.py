@@ -33,16 +33,80 @@ def _tg(chat_id: str, texto: str, parse_mode: str = "Markdown"):
         print(f"[BOT] Erro ao enviar: {e}")
 
 
-def _get_usuario(db: Session):
-    """Retorna o primeiro usuário ativo (modo solo — 1 usuário)."""
-    return db.query(Usuario).filter(Usuario.ativo == True).first()
+def _get_usuario(db: Session, chat_id: str = None):
+    """
+    O hunter dono DESTA conversa.
+
+    A VERSÃO ANTERIOR ERA: "retorna o primeiro usuário ativo (modo solo —
+    1 usuário)". Ela devolvia `db.query(Usuario).filter(ativo).first()`,
+    sem olhar de quem era a mensagem.
+
+    Com um hunter, funcionava. Com dois, o bot respondia a conversa de um
+    com as missões do outro — e o segundo hunter simplesmente nunca
+    recebia nada, sem nenhum erro, em nenhum log. A agenda do Google já
+    tinha sido aberta a qualquer hunter; o bot ficou para trás e a
+    incoerência não aparecia em lugar nenhum da tela.
+
+    Agora quem responde é o vínculo: `chat_id` → hunter, provado uma vez
+    por um código de seis dígitos que nasce no painel (motors/vinculo.py).
+
+    O `chat_id=None` ainda aceita o caminho antigo, e SÓ quando existe um
+    único hunter no sistema — é o que mantém as notificações agendadas
+    funcionando para quem já usava o bot antes de vincular.
+    """
+    if chat_id:
+        from motors import vinculo
+        return vinculo.por_origem(db, "telegram", chat_id)
+
+    ativos = db.query(Usuario).filter(Usuario.ativo == True).limit(2).all()
+    return ativos[0] if len(ativos) == 1 else None
 
 
 def _processar(texto: str, chat_id: str, db: Session):
     txt = texto.strip()
-    usuario = _get_usuario(db)
+
+    # ── O VÍNCULO VEM ANTES DE TUDO ──────────────────────────────────
+    #
+    # Estes dois caminhos são os únicos que rodam SEM hunter conhecido —
+    # e têm de rodar, senão não haveria como sair do estado "não
+    # vinculado". Tudo o mais exige saber de quem é a conversa.
+    from motors import vinculo
+
+    usuario = _get_usuario(db, chat_id)
+
+    if txt.lower().startswith("/vincular") or (usuario is None and txt.strip().isdigit()):
+        codigo = txt.split(maxsplit=1)[1] if " " in txt else txt.replace("/vincular", "")
+        codigo = codigo.strip()
+        if not codigo:
+            _tg(chat_id, (
+                "🔗 *Vincular esta conversa*\n\n"
+                "1. Abra o Solo Routines\n"
+                "2. Vá em *Bots*\n"
+                "3. Gere o código do Telegram\n"
+                "4. Mande ele aqui: `/vincular 123456`\n\n"
+                "_O código vale 10 minutos._"
+            ))
+            return
+        try:
+            u = vinculo.vincular(db, "telegram", codigo, chat_id,
+                                 nome=str(chat_id))
+            _tg(chat_id, f"✅ Conversa vinculada a *{u.nome}*.\n"
+                         "Mande /ajuda para ver o que dá para fazer.")
+        except vinculo.ErroVinculo as e:
+            _tg(chat_id, f"❌ {e.mensagem}")
+        return
+
     if not usuario:
-        _tg(chat_id, "❌ Nenhum usuário encontrado no sistema.")
+        _tg(chat_id, (
+            "🔒 Esta conversa ainda não está vinculada a nenhum hunter.\n\n"
+            "Abra o app em *Bots*, gere o código do Telegram e mande aqui:\n"
+            "`/vincular 123456`"
+        ))
+        return
+
+    if txt.lower().startswith("/desvincular"):
+        vinculo.desvincular(db, usuario, "telegram")
+        _tg(chat_id, "🔌 Conversa desvinculada. Nada mais será enviado aqui.")
         return
 
     hoje = tempo.hoje()
@@ -267,13 +331,50 @@ def _level_up_msg(level_ups: list) -> str:
 
 # ── Notificações automáticas ──────────────────────────────────
 
+def _destinatarios(db: Session) -> list:
+    """
+    Os hunters alcançáveis pelo Telegram — cada um no SEU chat.
+
+    Antes as três notificações mandavam para `ALLOWED_CHAT`, um id único
+    no `.env`. Não era só limitação: era um vazamento. O resumo do dia
+    inclui XP, corrente e as missões pelo nome — e todo hunter que
+    surgisse depois teria os dados dele despejados no chat do primeiro.
+
+    Hunter sem vínculo simplesmente não está nesta lista. Ninguém recebe
+    aviso de uma conversa que não provou ser dele.
+    """
+    if not BOT_TOKEN:
+        return []
+    try:
+        from motors import vinculo
+        return vinculo.vinculados(db, "telegram")
+    except Exception as e:
+        print(f"[BOT] nao consegui listar destinatarios: {e}")
+        return []
+
+
+def _para_cada(db: Session, envio) -> None:
+    """
+    UM HUNTER COM PROBLEMA NÃO CALA O BOT PARA OS OUTROS.
+
+    Mesma disciplina do `fechamento.rodar`: o laço engole a falha
+    individual, registra e segue. Sem isto, um chat bloqueado — o hunter
+    apagou a conversa, deu block no bot — derrubaria a notificação de
+    todo mundo, e o sintoma seria "o bot parou de funcionar".
+    """
+    for usuario in _destinatarios(db):
+        try:
+            envio(db, usuario, usuario.telegram_chat_id)
+        except Exception as e:
+            print(f"[BOT] falha ao notificar {usuario.login}: {e}")
+
+
 def notificar_manha(db: Session):
-    """Envia resumo das missões do dia às 07:00."""
-    if not BOT_TOKEN or not ALLOWED_CHAT:
-        return
-    usuario = _get_usuario(db)
-    if not usuario:
-        return
+    """Resumo das missões do dia, às 07:00."""
+    _para_cada(db, _manha)
+
+
+def _manha(db: Session, usuario, chat: str):
     hoje = tempo.hoje()
     rotinas = [r for r in db.query(Rotina).filter(
         Rotina.usuario_id == usuario.id, Rotina.ativo == True
@@ -283,7 +384,7 @@ def notificar_manha(db: Session):
         TarefaDia.data_prevista == hoje,
     ).count()
 
-    _tg(ALLOWED_CHAT, (
+    _tg(chat, (
         f"⚔️ *Sistema de Missões Ativado!*\n"
         f"📅 {hoje.strftime('%A, %d/%m/%Y')}\n\n"
         f"🔄 Rotinas hoje: *{len(rotinas)}*\n"
@@ -294,12 +395,11 @@ def notificar_manha(db: Session):
 
 
 def notificar_tarde(db: Session):
-    """Lembra de missões críticas pendentes às 14:00."""
-    if not BOT_TOKEN or not ALLOWED_CHAT:
-        return
-    usuario = _get_usuario(db)
-    if not usuario:
-        return
+    """Lembra das missões críticas pendentes, às 14:00."""
+    _para_cada(db, _tarde)
+
+
+def _tarde(db: Session, usuario, chat: str):
     hoje = tempo.hoje()
     pendentes = db.query(TarefaDia).filter(
         TarefaDia.usuario_id == usuario.id,
@@ -307,29 +407,29 @@ def notificar_tarde(db: Session):
         TarefaDia.status == "PENDENTE",
         TarefaDia.prioridade.in_(["CRITICA", "ALTA"]),
     ).all()
-    if pendentes:
-        msg = "🔔 *Missões críticas pendentes:*\n\n"
-        for t in pendentes:
-            msg += f"🔴 {t.titulo}\n"
-        _tg(ALLOWED_CHAT, msg)
+    if not pendentes:
+        return          # silêncio é melhor que "você não tem nada crítico"
+    msg = "🔔 *Missões críticas pendentes:*\n\n"
+    for t in pendentes:
+        msg += f"🔴 {t.titulo}\n"
+    _tg(chat, msg)
 
 
 def notificar_noite(db: Session):
-    """Envia resumo do dia às 21:00."""
-    if not BOT_TOKEN or not ALLOWED_CHAT:
-        return
-    usuario = _get_usuario(db)
-    if not usuario:
-        return
+    """Resumo do dia, às 21:00."""
+    _para_cada(db, _noite)
+
+
+def _noite(db: Session, usuario, chat: str):
     hoje = tempo.hoje()
     execs = db.query(Execucao).filter(
         Execucao.usuario_id == usuario.id,
         Execucao.data_execucao == hoje,
     ).all()
-    xp_hoje = sum(e.xp_ganho for e in execs)
-    mc_hoje  = sum(e.moedas_ganhas for e in execs)
+    xp_hoje = sum(e.xp_ganho or 0 for e in execs)
+    mc_hoje = sum(e.moedas_ganhas or 0 for e in execs)
 
-    _tg(ALLOWED_CHAT, (
+    _tg(chat, (
         f"🌑 *Fim do Dia — Relatório*\n\n"
         f"✅ Missões concluídas: *{len(execs)}*\n"
         f"✨ XP ganho hoje: *{xp_hoje}*\n"
@@ -358,8 +458,24 @@ async def webhook(request: Request):
         chat_id = str(message.get("chat", {}).get("id", ""))
         texto   = message.get("text", "")
 
-        if ALLOWED_CHAT and chat_id != ALLOWED_CHAT:
-            _tg(chat_id, "⛔ Acesso não autorizado.")
+        # A TRAVA DO `ALLOWED_CHAT` SAIU DAQUI.
+        #
+        # Ela comparava o chat com um único id fixo no `.env` — a mesma
+        # premissa de um hunter só que o `_get_usuario` carregava. Com
+        # ela de pé, nenhum outro hunter conseguiria sequer VINCULAR: a
+        # primeira mensagem dele levaria "acesso não autorizado" e o
+        # fluxo do código de seis dígitos nunca começaria.
+        #
+        # Quem autoriza agora é o vínculo, e ele é mais forte: o
+        # `ALLOWED_CHAT` protegia um id que qualquer um pode descobrir,
+        # enquanto o vínculo exige um código que só aparece na tela de
+        # quem já entrou na conta.
+        #
+        # Mantido só como LISTA DE ESPERA opcional: preenchido, restringe
+        # quem pode tentar vincular. Vazio (o padrão), qualquer um pode
+        # tentar — e sem o código não passa da porta.
+        if ALLOWED_CHAT and chat_id not in [c.strip() for c in ALLOWED_CHAT.split(",")]:
+            _tg(chat_id, "⛔ Este bot não está aberto para novas conversas.")
             return {"ok": True}
 
         if texto:

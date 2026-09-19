@@ -1,0 +1,217 @@
+/* ══════════════════════════════════════════════════════════════════
+   A ABA BOTS
+
+   A tela é, antes de tudo, UM MANUAL. Conectar bot é um trajeto que
+   atravessa dois aplicativos e um QR — e é exatamente o tipo de coisa
+   em que a pessoa desiste no passo que não entendeu.
+
+   Por isso os passos são uma lista numerada de verdade, com peso
+   visual, e o botão que gera o código mora DENTRO do passo em que ele
+   é usado. Um botão no topo do cartão obriga a pessoa a ler tudo,
+   subir, clicar e descer de novo para achar onde continuar.
+   ══════════════════════════════════════════════════════════════════ */
+
+.bot-card {
+  margin-bottom: 1.25rem;
+  border: 1px solid rgba(255, 255, 255, .07);
+  background:
+    linear-gradient(140deg, rgba(124, 58, 237, .05), transparent 55%),
+    var(--bg-card, rgba(13, 13, 26, .6));
+}
+.bot-card.conectado {
+  border-color: rgba(16, 185, 129, .22);
+  background:
+    linear-gradient(140deg, rgba(16, 185, 129, .06), transparent 55%),
+    var(--bg-card, rgba(13, 13, 26, .6));
+}
+
+.bot-topo { display: flex; align-items: flex-start; gap: .9rem; margin-bottom: 1rem; }
+
+.bot-marca {
+  flex: 0 0 auto;
+  display: grid; place-items: center;
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, .1);
+}
+/* As cores das próprias marcas — é o que faz o olho achar o cartão
+   certo antes de ler o título. */
+.bot-marca--tg { color: #2aabee; background: rgba(42, 171, 238, .1);  border-color: rgba(42, 171, 238, .3); }
+.bot-marca--wa { color: #25d366; background: rgba(37, 211, 102, .1);  border-color: rgba(37, 211, 102, .3); }
+
+.bot-titulo {
+  margin: 0 0 .2rem;
+  font-family: var(--font-section);
+  font-size: 1rem;
+  display: flex; align-items: center; gap: .5rem;
+}
+.bot-selo {
+  font-size: .54rem; letter-spacing: .14em; text-transform: uppercase;
+  padding: .14rem .45rem; border-radius: 5px;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, .05);
+  border: 1px solid rgba(255, 255, 255, .1);
+}
+.bot-selo.on {
+  color: #10b981;
+  background: rgba(16, 185, 129, .12);
+  border-color: rgba(16, 185, 129, .3);
+}
+
+.bot-sub { margin: 0; font-size: .82rem; line-height: 1.5; color: var(--text-muted); }
+
+/* ── OS PASSOS ─────────────────────────────────────────────────── */
+.bot-passos {
+  list-style: none;
+  counter-reset: passo;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: grid;
+  gap: .7rem;
+}
+.bot-passos > li {
+  counter-increment: passo;
+  position: relative;
+  padding-left: 2.1rem;
+  font-size: .84rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.bot-passos > li::before {
+  content: counter(passo);
+  position: absolute;
+  left: 0; top: -.1rem;
+  width: 1.5rem; height: 1.5rem;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  font-family: var(--font-section);
+  font-size: .7rem; font-weight: 700;
+  color: var(--purple-glow, #a855f7);
+  background: rgba(124, 58, 237, .12);
+  border: 1px solid rgba(124, 58, 237, .3);
+}
+/* Passo já resolvido e passo bloqueado trocam o número por um glifo —
+   um "1." verde confunde, porque número sugere ordem, não estado. */
+.bot-passos > li.feito::before,
+.bot-passos > li.pendente::before { content: ''; }
+.bot-passos > li.feito::before {
+  color: #10b981; background: rgba(16,185,129,.12); border-color: rgba(16,185,129,.3);
+}
+.bot-passos > li.pendente::before {
+  color: var(--gold-xp, #f59e0b); background: rgba(245,158,11,.1);
+  border-color: rgba(245,158,11,.3);
+}
+.bot-passos > li.feito, .bot-passos > li.pendente {
+  display: flex; align-items: center; gap: .4rem; padding-left: 2.1rem;
+}
+.bot-passos b { color: var(--text-primary); font-weight: 650; }
+.bot-passos code, .bot-nota code, .bot-falta code {
+  padding: .1rem .35rem;
+  border-radius: 5px;
+  font-family: var(--font-mono, monospace);
+  font-size: .78em;
+  color: var(--purple-glow, #a855f7);
+  background: rgba(124, 58, 237, .1);
+  border: 1px solid rgba(124, 58, 237, .2);
+}
+.bot-passos a { color: #2aabee; }
+
+/* ── O CÓDIGO ──────────────────────────────────────────────────── */
+.bot-codigo-area:empty, .bot-qr-area:empty { display: none; }
+
+.bot-codigo {
+  display: inline-flex;
+  align-items: baseline;
+  gap: .8rem;
+  margin: .5rem 0 .9rem;
+  padding: .7rem 1.1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(124, 58, 237, .35);
+  background: rgba(124, 58, 237, .08);
+}
+.bot-codigo-num {
+  font-family: var(--font-section);
+  font-size: 1.8rem;
+  font-weight: 800;
+  /* Espaçado porque vai ser LIDO EM VOZ ALTA ou digitado à mão num
+     celular, olhando para outra tela. Dígito colado se erra. */
+  letter-spacing: .32em;
+  color: #fff;
+  text-shadow: 0 0 20px rgba(168, 85, 247, .5);
+}
+.bot-codigo-prazo { font-size: .68rem; color: var(--text-muted); white-space: nowrap; }
+.bot-codigo-prazo.vencido { color: #f87171; }
+
+.bot-qr {
+  display: block;
+  width: 200px; height: 200px;
+  margin: .7rem 0 .5rem;
+  border-radius: 12px;
+  /* Fundo BRANCO e não transparente: o leitor do celular precisa do
+     contraste, e um QR escuro sobre tela escura simplesmente não lê. */
+  background: #fff;
+  padding: 8px;
+}
+
+/* ── AVISOS ────────────────────────────────────────────────────── */
+.bot-nota {
+  margin: .2rem 0 .8rem;
+  font-size: .76rem; line-height: 1.6;
+  color: var(--text-muted);
+}
+.bot-falta {
+  display: flex; align-items: flex-start; gap: .5rem;
+  margin: 0 0 .8rem;
+  padding: .6rem .8rem;
+  border-radius: 10px;
+  border: 1px solid rgba(245, 158, 11, .25);
+  background: rgba(245, 158, 11, .06);
+  font-size: .8rem; line-height: 1.6;
+  color: var(--text-secondary);
+}
+.bot-falta svg { flex: none; margin-top: .2rem; color: var(--gold-xp, #f59e0b); }
+.bot-vazio { color: var(--text-muted); font-size: .85rem; margin: 0; }
+
+/* ── BOTÕES ────────────────────────────────────────────────────── */
+.bot-acoes { display: flex; gap: .5rem; flex-wrap: wrap; }
+.bot-bt {
+  display: inline-flex; align-items: center; gap: .45rem;
+  padding: .5rem 1rem;
+  border-radius: 9px;
+  cursor: pointer;
+  font-family: var(--font-section);
+  font-size: .78rem; font-weight: 600;
+  color: var(--text-secondary);
+  border: 1px solid rgba(255, 255, 255, .12);
+  background: rgba(255, 255, 255, .04);
+  transition: border-color .18s, background .18s, color .18s, transform .12s;
+}
+.bot-bt svg { flex: none; }
+.bot-bt:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, .24);
+  background: rgba(255, 255, 255, .07);
+}
+.bot-bt:active:not(:disabled) { transform: translateY(1px); }
+.bot-bt:disabled { opacity: .45; cursor: not-allowed; }
+
+.bot-bt--on {
+  color: #fff;
+  border-color: rgba(124, 58, 237, .5);
+  background: linear-gradient(135deg, rgba(124,58,237,.32), rgba(124,58,237,.14));
+  box-shadow: 0 0 18px rgba(124, 58, 237, .16);
+}
+.bot-bt--on:hover:not(:disabled) {
+  border-color: rgba(168, 85, 247, .78);
+  box-shadow: 0 0 26px rgba(124, 58, 237, .3);
+}
+.bot-bt--perigo { color: #f87171; border-color: rgba(239, 68, 68, .28); }
+.bot-bt--perigo:hover:not(:disabled) {
+  color: #fca5a5; border-color: rgba(239, 68, 68, .5);
+  background: rgba(239, 68, 68, .09);
+}
+
+@media (max-width: 640px) {
+  .bot-codigo-num { font-size: 1.5rem; letter-spacing: .24em; }
+  .bot-qr { width: 170px; height: 170px; }
+}
