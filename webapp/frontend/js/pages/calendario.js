@@ -148,9 +148,10 @@
         if (!lista.length) cls.push('vazio');
 
         html += `<div class="${cls.join(' ')}" data-cal-dia="${iso}"
-                   ${lista.length ? 'tabindex="0" role="button"' : ''}>
+                   ${lista.length ? 'tabindex="0" role="button" aria-expanded="false"' : ''}>
           <div class="cal-num">${d.getDate()}</div>
-          ${this._pastilhas(lista)}
+          <div class="cal-resumo"><div>${this._pastilhas(lista)}</div></div>
+          ${this._gaveta(lista)}
           ${this._densidade(res, lista)}
         </div>`;
       }
@@ -174,6 +175,43 @@
         h += `<span class="cal-mais">+${lista.length - MAX_PASTILHAS}</span>`;
       }
       return h + '</div>';
+    },
+
+    /* ── A GAVETA ────────────────────────────────────────────────
+       A lista inteira do dia, dobrada dentro da própria célula. Ela é
+       montada JUNTO com a grade, e não no clique, por dois motivos:
+
+       · a animação de abrir precisa do conteúdo já medido, senão a
+         gaveta salta em vez de deslizar;
+       · montar no clique significaria remontar a cada abertura, e o
+         hunter abre e fecha vários dias seguidos ao varrer o mês.
+
+       O custo é baixo: são as mesmas ocorrências que a resposta já
+       trouxe, e o `<div>` fechado tem altura zero. */
+    _gaveta(lista) {
+      if (!lista.length) return '';
+      const linhas = lista.map((o, i) => {
+        const cls = ['cal-p', 'cal-p--' + o.origem];
+        if (!o.real) cls.push('prev');
+        if (o.status === 'CONCLUIDA') cls.push('ok');
+        if (o.status === 'FRACASSADA' || o.status === 'FRACASSADA_FATAL') cls.push('ko');
+        const hora = o.hora_inicio
+          ? `<b>${o.hora_inicio}</b> ` : '<b class="sh">—</b> ';
+        return `<span class="${cls.join(' ')}" data-cal-ir="${o.origem}"
+                  data-cal-i="${i}" title="${this._esc(o.titulo)}">
+                  ${hora}${this._esc(o.titulo)}</span>`;
+      }).join('');
+
+      return `<div class="cal-gaveta"><div>
+        <div class="cal-rolo">${linhas}</div>
+        <div class="cal-setas">
+          <button type="button" class="cal-seta" data-cal-rola="-1"
+                  aria-label="Anteriores">▲</button>
+          <span class="cal-conta">${lista.length} no dia</span>
+          <button type="button" class="cal-seta" data-cal-rola="1"
+                  aria-label="Próximas">▼</button>
+        </div>
+      </div></div>`;
     },
 
     /* A BARRA DE DENSIDADE responde "que semana é essa?" de relance —
@@ -279,6 +317,7 @@
         b.onclick = () => {
           this._ref.setMonth(this._ref.getMonth() + Number(b.dataset.calMes));
           this.fecharDia();
+          document.querySelectorAll('.cal-dia.aberto').forEach(o => this.fechar(o));
           this._pintar();
         };
       });
@@ -287,14 +326,96 @@
         const n = new Date();
         this._ref = new Date(n.getFullYear(), n.getMonth(), 1);
         this.fecharDia();
+        document.querySelectorAll('.cal-dia.aberto').forEach(o => this.fechar(o));
         this._pintar();
       };
       cx.querySelectorAll('[data-cal-dia]').forEach(c => {
-        c.onclick = () => this.abrirDia(c.dataset.calDia);
-        c.onkeydown = (e) => {
-          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); c.click(); }
+        c.onclick = (e) => {
+          // Clique num item da gaveta navega; clique na célula alterna.
+          const item = e.target.closest('[data-cal-ir]');
+          if (item) { e.stopPropagation(); this._ir(item.dataset.calIr); return; }
+          if (e.target.closest('[data-cal-rola]')) return;   // seta tem o seu
+          this.alternar(c);
         };
+        c.onkeydown = (e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.alternar(c); }
+          if (e.key === 'Escape') this.fechar(c);
+        };
+        c.querySelectorAll('[data-cal-rola]').forEach(b => {
+          b.onclick = (ev) => {
+            ev.stopPropagation();
+            this._rolar(c, Number(b.dataset.calRola));
+          };
+        });
       });
+    },
+
+    /* ── ABRIR E FECHAR ──────────────────────────────────────────
+       UM DIA ABERTO POR VEZ. Dois abertos esticariam duas linhas da
+       grade ao mesmo tempo e o mês perderia a forma — que é justamente
+       o que se veio ver. */
+    alternar(cel) {
+      if (!cel || cel.classList.contains('vazio')) return;
+
+      /* NO ESTREITO, O PAINEL. Uma célula de 90px não segura uma lista
+         de missões — abrir ali entregaria texto cortado. O painel tem a
+         tela inteira, e no celular é a única forma que funciona.
+         O limiar é o MESMO do CSS (760px); dois números diferentes
+         criariam uma faixa em que a célula abre e a gaveta está oculta. */
+      if (window.matchMedia('(max-width: 760px)').matches) {
+        this.abrirDia(cel.dataset.calDia);
+        return;
+      }
+
+      const jaAberto = cel.classList.contains('aberto');
+      document.querySelectorAll('.cal-dia.aberto').forEach(o => this.fechar(o));
+      if (jaAberto) return;
+
+      cel.classList.add('aberto');
+      cel.setAttribute('aria-expanded', 'true');
+      this._diaAberto = cel.dataset.calDia;
+
+      /* A SETA SÓ EXISTE SE FALTAR ESPAÇO. Medir depois da transição
+         começar daria a altura fechada (zero) e a seta nunca apareceria
+         — por isso a medição espera o próximo quadro, quando a gaveta
+         já tem altura. */
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const rolo = cel.querySelector('.cal-rolo');
+        if (rolo && rolo.scrollHeight > rolo.clientHeight + 2) {
+          cel.classList.add('transborda');
+          this._atualizarSetas(cel);
+          rolo.onscroll = () => this._atualizarSetas(cel);
+        }
+      }));
+    },
+
+    fechar(cel) {
+      if (!cel) return;
+      cel.classList.remove('aberto', 'transborda');
+      cel.setAttribute('aria-expanded', 'false');
+      const rolo = cel.querySelector('.cal-rolo');
+      if (rolo) { rolo.scrollTop = 0; rolo.onscroll = null; }
+      if (this._diaAberto === cel.dataset.calDia) this._diaAberto = null;
+    },
+
+    _rolar(cel, dir) {
+      const rolo = cel.querySelector('.cal-rolo');
+      if (!rolo) return;
+      // Rola por PÁGINA, não por pixel fixo: três linhas de altura
+      // variável não são um número redondo, e rolar 60px deixaria meia
+      // pastilha cortada no topo.
+      rolo.scrollBy({ top: dir * (rolo.clientHeight - 24), behavior: 'smooth' });
+    },
+
+    /* Seta desligada na ponta: um botão que rola para onde não há nada
+       é um clique que não faz nada, e o hunter conclui que quebrou. */
+    _atualizarSetas(cel) {
+      const rolo = cel.querySelector('.cal-rolo');
+      const [cima, baixo] = cel.querySelectorAll('[data-cal-rola]');
+      if (!rolo || !cima || !baixo) return;
+      const fim = rolo.scrollHeight - rolo.clientHeight;
+      cima.disabled = rolo.scrollTop <= 2;
+      baixo.disabled = rolo.scrollTop >= fim - 2;
     },
 
     /* O SoloSinc avisa quando algo mudou. O cache do mês morre aqui —

@@ -48,6 +48,16 @@
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 6px;
+
+  /* `start`, e NÃO o `stretch` padrão. Sem isto, abrir um dia estica
+     TODOS os seis vizinhos da mesma linha junto — cada um vira uma
+     moldura de 268px com três pastilhas no topo e um vazio enorme
+     embaixo. Visto no navegador: parecia defeito, não intenção.
+
+     Com `start`, cada célula fica na altura do próprio conteúdo e só a
+     aberta cresce — ela se destaca da linha como um cartão que veio
+     para a frente, que é o efeito que se queria. */
+  align-items: start;
 }
 .cal-cab {
   padding: .3rem 0 .5rem;
@@ -81,29 +91,143 @@
    seis semanas para não mudar de altura ao trocar de mês. */
 .cal-dia.fora { opacity: .35; }
 
+/* ── O NÚMERO ──────────────────────────────────────────────────────
+   Ele é a âncora da célula: é por ele que o olho encontra o dia antes
+   de ler qualquer título. Pequeno e cinza, virava ruído — a pessoa
+   varria a grade procurando a data.
+
+   MARFIM, e não branco puro. `#fff` sobre fundo quase preto vibra na
+   borda das letras e cansa numa grade de 42 repetições; o marfim tem a
+   mesma presença sem o zumbido. A sombra dupla (uma escura colada, uma
+   clara difusa) é o que o solta do fundo sem virar neon. */
 .cal-num {
   font-family: var(--font-section);
-  font-size: .78rem; font-weight: 700;
-  color: var(--text-secondary);
-  margin-bottom: .3rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: .01em;
+  color: #f2ece0;
+  text-shadow: 0 1px 2px rgba(0,0,0,.6), 0 0 14px rgba(242,236,224,.18);
+  margin-bottom: .4rem;
+  transition: font-size .26s cubic-bezier(.22,1,.36,1),
+              color .26s, opacity .26s, margin .26s;
 }
-.cal-dia.hoje {
-  border-color: rgba(168,85,247,.55);
-  background: rgba(124,58,237,.08);
-}
+.cal-dia.fora .cal-num { color: #8b857a; text-shadow: none; }
+
+.cal-dia.hoje { border-color: rgba(168,85,247,.55); background: rgba(124,58,237,.08); }
 .cal-dia.hoje .cal-num {
   color: #fff;
-  text-shadow: 0 0 12px rgba(168,85,247,.7);
+  text-shadow: 0 1px 2px rgba(0,0,0,.6), 0 0 18px rgba(168,85,247,.85);
 }
 .cal-dia.hoje .cal-num::after {
   content: 'hoje';
-  margin-left: .35rem;
-  font-size: .52rem; letter-spacing: .12em; text-transform: uppercase;
+  margin-left: .4rem;
+  font-size: .5rem; letter-spacing: .14em; text-transform: uppercase;
   color: var(--purple-glow, #a855f7);
+  vertical-align: .32em;
+  text-shadow: none;
 }
+
+/* ── A CÉLULA QUE ABRE ─────────────────────────────────────────────
+   Clicar abre a própria célula em vez de jogar o conteúdo num painel
+   longe dela. O número RECUA — ele já cumpriu o papel de âncora, e
+   dentro do dia aberto quem importa são as missões.
+
+   A linha inteira da grade cresce junto, porque itens de grade se
+   esticam. Isso é proposital: vira um acordeão de semana, e o
+   movimento é coerente em vez de um retângulo saltando sobre os
+   vizinhos. */
+.cal-dia.aberto {
+  min-height: 268px;
+  border-color: rgba(168,85,247,.5);
+  background: rgba(124,58,237,.07);
+  box-shadow: 0 0 0 1px rgba(168,85,247,.18), 0 8px 26px rgba(0,0,0,.45);
+  cursor: default;
+}
+.cal-dia.aberto .cal-num {
+  font-size: .78rem;
+  opacity: .75;
+  margin-bottom: .3rem;
+}
+.cal-dia.aberto:hover { transform: none; }
+
+/* A gaveta: `grid-template-rows` de 0fr para 1fr é o truque que permite
+   animar altura sem saber o tamanho do conteúdo de antemão. */
+.cal-gaveta {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows .3s cubic-bezier(.22,1,.36,1);
+  min-height: 0;
+}
+.cal-dia.aberto .cal-gaveta { grid-template-rows: 1fr; }
+.cal-gaveta > div { overflow: hidden; min-height: 0; }
+
+.cal-rolo {
+  display: grid; gap: 3px;
+  max-height: 186px;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  padding-right: 2px;
+}
+.cal-rolo::-webkit-scrollbar { width: 4px; }
+.cal-rolo::-webkit-scrollbar-track { background: rgba(0,0,0,.25); border-radius: 9px; }
+.cal-rolo::-webkit-scrollbar-thumb { background: rgba(168,85,247,.5); border-radius: 9px; }
+
+/* ── AS SETAS ──────────────────────────────────────────────────────
+   Só aparecem quando há mais do que cabe. Uma seta permanentemente
+   desenhada sobre uma lista que já cabe inteira é um convite a um
+   clique que não faz nada. */
+.cal-setas {
+  display: none;
+  justify-content: space-between;
+  gap: .3rem;
+  margin-top: .25rem;
+}
+.cal-dia.aberto.transborda .cal-setas { display: flex; }
+.cal-seta {
+  flex: 1 1 auto;
+  height: 18px;
+  display: grid; place-items: center;
+  border-radius: 6px; cursor: pointer;
+  border: 1px solid rgba(168,85,247,.22);
+  background: rgba(124,58,237,.1);
+  color: var(--purple-glow, #a855f7);
+  font-size: .62rem; line-height: 1;
+  transition: background .16s, border-color .16s, opacity .16s;
+}
+.cal-seta:hover { background: rgba(124,58,237,.22); border-color: rgba(168,85,247,.5); }
+.cal-seta:disabled { opacity: .25; cursor: default; }
+
+.cal-conta {
+  font-size: .56rem; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--text-muted);
+  align-self: center; padding: 0 .3rem; white-space: nowrap;
+}
+
+/* Dentro da gaveta as pastilhas viram linhas clicáveis. */
+.cal-rolo .cal-p { cursor: pointer; }
+.cal-rolo .cal-p:hover { filter: brightness(1.35); }
 
 /* ── AS PASTILHAS ──────────────────────────────────────────────── */
 .cal-pastilhas { display: grid; gap: 3px; margin-bottom: auto; }
+
+/* O resumo (as 3 primeiras + "+N") dá lugar à lista completa quando o
+   dia abre. Some junto com a própria altura para a gaveta não empurrar
+   a célula para baixo em vez de ocupar o espaço dela. */
+.cal-resumo {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows .26s cubic-bezier(.22,1,.36,1), opacity .18s;
+  min-height: 0;
+  margin-bottom: auto;
+}
+.cal-resumo > div { min-height: 0; }
+.cal-dia.aberto .cal-resumo {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  margin-bottom: 0;
+}
+.cal-dia.aberto .cal-pastilhas { overflow: hidden; }
 
 .cal-p {
   display: block;
@@ -270,8 +394,16 @@
    dia diz o resto. */
 @media (max-width: 760px) {
   .cal-dia { min-height: 62px; padding: .3rem .25rem .25rem; }
-  .cal-num { font-size: .7rem; }
+  /* O número continua sendo o maior elemento da célula — num dia de
+     62px ele é a única coisa legível, e é o que faz a grade ainda
+     servir de calendário. */
+  .cal-num { font-size: .9rem; margin-bottom: .25rem; }
   .cal-dia.hoje .cal-num::after { content: ''; }
+  /* Abrir a célula não cabe aqui: 90px de largura não seguram uma lista
+     de missões. No estreito volta o painel, que tem a tela toda. */
+  .cal-dia.aberto { min-height: 62px; box-shadow: none; }
+  .cal-dia.aberto .cal-num { font-size: .9rem; opacity: 1; }
+  .cal-gaveta { display: none; }
   .cal-pastilhas { display: flex; flex-wrap: wrap; gap: 2px; }
   .cal-p {
     width: 6px; height: 6px; padding: 0; border-radius: 50%;
