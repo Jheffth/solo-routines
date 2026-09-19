@@ -198,6 +198,23 @@ function rodar() {
     }
   }
 
+  /* ── 4b. A META REERGUIDA ───────────────────────────────────── */
+  console.log('\n-- reerguida: a segunda chance precisa do campo --');
+  {
+    const el = desenhar(MC, doc, missao({
+      status: 'PENDENTE', status_hoje: 'PENDENTE', reerguida: true,
+      meta_atual: 40, meta_progresso: .4, meta_texto: 'R$ 40,00',
+      meta_fracao_total: .4,
+      // O servidor manda `true` porque `motors/meta.janela_aberta`
+      // trata `reerguida` — reerguer devolve o resto do dia.
+      meta_janela_aberta: true,
+    }));
+    ok(temEntrada(el),
+       'a meta reerguida MOSTRA o campo de lancar — foi por isto que o '
+       + 'hunter pagou Mana');
+    ok(!selo(el), 'e ainda sem selo: ela nem chegou ao alvo');
+  }
+
   /* ── 5. PAYLOAD VELHO ───────────────────────────────────────── */
   console.log('\n-- aba aberta desde antes do deploy --');
   {

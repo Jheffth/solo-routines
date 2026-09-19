@@ -3196,6 +3196,17 @@ const MissaoCard = {
         m.reerguida = true;
         m.iniciada_em = null;
         m.fracassada_em = null;
+        /* A META VOLTA A ACEITAR VALOR, e isto precisa valer JÁ.
+
+           Reerguer só existe para missão com janela, e a missão só
+           fracassou porque a janela fechou — então `meta_janela_aberta`
+           chegou aqui como `false` e continuaria assim na repintura
+           imediata. O hunter pagaria a Mana, veria o cartão voltar sem
+           o campo de lançar, e concluiria que a segunda chance não
+           funcionou. O servidor já concorda (`motors/meta.janela_aberta`
+           trata `reerguida`); o cartão não pode discordar dele por um
+           ciclo inteiro de tela. */
+        if (m.eh_meta) m.meta_janela_aberta = true;
         break;
       case 'confessar':
         m.status = 'CONFESSADA';

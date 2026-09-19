@@ -323,6 +323,29 @@ def janela_aberta(regra, acumulador, agora, hoje) -> bool:
     if data is not None and data != hoje:
         return False
 
+    # ── REERGUER DEVOLVE O RESTO DO DIA ──────────────────────────────
+    #
+    # Esta cláusula conserta uma regressão que a própria superação criou.
+    #
+    # `reerguer` só aceita missão COM JANELA de horário — e a missão só
+    # fracassou porque a janela fechou. Então toda meta reerguida tem uma
+    # `hora_fim` no passado, e a conta abaixo respondia "fechada" para
+    # todas elas: o cartão escondia o campo de lançar e o servidor
+    # recusava o aporte. O hunter pagava Mana por uma segunda chance que
+    # não chegava a existir, e a meta virava uma missão comum — com um
+    # botão de concluir que o backend recusa, porque meta se cumpre
+    # chegando ao alvo.
+    #
+    # `motors/prazos.py` já dizia a regra certa em `da_execucao`:
+    # reerguer não devolve a janela perdida (as 22:00 já passaram), ele
+    # devolve o RESTO DO DIA, até 23:59. Como a data já foi conferida
+    # acima, estar reerguida e ser de hoje é exatamente isso.
+    #
+    # A lição: a superação trocou o portão do ALVO pelo do RELÓGIO, e
+    # esqueceu que havia outro caminho capaz de mover o relógio.
+    if getattr(acumulador, "reerguida", False):
+        return True
+
     limite = (getattr(regra, "hora_fim", None)
               or getattr(regra, "hora_limite", None))
     if not limite:

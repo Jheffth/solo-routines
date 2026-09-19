@@ -75,10 +75,11 @@ class Regra:
 
 
 class Acum:
-    def __init__(self, meta_atual=0.0, data=None, status="ATIVA"):
+    def __init__(self, meta_atual=0.0, data=None, status="ATIVA", reerguida=False):
         self.meta_atual = meta_atual
         self.data = data
         self.status = status
+        self.reerguida = reerguida
 
 
 HOJE = date(2026, 9, 13)
@@ -162,6 +163,31 @@ ok(meta.janela_aberta(t, a_hoje, as_(10, 0), HOJE),
    "a missao geral respeita `hora_limite`")
 ok(not meta.janela_aberta(t, a_hoje, as_(12, 0), HOJE),
    "e fecha no mesmo horario")
+
+print("\n-- reerguer devolve o resto do dia --")
+# A REGRESSAO QUE ESTE BLOCO GUARDA.
+#
+# `reerguer` so aceita missao COM JANELA, e a missao so fracassou porque a
+# janela fechou. Logo, TODA meta reerguida tem `hora_fim` no passado. A
+# primeira versao de `janela_aberta` olhava so para esse horario e
+# respondia "fechada" para todas elas: o cartao escondia o campo, o
+# servidor recusava o aporte, e o hunter pagava Mana por uma segunda
+# chance que nao existia. A meta virava missao comum.
+#
+# `motors/prazos.py` ja dizia a regra certa: reerguer nao devolve a janela
+# perdida, devolve o RESTO DO DIA.
+a_reerguida = Acum(meta_atual=40.0, data=HOJE, reerguida=True)
+ok(not meta.janela_aberta(r, a_hoje, as_(14, 0), HOJE),
+   "as 14h, com prazo ate as 11h, a meta comum esta fechada")
+ok(meta.janela_aberta(r, a_reerguida, as_(14, 0), HOJE),
+   "MAS a reerguida aceita — o hunter pagou Mana por isso")
+ok(meta.janela_aberta(r, a_reerguida, as_(23, 58), HOJE),
+   "e vale ate o fim do dia, como diz prazos.da_execucao")
+
+a_reerg_ontem = Acum(meta_atual=40.0, data=HOJE - timedelta(days=1), reerguida=True)
+ok(not meta.janela_aberta(r, a_reerg_ontem, as_(9, 0), HOJE),
+   "reerguer devolve o resto DAQUELE dia, nao um passe vitalicio: "
+   "a de ontem continua fechada")
 
 print("\n-- prazo ilegivel nao tranca a porta --")
 quebrada = Regra(hora_fim="onze horas")
