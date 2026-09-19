@@ -243,62 +243,24 @@ def _parse_hhmm(hhmm: Optional[str], dia: date) -> Optional[datetime]:
         return None
 
 
-def _agenda_do_dia(d: Dungeon, dia: date) -> Optional[dict]:
-    """Config da agenda semanal para o weekday do dia (None = sem override)."""
-    try:
-        agenda = json.loads(d.agenda_semanal) if getattr(d, "agenda_semanal", None) else {}
-        return agenda.get(str(dia.weekday()))
-    except Exception:
-        return None
-
-
-def _horario_do_dia(d: Dungeon, dia: date) -> tuple:
-    """(hora_entrada, hora_saida) do dia — override da agenda semanal ou padrão."""
-    cfg = _agenda_do_dia(d, dia)
-    if cfg:
-        return (cfg.get("entrada") or d.hora_entrada, cfg.get("saida") or d.hora_saida)
-    return (d.hora_entrada, d.hora_saida)
-
-
-def _eh_folga(d: Dungeon, dia: date) -> bool:
-    try:
-        folgas = json.loads(d.folgas) if getattr(d, "folgas", None) else []
-        return dia.isoformat() in folgas
-    except Exception:
-        return False
-
-
-def _eh_dungeon_de_hoje(d: Dungeon, hoje: date) -> bool:
-    """A dungeon é devida hoje?"""
-    if d.status != "ATIVA":
-        return False
-    # Folga programada (data específica) tranca o portão
-    if _eh_folga(d, hoje):
-        return False
-    # Agenda semanal com dia explicitamente fechado
-    cfg = _agenda_do_dia(d, hoje)
-    if cfg is not None and not cfg.get("aberto", True):
-        return False
-    if d.tipo_permanencia == "TEMPORARIA":
-        ini = d.data_inicio or hoje
-        fim = d.data_fim or hoje
-        return ini <= hoje <= fim
-    # PERMANENTE — mesma convenção de Rotina
-    t = d.tipo_recorrencia or "DIARIA"
-    if t == "DIARIA":
-        return True
-    if t == "SEMANAL":
-        dias = json.loads(d.dias_semana) if d.dias_semana else []
-        return hoje.weekday() in dias
-    if t == "MENSAL":
-        return hoje.day == d.dia_mes
-    if t == "ANUAL" and d.mes_dia:
-        try:
-            m, dd = d.mes_dia.split("-")
-            return hoje.month == int(m) and hoje.day == int(dd)
-        except Exception:
-            return False
-    return False
+# ── AS QUATRO SUBIRAM PARA O MOTOR ───────────────────────────────────
+#
+# `agenda_do_dia`, `horario_do_dia`, `eh_folga` e `dungeon_devida_em`
+# moravam aqui como funções privadas do router. O calendário precisa
+# exatamente delas para projetar os dias à frente — e copiá-las para lá
+# criaria a QUARTA resposta no projeto para "esta missão cai neste dia?".
+#
+# Este projeto já pagou por isso: `_prazo_da_sessao` chegou a ter três
+# cópias divergentes, e o HUD mostrava "ABERTO" numa dungeon vencida.
+#
+# Elas agora vivem em `motors/calendario_projecao.py` e o router bebe de
+# lá. Os apelidos abaixo mantêm o resto deste arquivo intacto.
+from motors.calendario_projecao import (           # noqa: E402
+    agenda_do_dia as _agenda_do_dia,
+    horario_do_dia as _horario_do_dia,
+    eh_folga as _eh_folga,
+    dungeon_devida_em as _eh_dungeon_de_hoje,
+)
 
 
 def _missao_eh_de_hoje(m: DungeonMissao, hoje: date) -> bool:

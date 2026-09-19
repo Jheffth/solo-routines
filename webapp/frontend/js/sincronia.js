@@ -124,6 +124,10 @@
 
     recarregar(motivo) {
       this.anotar('recarregar', { motivo, pagina: window.App && App.currentPage });
+      /* O CALENDÁRIO GUARDA MESES INTEIROS EM CACHE, e recarregar a
+         página sem limpar esse cache repintaria exatamente o retrato
+         velho que motivou a recarga. */
+      try { window.Calendario && Calendario.invalidar(); } catch (_) {}
       try {
         if (window.App && App.atualizarPaginaAtual) App.atualizarPaginaAtual();
       } catch (e) {

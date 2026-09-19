@@ -1,0 +1,283 @@
+/* ══════════════════════════════════════════════════════════════════
+   O CALENDÁRIO
+
+   A DECISÃO VISUAL QUE ATRAVESSA O ARQUIVO INTEIRO:
+
+       FATO     — sólido, opaco, sem tracejado. Aconteceu.
+       PREVISÃO — vazada, tracejada, ~70%. Ainda pode ser qualquer coisa.
+
+   Os dias futuros não existem no banco; o servidor projeta a regra e
+   marca cada ocorrência com `real`. Se as duas naturezas tiverem a mesma
+   aparência, a tela mostra como consumado um dia que ainda nem chegou —
+   e essa é a pior mentira que um calendário consegue contar.
+
+   Não é preferência de estilo. É a integridade do que a tela afirma.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── O TOPO ────────────────────────────────────────────────────── */
+.cal-topo {
+  display: flex; align-items: center; gap: .6rem;
+  margin-bottom: 1rem;
+}
+.cal-mes { display: flex; align-items: baseline; gap: .5rem; margin-right: auto; }
+.cal-mes h2 {
+  margin: 0; font-family: var(--font-section);
+  font-size: 1.25rem; font-weight: 700; color: var(--text-primary);
+}
+.cal-mes span { font-size: .9rem; color: var(--text-muted); }
+
+.cal-nav, .cal-hoje {
+  display: grid; place-items: center;
+  min-width: 34px; height: 34px; padding: 0 .7rem;
+  border-radius: 9px; cursor: pointer;
+  font-family: var(--font-section); font-size: .8rem; font-weight: 600;
+  color: var(--text-secondary);
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.04);
+  transition: border-color .18s, background .18s, color .18s;
+}
+.cal-nav { font-size: 1.15rem; line-height: 1; }
+.cal-nav:hover, .cal-hoje:hover {
+  color: var(--text-primary);
+  border-color: rgba(124,58,237,.5);
+  background: rgba(124,58,237,.1);
+}
+
+/* ── A GRADE ───────────────────────────────────────────────────── */
+.cal-grade {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+.cal-cab {
+  padding: .3rem 0 .5rem;
+  text-align: center;
+  font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.cal-dia {
+  display: flex; flex-direction: column;
+  min-height: 108px;
+  padding: .4rem .45rem .3rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.06);
+  background: rgba(255,255,255,.015);
+  overflow: hidden;
+  transition: border-color .18s, background .18s, transform .12s;
+}
+.cal-dia:not(.vazio) { cursor: pointer; }
+.cal-dia:not(.vazio):hover {
+  border-color: rgba(124,58,237,.4);
+  background: rgba(124,58,237,.05);
+  transform: translateY(-1px);
+}
+.cal-dia:focus-visible {
+  outline: none;
+  border-color: rgba(168,85,247,.7);
+  box-shadow: 0 0 0 3px rgba(124,58,237,.18);
+}
+/* Dia de outro mês continua clicável, mas recua — a grade precisa das
+   seis semanas para não mudar de altura ao trocar de mês. */
+.cal-dia.fora { opacity: .35; }
+
+.cal-num {
+  font-family: var(--font-section);
+  font-size: .78rem; font-weight: 700;
+  color: var(--text-secondary);
+  margin-bottom: .3rem;
+}
+.cal-dia.hoje {
+  border-color: rgba(168,85,247,.55);
+  background: rgba(124,58,237,.08);
+}
+.cal-dia.hoje .cal-num {
+  color: #fff;
+  text-shadow: 0 0 12px rgba(168,85,247,.7);
+}
+.cal-dia.hoje .cal-num::after {
+  content: 'hoje';
+  margin-left: .35rem;
+  font-size: .52rem; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--purple-glow, #a855f7);
+}
+
+/* ── AS PASTILHAS ──────────────────────────────────────────────── */
+.cal-pastilhas { display: grid; gap: 3px; margin-bottom: auto; }
+
+.cal-p {
+  display: block;
+  padding: .16rem .34rem;
+  border-radius: 5px;
+  font-size: .62rem; line-height: 1.35;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  background: rgba(255,255,255,.05);
+}
+.cal-p b { font-weight: 700; opacity: .85; margin-right: .15rem; }
+
+/* A ORIGEM dá a cor: rotina roxa, portão âmbar, missão geral ciano.
+   Três famílias bastam — mais cores viram ruído numa célula de 108px. */
+.cal-p--rotina  { color:#c4b5fd; background:rgba(124,58,237,.16); border-color:rgba(124,58,237,.26); }
+.cal-p--dungeon { color:#fcd34d; background:rgba(245,158,11,.14); border-color:rgba(245,158,11,.28); }
+.cal-p--tarefa  { color:#7dd3fc; background:rgba(56,189,248,.13); border-color:rgba(56,189,248,.26); }
+
+/* A PREVISÃO. Fundo vazado e borda tracejada — o olho separa antes de
+   ler. Um dia futuro cheio de pastilhas sólidas pareceria um dia já
+   vivido. */
+.cal-p.prev {
+  background: transparent;
+  border-style: dashed;
+  opacity: .72;
+}
+
+/* O FATO consumado. Verde e vermelho só aqui, nunca no futuro: eles
+   dizem resultado, e resultado é coisa do passado. */
+.cal-p.ok {
+  color:#6ee7b7; background:rgba(16,185,129,.14); border-color:rgba(16,185,129,.3);
+}
+.cal-p.ko {
+  color:#fca5a5; background:rgba(239,68,68,.12); border-color:rgba(239,68,68,.3);
+  text-decoration: line-through; text-decoration-color: rgba(239,68,68,.5);
+}
+
+.cal-mais {
+  font-size: .58rem; color: var(--text-muted); padding-left: .34rem;
+}
+
+/* ── A DENSIDADE ───────────────────────────────────────────────────
+   Uma barra de 3px no rodapé da célula. É ela que responde "que semana
+   é essa?" antes de o olho ler um único título. */
+.cal-densidade {
+  display: flex; gap: 1px;
+  height: 3px; margin-top: .3rem;
+  border-radius: 99px; overflow: hidden;
+}
+.cal-densidade i { display: block; height: 100%; background: rgba(255,255,255,.14); }
+.cal-densidade i.ok { background: #10b981; }
+.cal-densidade i.ko { background: #ef4444; }
+
+/* ── A LEGENDA ─────────────────────────────────────────────────── */
+.cal-legenda {
+  display: flex; align-items: center; gap: .9rem; flex-wrap: wrap;
+  margin-top: 1rem; padding-top: .8rem;
+  border-top: 1px solid rgba(255,255,255,.06);
+  font-size: .68rem; color: var(--text-muted);
+}
+.cal-legenda span { display: inline-flex; align-items: center; gap: .35rem; }
+.cal-am {
+  width: 12px; height: 9px; border-radius: 3px;
+  border: 1px solid transparent; flex: none;
+}
+.cal-am--rotina  { background:rgba(124,58,237,.35); border-color:rgba(124,58,237,.5); }
+.cal-am--dungeon { background:rgba(245,158,11,.3);  border-color:rgba(245,158,11,.5); }
+.cal-am--tarefa  { background:rgba(56,189,248,.3);  border-color:rgba(56,189,248,.5); }
+.cal-am.prev { background: transparent; border: 1px dashed rgba(255,255,255,.4); }
+.cal-sep { width: 1px; height: 14px; background: rgba(255,255,255,.1); }
+
+.cal-vazio { color: var(--text-muted); font-size: .85rem; margin: 0; }
+
+/* ── O PAINEL DO DIA ───────────────────────────────────────────────
+   Sem botão de ação — o calendário é um mapa, e mapa não dirige. Cada
+   item leva para a tela dona da missão. */
+.cal-painel {
+  display: none;
+  margin-top: 1.25rem;
+  padding: 1.1rem 1.2rem;
+  border-radius: 14px;
+  border: 1px solid rgba(124,58,237,.22);
+  background:
+    linear-gradient(140deg, rgba(124,58,237,.06), transparent 55%),
+    var(--bg-card, rgba(13,13,26,.6));
+}
+.cal-painel.on { display: block; animation: cal-abre .22s ease-out; }
+@keyframes cal-abre {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.cal-painel-cab {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 1rem; margin-bottom: .9rem;
+}
+.cal-painel-cab h3 {
+  margin: 0; font-family: var(--font-section);
+  font-size: 1rem; color: var(--text-primary);
+}
+.cal-painel-cab p { margin: .15rem 0 0; font-size: .75rem; color: var(--text-muted); }
+.cal-fechar {
+  border: none; background: none; cursor: pointer;
+  color: var(--text-muted); font-size: 1rem; padding: .2rem .4rem;
+  border-radius: 6px;
+}
+.cal-fechar:hover { color: var(--text-primary); background: rgba(255,255,255,.06); }
+
+.cal-itens { display: grid; gap: .4rem; }
+.cal-item {
+  display: flex; align-items: center; gap: .6rem;
+  width: 100%; text-align: left;
+  padding: .5rem .7rem;
+  border-radius: 9px; cursor: pointer;
+  border: 1px solid rgba(255,255,255,.07);
+  background: rgba(255,255,255,.025);
+  color: var(--text-secondary);
+  font-size: .84rem;
+  transition: border-color .18s, background .18s, transform .12s;
+}
+.cal-item:hover {
+  border-color: rgba(124,58,237,.4);
+  background: rgba(124,58,237,.06);
+  transform: translateX(2px);
+}
+/* Faixa na borda esquerda: mesma cor da pastilha, para o olho ligar a
+   linha do painel ao quadradinho que ele acabou de clicar. */
+.cal-item--rotina  { border-left: 3px solid rgba(124,58,237,.6); }
+.cal-item--dungeon { border-left: 3px solid rgba(245,158,11,.6); }
+.cal-item--tarefa  { border-left: 3px solid rgba(56,189,248,.6); }
+
+.cal-it-hora {
+  flex: none; min-width: 5.2rem;
+  font-family: var(--font-section); font-size: .72rem; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.cal-it-hora.vazia { color: var(--text-muted); font-weight: 400; font-style: italic; }
+.cal-it-txt { flex: 1 1 auto; min-width: 0; }
+.cal-it-rank {
+  flex: none; font-family: var(--font-section);
+  font-size: .66rem; font-weight: 800; color: var(--gold-xp, #f59e0b);
+}
+.cal-it-selo {
+  flex: none;
+  font-size: .56rem; letter-spacing: .1em; text-transform: uppercase;
+  padding: .12rem .4rem; border-radius: 5px;
+  color: var(--text-muted); background: rgba(255,255,255,.05);
+}
+.cal-it-selo.concluida { color:#6ee7b7; background:rgba(16,185,129,.14); }
+.cal-it-selo.fracassada, .cal-it-selo.fracassada_fatal {
+  color:#fca5a5; background:rgba(239,68,68,.12);
+}
+.cal-it-selo.prev {
+  color: var(--text-muted); background: transparent;
+  border: 1px dashed rgba(255,255,255,.2);
+}
+
+/* ── ESTREITO ──────────────────────────────────────────────────────
+   Abaixo de 760px a grade de 7 colunas espreme cada dia em ~90px, e as
+   pastilhas viram tarjas ilegíveis. Some com o texto e fica só o ponto
+   colorido: a célula passa a dizer QUANTO e DE QUE TIPO, e o painel do
+   dia diz o resto. */
+@media (max-width: 760px) {
+  .cal-dia { min-height: 62px; padding: .3rem .25rem .25rem; }
+  .cal-num { font-size: .7rem; }
+  .cal-dia.hoje .cal-num::after { content: ''; }
+  .cal-pastilhas { display: flex; flex-wrap: wrap; gap: 2px; }
+  .cal-p {
+    width: 6px; height: 6px; padding: 0; border-radius: 50%;
+    font-size: 0; overflow: hidden;
+  }
+  .cal-p b { display: none; }
+  .cal-mais { font-size: .5rem; }
+  .cal-it-hora { min-width: 4rem; }
+}

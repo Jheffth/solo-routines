@@ -28,6 +28,7 @@
   <link rel="stylesheet" href="css/perfil.css">
   <link rel="stylesheet" href="css/dashboard-extrato.css">
   <link rel="stylesheet" href="css/bots.css">
+  <link rel="stylesheet" href="css/calendario.css">
   <link rel="stylesheet" href="css/painel-admin.css">
   <link rel="stylesheet" href="css/materiais.css">
   <link rel="stylesheet" href="css/loja.css?v=frag1">
@@ -440,6 +441,15 @@
               </svg>
             </span>
             <span>Dungeons</span>
+          </a>
+          <a class="nav-item" data-page="calendario" id="nav-calendario" href="#">
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="5" width="18" height="16" rx="2"/>
+                <path d="M3 10h18M8 3v4M16 3v4"/>
+              </svg>
+            </span>
+            <span>Calendario</span>
           </a>
 
           <div class="nav-section"><span class="nav-section-label">Recompensas</span></div>
@@ -1260,6 +1270,32 @@
 
         <!-- PAGE: HUNTER (perfil público) -->
         <!-- ═══════════════════ BOTS ═══════════════════ -->
+        <!-- ═══════════════════ CALENDARIO ═══════════════════ -->
+        <div class="page hidden" id="page-calendario">
+          <div class="sys-plate">
+            <div class="sys-plate-glyph">
+              <svg viewBox="0 0 48 48" width="34" height="34" aria-hidden="true">
+                <path d="M24 2 L44 13 V35 L24 46 L4 35 V13 Z" fill="none"
+                  stroke="url(#sysGlyphGrad)" stroke-width="2.5" stroke-linejoin="round"/>
+                <rect x="14" y="16" width="20" height="17" rx="2.5" fill="rgba(168,85,247,.18)"
+                  stroke="url(#sysGlyphGrad)" stroke-width="1.6"/>
+                <path d="M14 22h20M19 13v5M29 13v5" stroke="url(#sysGlyphGrad)" stroke-width="1.6"/>
+              </svg>
+            </div>
+            <div class="sys-plate-texts">
+              <h1 class="sys-plate-title">CALENDARIO</h1>
+              <div class="sys-plate-sub">
+                <span>A programacao</span>
+                <span class="sys-plate-sep">·</span>
+                <span class="sys-plate-whisper">O que vem, e quando os portoes abrem</span>
+              </div>
+              <div class="sys-plate-line"></div>
+            </div>
+          </div>
+          <div id="cal-conteudo"></div>
+          <div id="cal-painel" class="cal-painel"></div>
+        </div>
+
         <div class="page hidden" id="page-bots">
           <div class="sys-plate">
             <div class="sys-plate-glyph">
@@ -1638,6 +1674,7 @@
   <script src="js/pages/perfil.js"></script>
   <script src="js/pages/agenda.js"></script>
   <script src="js/pages/bots.js"></script>
+  <script src="js/pages/calendario.js"></script>
   <script src="js/pages/gerencial.js"></script>
   <script src="js/pages/painel-admin.js"></script>
   <script src="js/pages/materiais.js"></script>

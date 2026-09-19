@@ -36,7 +36,8 @@ from sqlalchemy.orm import Session
 import config
 from auth.router import get_usuario_atual
 from database import get_db, Usuario, ContaCalendario, EventoCalendario
-from motors import calendario as motor, calendario_sinc as sinc, cofre
+from motors import (calendario as motor, calendario_sinc as sinc,
+                    calendario_projecao as projecao, cofre, tempo)
 
 router = APIRouter(prefix="/calendario", tags=["calendario"])
 
@@ -81,6 +82,45 @@ def _conta(db: Session, usuario: Usuario) -> Optional[ContaCalendario]:
 # ══════════════════════════════════════════════════════════════════════
 # ESTADO
 # ══════════════════════════════════════════════════════════════════════
+@router.get("/ocorrencias")
+def ocorrencias(de: str, ate: str,
+                db: Session = Depends(get_db),
+                usuario: Usuario = Depends(get_usuario_atual)):
+    """
+    O que está programado, dia a dia — a fonte da aba Calendário.
+
+    PASSADO É FATO, FUTURO É PREVISÃO, e cada ocorrência diz de qual se
+    trata no campo `real`. A distinção não é preciosismo: mostrar como
+    consumado um dia que ainda pode ser qualquer coisa é a pior mentira
+    que um calendário consegue contar.
+
+    O TETO DE 92 DIAS é validado aqui e recusado com mensagem. Sem ele,
+    um `GET` que parece inocente projeta centenas de ocorrências por
+    rotina e derruba o servidor.
+    """
+    from datetime import date as _date
+
+    try:
+        d1 = _date.fromisoformat(de)
+        d2 = _date.fromisoformat(ate)
+    except (ValueError, TypeError):
+        raise HTTPException(400, "Datas em formato inválido (use AAAA-MM-DD).")
+
+    try:
+        dias = projecao.ocorrencias(db, usuario.id, d1, d2)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+    return {
+        "de": d1.isoformat(), "ate": d2.isoformat(),
+        "hoje": tempo.hoje().isoformat(),
+        "dias": dias,
+        # O resumo vem junto para o mês não precisar de N chamadas nem
+        # recalcular no navegador o que o servidor já tem na mão.
+        "resumos": {d: projecao.resumo(l) for d, l in dias.items()},
+    }
+
+
 @router.get("/status")
 def status(db: Session = Depends(get_db),
            usuario: Usuario = Depends(get_usuario_atual)):
