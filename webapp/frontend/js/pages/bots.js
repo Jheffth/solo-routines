@@ -73,11 +73,18 @@
           </div>
         </div>`;
 
+      /* O DIAGNÓSTICO ENTRA NOS TRÊS CAMINHOS, e a razão é o caso
+         traiçoeiro: token configurado, hunter vinculado, cartão inteiro
+         verde — e nenhum webhook registrado. O Telegram não tem para
+         onde entregar, o hunter manda mensagem e não acontece nada, e a
+         tela continua dizendo "conectado". Só o painel desmente. */
+      const srv = this._servidorTg(t.servidor);
+
       if (!t.disponivel) {
         return `<div class="card bot-card">${cabeca}
           <p class="bot-falta">${this._g('caveira', 15)}
             <span>O servidor não tem <code>TELEGRAM_BOT_TOKEN</code> configurado.
-            Sem ele não há bot para conectar.</span></p></div>`;
+            Sem ele não há bot para conectar.</span></p>${srv}</div>`;
       }
 
       if (t.vinculado) {
@@ -88,7 +95,7 @@
           <div class="bot-acoes">
             <button type="button" class="bot-bt bot-bt--perigo" data-bot-sair="telegram">
               ${this._g('excluir', 15)}<span>Desvincular</span></button>
-          </div></div>`;
+          </div>${srv}</div>`;
       }
 
       const bot = t.usuario_bot
@@ -108,7 +115,88 @@
         <div class="bot-acoes">
           <button type="button" class="bot-bt bot-bt--on" data-bot-codigo="telegram">
             ${this._g('etiqueta', 15)}<span>Gerar meu código</span></button>
-        </div></div>`;
+        </div>${srv}</div>`;
+    },
+
+    /* ── O PAINEL DO ARQUITETO ─────────────────────────────────────────
+       O servidor só manda `servidor` para o Arquiteto; para todo mundo
+       ele vem nulo e este bloco não existe. A regra de verdade está no
+       backend — esconder na tela é conveniência, não segurança.
+
+       O QUE ESTE PAINEL RESPONDE, e que nenhuma outra tela respondia:
+       "o bot está no ar?". Antes a única forma de saber era entrar no
+       servidor e rodar um curl no getWebhookInfo. E as duas perguntas
+       que mais importam — quantos updates estão encalhados e qual foi o
+       último erro de entrega — nem no servidor apareciam, porque quem
+       as guarda é o Telegram, não nós. */
+    _servidorTg(s) {
+      if (!s) return '';
+
+      const linha = (ok, texto, detalhe) => `
+        <li class="${ok === null ? 'neutra' : (ok ? 'ok' : 'nao')}">
+          <span class="bot-diag-marca">${ok === null ? '·' : (ok ? '✓' : '✕')}</span>
+          <span>${texto}${detalhe ? ` <i>${this._esc(detalhe)}</i>` : ''}</span>
+        </li>`;
+
+      /* NÃO CONSEGUI PERGUNTAR ≠ NÃO ESTÁ REGISTRADO. Confundir os dois
+         mandaria o Arquiteto reconfigurar um webhook que estava de pé —
+         por isso a consulta falha aparece como aviso próprio, e não
+         como um "✕ webhook" que seria mentira. */
+      if (s.erro_consulta) {
+        return `<div class="bot-diag">
+          <h4>${this._g('engrenagem', 14)}<span>Estado do bot</span></h4>
+          <p class="bot-falta"><span>Não consegui perguntar ao Telegram:
+            <i>${this._esc(s.erro_consulta)}</i>. O estado abaixo pode estar
+            velho — isto não quer dizer que o webhook caiu.</span></p>
+        </div>`;
+      }
+
+      const itens = [
+        linha(!!s.token_configurado, 'Token do BotFather',
+              s.usuario_bot ? '@' + s.usuario_bot : ''),
+        s.segredo_configurado
+          ? linha(!s.segredo_fraco, 'Segredo do webhook',
+                  s.segredo_fraco ? 'valor de exemplo — troque' : '')
+          : linha(false, 'Segredo do webhook', 'TELEGRAM_SECRET vazio'),
+        s.webhook_registrado
+          ? linha(!!s.webhook_confere, 'Webhook registrado',
+                  s.webhook_confere ? s.webhook_url
+                    : 'aponta para ' + s.webhook_url + ' — o esperado é '
+                      + s.webhook_esperado)
+          : linha(false, 'Webhook registrado',
+                  'o Telegram não tem para onde entregar'),
+      ];
+
+      if (s.updates_pendentes) {
+        itens.push(linha(false, 'Mensagens encalhadas',
+          s.updates_pendentes + ' aguardando entrega'));
+      }
+      if (s.ultimo_erro) {
+        itens.push(linha(false, 'Último erro de entrega', s.ultimo_erro));
+      }
+      if (s.lista_espera && s.lista_espera.length) {
+        itens.push(linha(null, 'Lista de espera ativa',
+          s.lista_espera.length + ' chat(s) — só eles podem tentar vincular'));
+      }
+
+      const podeRegistrar = s.token_configurado && s.segredo_configurado;
+
+      return `<div class="bot-diag ${s.pronto ? 'no-ar' : ''}">
+        <h4>${this._g('engrenagem', 14)}<span>Estado do bot</span>
+          ${s.pronto ? '<span class="bot-selo on">no ar</span>'
+                     : '<span class="bot-selo">fora do ar</span>'}</h4>
+        <ul class="bot-diag-lista">${itens.join('')}</ul>
+        <div class="bot-acoes">
+          <button type="button" class="bot-bt" data-bot-webhook
+            ${podeRegistrar ? '' : 'disabled title="Preencha TELEGRAM_BOT_TOKEN e TELEGRAM_SECRET no .env do servidor"'}>
+            ${this._g('radar', 15)}<span>${s.webhook_registrado
+              ? 'Registrar de novo' : 'Registrar webhook'}</span></button>
+        </div>
+        <p class="bot-nota">Registrar aponta o Telegram para
+          <code>${this._esc(s.webhook_esperado)}</code> e descarta as
+          mensagens acumuladas — um <code>/ok</code> de ontem chegando hoje
+          concluiria a missão errada.</p>
+      </div>`;
     },
 
     /* ── WHATSAPP ─────────────────────────────────────────────── */
@@ -205,6 +293,35 @@
       });
       const q = cx.querySelector('[data-bot-qr]');
       if (q) q.onclick = () => this.mostrarQR(q);
+      const w = cx.querySelector('[data-bot-webhook]');
+      if (w) w.onclick = () => this.registrarWebhook(w);
+    },
+
+    /* Sem argumento nenhum: o servidor já sabe o próprio endereço
+       público (OAUTH_REDIRECT_BASE). Pedir a URL aqui seria transferir
+       para a tela um fato que o backend tem de primeira mão — e abrir a
+       chance de registrar o webhook num endereço digitado errado. */
+    async registrarWebhook(bt) {
+      const ok = await SoloDialog.confirm(
+        'O Telegram passa a entregar as mensagens neste servidor. '
+        + 'As mensagens acumuladas são descartadas.',
+        { titulo: 'Registrar o webhook?', btnOk: 'Registrar' }
+      );
+      if (!ok) return;
+      bt.disabled = true;
+      const rot = bt.querySelector('span');
+      const antes = rot ? rot.textContent : '';
+      if (rot) rot.textContent = 'Registrando...';
+      try {
+        const r = await API.post('/bot/configurar-webhook', {});
+        SoloDialog.toast('Webhook registrado.', 'success');
+        await this.carregar();   // repinta com o estado novo, não o suposto
+        return r;
+      } catch (e) {
+        SoloDialog.toast(e.message || 'O Telegram recusou.', 'error', 7000);
+        bt.disabled = false;
+        if (rot) rot.textContent = antes;
+      }
     },
 
     async gerarCodigo(canal, bt) {

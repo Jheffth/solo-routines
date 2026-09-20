@@ -19,7 +19,40 @@ router = APIRouter(prefix="/bot", tags=["bot-telegram"])
 TELEGRAM_API   = "https://api.telegram.org/bot{token}/{method}"
 BOT_TOKEN      = os.getenv("TELEGRAM_BOT_TOKEN", "")
 ALLOWED_CHAT   = os.getenv("TELEGRAM_CHAT_ID", "")
-WEBHOOK_SECRET = os.getenv("TELEGRAM_SECRET", "solorotinas")
+
+# ══════════════════════════════════════════════════════════════════════
+# O SEGREDO DO WEBHOOK — e por que ele não tem mais valor padrão
+#
+# Este valor era `os.getenv("TELEGRAM_SECRET", "solorotinas")`. O default
+# é o problema inteiro: quem não preenchesse a variável ficaria com um
+# segredo publicado no código, num endpoint aberto à internet.
+#
+# E o que ele guarda não é pouco. O `/api/bot/webhook` confia no
+# `chat_id` que chega no corpo — tem de confiar, é assim que o Telegram
+# identifica a conversa. Quem sabe o segredo monta o JSON à mão, escreve
+# o `chat_id` de um hunter já vinculado e manda `/ok`, `/add`, `/status`:
+# conclui missões que não fez, ganha XP, lê a rotina dele. Não é leitura
+# indevida, é o Sistema inteiro operado por um estranho.
+#
+# O vínculo de seis dígitos não defende contra isso — ele prova quem é o
+# DONO de um chat_id, e o forjador não precisa provar nada, ele já chega
+# dizendo ser um chat_id que o vínculo aprovou.
+#
+# Sem segredo configurado o webhook RECUSA TUDO. Preferir silêncio a um
+# bot que aceita qualquer um: um bot que não responde é um chamado de
+# suporte; um bot que responde a estranhos é um estrago.
+# ══════════════════════════════════════════════════════════════════════
+WEBHOOK_SECRET = os.getenv("TELEGRAM_SECRET", "").strip()
+
+# Valores que alguém escreveria "só para preencher". Se escaparem para
+# produção, valem o mesmo que segredo nenhum — e é melhor dizer isso na
+# tela do que deixar a porta encostada.
+SEGREDOS_FRACOS = {"solorotinas", "solo", "troque-este-segredo", "secret",
+                   "changeme", "123456", "mudar", "senha"}
+
+
+def segredo_fraco() -> bool:
+    return WEBHOOK_SECRET.lower() in SEGREDOS_FRACOS
 
 
 def _tg(chat_id: str, texto: str, parse_mode: str = "Markdown"):
@@ -444,8 +477,20 @@ def _noite(db: Session, usuario, chat: str):
 
 @router.post("/webhook")
 async def webhook(request: Request):
-    secret_header = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
-    if WEBHOOK_SECRET and secret_header != WEBHOOK_SECRET:
+    # `if WEBHOOK_SECRET and ...` era o desenho antigo: sem segredo, a
+    # condição toda virava falsa e o endpoint aceitava QUALQUER corpo.
+    # Uma variável esquecida no `.env` abria a porta em silêncio — e o
+    # sintoma era "o bot funciona", que é o pior sintoma possível.
+    if not WEBHOOK_SECRET:
+        raise HTTPException(503, "TELEGRAM_SECRET não configurado no servidor")
+
+    # `secrets.compare_digest`, e não `!=`: comparar strings sai no
+    # primeiro byte diferente, e o tempo de resposta vaza quantos bytes
+    # estavam certos. Com respostas suficientes o segredo se descobre
+    # caractere por caractere.
+    import secrets as _secrets
+    cabecalho = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+    if not _secrets.compare_digest(cabecalho, WEBHOOK_SECRET):
         raise HTTPException(403, "Token secreto inválido")
 
     try:
@@ -491,30 +536,140 @@ async def webhook(request: Request):
     return {"ok": True}
 
 
+def _base_publica() -> str:
+    """
+    De onde o Telegram vai nos chamar.
+
+    Reaproveita `OAUTH_REDIRECT_BASE` porque ela já responde exatamente a
+    esta pergunta — "qual é o endereço público desta instância" — e é a
+    que o Google usa para voltar do OAuth. Duas variáveis para o mesmo
+    fato divergem no dia em que o domínio muda, e a que ninguém lembrar
+    de trocar quebra calada.
+    """
+    return os.getenv("OAUTH_REDIRECT_BASE", "").rstrip("/")
+
+
+def _url_webhook(base: str | None = None) -> str:
+    return f"{(base or _base_publica()).rstrip('/')}/api/bot/webhook"
+
+
 @router.post("/configurar-webhook")
 def configurar_webhook(
-    webhook_url: str,
+    webhook_url: str | None = None,
     _: Usuario = Depends(get_arquiteto),
 ):
+    """
+    Registra o webhook no Telegram. O `webhook_url` virou OPCIONAL: sem
+    ele, usa o endereço público que o servidor já conhece — era a única
+    coisa que obrigava o Arquiteto a montar um `curl` à mão.
+    """
     if not BOT_TOKEN:
-        raise HTTPException(400, "TELEGRAM_BOT_TOKEN não configurado")
-    url_webhook = f"{webhook_url}/api/bot/webhook"
+        raise HTTPException(400, "TELEGRAM_BOT_TOKEN não configurado neste servidor")
+    if not WEBHOOK_SECRET:
+        raise HTTPException(400,
+            "TELEGRAM_SECRET não configurado. Sem segredo o webhook recusa "
+            "tudo — registrar agora só criaria um bot mudo.")
+
+    base = (webhook_url or _base_publica()).rstrip("/")
+    if not base.startswith("https://"):
+        # Não é capricho: o Telegram só entrega webhook em HTTPS. Sem esta
+        # checagem o erro chega como um "Bad Request" genérico deles.
+        raise HTTPException(400,
+            f"O endereço precisa começar com https:// (recebi '{base or 'vazio'}'). "
+            "Confira OAUTH_REDIRECT_BASE no .env do servidor.")
+
+    alvo = _url_webhook(base)
     resp = req_lib.post(
         TELEGRAM_API.format(token=BOT_TOKEN, method="setWebhook"),
-        json={"url": url_webhook, "secret_token": WEBHOOK_SECRET,
-              "allowed_updates": ["message", "edited_message"]},
+        json={"url": alvo, "secret_token": WEBHOOK_SECRET,
+              "allowed_updates": ["message", "edited_message"],
+              # Updates acumulados enquanto o webhook esteve fora valem
+              # pouco e podem executar comandos velhos (`/ok` de ontem
+              # chegando hoje). Descartar é mais honesto que reviver.
+              "drop_pending_updates": True},
         timeout=15,
     )
     resultado = resp.json()
     if resultado.get("ok"):
-        return {"ok": True, "msg": f"Webhook configurado: {url_webhook}"}
+        return {"ok": True, "url": alvo, "msg": f"Webhook registrado em {alvo}"}
     raise HTTPException(400, f"Telegram: {resultado.get('description')}")
 
 
-@router.get("/status")
-def status_bot():
+@router.delete("/webhook")
+def remover_webhook(_: Usuario = Depends(get_arquiteto)):
+    if not BOT_TOKEN:
+        raise HTTPException(400, "TELEGRAM_BOT_TOKEN não configurado")
+    resp = req_lib.post(TELEGRAM_API.format(token=BOT_TOKEN, method="deleteWebhook"),
+                        json={"drop_pending_updates": True}, timeout=15)
+    return {"ok": bool(resp.json().get("ok"))}
+
+
+def diagnostico() -> dict:
+    """
+    O ESTADO REAL DO BOT, perguntado ao Telegram.
+
+    A versão anterior respondia:
+
+        "pronto": bool(BOT_TOKEN and ALLOWED_CHAT)
+
+    e estava errada nas duas pontas. O `ALLOWED_CHAT` deixou de ser
+    autorização quando o vínculo de seis dígitos entrou — virou lista de
+    espera opcional, e o normal é estar VAZIO. Ou seja: um bot
+    perfeitamente funcional relatava `pronto: false`, enquanto um bot com
+    as duas variáveis preenchidas e nenhum webhook registrado — que é o
+    estado em que ele nunca recebe uma única mensagem — relatava
+    `pronto: true`. A resposta era decorativa nos dois sentidos.
+
+    Ter o token não é estar pronto. Pronto é o TELEGRAM saber para onde
+    entregar, e quem tem essa informação é o Telegram. `getWebhookInfo`
+    ainda devolve de graça as duas coisas que o Arquiteto precisaria de
+    acesso ao servidor para descobrir: quantos updates estão encalhados e
+    qual foi o último erro de entrega.
+
+    SÓ O ARQUITETO vê isto (ver os dois endpoints que chamam esta
+    função). A resposta diz o endereço do webhook e o erro cru do
+    Telegram — é diagnóstico de servidor, não informação de hunter.
+    """
+    info: dict = {}
+    erro_consulta = None
+    if BOT_TOKEN:
+        try:
+            r = req_lib.get(TELEGRAM_API.format(token=BOT_TOKEN,
+                                                method="getWebhookInfo"),
+                            timeout=10)
+            info = (r.json() or {}).get("result") or {}
+        except Exception as e:
+            # NÃO inventa um estado. "Não consegui perguntar" é diferente
+            # de "não está registrado", e confundir os dois manda o
+            # Arquiteto reconfigurar um webhook que estava de pé.
+            erro_consulta = str(e)
+
+    registrado = bool(info.get("url"))
+    esperado = _url_webhook()
+
     return {
-        "token_configurado":  bool(BOT_TOKEN),
-        "chat_id_configurado": bool(ALLOWED_CHAT),
-        "pronto":             bool(BOT_TOKEN and ALLOWED_CHAT),
+        "token_configurado": bool(BOT_TOKEN),
+        "segredo_configurado": bool(WEBHOOK_SECRET),
+        "segredo_fraco": segredo_fraco(),
+        "usuario_bot": os.getenv("TELEGRAM_BOT_USERNAME", ""),
+        "lista_espera": [c.strip() for c in ALLOWED_CHAT.split(",") if c.strip()],
+
+        "webhook_registrado": registrado,
+        "webhook_url": info.get("url") or "",
+        "webhook_esperado": esperado,
+        # Registrado num endereço que não é o nosso é pior que não
+        # registrado: parece certo na lista e as mensagens vão para outro
+        # lugar (uma instância antiga, um túnel de teste esquecido).
+        "webhook_confere": bool(registrado and info.get("url") == esperado),
+        "updates_pendentes": info.get("pending_update_count", 0),
+        "ultimo_erro": info.get("last_error_message") or "",
+        "erro_consulta": erro_consulta,
+
+        "pronto": bool(BOT_TOKEN and WEBHOOK_SECRET and not segredo_fraco()
+                       and registrado and info.get("url") == esperado),
     }
+
+
+@router.get("/status")
+def status_bot(_: Usuario = Depends(get_arquiteto)):
+    return diagnostico()

@@ -211,6 +211,60 @@
   background: rgba(239, 68, 68, .09);
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   O PAINEL DO ARQUITETO — "o bot está no ar?"
+
+   Ele mora DENTRO do cartão do Telegram, recuado e mais frio que o
+   resto, porque não é um passo do hunter: é instrumento. Fosse um
+   cartão próprio, competiria com o passo a passo pela atenção de quem
+   só quer conectar — e a maioria das visitas a esta aba é isso.
+
+   As linhas não usam verde e vermelho sozinhos para dizer certo e
+   errado. Cada uma carrega o símbolo (✓ / ✕) e o texto do que falta,
+   porque cor é o canal que primeiro se perde — em daltonismo, no
+   brilho baixo do celular na rua, numa captura de tela em preto e
+   branco colada num chat pedindo ajuda.
+   ══════════════════════════════════════════════════════════════════ */
+.bot-diag {
+  margin-top: 1.1rem;
+  padding: .85rem .9rem .7rem;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, .07);
+  background: rgba(0, 0, 0, .22);
+}
+.bot-diag.no-ar { border-color: rgba(52, 211, 153, .22); }
+
+.bot-diag h4 {
+  display: flex; align-items: center; gap: .45rem;
+  margin: 0 0 .6rem;
+  font-family: var(--font-section);
+  font-size: .68rem; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--text-muted);
+}
+.bot-diag h4 .bot-selo { margin-left: auto; }
+
+.bot-diag-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: .3rem; }
+.bot-diag-lista li {
+  display: flex; align-items: flex-start; gap: .5rem;
+  font-size: .78rem; line-height: 1.45;
+  color: var(--text-secondary);
+}
+.bot-diag-lista i {
+  font-style: normal; color: var(--text-muted);
+  word-break: break-all;      /* URL longa não estoura o cartão no celular */
+}
+.bot-diag-marca {
+  flex: none; width: 15px; text-align: center;
+  font-size: .8rem; line-height: 1.45; font-weight: 700;
+}
+.bot-diag-lista li.ok     .bot-diag-marca { color: #34d399; }
+.bot-diag-lista li.nao    .bot-diag-marca { color: #f87171; }
+.bot-diag-lista li.nao    { color: var(--text-primary); }
+.bot-diag-lista li.neutra .bot-diag-marca { color: var(--text-muted); }
+
+.bot-diag .bot-acoes { margin-top: .75rem; }
+.bot-diag .bot-nota  { margin-top: .5rem; font-size: .72rem; }
+
 @media (max-width: 640px) {
   .bot-codigo-num { font-size: 1.5rem; letter-spacing: .24em; }
   .bot-qr { width: 170px; height: 170px; }

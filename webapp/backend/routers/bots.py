@@ -28,7 +28,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from auth.router import get_usuario_atual, get_arquiteto
+from auth.router import get_usuario_atual, get_arquiteto, NIVEL_ARQUITETO
 from database import get_db, Usuario
 from motors import evolution, vinculo
 
@@ -48,6 +48,30 @@ def status(db: Session = Depends(get_db),
     sit["telegram"]["disponivel"] = bool(os.getenv("TELEGRAM_BOT_TOKEN", ""))
     sit["telegram"]["usuario_bot"] = os.getenv("TELEGRAM_BOT_USERNAME", "")
     sit["whatsapp"]["disponivel"] = evolution.configurado()
+
+    # ── O DIAGNÓSTICO DO SERVIDOR, e por que ele vem NESTA chamada ────
+    #
+    # Ter o token não é estar pronto: sem webhook registrado o Telegram
+    # não tem para onde entregar, e o hunter vive exatamente o mesmo
+    # sintoma de quando não há token nenhum — manda `/vincular` e nada
+    # acontece. A diferença só aparece perguntando ao Telegram.
+    #
+    # Junto do `/bots/status` de propósito: a aba faz UMA chamada e
+    # desenha tudo. Um segundo pedido só para o Arquiteto criaria um
+    # estado intermediário em que metade da tela sabe e a outra não.
+    #
+    # `isCriador`, não `isAdmin`: aqui saem o endereço do webhook e o
+    # erro cru do Telegram. É diagnóstico de servidor.
+    sit["telegram"]["servidor"] = None
+    if usuario.nivel_acesso == NIVEL_ARQUITETO:
+        try:
+            from routers import bot_telegram
+            sit["telegram"]["servidor"] = bot_telegram.diagnostico()
+        except Exception as e:
+            # Um diagnóstico que derruba a aba inteira é pior que
+            # diagnóstico nenhum — o hunter perderia até o botão de
+            # gerar código por causa de uma consulta externa.
+            sit["telegram"]["servidor"] = {"erro_consulta": str(e)}
 
     if evolution.configurado():
         try:

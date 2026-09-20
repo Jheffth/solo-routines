@@ -52,6 +52,41 @@ services:
       - HOSPEDEIRO=${HOSPEDEIRO:-Contabo}
       - CORS_ORIGINS=${CORS_ORIGINS:-https://soloroutines.duckdns.org}
       - OAUTH_REDIRECT_BASE=${OAUTH_REDIRECT_BASE:-https://soloroutines.duckdns.org}
+
+      # ── BOTS ──────────────────────────────────────────────────────
+      #
+      # ESTA LISTA FALTAVA INTEIRA, e o defeito era do tipo mais caro de
+      # achar: nada quebrava. O `.env.example` documentava as variaveis,
+      # o Arquiteto as preencheria em `/root/app/webapp/.env`, e o Compose
+      # simplesmente nao as repassaria — porque este servico nao usa
+      # `env_file:`, so a lista explicita acima.
+      #
+      # Dentro do conteiner `os.getenv("TELEGRAM_BOT_TOKEN")` devolveria
+      # "", `bots/status` responderia `disponivel: false`, e a aba Bots
+      # diria para sempre "o servidor nao tem TELEGRAM_BOT_TOKEN
+      # configurado" — apontando exatamente para o arquivo onde o token
+      # ESTA. Nenhum log, nenhuma excecao, e a pista acusando o inocente.
+      #
+      # `:-` em todas: bot e opcional. Vazio = a aba Bots explica o que
+      # falta, e o resto do app nao muda.
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      # So para montar o link t.me/<usuario> no passo 1 da aba.
+      - TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME:-}
+      # Lista de espera opcional (ids separados por virgula), NAO a
+      # autorizacao — quem autoriza e o codigo de seis digitos.
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      # O Telegram devolve este segredo em cada webhook. Sem ele o
+      # endpoint recusa tudo: ver a nota em routers/bot_telegram.py.
+      - TELEGRAM_SECRET=${TELEGRAM_SECRET:-}
+
+      # Os defaults repetem os de `motors/evolution.py` de proposito: uma
+      # variavel PASSADA VAZIA vence o default do `os.getenv`, entao
+      # escrever `${X:-}` aqui APAGARIA o default do modulo em vez de
+      # respeita-lo. Quem decide se o WhatsApp existe e a API_KEY.
+      - EVOLUTION_API_URL=${EVOLUTION_API_URL:-http://whatsapp:8080}
+      - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:-}
+      - EVOLUTION_INSTANCE=${EVOLUTION_INSTANCE:-solo_rotinas}
+      - EVOLUTION_WEBHOOK=${EVOLUTION_WEBHOOK:-http://app:8000/api/bots/whatsapp/webhook}
     volumes:
       - solo_uploads:/app/backend/uploads
     networks:
