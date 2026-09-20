@@ -412,9 +412,16 @@
    POR QUE A BARRA NÃO GRUDAVA — e a regra de CSS que explica
 
    A primeira versão tinha `position: sticky` e simplesmente não
-   grudava. A causa não estava aqui: estava em `pages.css:1323`,
+   grudava. A causa não estava aqui — estava em TRÊS ancestrais no
+   `pages.css`, todos com `overflow-x: hidden`:
 
-       @media (max-width: 900px) { .page { overflow-x: hidden } }
+       #main-app          (linha ~812)
+       #content-area      (linha ~1132)
+       .page  @media 900  (linha ~1359)
+
+   Corrigi só o terceiro na primeira tentativa. Resolvia um terço do
+   caminho, e o sintoma continuava idêntico — porque bastava UM deles
+   de pé para prender o sticky.
 
    Existe uma regra do CSS que quase ninguém conhece: quando um eixo
    tem `overflow` diferente de `visible` e o outro está em `visible`,
@@ -434,14 +441,15 @@
        overflow-x: hidden → overflow-y computado "auto"    → não gruda
        overflow-x: clip   → overflow-y computado "visible" → gruda
 
-   O escopo é só o calendário de propósito: `.page` vale para o app
-   inteiro, e trocar a regra lá mexeria em telas que eu não teria como
-   reconferir agora.
+   A correção ficou no `pages.css`, nos três, e não aqui. Na primeira
+   tentativa eu tinha escopado só o calendário para não mexer em telas
+   que não conseguiria reconferir — mas o defeito não era do calendário:
+   era de três contêineres de rolagem empilhados que nunca rolam, e
+   qualquer coisa `sticky` em qualquer página do app cairia no mesmo
+   buraco. `clip` corta exatamente como `hidden` cortava, então nenhuma
+   outra tela muda de aparência: a única diferença é que os três param
+   de se anunciar como rolagem.
    ══════════════════════════════════════════════════════════════════ */
-@media (max-width: 900px) {
-  #page-calendario { overflow-x: clip; }
-}
-
 /* ── UM NÚMERO SÓ PARA O TOPO ──────────────────────────────────────
    A barra gruda; o cabeçalho do dia gruda LOGO ABAIXO dela; e rolar
    até um dia tem de parar abaixo dos dois. São três medidas que

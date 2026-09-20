@@ -811,7 +811,11 @@
   display: flex;
   min-height: 100vh;
   position: relative;
-  overflow-x: hidden;
+  /* `clip` E NÃO `hidden` — ver a nota longa em `#content-area`, abaixo.
+     Resumo: `hidden` num eixo promove o outro para `auto`, e isso faz
+     deste elemento um contêiner de rolagem que nunca rola. Qualquer
+     `position: sticky` lá dentro gruda nele e nunca se move. */
+  overflow-x: clip;
 }
 
 /* ─── SIDEBAR ─── */
@@ -1095,11 +1099,41 @@
 }
 
 /* ─── CONTENT AREA ─── */
+/* ══════════════════════════════════════════════════════════════════
+   POR QUE `clip` E NÃO `hidden` — e é o bug que custou três tentativas
+
+   `position: sticky` gruda no CONTÊINER DE ROLAGEM mais próximo. E
+   existe uma regra do CSS que quase ninguém conhece: quando um eixo
+   tem `overflow` diferente de `visible` e o outro está em `visible`,
+   o navegador PROMOVE o segundo para `auto`.
+
+   Então `overflow-x: hidden` aqui transformava o `overflow-y` em
+   `auto`, e este elemento virava um contêiner de rolagem.
+
+   O detalhe cruel: ele NUNCA ROLA. Tem `min-height: 100vh` e cresce
+   com o conteúdo, então `scrollHeight` é sempre igual a `clientHeight`
+   — quem rola de verdade é o documento. Um contêiner de rolagem que
+   não rola é a pior combinação possível para o `sticky`: ele gruda ali
+   e nada acontece, sem erro, sem aviso, e parecendo que a propriedade
+   foi ignorada.
+
+   MEDIDO no navegador, subindo a árvore a partir da barra do
+   calendário:
+
+       #content-area  overflow-x: hidden → overflow-y "auto", nunca rola
+       #main-app      idem
+
+   `clip` corta exatamente igual e NÃO cria contêiner de rolagem —
+   o `overflow-y` volta a ser `visible`.
+
+   Eu tinha corrigido só a `.page` antes, um nível abaixo. Resolvia
+   metade do caminho e o sintoma continuava idêntico.
+   ══════════════════════════════════════════════════════════════════ */
 #content-area {
   flex: 1;
   margin-left: 250px;
   min-height: 100vh;
-  overflow-x: hidden;
+  overflow-x: clip;
   max-width: calc(100vw - 250px);
   box-sizing: border-box;
 }
@@ -1322,7 +1356,11 @@
     padding-top: 4.75rem;   /* espaço para o botão ☰ */
     box-sizing: border-box;
     width: 100%;
-    overflow-x: hidden;
+    /* `clip`, pelo mesmo motivo de `#content-area` e `#main-app` —
+       a nota longa está lá em cima. Esta era a TERCEIRA camada: os
+       três juntos faziam três contêineres de rolagem empilhados, e
+       nenhum deles rolava. */
+    overflow-x: clip;
   }
   .dashboard-grid {
     grid-template-columns: 1fr;
