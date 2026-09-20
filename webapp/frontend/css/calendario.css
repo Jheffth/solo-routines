@@ -408,6 +408,59 @@
 /* ── A FAIXA ───────────────────────────────────────────────────────
    Devolve o panorama que a lista sozinha perde: dá para ver que a
    semana que vem é pesada sem rolar a agenda inteira. */
+/* ══════════════════════════════════════════════════════════════════
+   POR QUE A BARRA NÃO GRUDAVA — e a regra de CSS que explica
+
+   A primeira versão tinha `position: sticky` e simplesmente não
+   grudava. A causa não estava aqui: estava em `pages.css:1323`,
+
+       @media (max-width: 900px) { .page { overflow-x: hidden } }
+
+   Existe uma regra do CSS que quase ninguém conhece: quando um eixo
+   tem `overflow` diferente de `visible` e o outro está em `visible`,
+   o navegador PROMOVE o segundo para `auto`. Ou seja, `overflow-x:
+   hidden` faz o `overflow-y` virar `auto` sozinho — e o elemento vira
+   um contêiner de rolagem.
+
+   `position: sticky` gruda no contêiner de rolagem MAIS PRÓXIMO. Com
+   a `.page` virando um deles, a barra passou a grudar nela em vez de
+   na tela; e como a `.page` tem a altura do próprio conteúdo, ela
+   nunca rola — a barra fica parada, parecendo que o sticky foi
+   ignorado.
+
+   `overflow-x: clip` corta igual e NÃO cria contêiner de rolagem.
+   Medido no navegador do Arquiteto:
+
+       overflow-x: hidden → overflow-y computado "auto"    → não gruda
+       overflow-x: clip   → overflow-y computado "visible" → gruda
+
+   O escopo é só o calendário de propósito: `.page` vale para o app
+   inteiro, e trocar a regra lá mexeria em telas que eu não teria como
+   reconferir agora.
+   ══════════════════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+  #page-calendario { overflow-x: clip; }
+}
+
+/* ── UM NÚMERO SÓ PARA O TOPO ──────────────────────────────────────
+   A barra gruda; o cabeçalho do dia gruda LOGO ABAIXO dela; e rolar
+   até um dia tem de parar abaixo dos dois. São três medidas que
+   precisam concordar — escritas à mão, uma delas fica para trás na
+   primeira vez que a barra mudar de altura, e o resultado é conteúdo
+   escondido atrás de um cabeçalho.
+
+   No estreito há ainda o botão ☰, que é `position: fixed` no canto
+   superior esquerdo (design-system.css). A barra rolando até `top: 0`
+   passaria por baixo dele e a seta "‹" ficaria intocável. Os 56px
+   descem a barra para logo abaixo do botão. */
+#page-calendario {
+  --cal-topo: 0px;
+  --cal-barra-h: 62px;
+}
+@media (max-width: 900px) {
+  #page-calendario { --cal-topo: 56px; }
+}
+
 /* A BARRA GRUDA NO TOPO. Ela é o controle de navegação da tela; rolar
    a agenda e perdê-la de vista significa ter de voltar ao topo só para
    trocar de dia. Fixa, ela vira o leme — e é isso que transforma a
@@ -416,7 +469,7 @@
    `top: 0` com o fundo opaco: sem a cor, os itens da agenda passariam
    por trás dela e se veria texto sobreposto a texto. */
 .cal-barra {
-  position: sticky; top: 0; z-index: 6;
+  position: sticky; top: var(--cal-topo, 0px); z-index: 6;
   display: flex; align-items: center; gap: 4px;
   margin: 0 -.2rem .6rem;
   padding: .25rem .2rem .4rem;
@@ -527,7 +580,7 @@
   /* Rolar até um dia tem de parar ABAIXO da barra fixa, senão o
      cabeçalho do dia fica escondido atrás dela justamente quando se
      acabou de pedir para vê-lo. */
-  scroll-margin-top: 70px;
+  scroll-margin-top: calc(var(--cal-topo, 0px) + var(--cal-barra-h, 62px) + 8px);
 }
 .cal-ag-dia.hoje {
   border-color: rgba(168,85,247,.5);
@@ -546,7 +599,9 @@
    faixa — que é opaca, então ele simplesmente sumiria. 62px é a altura
    da barra; os dois números vivem juntos porque um depende do outro. */
 .cal-ag-cab {
-  position: sticky; top: 62px; z-index: 2;
+  position: sticky;
+  top: calc(var(--cal-topo, 0px) + var(--cal-barra-h, 62px));
+  z-index: 2;
   display: flex; align-items: baseline; gap: .5rem;
   padding: .5rem .7rem;
   background: rgba(10,10,18,.92);
