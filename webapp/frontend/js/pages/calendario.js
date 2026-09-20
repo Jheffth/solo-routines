@@ -209,7 +209,12 @@
       const ini = new Date(this._ref.getFullYear(), this._ref.getMonth(), 1);
       const fim = new Date(this._ref.getFullYear(), this._ref.getMonth() + 1, 0);
       const SD = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
-      let h = '<div class="cal-faixa" role="tablist">';
+
+      let h = `<div class="cal-barra">
+        <button type="button" class="cal-fseta" data-cal-passo="-1"
+                aria-label="Dia anterior">‹</button>
+        <div class="cal-faixa" role="tablist">`;
+
       for (let d = new Date(ini); d <= fim; d.setDate(d.getDate() + 1)) {
         const iso = this._iso(d);
         const lista = dados.dias[iso] || [];
@@ -224,7 +229,37 @@
           ${lista.length ? this._densidade(res, lista) : '<i class="cal-fd-nada"></i>'}
         </button>`;
       }
-      return h + '</div>';
+
+      return h + `</div>
+        <button type="button" class="cal-fseta" data-cal-passo="1"
+                aria-label="Próximo dia">›</button>
+      </div>`;
+    },
+
+    /* ── AS SETAS DA FAIXA ───────────────────────────────────────
+       Elas movem a SELEÇÃO, não a rolagem. Rolar a faixa deixaria o dia
+       escolhido para trás e a agenda parada — dois controles de
+       navegação discordando um do outro na mesma tela.
+
+       E ELAS ATRAVESSAM O MÊS. Travar no dia 1 é exatamente o beco que
+       o Arquiteto descreveu: a pessoa quer "andar pelos dias" e esbarra
+       numa parede que não tem motivo de existir. Os meses vizinhos já
+       estão em cache (`_vizinhos`), então a travessia é instantânea. */
+    async _passoDia(dir) {
+      const dados = this._cache[this._chave(this._ref)];
+      if (!dados) return;
+
+      const base = this._diaSel || dados.hoje;
+      const d = new Date(base + 'T12:00:00');
+      d.setDate(d.getDate() + dir);
+
+      if (d.getMonth() !== this._ref.getMonth()) {
+        this._ref = new Date(d.getFullYear(), d.getMonth(), 1);
+        this._diaSel = this._iso(d);
+        await this._pintar();          // o mês novo já vem do cache
+        return;
+      }
+      this._irAteDia(this._iso(d));
     },
 
     _agenda(dados) {
@@ -290,26 +325,75 @@
       cx.querySelectorAll('.cal-ag-item[data-cal-ir]').forEach(b => {
         b.onclick = () => this._ir(b.dataset.calIr);
       });
+      cx.querySelectorAll('[data-cal-passo]').forEach(b => {
+        b.onclick = () => this._passoDia(Number(b.dataset.calPasso));
+      });
 
-      // Abre no dia de hoje quando ele está neste mês — é o que o hunter
-      // veio ver, e rolar até setembro/dia 19 à mão é atrito puro.
+      /* Abre no dia escolhido — ou em hoje. `_diaSel` sobrevive à troca
+         de mês feita pelas setas, senão atravessar para o dia 1 do mês
+         seguinte jogaria a tela de volta para "hoje", que está no mês
+         anterior. */
       const dados = this._cache[this._chave(this._ref)];
-      const alvo = cx.querySelector('#ag-' + (dados?.hoje || ''));
-      if (alvo) {
-        setTimeout(() => alvo.scrollIntoView({ block: 'start', behavior: 'auto' }), 60);
-        cx.querySelector(`[data-cal-ir-dia="${dados.hoje}"]`)?.classList.add('sel');
-      }
+      const alvo = this._diaSel || dados?.hoje;
+      if (alvo) this._irAteDia(alvo, false);
+
+      this._seguirRolagem(cx);
     },
 
-    _irAteDia(iso) {
-      const sec = document.getElementById('ag-' + iso);
+    /* ── A FAIXA SEGUE A LEITURA ─────────────────────────────────
+       Rolando a agenda com o dedo, a faixa acompanha e destaca o dia
+       que está sendo lido. Sem isso ela vira um enfeite que só muda
+       quando alguém a toca — e o hunter perde a referência de onde
+       está no mês exatamente quando mais precisa dela. */
+    _seguirRolagem(cx) {
+      if (this._obs) this._obs.disconnect();
+      const secoes = cx.querySelectorAll('.cal-ag-dia');
+      if (!secoes.length) return;
+
+      this._obs = new IntersectionObserver((entradas) => {
+        // O topo da tela manda: a seção mais alta ainda visível é a que
+        // o hunter está lendo.
+        const visiveis = entradas.filter(e => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (!visiveis.length) return;
+        const iso = visiveis[0].target.id.replace('ag-', '');
+        this._marcarNaFaixa(iso, true);
+      }, { rootMargin: '-84px 0px -70% 0px', threshold: 0 });
+
+      secoes.forEach(s => this._obs.observe(s));
+    },
+
+    /* `suave` distingue quem chamou: a rolagem do dedo não pode
+       arrastar a faixa com animação (fica perseguindo o dedo e treme),
+       mas o clique numa seta precisa do movimento para o olho
+       acompanhar para onde foi. */
+    _marcarNaFaixa(iso, suave) {
+      const bt = document.querySelector(`[data-cal-ir-dia="${iso}"]`);
+      if (!bt || bt.classList.contains('sel')) return;
       document.querySelectorAll('.cal-fd.sel').forEach(x => x.classList.remove('sel'));
-      document.querySelector(`[data-cal-ir-dia="${iso}"]`)?.classList.add('sel');
-      if (sec) {
-        sec.scrollIntoView({ block: 'start', behavior: 'smooth' });
-        sec.classList.add('pisca');
-        setTimeout(() => sec.classList.remove('pisca'), 900);
-      }
+      bt.classList.add('sel');
+
+      /* `scrollIntoView` no botão rolaria a PÁGINA junto, desfazendo a
+         leitura da agenda. Mexer só no `scrollLeft` da faixa mantém a
+         página parada — e centralizar é o que traz o dia de hoje para a
+         vista sem o hunter procurar. */
+      const faixa = bt.parentElement;
+      const alvo = bt.offsetLeft - (faixa.clientWidth / 2) + (bt.offsetWidth / 2);
+      faixa.scrollTo({ left: Math.max(0, alvo), behavior: suave ? 'smooth' : 'auto' });
+    },
+
+    /* `_diaSel` É GRAVADO AQUI, e não só quando as setas mexem nele.
+       Sem isto, tocar no dia 24 na faixa não mudava a seleção guardada,
+       e a seta seguinte pulava de volta para o dia seguinte a HOJE — o
+       controle discordava do que estava na tela. */
+    _irAteDia(iso, rolar = true) {
+      this._diaSel = iso;
+      this._marcarNaFaixa(iso, rolar);
+      const sec = document.getElementById('ag-' + iso);
+      if (!sec) return;
+      sec.scrollIntoView({ block: 'start', behavior: rolar ? 'smooth' : 'auto' });
+      sec.classList.add('pisca');
+      setTimeout(() => sec.classList.remove('pisca'), 900);
     },
 
     _pastilhas(lista) {
@@ -470,6 +554,11 @@
       cx.querySelectorAll('[data-cal-mes]').forEach(b => {
         b.onclick = () => {
           this._ref.setMonth(this._ref.getMonth() + Number(b.dataset.calMes));
+          /* O DIA SELECIONADO MORRE AO TROCAR DE MES pelas setas do
+             cabecalho. Mante-lo apontaria para uma data que nao existe
+             mais na tela, e a agenda tentaria rolar ate uma secao
+             ausente -- ficando parada no topo sem explicacao. */
+          this._diaSel = null;
           this.fecharDia();
           document.querySelectorAll('.cal-dia.aberto').forEach(o => this.fechar(o));
           this._pintar();
@@ -479,6 +568,7 @@
       if (h) h.onclick = () => {
         const n = new Date();
         this._ref = new Date(n.getFullYear(), n.getMonth(), 1);
+        this._diaSel = null;          // "Hoje" quer dizer hoje, nao o ultimo escolhido
         this.fecharDia();
         document.querySelectorAll('.cal-dia.aberto').forEach(o => this.fechar(o));
         this._pintar();
