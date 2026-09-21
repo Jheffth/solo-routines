@@ -103,6 +103,7 @@ services:
     environment:
       - SERVER_URL=http://whatsapp:8080
       - DOCKER_ENV=true
+      - DATABASE_ENABLED=false
       - AUTHENTICATION_TYPE=apikey
       - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY}
     volumes:
@@ -116,6 +117,7 @@ networks:
 volumes:
   evolution_instances:
   solo_uploads:
+
 
 
 
