@@ -105,7 +105,7 @@ services:
       - DOCKER_ENV=true
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=postgresql://admin:Db_Solo_2026!@169.58.116.61:5432/solo_routines_db
+      - DATABASE_CONNECTION_URI=postgresql://admin:Db_Solo_2026%21@169.58.116.61:5432/solo_routines_db
       - AUTHENTICATION_TYPE=apikey
       - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY}
     volumes:
@@ -119,6 +119,7 @@ networks:
 volumes:
   evolution_instances:
   solo_uploads:
+
 
 
 
