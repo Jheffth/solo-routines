@@ -40,9 +40,11 @@ class Caixa:
 
     def __init__(self):
         self.enviadas = []
+        self.teclados = []
 
-    def __call__(self, chat_id, texto, parse_mode="Markdown"):
+    def __call__(self, chat_id, texto, parse_mode="Markdown", teclado=None):
         self.enviadas.append((str(chat_id), texto))
+        self.teclados.append(teclado or [])
 
     def ultima(self, chat=None):
         for c, t in reversed(self.enviadas):
@@ -50,8 +52,12 @@ class Caixa:
                 return t
         return ""
 
+    def ultimo_teclado(self):
+        return self.teclados[-1] if self.teclados else []
+
     def limpar(self):
         self.enviadas.clear()
+        self.teclados.clear()
 
 
 def main_teste():
@@ -237,7 +243,8 @@ def main_teste():
         db = database.SessionLocal()
         bt._processar("/ok Beber agua", "111", db)
         db.close()
-        ok("concluída" in caixa.ultima("111"), "/ok conclui pelo titulo parcial")
+        ok("concluída" in caixa.ultima("111").lower(),
+           "/ok conclui pelo titulo parcial")
 
         # A CONCLUSÃO TEM DE SOBREVIVER AO FIM DA SESSÃO. O caminho da
         # tarefa so fazia `flush`; se o commit nao acontecesse, o bot
@@ -253,7 +260,7 @@ def main_teste():
         db = database.SessionLocal()
         bt._processar("/ok Beber agua", "222", db)
         db.close()
-        ok("não encontrada" in caixa.ultima("222"),
+        ok("não achei" in caixa.ultima("222").lower(),
            "um hunter nao conclui a missao do outro pelo bot")
 
         # ══════════════════════════════════════════════════════════════

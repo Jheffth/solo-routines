@@ -1198,6 +1198,52 @@ class TentativaVinculo(Base):
     )
 
 
+class AtoBot(Base):
+    """
+    O ÚLTIMO ATO DO HUNTER NUM CANAL — para o `/desfazer` ter o que desfazer.
+
+    POR QUE ISTO PRECISA EXISTIR
+
+    Num chat, errar de dedo é a regra, não a exceção: o botão da missão
+    de cima fica a seis milímetros do da missão de baixo, e no celular,
+    andando, seis milímetros é nada. Sem `/desfazer`, um toque errado
+    conclui a missão errada — e concluir a errada custa XP, corrente e
+    ainda deixa a certa em aberto.
+
+    O app tem a tela inteira para se corrigir: dá para ver o cartão,
+    reabrir, cancelar. O chat tem uma linha e a memória do que acabou de
+    acontecer. Essa memória é esta tabela.
+
+    UMA LINHA POR HUNTER E CANAL, sobrescrita a cada ato. Não é histórico
+    — para isso existe o Extrato. É só "o que foi a última coisa", e
+    guardar mais convidaria a desfazer em cascata um dia inteiro, que é
+    exatamente o que o Extrato existe para tornar irreversível.
+
+    EM TABELA, E NÃO EM MEMÓRIA, pelo mesmo motivo da `TentativaVinculo`:
+    o processo reinicia a cada deploy. Um `/desfazer` que responde "não
+    há nada para desfazer" porque houve deploy no meio é pior que não
+    existir — o hunter já contava com ele.
+    """
+    __tablename__ = "atos_bot"
+
+    id         = Column(Integer, primary_key=True, index=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    canal      = Column(String(20), nullable=False, index=True)
+
+    acao       = Column(String(20), nullable=False)   # concluir | iniciar | ...
+    alvo_tipo  = Column(String(10), nullable=False)   # rotina | tarefa
+    alvo_id    = Column(Integer, nullable=False)
+    titulo     = Column(String(200), nullable=True)   # só para a mensagem
+    # O que o ato valeu, para a mensagem do desfazer poder dizer o preço.
+    xp         = Column(Integer, default=0)
+    moedas     = Column(Integer, default=0)
+    criado_em  = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("usuario_id", "canal", name="uq_ato_bot_usuario_canal"),
+    )
+
+
 class ContaCalendario(Base):
     """
     A AGENDA DO HUNTER — o elo de longo prazo com o Google Calendar.

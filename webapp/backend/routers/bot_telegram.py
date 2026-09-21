@@ -5,7 +5,7 @@ Recebe webhooks, permite concluir missões e consultar status via chat.
 import os, requests as req_lib
 from fastapi import APIRouter, Depends, Request, HTTPException
 from sqlalchemy.orm import Session
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from motors import tempo
 
 from database import (
@@ -58,15 +58,55 @@ def segredo_fraco() -> bool:
     return WEBHOOK_SECRET.lower() in SEGREDOS_FRACOS
 
 
-def _tg(chat_id: str, texto: str, parse_mode: str = "Markdown"):
+def _chamar(metodo: str, corpo: dict) -> dict:
+    """Uma ida ao Telegram. Nunca levanta — o chat não derruba o webhook."""
     if not BOT_TOKEN:
-        return
-    url = TELEGRAM_API.format(token=BOT_TOKEN, method="sendMessage")
+        return {}
     try:
-        req_lib.post(url, json={"chat_id": chat_id, "text": texto,
-                                "parse_mode": parse_mode}, timeout=10)
+        r = req_lib.post(TELEGRAM_API.format(token=BOT_TOKEN, method=metodo),
+                         json=corpo, timeout=10)
+        return r.json() or {}
     except Exception as e:
-        print(f"[BOT] Erro ao enviar: {e}")
+        print(f"[BOT] {metodo} falhou: {e}")
+        return {}
+
+
+def _tg(chat_id: str, texto: str, parse_mode: str = "Markdown", teclado=None):
+    corpo = {"chat_id": chat_id, "text": texto, "parse_mode": parse_mode}
+    if teclado:
+        corpo["reply_markup"] = {"inline_keyboard": teclado}
+    return _chamar("sendMessage", corpo)
+
+
+def _editar(chat_id: str, message_id: int, texto: str, teclado=None):
+    """
+    Reescreve a mensagem que tinha os botões, em vez de mandar outra.
+
+    É o que faz a lista se comportar como TELA e não como histórico: você
+    toca em ✅ e a linha vira concluída ali mesmo. Mandando mensagem nova,
+    o chat viraria uma pilha de versões da mesma lista, e os botões das
+    versões velhas continuariam clicáveis logo acima — exatamente o
+    convite ao toque errado que este desenho quer evitar.
+    """
+    corpo = {"chat_id": chat_id, "message_id": message_id, "text": texto,
+             "parse_mode": "Markdown"}
+    corpo["reply_markup"] = {"inline_keyboard": teclado or []}
+    return _chamar("editMessageText", corpo)
+
+
+def _responder_toque(callback_id: str, texto: str = "", alerta: bool = False):
+    """
+    O Telegram EXIGE esta resposta. Sem ela o botão fica com a
+    ampulheta girando por uns segundos e depois falha sozinho — e o
+    hunter conclui que o bot travou, mesmo quando a ação funcionou.
+
+    `alerta=True` abre uma caixinha que precisa de OK: fica para o que a
+    pessoa não pode deixar passar (uma recusa, um erro). O resto é o
+    aviso discreto no topo, que some sozinho.
+    """
+    return _chamar("answerCallbackQuery",
+                   {"callback_query_id": callback_id,
+                    "text": texto[:200], "show_alert": bool(alerta)})
 
 
 def _get_usuario(db: Session, chat_id: str = None):
@@ -149,49 +189,46 @@ def _processar(texto: str, chat_id: str, db: Session):
 
     # ── /start ou /ajuda ─────────────────────────────────
     if txt.lower() in ("/start", "/ajuda", "ajuda"):
+        # O MENU COMEÇA PELOS BOTÕES, e não pela lista de comandos. Quem
+        # abre `/hoje` e toca não erra de missão; quem digita o título
+        # pode errar. A ajuda tem de empurrar para o caminho seguro
+        # primeiro e só depois oferecer o atalho de quem tem pressa.
         _tg(chat_id, (
-            "⚔️ *Solo Routines Bot*\n\n"
-            "Comandos disponíveis:\n"
-            "▸ `/hoje` — Missões e rotinas do dia\n"
-            "▸ `/status` — Seu XP, nível e streak\n"
-            "▸ `/ok [título]` — Concluir uma missão\n"
-            "▸ `/rotinas` — Listar rotinas ativas\n"
-            "▸ `/add [título]` — Adicionar tarefa rápida\n"
-            "▸ `/conquistas` — Ver conquistas recentes\n"
-            "▸ `/ajuda` — Este menu\n"
+            "⚔️ *Solo Routines*\n\n"
+            "O jeito curto: mande `/hoje` e toque nos botões.\n\n"
+            "*O dia*\n"
+            "▸ `/hoje` — tudo do dia, com botões\n"
+            "▸ `/pendentes` — só o que falta\n"
+            "▸ `/agora` — o que está em curso e quanto falta\n\n"
+            "*Agir* (ou toque no botão)\n"
+            "▸ `/iniciar [título]` — dar a largada\n"
+            "▸ `/ok [título]` — concluir\n"
+            "▸ `/pausar` · `/retomar` · `/cancelar` `[título]`\n"
+            "▸ `/desfazer` — desfaz o último ato daqui\n\n"
+            "*As especiais*\n"
+            "▸ `/somar [título] [valor]` — registrar na meta\n"
+            "▸ `/bloco [título]` — fechar etapa do circuito\n"
+            "▸ `/confessar [título]` — a passiva que você quebrou\n"
+            "▸ `/reerguer [título]` — segunda chance (custa Mana)\n\n"
+            "*Conferir*\n"
+            "▸ `/status` — XP, nível e corrente\n"
+            "▸ `/extrato` — o que rendeu hoje\n"
+            "▸ `/penitencia` — dívida em aberto\n"
+            "▸ `/portoes` — quais abrem hoje\n"
+            "▸ `/conquistas` · `/rotinas` · `/add [título]`\n"
         ))
         return
 
-    # ── /hoje ─────────────────────────────────────────────
-    if txt.startswith("/hoje"):
-        rotinas = [
-            r for r in db.query(Rotina).filter(
-                Rotina.usuario_id == usuario.id, Rotina.ativo == True
-            ).all()
-            if _rotina_de_hoje(r, hoje)
-        ]
-        tarefas = db.query(TarefaDia).filter(
-            TarefaDia.usuario_id == usuario.id,
-            TarefaDia.data_prevista == hoje,
-        ).all()
-
-        msg = f"📅 *Missões de Hoje — {hoje.strftime('%d/%m/%Y')}*\n\n"
-        if rotinas:
-            msg += "🔄 *Rotinas:*\n"
-            for r in rotinas:
-                est = _estado_do_dia(db, usuario, r, hoje)
-                msg += (f"{_SIMBOLO.get(est, '⬜')} {r.icone} {r.titulo} "
-                        f"(+{r.xp_recompensa} XP)\n")
-        if tarefas:
-            msg += "\n📋 *Tarefas:*\n"
-            for t in tarefas:
-                check = "✅" if t.status == "CONCLUIDA" else ("🔴" if t.prioridade == "CRITICA" else "⬜")
-                hora = f" ⏰{t.hora_limite}" if t.hora_limite else ""
-                msg += f"{check} {t.titulo}{hora} (+{t.xp_recompensa} XP)\n"
-        if not rotinas and not tarefas:
-            msg += "Nenhuma missão para hoje! 🎉"
-
-        _tg(chat_id, msg)
+    # ── /hoje e /pendentes ────────────────────────────────
+    #
+    # A MESMA TELA, dois recortes. `/hoje` é o panorama; `/pendentes` é
+    # o que ainda cobra alguma coisa. Numa terça com onze missões, o
+    # panorama já não cabe numa olhada no ponto de ônibus — e o recorte
+    # que importa nesse momento é sempre o segundo.
+    if txt.startswith("/hoje") or txt.startswith("/pendentes"):
+        so_abertas = txt.startswith("/pendentes")
+        corpo, teclado = _lista_do_dia(db, usuario, hoje, so_abertas=so_abertas)
+        _tg(chat_id, corpo, teclado=teclado)
         return
 
     # ── /status ───────────────────────────────────────────
@@ -213,107 +250,126 @@ def _processar(texto: str, chat_id: str, db: Session):
         ))
         return
 
-    # ── /ok [título] ──────────────────────────────────────
-    if txt.lower().startswith("/ok"):
-        busca = txt[3:].strip()
+    # ── AS AÇÕES POR TÍTULO ───────────────────────────────
+    #
+    # Todas passam pelo MESMO caminho: acha (podendo não achar, achar uma
+    # ou achar várias), age, responde. O que muda entre `/ok` e
+    # `/iniciar` é uma string.
+    #
+    # E nenhuma delas escolhe sozinha quando há empate — ver a nota do
+    # `_procurar`. Foi assim que o `/ok` antigo conseguia concluir a
+    # missão errada, silenciosamente.
+    for gatilho, acao, verbo in (
+        ("/ok",        "ok",   "concluir"),
+        ("/concluir",  "ok",   "concluir"),
+        ("/iniciar",   "ini",  "iniciar"),
+        ("/pausar",    "pau",  "pausar"),
+        ("/retomar",   "ret",  "retomar"),
+        ("/cancelar",  "can",  "cancelar"),
+        ("/reerguer",  "reer", "reerguer"),
+        ("/confessar", "conf", "confessar"),
+    ):
+        if not txt.lower().startswith(gatilho):
+            continue
+
+        busca = txt[len(gatilho):].strip()
         if not busca:
-            _tg(chat_id, "⚠️ Use: `/ok título da missão`")
+            _tg(chat_id, f"⚠️ Use: `{gatilho} título da missão`\n\n"
+                         "Ou mande `/hoje` e toque no botão — é mais seguro.")
             return
 
-        # Procura tarefa pendente
-        tarefa = db.query(TarefaDia).filter(
-            TarefaDia.usuario_id == usuario.id,
-            TarefaDia.data_prevista == hoje,
-            TarefaDia.status == "PENDENTE",
-            TarefaDia.titulo.ilike(f"%{busca}%"),
-        ).first()
-
-        if tarefa:
-            # Mesmo princípio do caminho da rotina, logo abaixo: quem
-            # conclui é o `tarefas.concluir`. A versão anterior carimbava
-            # CONCLUIDA e pagava o XP cru — e com isso uma PENITÊNCIA
-            # cumprida pelo chat pagava progresso cheio, quando o desenho
-            # manda quitá-la devolvendo só uma fração do que a falha
-            # tomou. Falhar de propósito virava estratégia, pelo Telegram.
-            from fastapi import HTTPException as _HTTPErro
-            from routers import tarefas as _tar
-            try:
-                # Devolve o corpo já montado (passou pelo `anexar`), não a
-                # dupla `(corpo, resultado)` do `execucoes.concluir`.
-                corpo = _tar.concluir(db, usuario, tarefa)
-            except _HTTPErro as e:
-                _tg(chat_id, f"⚠️ {e.detail}")
+        # Reerguer e confessar agem sobre missão JÁ FECHADA (fracassada,
+        # a passiva do dia), então a busca não pode se limitar às abertas.
+        achados = _procurar(db, usuario, busca, hoje,
+                            abertas_apenas=acao not in ("reer", "conf"))
+        if not achados:
+            # ACHOU MAS ESTÁ FECHADA ≠ NÃO EXISTE. Responder "não achei"
+            # para uma missão que o hunter acabou de concluir o faria
+            # duvidar do título, quando o que mudou foi o estado. Segunda
+            # varredura, agora sem filtrar, só para poder dizer a verdade.
+            todas = _procurar(db, usuario, busca, hoje, abertas_apenas=False)
+            if todas:
+                a = todas[0]
+                nome = {"CONCLUIDA": "já foi concluída hoje",
+                        "FRACASSADA": "fracassou hoje",
+                        "CANCELADA": "está cancelada"}.get(a.status, a.status)
+                _tg(chat_id, f"⚠️ *{a.titulo}* {nome}.")
                 return
-
-            res = corpo.get("resultado")
-            if not res:
-                # Penitência quitada: não é ganho de XP, é dívida abatida.
-                # Anunciar "+0 XP" faria parecer defeito o que é a regra.
-                _tg(chat_id, f"⛓️ *Penitência cumprida.*\n📋 {tarefa.titulo}")
-                return
-
-            liq = corpo.get("liquidacao") or {}
-            atraso = liq.get("penalidade") or 0
-            _tg(chat_id, (
-                f"✅ *Tarefa concluída!*\n"
-                f"📋 {tarefa.titulo}\n"
-                f"✨ +{res['xp_ganho']} XP | 💰 +{res['moedas_ganhas']} Mana Coins\n"
-                + (f"⏰ −{atraso} XP por fora do prazo\n" if atraso else "")
-                + f"🔥 Streak: {res['streak_atual']} dias\n"
-                + (_level_up_msg(res['level_ups']) if res['level_ups'] else "")
-            ))
+            _tg(chat_id, f"❌ Não achei nenhuma missão de hoje com *{busca}*.")
+            return
+        if len(achados) > 1:
+            _menu_escolha(chat_id, acao, achados,
+                          f"Achei {len(achados)} missões com *{busca}* para {verbo}.")
             return
 
-        # Procura rotina de hoje
-        rotina = db.query(Rotina).filter(
-            Rotina.usuario_id == usuario.id,
-            Rotina.ativo == True,
-            Rotina.titulo.ilike(f"%{busca}%"),
-        ).first()
-
-        if rotina and _rotina_de_hoje(rotina, hoje):
-            # ── CONCLUIR É UM ATO SÓ, E ELE MORA NO `execucoes.concluir` ──
-            #
-            # Aqui havia uma conclusão inventada: `ultima_execucao = hoje`
-            # mais um `aplicar_xp` com o XP cru da rotina. Parecia certo e
-            # não era conclusão nenhuma — a tela lê a `ExecucaoDia`, que
-            # ficava PENDENTE. O bot dizia "concluída", o cartão no app
-            # continuava com o botão INICIAR MISSÃO, e o `aplicar_xp`
-            # ainda gravava a linha em `Execucao` que TRANCA a conclusão
-            # pelo app. A missão virava impossível de fechar — e à meia-
-            # noite o fechamento a marcava FRACASSADA, com punição.
-            #
-            # O import é aqui dentro, e não no topo: `main.py` monta os
-            # dois routers, e importar um do outro em tempo de módulo
-            # fecharia o ciclo.
-            from fastapi import HTTPException as _HTTPErro
-            from routers import execucoes as _exec
-            try:
-                corpo, res = _exec.concluir(db, usuario, rotina, hoje,
-                                            observacao=f"Bot: {rotina.titulo}")
-            except _HTTPErro as e:
-                # As travas da meta e do circuito já falam em português e
-                # dizem quanto falta. Repassar é melhor que traduzir.
-                _tg(chat_id, f"⚠️ {e.detail}")
-                return
-
-            liq = corpo.get("liquidacao") or {}
-            atraso = liq.get("penalidade") or 0
-            _tg(chat_id, (
-                f"✅ *Rotina concluída!*\n"
-                f"🔄 {rotina.icone} {rotina.titulo}\n"
-                f"✨ +{res['xp_ganho']} XP | 💰 +{res['moedas_ganhas']} Mana Coins\n"
-                # O XP agora vem da Balança e do PRAZO, não do número cru
-                # da rotina. Se saiu menos por atraso, o chat diz — senão
-                # o hunter vê um valor diferente do cartão e não entende.
-                + (f"⏰ −{atraso} XP por fora do prazo\n" if atraso else "")
-                + f"🔥 Streak: {res['streak_atual']} dias\n"
-                + (_level_up_msg(res['level_ups']) if res['level_ups'] else "")
-            ))
-            return
-
-        _tg(chat_id, f"❌ Missão *{busca}* não encontrada nas pendentes de hoje.")
+        ok, curta, longa = _agir(db, usuario, acao, achados[0], hoje)
+        _tg(chat_id, longa or (("✅ " if ok else "⚠️ ") + curta))
         return
+
+    # ── /agora — o que está em curso ──────────────────────
+    #
+    # O `/status` responde "quem eu sou" (XP, nível, corrente). Esta
+    # pergunta é outra: "o que estou fazendo AGORA e quanto tempo me
+    # resta". Juntar as duas num comando só faria a mais urgente ficar
+    # embaixo da mais vaidosa.
+    if txt.startswith("/agora"):
+        alvos = _alvos_do_dia(db, usuario, hoje, abertas_apenas=True)
+        correndo = [a for a in alvos if a.status in ("ATIVA", "PAUSADA")]
+
+        if not correndo:
+            proximas = [a for a in alvos if a.status == "PENDENTE"][:3]
+            msg = "⏸️ *Nada em curso agora.*"
+            if proximas:
+                msg += "\n\nA seguir:\n" + "\n".join(
+                    f"⬜ {a.titulo}" + (f" _{_hora_de(a)}_" if _hora_de(a) else "")
+                    for a in proximas)
+            teclado = [[{"text": f"▶️ Iniciar {a.titulo[:30]}",
+                         "callback_data": f"ini|{a.chave}"}] for a in proximas]
+            _tg(chat_id, msg, teclado=teclado)
+            return
+
+        linhas, teclado = ["⏱️ *Em curso*", ""], []
+        for a in correndo:
+            falta = _falta(a) or "sem corrida contra o relógio"
+            desde = ""
+            if a.ed is not None and getattr(a.ed, "iniciada_em", None):
+                ini = tempo.de_utc(a.ed.iniciada_em)
+                if ini:
+                    corridos = int((tempo.agora() - ini).total_seconds() // 60)
+                    desde = f" · já correu {corridos}min"
+            linhas.append(f"{_SIMBOLO.get(a.status, '▶️')} *{a.titulo}*")
+            linhas.append(f"   _{falta}{desde}_")
+            teclado.append([{"text": f"— {a.titulo[:40]} —", "callback_data": "nada"}])
+            teclado.append(_botoes_de(a))
+        _tg(chat_id, "\n".join(linhas), teclado=teclado)
+        return
+
+    # ── /desfazer ─────────────────────────────────────────
+    if txt.startswith("/desfazer"):
+        _desfazer(db, usuario, chat_id, hoje)
+        return
+
+    # ── /somar [título] [valor] — as metas ────────────────
+    if txt.lower().startswith("/somar"):
+        _somar(db, usuario, chat_id, txt[6:].strip(), hoje)
+        return
+
+    # ── /bloco [título] — os circuitos ────────────────────
+    if txt.lower().startswith("/bloco"):
+        _bloco(db, usuario, chat_id, txt[6:].strip(), hoje)
+        return
+
+    # ── /extrato, /penitencia, /portoes ───────────────────
+    if txt.startswith("/extrato"):
+        _extrato(db, usuario, chat_id, hoje)
+        return
+    if txt.startswith("/penitencia") or txt.startswith("/penitência"):
+        _penitencia(db, usuario, chat_id)
+        return
+    if txt.startswith("/portoes") or txt.startswith("/portões"):
+        _portoes(db, usuario, chat_id, hoje)
+        return
+
 
     # ── /add [título] ─────────────────────────────────────
     if txt.lower().startswith("/add"):
@@ -371,6 +427,256 @@ def _processar(texto: str, chat_id: str, db: Session):
     _tg(chat_id, "❓ Comando não reconhecido. Use `/ajuda` para ver os comandos disponíveis.")
 
 
+# ══════════════════════════════════════════════════════════════════════
+# DESFAZER — a rede que um chat exige e uma tela não
+# ══════════════════════════════════════════════════════════════════════
+def _desfazer(db: Session, usuario, chat_id: str, hoje: date):
+    """
+    Desfaz o ÚLTIMO ato feito por aqui.
+
+    O QUE ESTE COMANDO DELIBERADAMENTE NÃO FAZ: apagar o registro do
+    Extrato ou devolver XP na mão. Concluir uma missão move meia dúzia
+    de coisas — XP, Mana, corrente, penitência abatida, progressiva — e
+    desmontar tudo isso de fora seria escrever uma sétima verdade sobre
+    a economia do Sistema.
+
+    O que ele faz é REABRIR a missão pelo caminho que já existe
+    (`cancelar` + estado de volta), e dizer com todas as letras o que
+    não voltou. Um desfazer honesto e parcial vale mais que um completo
+    e mentiroso.
+    """
+    from database import AtoBot
+    ato = db.query(AtoBot).filter(AtoBot.usuario_id == usuario.id,
+                                  AtoBot.canal == "telegram").first()
+    if not ato or not ato.acao:
+        _tg(chat_id, "Não há nada recente para desfazer por aqui.")
+        return
+
+    # JANELA CURTA. Desfazer algo de três dias atrás não é correção de
+    # erro de dedo — é reescrever o histórico, e para isso o Extrato
+    # existe justamente para não deixar.
+    idade = (datetime.utcnow() - (ato.criado_em or datetime.utcnow())).total_seconds()
+    if idade > 3600:
+        _tg(chat_id, f"O último ato daqui (*{ato.titulo}*) já tem mais de uma "
+                     "hora. Passou da janela do desfazer — ajuste pelo app.")
+        return
+
+    alvo = _por_chave(db, usuario, "r" if ato.alvo_tipo == "rotina" else "t",
+                      ato.alvo_id, hoje)
+    if not alvo:
+        _tg(chat_id, "A missão do último ato não está mais disponível.")
+        return
+
+    if ato.acao in ("ini", "ret"):
+        # ── A LARGADA NÃO SE DESFAZ, E ISSO É DECISÃO DO SISTEMA ──────
+        #
+        # Minha primeira versão chamava `cancelar`, e o router respondeu:
+        # "O Sistema não aceita desistência. Uma missão termina cumprida,
+        # vencida pelo tempo, ou extinta pelo Arquiteto." É uma regra
+        # deliberada, e um `/desfazer` que a contornasse pelo chat abriria
+        # justamente a porta que o app mantém fechada.
+        #
+        # O que existe é PAUSAR. Então é isso que se oferece — dizendo o
+        # que aconteceu de verdade, em vez de anunciar um desfazer que não
+        # houve.
+        ok, curta, _ = _agir(db, usuario, "pau", alvo, hoje)
+        db.query(AtoBot).filter(AtoBot.id == ato.id).delete()
+        db.commit()
+        _tg(chat_id, (
+            f"⏸️ *{alvo.titulo}* pausada.\n\n"
+            "_A largada em si não se desfaz — o Sistema não aceita "
+            "desistência. Uma missão termina cumprida, vencida pelo tempo "
+            "ou extinta pelo Arquiteto._"
+        ) if ok else f"⚠️ {curta}")
+        return
+
+    if ato.acao == "pau":
+        ok, curta, _ = _agir(db, usuario, "ret", alvo, hoje)
+        db.query(AtoBot).filter(AtoBot.id == ato.id).delete()
+        db.commit()
+        _tg(chat_id, f"↩️ *{alvo.titulo}* voltou a correr."
+            if ok else f"⚠️ {curta}")
+        return
+
+    if ato.acao == "ok":
+        _tg(chat_id, (
+            f"↩️ *Desfazer conclusão de {alvo.titulo}*\n\n"
+            f"Isso rendeu ✨{ato.xp} XP e 💰{ato.moedas} Mana, e o lançamento "
+            "já está no Extrato — o Sistema não apaga o que aconteceu.\n\n"
+            "Para corrigir de verdade, use o cartão no app: lá dá para ver "
+            "o que foi creditado antes de mexer."
+        ))
+        return
+
+    _tg(chat_id, f"Não sei desfazer *{ato.acao}* por aqui.")
+
+
+# ══════════════════════════════════════════════════════════════════════
+# AS ESPECIAIS
+# ══════════════════════════════════════════════════════════════════════
+def _somar(db: Session, usuario, chat_id: str, resto: str, hoje: date):
+    """`/somar título valor` — registra na meta do dia."""
+    from fastapi import HTTPException as _HTTPErro
+    from routers import execucoes as _exec
+    from motors import meta as _mt
+
+    partes = (resto or "").rsplit(" ", 1)
+    if len(partes) < 2:
+        _tg(chat_id, "⚠️ Use: `/somar título 50`\n_O valor vai por último._")
+        return
+    busca, cru = partes[0].strip(), partes[1].strip()
+    try:
+        # Vírgula decimal: é como se escreve em português, e recusar
+        # "12,50" por causa disso seria implicância com o próprio idioma.
+        valor = float(cru.replace("R$", "").replace(",", "."))
+    except ValueError:
+        _tg(chat_id, f"⚠️ Não entendi *{cru}* como número.")
+        return
+
+    achados = [a for a in _procurar(db, usuario, busca, hoje)
+               if _mt.eh_meta_valida(a.obj)]
+    if not achados:
+        _tg(chat_id, f"❌ Não achei missão de META hoje com *{busca}*.")
+        return
+    if len(achados) > 1:
+        _menu_escolha(chat_id, "ok", achados,
+                      f"Achei {len(achados)} metas com *{busca}*.")
+        return
+
+    a = achados[0]
+    try:
+        pedido = _exec.MetaRegistrarRequest(
+            rotina_id=a.id if a.tipo == "r" else None,
+            tarefa_id=a.id if a.tipo == "t" else None,
+            valor=valor, nota="Pelo bot")
+        r = _exec.meta_registrar(pedido, db, usuario) or {}
+    except _HTTPErro as e:
+        _tg(chat_id, f"⚠️ {e.detail}")
+        return
+
+    esp = getattr(a.obj, "meta_especie", None)
+    un = _mt.unidade_de(a.obj)
+    atual = r.get("atual", r.get("meta_atual"))
+    alvo_n = getattr(a.obj, "meta_alvo", None)
+    linha = f"📈 *{a.titulo}*\n+{_mt.formatar(valor, esp, un)}"
+    if atual is not None and alvo_n:
+        linha += (f"\nAgora: *{_mt.formatar(atual, esp, un)}* "
+                  f"de {_mt.formatar(alvo_n, esp, un)}")
+    # Se o registro fechou a meta, quem fechou foi o `_liquidar` lá
+    # dentro — o bot só conta, não decide.
+    if r.get("concluida") or r.get("alcancada"):
+        linha += "\n\n✅ *Meta alcançada — missão concluída.*"
+    _tg(chat_id, linha)
+
+
+def _bloco(db: Session, usuario, chat_id: str, busca: str, hoje: date):
+    """`/bloco título` — mostra as etapas e deixa fechar uma por botão."""
+    from motors import circuito as _cir
+    if not busca:
+        _tg(chat_id, "⚠️ Use: `/bloco título da missão`")
+        return
+
+    achados = [a for a in _procurar(db, usuario, busca, hoje)
+               if _cir.eh_circuito(a.obj)]
+    if not achados:
+        _tg(chat_id, f"❌ Não achei missão de CIRCUITO hoje com *{busca}*.")
+        return
+    if len(achados) > 1:
+        _menu_escolha(chat_id, "ok", achados,
+                      f"Achei {len(achados)} circuitos com *{busca}*.")
+        return
+
+    a = achados[0]
+    acum = a.ed if a.tipo == "r" else a.obj
+    desenho = _cir.normalizar(a.obj.circuito_payload) or {}
+    feito = _cir.ler_feito(getattr(acum, "circuito_feito", None))
+    p = _cir.progresso(desenho, feito)
+
+    linhas = [f"🧩 *{a.titulo}*",
+              f"_{p['fechados']} de {p['total']} blocos_", ""]
+    teclado = []
+    for e in (desenho.get("etapas") or []):
+        pronto = _cir.bloco_completo(e, feito.get(e["id"]) or {})
+        linhas.append(f"{'✅' if pronto else '⬜'} {e.get('titulo') or e['id']}")
+        if not pronto:
+            teclado.append([{"text": f"✔ {(e.get('titulo') or e['id'])[:40]}",
+                             "callback_data": f"blk|{a.chave}|{e['id']}"}])
+    _tg(chat_id, "\n".join(linhas), teclado=teclado)
+
+
+# ══════════════════════════════════════════════════════════════════════
+# LEITURA — estes só olham, nunca mexem
+# ══════════════════════════════════════════════════════════════════════
+def _extrato(db: Session, usuario, chat_id: str, hoje: date):
+    execs = db.query(Execucao).filter(
+        Execucao.usuario_id == usuario.id,
+        Execucao.data_execucao == hoje).all()
+    fracassos = db.query(ExecucaoDia).filter(
+        ExecucaoDia.usuario_id == usuario.id,
+        ExecucaoDia.data == hoje,
+        ExecucaoDia.status == "FRACASSADA").all()
+
+    xp = sum(e.xp_ganho or 0 for e in execs)
+    mc = sum(e.moedas_ganhas or 0 for e in execs)
+    perdido = sum(f.xp_perdido or 0 for f in fracassos)
+
+    linhas = [f"🧾 *Extrato — {hoje.strftime('%d/%m')}*", "",
+              f"✅ Concluídas: *{len(execs)}*",
+              f"✨ XP ganho: *+{xp}*",
+              f"💰 Mana: *+{mc}*"]
+    # A perda só aparece quando existe. "XP perdido: 0" todo dia
+    # transforma o número em ruído, e no dia em que ele deixa de ser zero
+    # ninguém repara.
+    if perdido or fracassos:
+        linhas += [f"❌ Fracassadas: *{len(fracassos)}*",
+                   f"💀 XP perdido: *−{perdido}*",
+                   f"➖ Saldo do dia: *{xp - perdido:+d}*"]
+    _tg(chat_id, "\n".join(linhas))
+
+
+def _penitencia(db: Session, usuario, chat_id: str):
+    from motors import penitencia as _pen
+    abertas = _pen.pendentes(db, usuario.id)
+    if not abertas:
+        _tg(chat_id, "⛓️ Nenhuma penitência em aberto. A conta está limpa.")
+        return
+    linhas = [f"⛓️ *Penitências em aberto: {len(abertas)}*", ""]
+    teclado = []
+    for t in abertas[:8]:
+        origem = getattr(t, "origem_data", None)
+        linhas.append(f"• {t.titulo}" + (f" _(de {origem.strftime('%d/%m')})_"
+                                         if origem else ""))
+        teclado.append([{"text": f"✔ {t.titulo[:40]}",
+                         "callback_data": f"ok|t|{t.id}"}])
+    linhas.append("\n_Cumprir quita a dívida — não paga XP cheio._")
+    _tg(chat_id, "\n".join(linhas), teclado=teclado)
+
+
+def _portoes(db: Session, usuario, chat_id: str, hoje: date):
+    """Quais portões abrem hoje, e a que horas."""
+    from database import Dungeon
+    from motors import calendario_projecao as _proj
+
+    todos = db.query(Dungeon).filter(Dungeon.usuario_id == usuario.id,
+                                     Dungeon.status == "ATIVA").all()
+    abertos = [d for d in todos if _proj.dungeon_devida_em(d, hoje)]
+    if not abertos:
+        _tg(chat_id, "🚪 Nenhum portão abre hoje.")
+        return
+
+    linhas = [f"🚪 *Portões de hoje — {hoje.strftime('%d/%m')}*", ""]
+    for d in abertos:
+        ini, fim = _proj.horario_do_dia(d, hoje)
+        quando = f"{ini}–{fim}" if ini and fim else (ini or "dia inteiro")
+        linhas.append(f"▸ *{d.titulo}* — _{quando}_")
+    # ATRAVESSAR O PORTÃO NÃO SE FAZ POR AQUI, de propósito: a dungeon é
+    # uma sessão viva, com heartbeat e cronômetro. Abrir uma pelo chat e
+    # sair andando deixaria uma sessão aberta sem ninguém dentro.
+    linhas.append("\n_Para atravessar, use o app — a sessão precisa de "
+                  "você presente._")
+    _tg(chat_id, "\n".join(linhas))
+
+
 def _rotina_de_hoje(rotina: Rotina, hoje: date) -> bool:
     """
     A ROTINA CAI NESTE DIA? — e esta função não sabe a resposta.
@@ -424,7 +730,344 @@ _SIMBOLO = {
     "CONCLUIDA":  "✅",
     "FRACASSADA": "❌",
     "CANCELADA":  "🚫",
+    "PAUSADA":    "⏸️",
 }
+
+
+# ══════════════════════════════════════════════════════════════════════
+# ACHAR A MISSÃO — e por que isto é o coração do bot, não um detalhe
+#
+# O `/ok` original fazia `ilike %texto%` e pegava O PRIMEIRO que casasse.
+# Numa agenda com "Fazer 50 abdominais" e "Faça 30 flexões" repetidas, e
+# três missões começando com "Conseguir", um `/ok conseguir` fechava uma
+# à sorte. E fechar a errada não é um engano reversível: custa XP, mexe
+# na corrente e deixa a certa em aberto.
+#
+# A regra aqui é simples e vale para todo comando que recebe um título:
+# ZERO resultados é um aviso; UM é a ação; MAIS DE UM NUNCA ESCOLHE
+# SOZINHO — devolve a lista com botões, e quem decide é o hunter.
+# ══════════════════════════════════════════════════════════════════════
+class Alvo:
+    """Uma missão concreta, já sabendo se é rotina ou missão geral."""
+
+    __slots__ = ("tipo", "id", "titulo", "obj", "ed", "status")
+
+    def __init__(self, tipo, obj, ed=None, status="PENDENTE"):
+        self.tipo = tipo              # 'r' (rotina) | 't' (missão geral)
+        self.obj = obj
+        self.id = obj.id
+        self.titulo = obj.titulo
+        self.ed = ed                  # a ExecucaoDia, só para rotina
+        self.status = status
+
+    @property
+    def chave(self):
+        return f"{self.tipo}|{self.id}"
+
+
+def _alvos_do_dia(db: Session, usuario, hoje: date, abertas_apenas=False) -> list:
+    """Tudo que existe hoje para este hunter, rotinas e missões gerais."""
+    lista = []
+
+    rotinas = db.query(Rotina).filter(
+        Rotina.usuario_id == usuario.id, Rotina.ativo == True      # noqa: E712
+    ).all()
+    devidas = [r for r in rotinas if _rotina_de_hoje(r, hoje)]
+    if devidas:
+        eds = {e.rotina_id: e for e in db.query(ExecucaoDia).filter(
+            ExecucaoDia.usuario_id == usuario.id,
+            ExecucaoDia.data == hoje,
+            ExecucaoDia.rotina_id.in_([r.id for r in devidas]),
+        ).all()}
+        for r in devidas:
+            ed = eds.get(r.id)
+            lista.append(Alvo("r", r, ed, (ed.status if ed else "PENDENTE") or "PENDENTE"))
+
+    for t in db.query(TarefaDia).filter(
+        TarefaDia.usuario_id == usuario.id,
+        TarefaDia.data_prevista == hoje,
+    ).all():
+        lista.append(Alvo("t", t, None, (t.status or "PENDENTE")))
+
+    if abertas_apenas:
+        lista = [a for a in lista
+                 if a.status in ("PENDENTE", "ATIVA", "PAUSADA")]
+
+    # Quem tem hora vai primeiro e em ordem: é a linha do tempo do dia.
+    # O resto é "em algum momento" e desce para o fim.
+    def ordem(a):
+        h = getattr(a.obj, "hora_inicio", None) or getattr(a.obj, "hora_limite", None)
+        return (h is None, str(h or ""), a.titulo or "")
+    lista.sort(key=ordem)
+    return lista
+
+
+def _procurar(db: Session, usuario, busca: str, hoje: date,
+              abertas_apenas=True) -> list:
+    """
+    Os alvos que casam com o texto. Pode devolver zero, um ou vários —
+    e quem chama TEM de tratar os três casos.
+    """
+    termo = (busca or "").strip().lower()
+    if not termo:
+        return []
+    todos = _alvos_do_dia(db, usuario, hoje, abertas_apenas=abertas_apenas)
+
+    # Casar o título inteiro vence: quem digitou o nome exato não quer
+    # ver um menu de desambiguação por causa de um prefixo compartilhado.
+    exatos = [a for a in todos if (a.titulo or "").strip().lower() == termo]
+    if exatos:
+        return exatos
+    return [a for a in todos if termo in (a.titulo or "").lower()]
+
+
+def _menu_escolha(chat_id: str, acao: str, alvos: list, cabecalho: str):
+    """Mais de uma casou: o hunter escolhe, o bot não adivinha."""
+    teclado = [[{"text": f"{_SIMBOLO.get(a.status, '⬜')} {a.titulo[:50]}",
+                 "callback_data": f"{acao}|{a.chave}"}] for a in alvos[:8]]
+    extra = ("\n\n_Mostrando as 8 primeiras._" if len(alvos) > 8 else "")
+    _tg(chat_id, f"{cabecalho}\n\nQual delas?{extra}", teclado=teclado)
+
+
+def _por_chave(db: Session, usuario, tipo: str, ident: int, hoje: date):
+    """
+    Um alvo a partir do que veio de um BOTÃO.
+
+    E aqui mora a regra de segurança do teclado inteiro: o
+    `callback_data` viaja no cliente e volta como o cliente quiser. Um
+    hunter curioso manda `ok|r|999` e tenta concluir a rotina de outro.
+
+    Por isso a consulta filtra por `usuario_id` SEMPRE, e não confia em
+    nada além do id. É a mesma disciplina do `vinculo.por_origem`: o que
+    chega do canal prova que alguém falou, nunca de quem é a coisa.
+    """
+    if tipo == "r":
+        r = db.query(Rotina).filter(Rotina.id == ident,
+                                    Rotina.usuario_id == usuario.id).first()
+        if not r:
+            return None
+        ed = db.query(ExecucaoDia).filter(
+            ExecucaoDia.rotina_id == r.id,
+            ExecucaoDia.usuario_id == usuario.id,
+            ExecucaoDia.data == hoje).first()
+        return Alvo("r", r, ed, (ed.status if ed else "PENDENTE") or "PENDENTE")
+
+    t = db.query(TarefaDia).filter(TarefaDia.id == ident,
+                                   TarefaDia.usuario_id == usuario.id).first()
+    return Alvo("t", t, None, (t.status or "PENDENTE")) if t else None
+
+
+# ══════════════════════════════════════════════════════════════════════
+# O TEMPO QUE FALTA
+# ══════════════════════════════════════════════════════════════════════
+def _falta(alvo: Alvo) -> str:
+    """
+    Quanto resta do prazo, em texto curto.
+
+    Vazio quando não há corrida: uma missão de dia inteiro dizendo
+    "faltam 9h14" transformaria toda linha da lista num cronômetro, e o
+    urgente deixaria de se destacar do que só precisa acontecer hoje.
+    """
+    from motors import prazos, tempo as _t
+    try:
+        if alvo.tipo == "r":
+            p = (prazos.da_execucao(alvo.ed, alvo.obj) if alvo.ed
+                 else prazos.da_rotina(alvo.obj, _t.hoje()))
+        else:
+            p = prazos.da_tarefa(alvo.obj)
+    except Exception:
+        return ""
+    if not p or not p.get("fim"):
+        return ""
+    # Só anuncia contagem de JANELA — o dia inteiro não é uma corrida.
+    if not p.get("janela") and not p.get("reerguida"):
+        return ""
+    resta = (p["fim"] - _t.agora()).total_seconds()
+    if resta <= 0:
+        return "prazo vencido"
+    h, m = int(resta // 3600), int((resta % 3600) // 60)
+    return (f"{h}h{m:02d}m" if h else f"{m}m") + " restantes"
+
+
+def _hora_de(alvo: Alvo) -> str:
+    hi = getattr(alvo.obj, "hora_inicio", None)
+    hf = getattr(alvo.obj, "hora_fim", None) or getattr(alvo.obj, "hora_limite", None)
+    if hi and hf:
+        return f"{hi}–{hf}"
+    return hi or hf or ""
+
+
+# ══════════════════════════════════════════════════════════════════════
+# A LISTA COM BOTÕES
+# ══════════════════════════════════════════════════════════════════════
+def _botoes_de(alvo: Alvo) -> list:
+    """
+    O que dá para fazer com ESTA missão agora.
+
+    Um botão que não cabe no estado não aparece — e isso não é enfeite.
+    "Iniciar" numa missão já concluída só tem um destino possível: um
+    toque, um erro e a suspeita de que o bot está quebrado. Botão que
+    existe tem de funcionar.
+    """
+    b = []
+    st = alvo.status
+    if st in ("PENDENTE", "PAUSADA"):
+        b.append({"text": "▶️ Iniciar" if st == "PENDENTE" else "▶️ Retomar",
+                  "callback_data": f"{'ini' if st == 'PENDENTE' else 'ret'}|{alvo.chave}"})
+    if st == "ATIVA":
+        b.append({"text": "⏸️ Pausar", "callback_data": f"pau|{alvo.chave}"})
+    if st in ("PENDENTE", "ATIVA", "PAUSADA"):
+        b.append({"text": "✅ Concluir", "callback_data": f"ok|{alvo.chave}"})
+    if st == "FRACASSADA":
+        # Reerguer custa Mana — por isso vai com o preço no rótulo, e não
+        # como um botão inocente ao lado dos outros.
+        b.append({"text": "🔥 Reerguer", "callback_data": f"reer|{alvo.chave}"})
+    return b
+
+
+def _lista_do_dia(db: Session, usuario, hoje: date, so_abertas=False):
+    """Devolve `(texto, teclado)` — a tela do dia dentro do chat."""
+    alvos = _alvos_do_dia(db, usuario, hoje, abertas_apenas=so_abertas)
+
+    titulo = "📋 *Pendentes*" if so_abertas else \
+             f"📅 *Missões de Hoje — {hoje.strftime('%d/%m/%Y')}*"
+    if not alvos:
+        vazio = ("Nada em aberto. 🎉" if so_abertas
+                 else "Nenhuma missão para hoje! 🎉")
+        return f"{titulo}\n\n{vazio}", []
+
+    linhas, teclado = [titulo, ""], []
+    for a in alvos:
+        marca = _SIMBOLO.get(a.status, "⬜")
+        hora = _hora_de(a)
+        falta = _falta(a) if a.status in ("PENDENTE", "ATIVA", "PAUSADA") else ""
+        cauda = " · ".join(x for x in (hora, falta) if x)
+        linhas.append(f"{marca} {a.titulo}" + (f"\n   _{cauda}_" if cauda else ""))
+
+        bts = _botoes_de(a)
+        if bts:
+            # O rótulo da missão vai numa linha PRÓPRIA acima dos botões.
+            # Sem ele, uma lista de dez missões vira trinta botões
+            # idênticos e o toque errado deixa de ser acidente: vira
+            # estatística.
+            teclado.append([{"text": f"— {a.titulo[:40]} —",
+                             "callback_data": "nada"}])
+            teclado.append(bts)
+
+    return "\n".join(linhas), teclado
+
+
+# ══════════════════════════════════════════════════════════════════════
+# AGIR
+# ══════════════════════════════════════════════════════════════════════
+def _registrar_ato(db: Session, usuario, acao: str, alvo: Alvo, res=None):
+    """Guarda o último ato para o `/desfazer`. Uma linha por hunter/canal."""
+    from database import AtoBot
+    a = db.query(AtoBot).filter(AtoBot.usuario_id == usuario.id,
+                                AtoBot.canal == "telegram").first()
+    if not a:
+        a = AtoBot(usuario_id=usuario.id, canal="telegram")
+        db.add(a)
+    a.acao = acao
+    a.alvo_tipo = "rotina" if alvo.tipo == "r" else "tarefa"
+    a.alvo_id = alvo.id
+    a.titulo = (alvo.titulo or "")[:200]
+    a.xp = int((res or {}).get("xp_ganho", 0) or 0)
+    a.moedas = int((res or {}).get("moedas_ganhas", 0) or 0)
+    a.criado_em = datetime.utcnow()
+    db.commit()
+
+
+def _agir(db: Session, usuario, acao: str, alvo: Alvo, hoje: date):
+    """
+    Executa a ação pelos MESMOS endpoints que o app usa.
+
+    Nenhuma regra nasce aqui — este arquivo já pagou caro por isso uma
+    vez, quando o `/ok` inventou a própria conclusão e deixou missões
+    num limbo que o fechamento punia. Aqui só se traduz "toque no botão"
+    para "chamada de router", e o resultado de volta para uma frase.
+
+    Devolve `(ok, frase_curta, frase_longa)`. A curta vai no aviso do
+    topo do Telegram (200 caracteres); a longa, quando existe, vira
+    mensagem no chat.
+    """
+    from fastapi import HTTPException as _HTTPErro
+    from routers import execucoes as _exec, rotinas as _rot, tarefas as _tar
+
+    try:
+        if acao == "ok":
+            if alvo.tipo == "r":
+                corpo, res = _exec.concluir(db, usuario, alvo.obj, hoje,
+                                            observacao=f"Bot: {alvo.titulo}")
+            else:
+                corpo = _tar.concluir(db, usuario, alvo.obj)
+                res = corpo.get("resultado")
+            _registrar_ato(db, usuario, "ok", alvo, res)
+            if not res:
+                return True, "Penitência cumprida.", f"⛓️ *Penitência cumprida.*\n📋 {alvo.titulo}"
+            liq = (corpo or {}).get("liquidacao") or {}
+            atraso = liq.get("penalidade") or 0
+            longa = (f"✅ *Concluída!*\n{alvo.titulo}\n"
+                     f"✨ +{res['xp_ganho']} XP | 💰 +{res['moedas_ganhas']} Mana\n"
+                     + (f"⏰ −{atraso} XP por fora do prazo\n" if atraso else "")
+                     + f"🔥 Streak: {res['streak_atual']} dias"
+                     + (_level_up_msg(res['level_ups']) if res.get('level_ups') else ""))
+            return True, f"+{res['xp_ganho']} XP", longa
+
+        if acao == "ini":
+            (_rot.iniciar_rotina if alvo.tipo == "r" else _tar.iniciar_tarefa)(
+                alvo.id, db, usuario)
+            _registrar_ato(db, usuario, "ini", alvo)
+            return True, "Missão iniciada.", None
+
+        if acao == "pau":
+            (_rot.pausar_rotina if alvo.tipo == "r" else _tar.pausar_tarefa)(
+                alvo.id, db, usuario)
+            _registrar_ato(db, usuario, "pau", alvo)
+            return True, "Pausada.", None
+
+        if acao == "ret":
+            (_rot.retomar_rotina if alvo.tipo == "r" else _tar.retomar_tarefa)(
+                alvo.id, db, usuario)
+            _registrar_ato(db, usuario, "ret", alvo)
+            return True, "Retomada.", None
+
+        if acao == "can":
+            (_rot.cancelar_rotina if alvo.tipo == "r" else _tar.cancelar_tarefa)(
+                alvo.id, db, usuario)
+            _registrar_ato(db, usuario, "can", alvo)
+            return True, "Cancelada.", None
+
+        if acao == "reer":
+            if alvo.tipo != "r" or not alvo.ed:
+                return False, "Só rotina do dia se reergue.", None
+            r = _exec.reerguer(_exec.ReerguerRequest(execucao_id=alvo.ed.id),
+                               db, usuario)
+            _registrar_ato(db, usuario, "reer", alvo)
+            custo = (r or {}).get("custo") or (r or {}).get("moedas") or ""
+            return True, "Reerguida.", (
+                f"🔥 *{alvo.titulo}* reerguida.\n"
+                + (f"💰 Custou {custo} Mana.\n" if custo else "")
+                + "_A janela não volta: o que volta é o resto do dia._")
+
+        if acao == "conf":
+            if alvo.tipo != "r" or not alvo.ed:
+                return False, "Só rotina do dia se confessa.", None
+            _exec.confessar(_exec.ConfessarRequest(execucao_id=alvo.ed.id,
+                                                   observacao="Confessada pelo bot"),
+                            db, usuario)
+            _registrar_ato(db, usuario, "conf", alvo)
+            return True, "Confessada.", (
+                f"🕯️ *{alvo.titulo}* — confessada.\n"
+                "_Dizer a verdade na hora vale mais que o placar do dia._")
+
+    except _HTTPErro as e:
+        return False, str(e.detail)[:190], None
+    except Exception as e:                      # pragma: no cover
+        print(f"[BOT] acao {acao} falhou: {e}")
+        return False, "Não consegui fazer isso agora.", None
+
+    return False, "Ação desconhecida.", None
 
 
 def _level_up_msg(level_ups: list) -> str:
@@ -547,6 +1190,96 @@ def _noite(db: Session, usuario, chat: str):
     ))
 
 
+# ══════════════════════════════════════════════════════════════════════
+# O TOQUE NUM BOTÃO
+# ══════════════════════════════════════════════════════════════════════
+def _tocou(toque: dict, db: Session):
+    """
+    Um `callback_query`: alguém tocou num botão da lista.
+
+    TRÊS COISAS QUE PRECISAM ESTAR CERTAS AQUI, e nenhuma é óbvia:
+
+    1. RESPONDER SEMPRE. O Telegram espera o `answerCallbackQuery`; sem
+       ele a ampulheta gira no botão e o hunter conclui que travou —
+       inclusive quando a ação funcionou.
+
+    2. O `callback_data` NÃO É CONFIÁVEL. Ele viaja no cliente e volta
+       como o cliente quiser: `ok|r|999` tentando concluir a rotina de
+       outro hunter. Quem defende é o `_por_chave`, que filtra por
+       `usuario_id` sempre. Este é o ponto do bot mais parecido com um
+       formulário aberto na internet.
+
+    3. BOTÃO VELHO É NORMAL. A lista de ontem continua rolável no chat,
+       com os botões de ontem clicáveis. O estado real manda: se a
+       missão já fechou, a resposta é um aviso, nunca um segundo
+       crédito.
+    """
+    cb_id = toque.get("id", "")
+    dados = toque.get("data") or ""
+    msg = toque.get("message") or {}
+    chat_id = str((msg.get("chat") or {}).get("id", ""))
+    message_id = msg.get("message_id")
+
+    if dados == "nada":
+        # É o rótulo da missão, não um botão. O Telegram exige
+        # `callback_data` em todo botão, então o rótulo virou um que não
+        # faz nada — e precisa responder, senão gira a ampulheta.
+        _responder_toque(cb_id)
+        return
+
+    usuario = _get_usuario(db, chat_id)
+    if not usuario:
+        _responder_toque(cb_id, "Esta conversa não está vinculada.", True)
+        return
+
+    partes = dados.split("|")
+    if len(partes) < 3:
+        _responder_toque(cb_id, "Botão não reconhecido.", True)
+        return
+
+    acao, tipo, ident = partes[0], partes[1], partes[2]
+    if tipo not in ("r", "t") or not str(ident).isdigit():
+        _responder_toque(cb_id, "Botão não reconhecido.", True)
+        return
+
+    hoje = tempo.hoje()
+    alvo = _por_chave(db, usuario, tipo, int(ident), hoje)
+    if not alvo:
+        # Inclui a tentativa de alcançar a missão de outro hunter: para
+        # quem toca, os dois casos são o mesmo — e é melhor assim, um
+        # "não é sua" confirmaria que o id existe.
+        _responder_toque(cb_id, "Essa missão não está mais disponível.", True)
+        return
+
+    # O BLOCO DO CIRCUITO tem um quarto pedaço: qual etapa.
+    if acao == "blk" and len(partes) >= 4:
+        from fastapi import HTTPException as _HTTPErro
+        from routers import execucoes as _exec
+        try:
+            _exec.circuito_registrar(_exec.CircuitoRegistrarRequest(
+                rotina_id=alvo.id if alvo.tipo == "r" else None,
+                tarefa_id=alvo.id if alvo.tipo == "t" else None,
+                etapa_id=partes[3], valor=None), db, usuario)
+            _responder_toque(cb_id, "Bloco fechado.")
+            _bloco(db, usuario, chat_id, alvo.titulo, hoje)
+        except _HTTPErro as e:
+            _responder_toque(cb_id, str(e.detail)[:190], True)
+        return
+
+    ok, curta, longa = _agir(db, usuario, acao, alvo, hoje)
+    _responder_toque(cb_id, curta, alerta=not ok)
+
+    if ok:
+        # A LISTA SE REDESENHA NO LUGAR. Sem isto o hunter fica olhando
+        # os botões do estado anterior e toca de novo, achando que o
+        # primeiro toque não pegou.
+        corpo, teclado = _lista_do_dia(db, usuario, hoje)
+        if message_id:
+            _editar(chat_id, message_id, corpo, teclado)
+        if longa:
+            _tg(chat_id, longa)
+
+
 # ── Endpoints ─────────────────────────────────────────────────
 
 @router.post("/webhook")
@@ -570,6 +1303,19 @@ async def webhook(request: Request):
     try:
         update = await request.json()
     except Exception:
+        return {"ok": True}
+
+    # ── O TOQUE NUM BOTÃO ────────────────────────────────────────────
+    toque = update.get("callback_query")
+    if toque:
+        db = SessionLocal()
+        try:
+            _tocou(toque, db)
+        except Exception as e:
+            print(f"[BOT] callback: {e}")
+            _responder_toque(toque.get("id", ""), "Não consegui fazer isso.", True)
+        finally:
+            db.close()
         return {"ok": True}
 
     message = update.get("message") or update.get("edited_message")
@@ -608,6 +1354,31 @@ async def webhook(request: Request):
                 db.close()
 
     return {"ok": True}
+
+
+# O menu que aparece ao digitar "/" no Telegram. A ordem é a de uso, não
+# a alfabética: `/hoje` é o que a pessoa quer em nove de cada dez vezes,
+# e o que exige explicação fica embaixo.
+COMANDOS_MENU = [
+    {"command": "hoje",       "description": "Missões do dia, com botões"},
+    {"command": "pendentes",  "description": "Só o que ainda falta"},
+    {"command": "agora",      "description": "O que está em curso e quanto falta"},
+    {"command": "iniciar",    "description": "Dar a largada numa missão"},
+    {"command": "ok",         "description": "Concluir uma missão"},
+    {"command": "pausar",     "description": "Pausar o cronômetro"},
+    {"command": "retomar",    "description": "Voltar a correr"},
+    {"command": "desfazer",   "description": "Desfaz o último ato daqui"},
+    {"command": "somar",      "description": "Registrar valor numa meta"},
+    {"command": "bloco",      "description": "Fechar etapa de um circuito"},
+    {"command": "confessar",  "description": "A passiva que você quebrou"},
+    {"command": "reerguer",   "description": "Segunda chance (custa Mana)"},
+    {"command": "status",     "description": "XP, nível e corrente"},
+    {"command": "extrato",    "description": "O que o dia rendeu"},
+    {"command": "penitencia", "description": "Dívida em aberto"},
+    {"command": "portoes",    "description": "Quais portões abrem hoje"},
+    {"command": "add",        "description": "Criar uma missão rápida"},
+    {"command": "ajuda",      "description": "Todos os comandos"},
+]
 
 
 def _base_publica() -> str:
@@ -656,7 +1427,13 @@ def configurar_webhook(
     resp = req_lib.post(
         TELEGRAM_API.format(token=BOT_TOKEN, method="setWebhook"),
         json={"url": alvo, "secret_token": WEBHOOK_SECRET,
-              "allowed_updates": ["message", "edited_message"],
+              # `callback_query` E OBRIGATORIO AQUI. Sem ele o Telegram
+              # simplesmente NAO ENTREGA os toques nos botoes — e o
+              # sintoma seria o pior possivel: a lista aparece bonita,
+              # os botoes existem, e tocar neles nao faz nada, sem erro
+              # em lugar nenhum.
+              "allowed_updates": ["message", "edited_message",
+                                  "callback_query"],
               # Updates acumulados enquanto o webhook esteve fora valem
               # pouco e podem executar comandos velhos (`/ok` de ontem
               # chegando hoje). Descartar é mais honesto que reviver.
@@ -664,9 +1441,25 @@ def configurar_webhook(
         timeout=15,
     )
     resultado = resp.json()
-    if resultado.get("ok"):
-        return {"ok": True, "url": alvo, "msg": f"Webhook registrado em {alvo}"}
-    raise HTTPException(400, f"Telegram: {resultado.get('description')}")
+    if not resultado.get("ok"):
+        raise HTTPException(400, f"Telegram: {resultado.get('description')}")
+
+    # ── O MENU DE COMANDOS, no mesmo ato ─────────────────────────────
+    #
+    # É o "/" que abre a lista dentro do Telegram. Sem isto o hunter só
+    # descobre um comando lendo o `/ajuda` — e comando que não aparece no
+    # menu é comando que ninguém usa.
+    #
+    # Registrado JUNTO com o webhook de propósito: são as duas metades da
+    # mesma configuração, e separá-las criaria o estado meio-pronto em que
+    # o bot responde mas parece não ter comandos.
+    #
+    # Falhar aqui NÃO derruba o registro do webhook: o menu é conforto, o
+    # webhook é o que faz o bot existir.
+    menu = _chamar("setMyCommands", {"commands": COMANDOS_MENU})
+    return {"ok": True, "url": alvo,
+            "menu_ok": bool(menu.get("ok")),
+            "msg": f"Webhook registrado em {alvo}"}
 
 
 @router.delete("/webhook")
