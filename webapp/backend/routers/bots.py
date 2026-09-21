@@ -26,6 +26,7 @@ Telegram — a prova de identidade é a mesma, só a porta muda.
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from auth.router import get_usuario_atual, get_arquiteto, NIVEL_ARQUITETO
@@ -79,6 +80,79 @@ def status(db: Session = Depends(get_db),
         except Exception as e:
             sit["whatsapp"]["sessao"] = {"conectado": False, "detalhe": str(e)}
     return sit
+
+
+# ══════════════════════════════════════════════════════════════════════
+# PREFERÊNCIAS DE AVISO
+# ══════════════════════════════════════════════════════════════════════
+class PrefAviso(BaseModel):
+    acendeu: Optional[bool] = None
+    beira:   Optional[bool] = None
+    venceu:  Optional[bool] = None
+    portao:  Optional[bool] = None
+    minutos_beira:  Optional[int] = None
+    minutos_portao: Optional[int] = None
+    silencio_de:  Optional[str] = None
+    silencio_ate: Optional[str] = None
+
+
+def _pref_dict(p) -> dict:
+    return {
+        "acendeu": bool(p.acendeu), "beira": bool(p.beira),
+        "venceu": bool(p.venceu),   "portao": bool(p.portao),
+        "minutos_beira": p.minutos_beira or 15,
+        "minutos_portao": p.minutos_portao or 30,
+        "silencio_de": p.silencio_de or "23:00",
+        "silencio_ate": p.silencio_ate or "06:00",
+    }
+
+
+@router.get("/avisos")
+def ler_avisos(db: Session = Depends(get_db),
+               usuario: Usuario = Depends(get_usuario_atual)):
+    from motors import avisos
+    p = avisos.preferencia(db, usuario)
+    db.commit()          # a primeira leitura cria a linha padrão
+    return _pref_dict(p)
+
+
+@router.put("/avisos")
+def salvar_avisos(payload: PrefAviso,
+                  db: Session = Depends(get_db),
+                  usuario: Usuario = Depends(get_usuario_atual)):
+    from motors import avisos
+    p = avisos.preferencia(db, usuario)
+
+    for campo in ("acendeu", "beira", "venceu", "portao"):
+        v = getattr(payload, campo)
+        if v is not None:
+            setattr(p, campo, bool(v))
+
+    # OS LIMITES NÃO SÃO CAPRICHO. Abaixo de 5 minutos o aviso mente: o
+    # varredor roda de 5 em 5, então "faltam 2 minutos" chegaria quando
+    # faltasse qualquer coisa entre 2 e 7. Acima de 120 ele deixa de ser
+    # "beira da falha" e vira mais uma cobrança no meio da tarde.
+    if payload.minutos_beira is not None:
+        p.minutos_beira = max(5, min(120, int(payload.minutos_beira)))
+    if payload.minutos_portao is not None:
+        p.minutos_portao = max(5, min(180, int(payload.minutos_portao)))
+
+    def _hora_valida(s):
+        try:
+            h, m = str(s).split(":")
+            return 0 <= int(h) <= 23 and 0 <= int(m) <= 59
+        except Exception:
+            return False
+
+    for campo in ("silencio_de", "silencio_ate"):
+        v = getattr(payload, campo)
+        if v is not None:
+            if not _hora_valida(v):
+                raise HTTPException(400, f"Horário inválido: {v}. Use HH:MM.")
+            setattr(p, campo, v)
+
+    db.commit()
+    return _pref_dict(p)
 
 
 @router.post("/codigo/{canal}")

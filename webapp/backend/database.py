@@ -1244,6 +1244,75 @@ class AtoBot(Base):
     )
 
 
+class AvisoEnviado(Base):
+    """
+    O QUE JÁ FOI DITO — a tabela que existe por um motivo só: não repetir.
+
+    O varredor roda de cinco em cinco minutos e pergunta ao motor "o que
+    deveria estar avisado agora?". A resposta é função do ESTADO, não do
+    tempo: enquanto faltarem 15 minutos para o Banho Revigorante, ele vai
+    responder "avise sobre o Banho Revigorante" — três vezes seguidas.
+
+    Sem esta memória, o hunter recebe o mesmo aviso três vezes e silencia
+    o bot. E um bot silenciado não serve para nada — inclusive para o
+    aviso que importava. O `UNIQUE` na chave é o que transforma isso numa
+    garantia do banco em vez de uma lembrança do programador.
+
+    A CHAVE CARREGA O DIA. `beira:r:12:2026-09-21` e não `beira:r:12`: a
+    mesma rotina pede o mesmo aviso amanhã, e uma chave sem data avisaria
+    uma vez na vida.
+    """
+    __tablename__ = "avisos_enviados"
+
+    id         = Column(Integer, primary_key=True, index=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    chave      = Column(String(120), nullable=False, index=True)
+    canal      = Column(String(20), default="telegram")
+    enviado_em = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("usuario_id", "chave", "canal", name="uq_aviso_chave"),
+    )
+
+
+class PreferenciaAviso(Base):
+    """
+    O QUE CADA HUNTER QUER OUVIR.
+
+    Nasce com tudo LIGADO e a janela de silêncio das 23:00 às 06:00 —
+    porque um aviso que ninguém pediu ainda é melhor que um aviso que
+    ninguém sabia que existia, e desligar é um clique.
+
+    A JANELA DE SILÊNCIO TEM UMA EXCEÇÃO, e ela não é opcional: missão
+    cuja janela está de fato ABERTA no meio da madrugada continua
+    avisando. "Sem redes sociais entre 22h e 10h" e o protocolo de sono
+    são missões legítimas das 04:00 — calá-las seria calar justamente
+    quem precisa do aviso naquele horário. O silêncio é contra a
+    interrupção gratuita, não contra a missão noturna.
+    """
+    __tablename__ = "preferencias_aviso"
+
+    id         = Column(Integer, primary_key=True, index=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False,
+                        unique=True, index=True)
+
+    acendeu    = Column(Boolean, default=True)   # a janela abriu sozinha
+    beira      = Column(Boolean, default=True)   # falta pouco e ainda está aberta
+    venceu     = Column(Boolean, default=True)   # o prazo passou
+    portao     = Column(Boolean, default=True)   # um portão vai abrir
+
+    # Quantos minutos antes do fim conta como "beira da falha", e quantos
+    # antes da abertura do portão conta como "vai abrir".
+    minutos_beira  = Column(Integer, default=15)
+    minutos_portao = Column(Integer, default=30)
+
+    silencio_de  = Column(String(5), default="23:00")
+    silencio_ate = Column(String(5), default="06:00")
+
+    atualizado_em = Column(DateTime, default=datetime.utcnow,
+                           onupdate=datetime.utcnow)
+
+
 class ContaCalendario(Base):
     """
     A AGENDA DO HUNTER — o elo de longo prazo com o Google Calendar.

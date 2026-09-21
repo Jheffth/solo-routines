@@ -198,6 +198,59 @@ def _job_fechamento():
 
 scheduler.add_job(_job_fechamento, 'cron', hour=0, minute=5)
 
+
+# ══════════════════════════════════════════════════════════════════════
+# O VARREDOR DE AVISOS — de 5 em 5 minutos
+#
+# Ele NÃO é um quarto horário fixo como os de 07h/14h/21h. Aqueles
+# respondem ao relógio; este responde ao ESTADO de cada missão — quanto
+# falta para o prazo dela, se a janela dela acabou de abrir.
+#
+# E ele faz mais do que avisar: roda o fechamento por hunter, o que
+# significa que o auto-início e o fracasso passam a acontecer na HORA,
+# em vez de só quando alguém abre o app. Era a única forma de o aviso
+# não virar uma segunda verdade sobre o estado — ver a nota longa em
+# `bot_telegram.varrer_avisos`.
+#
+# CINCO MINUTOS: "faltam 15 minutos" com resolução de 5 é honesto; com
+# resolução de 30 seria mentira.
+#
+# `max_instances=1` e `coalesce=True` não são enfeite. Sem o primeiro,
+# uma varredura lenta deixaria a seguinte começar por cima e os dois
+# processos disputariam o mesmo fechamento. Sem o segundo, o servidor
+# que dormiu duas horas acordaria disparando 24 varreduras enfileiradas
+# — e o hunter receberia o velório da manhã inteira de uma vez.
+def _job_avisos():
+    from routers.bot_telegram import varrer_avisos
+    db = SessionLocal()
+    try:
+        varrer_avisos(db)
+    except Exception as e:
+        print(f"[AVISOS] 🚨 varredura falhou: {e}")
+    finally:
+        db.close()
+
+scheduler.add_job(_job_avisos, 'cron', minute='*/5',
+                  max_instances=1, coalesce=True, misfire_grace_time=120)
+
+
+# A faxina do histórico de avisos: a chave carrega a data, então um
+# registro de duas semanas atrás nunca mais será consultado. Tabela que
+# só cresce vira o problema seguinte.
+def _job_faxina_avisos():
+    from motors import avisos
+    db = SessionLocal()
+    try:
+        n = avisos.limpar_antigos(db)
+        if n:
+            print(f"[AVISOS] faxina: {n} registro(s) antigos removidos")
+    except Exception as e:
+        print(f"[AVISOS] faxina falhou: {e}")
+    finally:
+        db.close()
+
+scheduler.add_job(_job_faxina_avisos, 'cron', hour=4, minute=20)
+
 # ==============================================================================
 # STARTUP / SHUTDOWN
 # ==============================================================================
@@ -255,7 +308,8 @@ async def startup():
 
     try:
         scheduler.start()
-        print("[STARTUP] ✅ Scheduler iniciado (07h, 14h, 21h).")
+        print("[STARTUP] ✅ Scheduler iniciado "
+              "(07h, 14h, 21h · fechamento 00h05 · avisos a cada 5 min).")
     except Exception as e:
         print(f"[STARTUP WARNING] Scheduler: {e}")
 

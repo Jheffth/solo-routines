@@ -129,5 +129,49 @@ const veneno = '<img src=x onerror=alert(1)>';
     diz('escape', !h.includes('<img'), campo + ' vindo de fora vai escapado');
   });
 
+
+/* ══════════════════════════════════════════════════════════════════
+   O CARTÃO DOS AVISOS
+
+   A armadilha aqui é oferecer configuração de um canal que não existe:
+   quatro chaves bonitas que não ligam coisa nenhuma, e a pessoa saindo
+   convencida de que vai receber avisos.
+   ══════════════════════════════════════════════════════════════════ */
+const PREF = {
+  acendeu: true, beira: true, venceu: false, portao: true,
+  minutos_beira: 15, minutos_portao: 30,
+  silencio_de: '23:00', silencio_ate: '06:00',
+};
+
+console.log('\n=== CARTAO DOS AVISOS ===');
+
+let a = B._avisos.call(B, PREF, { vinculado: false, disponivel: true });
+diz('sem canal', !a.includes('data-av='),
+    'nao oferece chave nenhuma — configurar o nada engana');
+diz('sem canal', a.includes('Conecte o Telegram'), 'e diz o que fazer antes');
+
+diz('sem preferencia', B._avisos.call(B, null, { vinculado: true })
+      .includes('Não consegui ler'),
+    'preferencia ilegivel vira aviso, nao tela em branco');
+
+a = B._avisos.call(B, PREF, { vinculado: true });
+['beira', 'acendeu', 'portao', 'venceu'].forEach(k =>
+  diz('com canal', a.includes('data-av="' + k + '"'), 'a chave ' + k + ' existe'));
+diz('com canal', (a.match(/checked/g) || []).length === 3,
+    'tres ligadas e uma desligada — a tela reflete o servidor, nao um padrao fixo');
+diz('com canal', a.includes('value="15"') && a.includes('value="30"'),
+    'os minutos vem do servidor');
+diz('com canal', a.includes('min="5"') && a.includes('max="120"'),
+    'e a tela limita o mesmo que o servidor limita no banco');
+diz('com canal', a.includes('exceto'),
+    'a excecao da janela noturna esta escrita, nao escondida no codigo');
+diz('com canal', a.includes('o mais frequente'),
+    'a chave mais cara avisa que e a mais cara');
+
+diz('escape', !B._avisos.call(B,
+      Object.assign({}, PREF, { silencio_de: '"><img src=x onerror=alert(1)>' }),
+      { vinculado: true }).includes('<img'),
+    'valor de campo vai escapado');
+
 console.log(falhas ? '\n' + falhas + ' FALHA(S)\n' : '\n=== PAINEL OK ===\n');
 process.exit(falhas ? 1 : 0);

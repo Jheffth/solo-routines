@@ -1119,6 +1119,80 @@ def _para_cada(db: Session, envio) -> None:
             print(f"[BOT] falha ao notificar {usuario.login}: {e}")
 
 
+def varrer_avisos(db: Session) -> dict:
+    """
+    O VARREDOR — de cinco em cinco minutos.
+
+    POR QUE ELE RODA O FECHAMENTO, e não só consulta
+
+    O auto-início era calculado NA LEITURA: a missão das 20:00 só virava
+    ATIVA no banco quando alguém abria o app. O próprio `auto_iniciar`
+    já previa este dia — "quando [a notificação] existir, o processo por
+    minuto vira necessário, e o gancho é esta mesma função".
+
+    Sem rodar o fechamento aqui não haveria o que anunciar: no banco, a
+    missão ainda não teria começado, e o prazo ainda não teria vencido.
+    O aviso seria uma segunda verdade sobre o estado — que é o defeito
+    que este arquivo já cometeu uma vez, com o `/ok`.
+
+    Efeito colateral bem-vindo: a missão passa a fracassar na hora em que
+    o prazo vence de verdade, e não quando alguém entra no app ou à
+    meia-noite. `processar_usuario` é idempotente por desenho, e o
+    julgamento da penitência tem a trava de "um por dia".
+
+    CINCO MINUTOS é a granularidade certa: "faltam 15 minutos" com
+    resolução de 5 é honesto; com resolução de 30 seria mentira.
+
+    UM HUNTER COM PROBLEMA NÃO CALA OS OUTROS — mesma disciplina do
+    `fechamento.rodar` e do `_para_cada`.
+    """
+    from motors import avisos, fechamento
+
+    resultado = {"hunters": 0, "avisos": 0, "erros": 0}
+
+    # ── O FECHAMENTO VALE PARA TODO HUNTER, tenha bot ou não ─────────
+    #
+    # Minha primeira versão varria só `_destinatarios()`, ou seja, só
+    # quem tem conversa vinculada — e, pior, nem isso: sem
+    # `TELEGRAM_BOT_TOKEN` aquela lista é vazia por desenho, então o
+    # varredor inteiro virava no-op num servidor sem bot.
+    #
+    # Acender a missão na hora e fracassá-la quando o prazo vence é
+    # comportamento do SISTEMA, não do Telegram. Amarrar um ao outro
+    # faria o app se comportar diferente conforme uma variável de
+    # ambiente que nada tem a ver com missões.
+    for usuario in db.query(Usuario).filter(Usuario.ativo == True).all():  # noqa: E712
+        try:
+            resumo = fechamento.processar_usuario(db, usuario)
+            db.commit()
+            resultado["hunters"] += 1
+
+            # Daqui para baixo é sobre AVISAR, e aí sim é preciso ter
+            # para onde mandar.
+            if not (BOT_TOKEN and usuario.telegram_chat_id):
+                continue
+
+            lista = avisos.para_enviar(
+                db, usuario,
+                acesas=resumo.get("acesas_agora"),
+                falhas=resumo.get("falhas"))
+            if not lista:
+                continue
+
+            _tg(usuario.telegram_chat_id, avisos.compor(lista))
+
+            # SÓ MARCA DEPOIS DE ENVIAR. Marcar antes e falhar no envio
+            # cala o aviso para sempre — e o silêncio de um defeito é
+            # indistinguível do silêncio de "não havia nada".
+            avisos.marcar(db, usuario, lista)
+            resultado["avisos"] += len(lista)
+        except Exception as e:
+            db.rollback()
+            resultado["erros"] += 1
+            print(f"[AVISOS] ⚠ hunter {usuario.login}: {e}")
+    return resultado
+
+
 def notificar_manha(db: Session):
     """Resumo das missões do dia, às 07:00."""
     _para_cada(db, _manha)

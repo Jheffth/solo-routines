@@ -265,6 +265,99 @@
 .bot-diag .bot-acoes { margin-top: .75rem; }
 .bot-diag .bot-nota  { margin-top: .5rem; font-size: .72rem; }
 
+/* ══════════════════════════════════════════════════════════════════
+   O CARTÃO DOS AVISOS
+
+   Cada chave carrega o CUSTO dela numa linha menor embaixo do título.
+   Não é texto de ajuda: é a única informação que muda a decisão. Uma
+   lista de quatro chaves iguais leva a pessoa a ligar todas — e a
+   descobrir o preço só quando o bot virar ruído e ela silenciar a
+   conversa. Aí o aviso que importava morre junto.
+   ══════════════════════════════════════════════════════════════════ */
+.bot-marca--av {
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, .28);
+  background: rgba(251, 191, 36, .1);
+}
+
+.bot-chaves { display: grid; gap: .5rem; margin: .2rem 0 1rem; }
+
+.bot-chave {
+  display: flex; align-items: flex-start; gap: .65rem;
+  padding: .55rem .65rem;
+  border-radius: 10px; cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, .06);
+  background: rgba(255, 255, 255, .015);
+  transition: border-color .16s, background .16s;
+}
+.bot-chave:hover { border-color: rgba(124, 58, 237, .32); }
+.bot-chave input { position: absolute; opacity: 0; pointer-events: none; }
+
+/* A bolinha é desenhada, e não um checkbox nativo: o nativo ignora a
+   paleta do Sistema em boa parte dos navegadores e aparece azul. */
+.bot-chave-bola {
+  flex: none; width: 34px; height: 19px; margin-top: .1rem;
+  border-radius: 999px; position: relative;
+  background: rgba(255, 255, 255, .1);
+  border: 1px solid rgba(255, 255, 255, .14);
+  transition: background .18s, border-color .18s;
+}
+.bot-chave-bola::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 13px; height: 13px; border-radius: 50%;
+  background: rgba(255, 255, 255, .55);
+  transition: transform .18s, background .18s;
+}
+.bot-chave input:checked + .bot-chave-bola {
+  background: rgba(124, 58, 237, .45);
+  border-color: rgba(168, 85, 247, .6);
+}
+.bot-chave input:checked + .bot-chave-bola::after {
+  transform: translateX(15px);
+  background: #fff;
+}
+/* Teclado: sem isto a chave desenhada some para quem navega por Tab. */
+.bot-chave input:focus-visible + .bot-chave-bola {
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, .3);
+}
+
+.bot-chave-txt { display: grid; gap: .1rem; font-size: .8rem; }
+.bot-chave-txt b { color: var(--text-primary); font-weight: 600; }
+.bot-chave-txt i {
+  font-style: normal; font-size: .7rem; color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.bot-nums {
+  display: flex; flex-wrap: wrap; gap: .6rem 1.2rem;
+  margin-bottom: .9rem;
+}
+.bot-num, .bot-silencio {
+  display: flex; align-items: center; gap: .4rem;
+  font-size: .76rem; color: var(--text-secondary);
+}
+.bot-silencio { margin-bottom: .5rem; }
+.bot-num em { font-style: normal; color: var(--text-muted); }
+
+.bot-num input, .bot-silencio input {
+  width: 4.6rem; padding: .3rem .45rem;
+  border-radius: 8px;
+  font-family: inherit; font-size: .78rem;
+  color: var(--text-primary);
+  border: 1px solid rgba(255, 255, 255, .12);
+  background: rgba(0, 0, 0, .3);
+}
+.bot-silencio input { width: 6.2rem; }
+.bot-num input:focus, .bot-silencio input:focus {
+  outline: none;
+  border-color: rgba(168, 85, 247, .6);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, .16);
+}
+
+@media (max-width: 480px) {
+  .bot-nums { flex-direction: column; align-items: flex-start; gap: .5rem; }
+}
+
 @media (max-width: 640px) {
   .bot-codigo-num { font-size: 1.5rem; letter-spacing: .24em; }
   .bot-qr { width: 170px; height: 170px; }

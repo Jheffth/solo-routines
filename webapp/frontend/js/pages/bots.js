@@ -37,15 +37,107 @@
       cx.innerHTML = '<div class="loading-spinner-wrap"><div class="loading-spinner"></div></div>';
 
       try {
-        this._dados = await API.get('/bots/status');
+        /* As duas chamadas SAEM JUNTAS. Em série, a tela levaria a soma
+           das duas latências para aparecer — e a segunda não depende em
+           nada do resultado da primeira. */
+        const [dados, pref] = await Promise.all([
+          API.get('/bots/status'),
+          API.get('/bots/avisos').catch(() => null),
+        ]);
+        this._dados = dados;
+        this._pref = pref;
       } catch (e) {
         cx.innerHTML = `<div class="card bot-card"><p class="bot-vazio">
           Não consegui falar com o servidor. Tente de novo.</p></div>`;
         return;
       }
       cx.innerHTML = this._telegram(this._dados.telegram)
+                   + this._avisos(this._pref, this._dados.telegram)
                    + this._whatsapp(this._dados.whatsapp);
       this._ligar(cx);
+    },
+
+    /* ── OS AVISOS ────────────────────────────────────────────────────
+       O cartão fica DEPOIS do Telegram e não antes: escolher quais
+       avisos receber antes de existir um canal para recebê-los é
+       configurar o nada. E se o canal ainda não está conectado, o
+       cartão diz isso em vez de oferecer chaves que não ligam coisa
+       alguma.
+
+       CADA LINHA DIZ O QUE CUSTA. "Missão começou" com dez missões de
+       janela na agenda são dez eventos por dia — e a pessoa merece
+       saber disso ANTES de ligar, não depois de silenciar o bot. */
+    _avisos(p, t) {
+      const cabeca = `
+        <div class="bot-topo">
+          <div class="bot-marca bot-marca--av">${this._g('relogio', 22)}</div>
+          <div>
+            <h3 class="bot-titulo">Avisos</h3>
+            <p class="bot-sub">O Sistema te procura quando uma missão
+              precisa de você — não só quando você abre o app.</p>
+          </div>
+        </div>`;
+
+      if (!p) {
+        return `<div class="card bot-card">${cabeca}
+          <p class="bot-falta">${this._g('caveira', 15)}
+            <span>Não consegui ler suas preferências de aviso.</span></p></div>`;
+      }
+
+      if (!t || !t.vinculado) {
+        return `<div class="card bot-card">${cabeca}
+          <p class="bot-nota">Conecte o Telegram acima e estas opções
+            passam a valer. Enquanto não houver canal, não há para onde
+            o Sistema te avisar.</p></div>`;
+      }
+
+      const chave = (campo, titulo, custo) => `
+        <label class="bot-chave">
+          <input type="checkbox" data-av="${campo}" ${p[campo] ? 'checked' : ''}>
+          <span class="bot-chave-bola"></span>
+          <span class="bot-chave-txt"><b>${titulo}</b><i>${custo}</i></span>
+        </label>`;
+
+      const numero = (campo, rotulo, min, max) => `
+        <label class="bot-num">
+          <span>${rotulo}</span>
+          <input type="number" data-av="${campo}" min="${min}" max="${max}"
+                 value="${this._esc(p[campo])}"> <em>min</em>
+        </label>`;
+
+      return `<div class="card bot-card">${cabeca}
+        <div class="bot-chaves">
+          ${chave('beira', 'Falta pouco para o prazo',
+                  'o último aviso que ainda salva a missão')}
+          ${chave('acendeu', 'A missão começou sozinha',
+                  'um por missão de janela — o mais frequente')}
+          ${chave('portao', 'Um portão vai abrir',
+                  'poucos por dia; é o que te faz chegar na hora')}
+          ${chave('venceu', 'O prazo venceu',
+                  'chega depois do estrago; serve para saber')}
+        </div>
+
+        <div class="bot-nums">
+          ${numero('minutos_beira', 'Avisar faltando', 5, 120)}
+          ${numero('minutos_portao', 'Portão, antes de abrir', 5, 180)}
+        </div>
+
+        <div class="bot-silencio">
+          <span>Silêncio das</span>
+          <input type="time" data-av="silencio_de" value="${this._esc(p.silencio_de)}">
+          <span>às</span>
+          <input type="time" data-av="silencio_ate" value="${this._esc(p.silencio_ate)}">
+        </div>
+        <p class="bot-nota">Nesse intervalo o Sistema cala — <b>exceto</b>
+          missão cuja janela esteja de fato aberta nele. "Sem redes sociais
+          entre 22h e 10h" é missão legítima das 04:00, e calá-la seria
+          calar justamente quem precisa do aviso naquela hora.</p>
+
+        <div class="bot-acoes">
+          <button type="button" class="bot-bt bot-bt--on" data-av-salvar>
+            ${this._g('salvar', 15)}<span>Salvar</span></button>
+        </div>
+      </div>`;
     },
 
     _esc(s) {
@@ -295,6 +387,32 @@
       if (q) q.onclick = () => this.mostrarQR(q);
       const w = cx.querySelector('[data-bot-webhook]');
       if (w) w.onclick = () => this.registrarWebhook(w);
+      const s = cx.querySelector('[data-av-salvar]');
+      if (s) s.onclick = () => this.salvarAvisos(s);
+    },
+
+    async salvarAvisos(bt) {
+      const corpo = {};
+      document.querySelectorAll('[data-av]').forEach(el => {
+        const k = el.dataset.av;
+        if (el.type === 'checkbox') corpo[k] = el.checked;
+        else if (el.type === 'number') corpo[k] = parseInt(el.value, 10);
+        else corpo[k] = el.value;
+      });
+      bt.disabled = true;
+      try {
+        /* A RESPOSTA DO SERVIDOR REPINTA A TELA, e isso não é zelo
+           excessivo: ele apara os minutos para a faixa permitida. Sem
+           repintar, a pessoa digitaria 2, o servidor guardaria 5, e a
+           tela continuaria mostrando 2 — uma discordância silenciosa
+           que só apareceria no dia em que o aviso chegasse "errado". */
+        this._pref = await API.put('/bots/avisos', corpo);
+        SoloDialog.toast('Avisos salvos.', 'success');
+        await this.carregar();
+      } catch (e) {
+        SoloDialog.toast(e.message || 'Não consegui salvar.', 'error');
+        bt.disabled = false;
+      }
     },
 
     /* Sem argumento nenhum: o servidor já sabe o próprio endereço

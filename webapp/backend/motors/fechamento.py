@@ -364,6 +364,11 @@ def fechar_vencidas(db: Session, usuario: Usuario, ate: date | None = None) -> d
         # noite quer dizer que algum caminho ainda credita XP sem fechar
         # a ExecucaoDia — a trava tapa o buraco, não conserta a fonte.
         "reparadas": reparadas_silencio,
+        # QUAIS fracassaram NESTA chamada. O aviso de "prazo venceu"
+        # precisa do nome, e precisa saber que foi AGORA: varrer o banco
+        # atrás de FRACASSADA acharia também as de ontem, e o hunter
+        # receberia o velório da semana inteira a cada varredura.
+        "falhas": list(falhas_do_dia),
     }
 
 
@@ -795,11 +800,21 @@ def reparar_fechamento_indevido(db: Session, usuario: Usuario,
 
 
 def auto_iniciar(db: Session, usuario: Usuario, ate: date | None = None) -> int:
+    """Quantas acenderam. Ver `auto_iniciar_detalhado` para saber QUAIS."""
+    return len(auto_iniciar_detalhado(db, usuario, ate=ate))
+
+
+def auto_iniciar_detalhado(db: Session, usuario: Usuario,
+                           ate: date | None = None) -> list:
     """
-    Acende sozinhas as missões cuja janela já abriu.
+    Acende sozinhas as missões cuja janela já abriu, e DEVOLVE QUAIS.
 
     O Banho Revigorante das 20:00 não espera clique: às 20:00 ele está em
-    curso, o hunter tendo aberto o app ou não. Devolve quantas acenderam.
+    curso, o hunter tendo aberto o app ou não.
+
+    A LISTA, e não só a contagem, porque quem avisa precisa saber o NOME.
+    "2 missões acenderam" é um número; "Banho Revigorante e Ler 05 páginas
+    começaram agora" é um aviso.
 
     POR QUE ISTO É CALCULADO NA LEITURA, e não por um processo a cada minuto:
     o resultado visível é idêntico — quando o hunter abre o app às 21:00, a
@@ -807,6 +822,12 @@ def auto_iniciar(db: Session, usuario: Usuario, ate: date | None = None) -> int:
     que no plano free do Render hiberna e simplesmente não dispararia. O que
     a leitura não faz é notificação push; quando isso existir, o processo por
     minuto vira necessário, e o gancho é esta mesma função.
+
+    ESSE DIA CHEGOU. O varredor de avisos (main.py, de 5 em 5 minutos)
+    chama isto de verdade — e é o que faz a missão acender às 20:00 no
+    banco, e não às 21:00 quando alguém abre o app. Sem o varredor, o
+    aviso "a missão começou" não teria como existir: no banco, ela ainda
+    não teria começado.
 
     A SUTILEZA QUE FAZ O CRONÔMETRO NÃO MENTIR: `iniciada_em` recebe a hora da
     JANELA (20:00), não o instante em que o servidor percebeu. Abrir o app às
@@ -821,12 +842,16 @@ def auto_iniciar(db: Session, usuario: Usuario, ate: date | None = None) -> int:
         ExecucaoDia.status == "PENDENTE",
     ).all()
     if not pendentes:
-        return 0
+        # LISTA VAZIA, e não `0`. Este `return` era `0` de quando a função
+        # devolvia uma contagem, e sobreviveu à troca — o caminho feliz
+        # passou a devolver lista e o caminho "nada a fazer" continuou
+        # devolvendo número. O teste do varredor pegou: `len(0)`.
+        return []
 
     ids = {ed.rotina_id for ed in pendentes}
     mae = {r.id: r for r in db.query(Rotina).filter(Rotina.id.in_(ids)).all()}
 
-    acesas = 0
+    acesas = []
     for ed in pendentes:
         r = mae.get(ed.rotina_id)
         if r is None:
@@ -839,7 +864,7 @@ def auto_iniciar(db: Session, usuario: Usuario, ate: date | None = None) -> int:
         if prazos.deve_auto_iniciar(p, agora):
             ed.status = "ATIVA"
             ed.iniciada_em = p["inicio"]
-            acesas += 1
+            acesas.append((ed, r))
 
     if acesas:
         db.flush()
@@ -859,12 +884,20 @@ def processar_usuario(db: Session, usuario: Usuario, ate: date | None = None) ->
     # de fechada e voltaria a ATIVA.
     reparo = reparar_fechamento_indevido(db, usuario, ate=ate)
     criadas = materializar(db, usuario.id, ate=ate)
-    acesas = auto_iniciar(db, usuario, ate=ate)
+    acesas = auto_iniciar_detalhado(db, usuario, ate=ate)
     resumo = fechar_vencidas(db, usuario, ate=ate)
     resumo["materializadas"] = criadas
-    resumo["acesas"] = acesas
+    resumo["acesas"] = len(acesas)
+    # AS INSTÂNCIAS, e não só quantas: é o varredor de avisos que precisa
+    # delas para dizer o NOME da missão que acabou de acender. Chave
+    # separada porque `acesas` já era um número e há quem o some.
+    resumo["acesas_agora"] = acesas
     resumo["reabertas"] = reparo["reabertas"]
     resumo["xp_devolvido"] = reparo["xp_devolvido"]
+    # O mesmo para as que acabaram de fracassar — sem isto o aviso de
+    # "prazo venceu" teria de descobrir por conta própria QUAIS foram, e
+    # descobriria varrendo o banco de novo, com outra régua. Duas réguas
+    # para o mesmo fato é como nascem as divergências deste projeto.
     return resumo
 
 
