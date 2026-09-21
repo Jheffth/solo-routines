@@ -90,7 +90,7 @@ services:
       - EVOLUTION_API_URL=${EVOLUTION_API_URL:-http://whatsapp:8080}
       - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:-}
       - EVOLUTION_INSTANCE=${EVOLUTION_INSTANCE:-solo_rotinas}
-      - EVOLUTION_WEBHOOK=${EVOLUTION_WEBHOOK:-http://app:8000/api/whats/webhook}
+      - EVOLUTION_WEBHOOK=${EVOLUTION_WEBHOOK:-http://api:8000/api/whats/webhook}
     volumes:
       - solo_uploads:/app/backend/uploads
     networks:
@@ -101,5 +101,7 @@ networks:
     external: true
 
 volumes:
+  evolution_instances:
   solo_uploads:
 
+  evolution_instances:
