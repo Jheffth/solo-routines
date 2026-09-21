@@ -27,7 +27,8 @@ from motors import tempo, prazos, especiais, economia
 
 from sqlalchemy.orm import Session
 
-from database import SessionLocal, Rotina, ExecucaoDia, TarefaDia, Usuario
+from database import (SessionLocal, Rotina, ExecucaoDia, TarefaDia, Usuario,
+                      Execucao)
 
 # Quantos dias para trás o fechamento OLHA ao fechar pendências.
 # Não é backfill: serve para o job encontrar dias que já existiam e ficaram
@@ -176,6 +177,8 @@ def fechar_vencidas(db: Session, usuario: Usuario, ate: date | None = None) -> d
     # derrotas com a soma das vitórias, e o nível do hunter subiria e desceria
     # dentro da mesma transação.
     passivas_cumpridas = []
+    # Carimbos consertados sem crédito nenhum — ver a trava mais abaixo.
+    reparadas_silencio = 0
 
     # ── Instâncias de rotina ──────────────────────────────────────────
     # Trazemos HOJE também (antes era só `< hoje`), porque uma janela pode
@@ -190,10 +193,50 @@ def fechar_vencidas(db: Session, usuario: Usuario, ate: date | None = None) -> d
         ids = {ed.rotina_id for ed in abertas}
         mae = {r.id: r for r in db.query(Rotina).filter(Rotina.id.in_(ids)).all()}
 
+        # ── NÃO SE FRACASSA UM DIA QUE TEM EXECUÇÃO REGISTRADA ────────
+        #
+        # Uma linha em `Execucao` é a prova de que a missão FOI CUMPRIDA
+        # naquele dia: XP creditado, streak contado, extrato lançado. Se
+        # apesar disso a `ExecucaoDia` ficou PENDENTE, quem está errado é
+        # o carimbo — nunca o fato.
+        #
+        # O caso real que obrigou esta trava: o `/ok` do bot do Telegram
+        # concluía por um caminho próprio, creditava o XP e não tocava na
+        # `ExecucaoDia`. À meia-noite este laço encontrava uma PENDENTE
+        # vencida e punia o hunter por uma missão que ele tinha feito —
+        # e que o bot tinha confirmado no chat.
+        #
+        # É a mesma regra que já governa o `materializar`, vista do outro
+        # lado: lá, "não inventar dias que o hunter não viveu"; aqui, não
+        # inventar derrota num dia que ele venceu. A trava fica mesmo com
+        # o bot corrigido, porque o custo de um falso fracasso (XP
+        # perdido, corrente quebrada, penitência) é alto demais para
+        # depender de todo caminho futuro lembrar da regra.
+        feitas = set()
+        if abertas:
+            for uid, rid, dt in db.query(
+                    Execucao.usuario_id, Execucao.rotina_id, Execucao.data_execucao
+            ).filter(
+                Execucao.usuario_id == usuario.id,
+                Execucao.rotina_id.in_(ids),
+                Execucao.data_execucao.in_({ed.data for ed in abertas}),
+            ).all():
+                feitas.add((rid, dt))
+
         for ed in abertas:
             r = mae.get(ed.rotina_id)
             if r is None:
                 continue
+
+            if (ed.rotina_id, ed.data) in feitas:
+                # Fecha o carimbo em silêncio, SEM creditar nada de novo —
+                # o XP já foi pago no dia. Repor aqui pagaria duas vezes.
+                ed.status = "CONCLUIDA"
+                if not ed.concluida_em:
+                    ed.concluida_em = agora
+                reparadas_silencio += 1
+                continue
+
             p = prazos.da_execucao(ed, r)
             if not prazos.venceu(p, agora):
                 continue                      # ainda tem tempo — não se toca
@@ -317,6 +360,10 @@ def fechar_vencidas(db: Session, usuario: Usuario, ate: date | None = None) -> d
         "passivas": passivas,
         "xp_perdido": xp_perdido_total,
         "punicao": punicao,
+        # Aparece no log do job. Um número teimosamente > 0 noite após
+        # noite quer dizer que algum caminho ainda credita XP sem fechar
+        # a ExecucaoDia — a trava tapa o buraco, não conserta a fonte.
+        "reparadas": reparadas_silencio,
     }
 
 

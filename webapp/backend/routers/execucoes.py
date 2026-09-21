@@ -42,7 +42,46 @@ def concluir_rotina(
         raise HTTPException(404, "Rotina não encontrada")
 
     hoje = payload.data_execucao or tempo.hoje()
+    return anexar(*concluir(db, usuario, rotina, hoje, payload.observacao))
 
+
+def concluir(db: Session, usuario: Usuario, rotina: Rotina, hoje: date,
+             observacao: Optional[str] = None):
+    """
+    CONCLUIR UMA ROTINA — as travas e a liquidação, num lugar só.
+
+    POR QUE ISTO VIROU FUNÇÃO (e a conta que o bot pagou)
+
+    O `/ok` do bot do Telegram concluía missão por conta própria:
+
+        rotina.ultima_execucao = hoje
+        aplicar_xp(db, usuario, rotina.xp_recompensa or xp_base, ...)
+
+    Três linhas que PARECIAM a conclusão e não eram nenhuma delas. A
+    tela não lê `ultima_execucao` — lê a `ExecucaoDia` do dia. Então o
+    bot respondia "✅ Rotina concluída! +66 XP" e o cartão no app
+    continuava PENDENTE, com o botão INICIAR MISSÃO intacto.
+
+    E o estrago não parava aí. O `aplicar_xp` grava uma linha em
+    `Execucao`, que é justamente o que este endpoint usa para barrar
+    conclusão dupla. Resultado: a missão ficava IMPOSSÍVEL de concluir
+    no app — "esta rotina já foi concluída hoje" — enquanto a
+    `ExecucaoDia` seguia PENDENTE. E às 00h05 o fechamento varre as
+    PENDENTES de dias passados e marca FRACASSADA, com punição. O
+    hunter cumpria a missão e era castigado por ela.
+
+    Também ficavam de fora, silenciosamente: o prazo (a Balança precifica
+    diferente dentro e fora da janela), a penalidade por atraso, o abate
+    da penitência, a corrente da progressiva, e as duas travas abaixo —
+    pelo bot dava para "concluir" uma meta em zero.
+
+    O `_liquidar` já avisava: copiar o corpo da conclusão "teria criado
+    a sexta segunda-verdade deste projeto". O bot criou a sexta sem
+    copiar nada — só reinventando de memória o que a conclusão faz.
+
+    Quem conclui rotina agora passa por aqui. Levanta `HTTPException`
+    com mensagens já escritas para humanos: o bot as repassa ao chat.
+    """
     # Evita duplo registro no mesmo dia
     ja_executou = db.query(Execucao).filter(
         Execucao.usuario_id == usuario.id,
@@ -106,7 +145,7 @@ def concluir_rotina(
                 f"os blocos. Você fechou {p['fechados']} de {p['total']} — "
                 f"falta{'m' if p['faltam'] > 1 else ''} {p['faltam']}.")
 
-    return anexar(*_liquidar(db, usuario, rotina, hoje, payload.observacao))
+    return _liquidar(db, usuario, rotina, hoje, observacao)
 
 
 def _liquidar(db: Session, usuario: Usuario, rotina: Rotina, hoje: date,

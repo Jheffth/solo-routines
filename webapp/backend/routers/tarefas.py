@@ -370,6 +370,30 @@ def concluir_tarefa(
 ):
     """ATIVA | PENDENTE → CONCLUIDA + aplica XP/moedas."""
     t = _get_ou_404(tarefa_id, usuario, db)
+    return concluir(db, usuario, t)
+
+
+def concluir(db: Session, usuario: Usuario, t: TarefaDia):
+    """
+    CONCLUIR UMA MISSÃO GERAL — o ato inteiro, num lugar só.
+
+    Virou função pelo mesmo motivo que o `execucoes.concluir`: o `/ok` do
+    bot do Telegram fechava tarefa por conta própria, com
+
+        t.status = "CONCLUIDA"
+        aplicar_xp(db, usuario, t.xp_recompensa, t.moedas_recompensa, ...)
+
+    Duas linhas que pulavam quatro regras de uma vez. A pior delas é a
+    PENITÊNCIA: cumprir penitência QUITA uma dívida, não paga progresso —
+    e `penitencia.quitar` devolve só uma fração do que a falha tomou,
+    justamente para que falhar de propósito não vire estratégia. Pelo bot
+    ela pagava XP cheio, e o atalho existia sem ninguém ter decidido por
+    ele. Ficavam de fora também as travas de meta e de circuito, o prazo
+    (a Balança cobra diferente depois do vencimento) e o abate da dívida.
+
+    Levanta `HTTPException` com texto pronto para humano — o bot repassa
+    ao chat.
+    """
     if t.status == "CONCLUIDA":
         raise HTTPException(400, "Tarefa já foi concluída")
 

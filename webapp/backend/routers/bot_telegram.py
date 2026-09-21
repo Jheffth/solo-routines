@@ -2,17 +2,20 @@
 Router do Bot Telegram para o Solo Routines.
 Recebe webhooks, permite concluir missões e consultar status via chat.
 """
-import os, json, requests as req_lib
+import os, requests as req_lib
 from fastapi import APIRouter, Depends, Request, HTTPException
 from sqlalchemy.orm import Session
 from datetime import date, timedelta
 from motors import tempo
 
 from database import (
-    get_db, Usuario, Rotina, TarefaDia, Execucao, SessionLocal
+    get_db, Usuario, Rotina, TarefaDia, Execucao, ExecucaoDia, SessionLocal
 )
 from auth.router import get_arquiteto
-from motors.gamificacao import aplicar_xp, calcular_xp_rotina, calcular_xp_tarefa
+# `calcular_xp_rotina` saiu daqui junto com a conclusão inventada: quem
+# precifica missão é a Balança, dentro do `execucoes.concluir`. O bot só
+# usa `aplicar_xp` para a tarefa avulsa do `/add`.
+from motors.gamificacao import aplicar_xp
 
 router = APIRouter(prefix="/bot", tags=["bot-telegram"])
 
@@ -176,8 +179,9 @@ def _processar(texto: str, chat_id: str, db: Session):
         if rotinas:
             msg += "🔄 *Rotinas:*\n"
             for r in rotinas:
-                check = "✅" if r.ultima_execucao == hoje else "⬜"
-                msg += f"{check} {r.icone} {r.titulo} (+{r.xp_recompensa} XP)\n"
+                est = _estado_do_dia(db, usuario, r, hoje)
+                msg += (f"{_SIMBOLO.get(est, '⬜')} {r.icone} {r.titulo} "
+                        f"(+{r.xp_recompensa} XP)\n")
         if tarefas:
             msg += "\n📋 *Tarefas:*\n"
             for t in tarefas:
@@ -225,17 +229,37 @@ def _processar(texto: str, chat_id: str, db: Session):
         ).first()
 
         if tarefa:
-            from datetime import datetime
-            tarefa.status = "CONCLUIDA"
-            tarefa.concluida_em = datetime.utcnow()
-            db.flush()
-            res = aplicar_xp(db, usuario, tarefa.xp_recompensa, tarefa.moedas_recompensa,
-                             hoje, tarefa_id=tarefa.id, observacao=f"Bot: {tarefa.titulo}")
+            # Mesmo princípio do caminho da rotina, logo abaixo: quem
+            # conclui é o `tarefas.concluir`. A versão anterior carimbava
+            # CONCLUIDA e pagava o XP cru — e com isso uma PENITÊNCIA
+            # cumprida pelo chat pagava progresso cheio, quando o desenho
+            # manda quitá-la devolvendo só uma fração do que a falha
+            # tomou. Falhar de propósito virava estratégia, pelo Telegram.
+            from fastapi import HTTPException as _HTTPErro
+            from routers import tarefas as _tar
+            try:
+                # Devolve o corpo já montado (passou pelo `anexar`), não a
+                # dupla `(corpo, resultado)` do `execucoes.concluir`.
+                corpo = _tar.concluir(db, usuario, tarefa)
+            except _HTTPErro as e:
+                _tg(chat_id, f"⚠️ {e.detail}")
+                return
+
+            res = corpo.get("resultado")
+            if not res:
+                # Penitência quitada: não é ganho de XP, é dívida abatida.
+                # Anunciar "+0 XP" faria parecer defeito o que é a regra.
+                _tg(chat_id, f"⛓️ *Penitência cumprida.*\n📋 {tarefa.titulo}")
+                return
+
+            liq = corpo.get("liquidacao") or {}
+            atraso = liq.get("penalidade") or 0
             _tg(chat_id, (
                 f"✅ *Tarefa concluída!*\n"
                 f"📋 {tarefa.titulo}\n"
                 f"✨ +{res['xp_ganho']} XP | 💰 +{res['moedas_ganhas']} Mana Coins\n"
-                f"🔥 Streak: {res['streak_atual']} dias\n"
+                + (f"⏰ −{atraso} XP por fora do prazo\n" if atraso else "")
+                + f"🔥 Streak: {res['streak_atual']} dias\n"
                 + (_level_up_msg(res['level_ups']) if res['level_ups'] else "")
             ))
             return
@@ -248,26 +272,42 @@ def _processar(texto: str, chat_id: str, db: Session):
         ).first()
 
         if rotina and _rotina_de_hoje(rotina, hoje):
-            ja = db.query(Execucao).filter(
-                Execucao.usuario_id == usuario.id,
-                Execucao.rotina_id == rotina.id,
-                Execucao.data_execucao == hoje,
-            ).first()
-            if ja:
-                _tg(chat_id, f"⚠️ Rotina *{rotina.titulo}* já foi concluída hoje!")
+            # ── CONCLUIR É UM ATO SÓ, E ELE MORA NO `execucoes.concluir` ──
+            #
+            # Aqui havia uma conclusão inventada: `ultima_execucao = hoje`
+            # mais um `aplicar_xp` com o XP cru da rotina. Parecia certo e
+            # não era conclusão nenhuma — a tela lê a `ExecucaoDia`, que
+            # ficava PENDENTE. O bot dizia "concluída", o cartão no app
+            # continuava com o botão INICIAR MISSÃO, e o `aplicar_xp`
+            # ainda gravava a linha em `Execucao` que TRANCA a conclusão
+            # pelo app. A missão virava impossível de fechar — e à meia-
+            # noite o fechamento a marcava FRACASSADA, com punição.
+            #
+            # O import é aqui dentro, e não no topo: `main.py` monta os
+            # dois routers, e importar um do outro em tempo de módulo
+            # fecharia o ciclo.
+            from fastapi import HTTPException as _HTTPErro
+            from routers import execucoes as _exec
+            try:
+                corpo, res = _exec.concluir(db, usuario, rotina, hoje,
+                                            observacao=f"Bot: {rotina.titulo}")
+            except _HTTPErro as e:
+                # As travas da meta e do circuito já falam em português e
+                # dizem quanto falta. Repassar é melhor que traduzir.
+                _tg(chat_id, f"⚠️ {e.detail}")
                 return
-            rotina.ultima_execucao = hoje
-            db.flush()
-            xp_b, mc = calcular_xp_rotina(rotina.tipo)
-            res = aplicar_xp(db, usuario, rotina.xp_recompensa or xp_b,
-                             rotina.moedas_recompensa or mc,
-                             hoje, rotina_id=rotina.id,
-                             observacao=f"Bot: {rotina.titulo}")
+
+            liq = corpo.get("liquidacao") or {}
+            atraso = liq.get("penalidade") or 0
             _tg(chat_id, (
                 f"✅ *Rotina concluída!*\n"
                 f"🔄 {rotina.icone} {rotina.titulo}\n"
                 f"✨ +{res['xp_ganho']} XP | 💰 +{res['moedas_ganhas']} Mana Coins\n"
-                f"🔥 Streak: {res['streak_atual']} dias\n"
+                # O XP agora vem da Balança e do PRAZO, não do número cru
+                # da rotina. Se saiu menos por atraso, o chat diz — senão
+                # o hunter vê um valor diferente do cartão e não entende.
+                + (f"⏰ −{atraso} XP por fora do prazo\n" if atraso else "")
+                + f"🔥 Streak: {res['streak_atual']} dias\n"
                 + (_level_up_msg(res['level_ups']) if res['level_ups'] else "")
             ))
             return
@@ -332,25 +372,59 @@ def _processar(texto: str, chat_id: str, db: Session):
 
 
 def _rotina_de_hoje(rotina: Rotina, hoje: date) -> bool:
-    if not rotina.ativo:
-        return False
-    if rotina.tipo == "DIARIA":
-        return True
-    if rotina.tipo == "SEMANAL":
-        try:
-            dias = json.loads(rotina.dias_semana) if rotina.dias_semana else []
-            return hoje.weekday() in dias
-        except Exception:
-            return False
-    if rotina.tipo == "MENSAL":
-        return hoje.day == rotina.dia_mes
-    if rotina.tipo == "ANUAL" and rotina.mes_dia:
-        try:
-            m, d = rotina.mes_dia.split("-")
-            return hoje.month == int(m) and hoje.day == int(d)
-        except Exception:
-            return False
-    return False
+    """
+    A ROTINA CAI NESTE DIA? — e esta função não sabe a resposta.
+
+    Ela era a QUINTA cópia da regra de recorrência neste projeto. Uma
+    reescrita de memória do `fechamento.rotina_devida_em`: mesmos quatro
+    tipos, mesma leitura do `dias_semana`, mesmo `mes_dia` partido no
+    hífen. Parecia idêntica.
+
+    Duas regras iguais hoje não são duas regras: são uma regra e uma
+    bomba-relógio. A divergência não chega quando se copia — chega no dia
+    em que alguém ajusta UMA delas. E a cópia do bot é a que ninguém
+    lembraria de ajustar, porque ela não aparece em nenhuma tela: o
+    sintoma seria o bot listando um dia diferente do que o app mostra,
+    sem erro nenhum, e a suspeita cairia no fuso ou no cache.
+
+    O calendário já tinha matado a quarta cópia apontando para cá. Esta
+    aponta para o mesmo lugar.
+    """
+    from motors import fechamento
+    return fechamento.rotina_devida_em(rotina, hoje)
+
+
+def _estado_do_dia(db: Session, usuario, rotina: Rotina, hoje: date) -> str:
+    """
+    O status REAL da rotina hoje — da `ExecucaoDia`, que é o que a tela lê.
+
+    O `/hoje` marcava ✅ comparando `rotina.ultima_execucao == hoje`. Esse
+    campo é um carimbo solto, escrito por vários caminhos e lido por
+    nenhuma tela; o ciclo de vida da missão (PENDENTE → ATIVA →
+    CONCLUIDA | FRACASSADA | CANCELADA) mora na `ExecucaoDia`.
+
+    Na prática: uma missão em curso, com o cronômetro correndo no app,
+    aparecia no chat com o mesmo quadradinho vazio de uma que nem
+    começou. E uma fracassada aparecia como pendente — convidando o
+    hunter a um `/ok` que só traria "não encontrada".
+    """
+    ed = db.query(ExecucaoDia).filter(
+        ExecucaoDia.rotina_id == rotina.id,
+        ExecucaoDia.usuario_id == usuario.id,
+        ExecucaoDia.data == hoje,
+    ).first()
+    return (ed.status if ed else "PENDENTE") or "PENDENTE"
+
+
+# O símbolo carrega o estado sozinho: no chat não há cor nem tooltip para
+# socorrer, e "⬜" para tudo esconde exatamente o que o hunter quer saber.
+_SIMBOLO = {
+    "PENDENTE":   "⬜",
+    "ATIVA":      "▶️",
+    "CONCLUIDA":  "✅",
+    "FRACASSADA": "❌",
+    "CANCELADA":  "🚫",
+}
 
 
 def _level_up_msg(level_ups: list) -> str:
