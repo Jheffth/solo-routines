@@ -288,7 +288,20 @@
                       + s.webhook_esperado)
           : linha(false, 'Webhook registrado',
                   'o Telegram não tem para onde entregar'),
-      ];
+
+        /* REGISTRADO E SURDO é um estado próprio, e o mais traiçoeiro
+           de todos: a lista aparece, os botões existem, o dedo recebe o
+           efeito do toque — e nada acontece. O Telegram descarta o
+           `callback_query` antes de chegar ao servidor quando ele não
+           está no `allowed_updates`, então não há erro, não há update
+           pendente, não há log. Só o painel desmente. */
+        s.webhook_registrado
+          ? linha(!!s.aceita_botoes, 'Botões (callback_query)',
+                  s.aceita_botoes ? ''
+                    : 'o Telegram descarta os toques — clique em '
+                      + '"Registrar de novo" abaixo')
+          : null,
+      ].filter(Boolean);
 
       if (s.updates_pendentes) {
         itens.push(linha(false, 'Mensagens encalhadas',
@@ -300,6 +313,28 @@
       if (s.lista_espera && s.lista_espera.length) {
         itens.push(linha(null, 'Lista de espera ativa',
           s.lista_espera.length + ' chat(s) — só eles podem tentar vincular'));
+      }
+
+      /* O VARREDOR DE AVISOS. Ele já ficou mudo um dia inteiro por causa
+         de uma coluna que faltava no banco, e o único lugar onde isso
+         aparecia era o log do servidor — justamente onde o Arquiteto não
+         olha. "Nunca varreu" logo após um deploy é normal; "nunca
+         varreu" cinco minutos depois é defeito. */
+      const v = s.varredura || {};
+      if (v.em) {
+        const q = new Date(v.em);
+        const min = Math.round((Date.now() - q.getTime()) / 60000);
+        itens.push(linha(min <= 11, 'Última varredura de avisos',
+          (min <= 1 ? 'agora' : 'há ' + min + ' min')
+          + ' · ' + (v.avisos || 0) + ' aviso(s)'
+          + (min > 11 ? ' — devia ser a cada 5 min' : '')));
+      } else {
+        itens.push(linha(null, 'Varredura de avisos',
+          'ainda não rodou neste processo'));
+      }
+      if (v.erros) {
+        itens.push(linha(false, 'Erro na varredura',
+          v.ultimo_erro || (v.erros + ' hunter(s) com falha')));
       }
 
       const podeRegistrar = s.token_configurado && s.segredo_configurado;

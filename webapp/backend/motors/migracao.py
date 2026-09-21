@@ -225,6 +225,32 @@ COLUNAS = [
     ("dungeon_missoes", "meta_atual",        "REAL NOT NULL DEFAULT 0",     "DOUBLE PRECISION NOT NULL DEFAULT 0"),
     ("dungeon_missoes", "alvo_repeticoes",   "INTEGER",                     "INTEGER"),
     ("dungeon_missoes", "repeticoes",        "INTEGER NOT NULL DEFAULT 0",  "INTEGER NOT NULL DEFAULT 0"),
+
+    # ══════════════════════════════════════════════════════════════════
+    # AVISOS — a coluna que faltou aqui, e o que ela custou
+    #
+    # `preferencias_aviso` nasceu como TABELA NOVA, e o `create_all` a
+    # criou no deploy do motor de avisos. Um deploy depois eu acrescentei
+    # `canal_avisos` ao modelo — e não a esta lista.
+    #
+    # `create_all` NÃO ALTERA TABELA EXISTENTE. Está escrito em letras
+    # maiúsculas três vezes neste arquivo, inclusive num comentário que
+    # eu li antes de errar. A tabela já existia, ganhou uma coluna no
+    # Python e nenhuma no banco.
+    #
+    # O ESTRAGO, e por que demorou a aparecer: TODO acesso a
+    # `PreferenciaAviso` passou a levantar — e o primeiro deles está em
+    # `avisos.preferencia()`, no começo de `pendentes()`. O varredor
+    # engole a falha por hunter (`except Exception`, para um hunter com
+    # problema não calar os outros) e segue.
+    #
+    # Resultado: o fechamento continuou perfeito — as missões acendiam
+    # às 20:00 e fracassavam às 22:31, tudo no minuto certo — e NENHUM
+    # aviso saía. O sintoma era "o bot parou de notificar", e o log tinha
+    # a resposta, mas o log é justamente o que o Arquiteto não enxerga.
+    # Um `except` largo transformou um erro de schema em silêncio.
+    # ══════════════════════════════════════════════════════════════════
+    ("preferencias_aviso", "canal_avisos", "VARCHAR(12)", "VARCHAR(12)"),
 ]
 
 

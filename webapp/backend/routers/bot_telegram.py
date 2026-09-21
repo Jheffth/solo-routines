@@ -288,6 +288,32 @@ def _canais_de_aviso(db: Session, usuario) -> list:
     return canais
 
 
+# ══════════════════════════════════════════════════════════════════════
+# O DIÁRIO DA VARREDURA — e por que ele teve de existir
+#
+# O motor de avisos ficou MUDO por um dia inteiro e ninguém soube. A
+# causa era uma coluna que faltava no banco (`canal_avisos`, ver a nota
+# em `motors/migracao.py`), e todo acesso à preferência levantava.
+#
+# O varredor engole a falha por hunter de propósito — um hunter com
+# problema não pode calar os outros —, e essa decisão, que está certa,
+# transformou um erro de schema em SILÊNCIO. O log tinha a resposta; o
+# log é exatamente o que o Arquiteto não enxerga.
+#
+# Então o varredor passa a deixar rastro: quando rodou, quantos avisos
+# saíram, e qual foi o último erro. Isso aparece no painel da aba Bots.
+# Um sistema que persegue o hunter precisa saber dizer quando parou de
+# perseguir.
+#
+# EM MEMÓRIA, e não em tabela: a pergunta é "este processo está
+# varrendo?", e um valor que sobrevive ao restart responderia sobre um
+# processo que já morreu. "Nunca varreu" logo após um deploy é a
+# resposta certa, não um defeito.
+# ══════════════════════════════════════════════════════════════════════
+ULTIMA_VARREDURA = {"em": None, "hunters": 0, "avisos": 0,
+                    "erros": 0, "ultimo_erro": ""}
+
+
 def varrer_avisos(db: Session) -> dict:
     """
     O VARREDOR — de cinco em cinco minutos.
@@ -317,7 +343,7 @@ def varrer_avisos(db: Session) -> dict:
     """
     from motors import avisos, fechamento
 
-    resultado = {"hunters": 0, "avisos": 0, "erros": 0}
+    resultado = {"hunters": 0, "avisos": 0, "erros": 0, "ultimo_erro": ""}
 
     # ── O FECHAMENTO VALE PARA TODO HUNTER, tenha bot ou não ─────────
     #
@@ -358,7 +384,14 @@ def varrer_avisos(db: Session) -> dict:
         except Exception as e:
             db.rollback()
             resultado["erros"] += 1
+            # O TEXTO DO ERRO VAI JUNTO, e não só a contagem. "1 erro" faz
+            # o Arquiteto abrir o servidor; "no such column: canal_avisos"
+            # o faz abrir o arquivo certo.
+            resultado["ultimo_erro"] = f"{usuario.login}: {e}"[:300]
             print(f"[AVISOS] ⚠ hunter {usuario.login}: {e}")
+
+    ULTIMA_VARREDURA.update(resultado)
+    ULTIMA_VARREDURA["em"] = tempo.agora().isoformat()
     return resultado
 
 
@@ -731,6 +764,24 @@ def diagnostico() -> dict:
     registrado = bool(info.get("url"))
     esperado = _url_webhook()
 
+    # ── `allowed_updates`, e o defeito que ele torna visível ─────────
+    #
+    # O Telegram só entrega os tipos de update que estão nesta lista. Um
+    # webhook registrado ANTES de os botões existirem ficou com
+    # ["message", "edited_message"] — e a partir daí os toques em botão
+    # são descartados pelo Telegram, antes de chegarem aqui.
+    #
+    # O sintoma é o pior possível: a lista aparece bonita, os botões
+    # existem, o dedo recebe o efeito visual do toque, e NADA acontece.
+    # Sem erro, sem update pendente, sem log. O painel dizia
+    # `pronto: true` enquanto metade do bot estava surda.
+    #
+    # Lista VAZIA na resposta do Telegram significa "o padrão", que
+    # também não inclui `callback_query`. Vazio e errado são a mesma
+    # coisa aqui.
+    permitidos = info.get("allowed_updates") or []
+    aceita_botoes = "callback_query" in permitidos
+
     return {
         "token_configurado": bool(BOT_TOKEN),
         "segredo_configurado": bool(WEBHOOK_SECRET),
@@ -749,8 +800,16 @@ def diagnostico() -> dict:
         "ultimo_erro": info.get("last_error_message") or "",
         "erro_consulta": erro_consulta,
 
+        "allowed_updates": permitidos,
+        # Registrado no lugar certo mas surdo para botões é um estado
+        # próprio, e precisa de nome próprio na tela.
+        "aceita_botoes": bool(registrado and aceita_botoes),
+
+        "varredura": dict(ULTIMA_VARREDURA),
+
         "pronto": bool(BOT_TOKEN and WEBHOOK_SECRET and not segredo_fraco()
-                       and registrado and info.get("url") == esperado),
+                       and registrado and info.get("url") == esperado
+                       and aceita_botoes),
     }
 
 

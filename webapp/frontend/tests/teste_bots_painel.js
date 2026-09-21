@@ -205,5 +205,59 @@ diz('dois canais', hD.includes('procura'),
 diz('compat', B._avisos.call(B, PW, { vinculado: true }).includes('data-av="beira"'),
     'a chamada antiga (so o telegram) continua desenhando');
 
+
+/* ── 9 · REGISTRADO E SURDO ────────────────────────────────────────
+   O estado mais traicoeiro de todos: webhook no lugar certo, `pronto`
+   parecendo verde, e o Telegram descartando os toques em botao porque
+   `callback_query` nao esta no `allowed_updates`. Sem erro, sem update
+   pendente, sem log. Era invisivel ate este painel. */
+const SURDO = remix({
+  allowed_updates: ['message', 'edited_message'],
+  aceita_botoes: false, pronto: false,
+});
+const hSurdo = B._servidorTg.call(B, SURDO);
+diz('surdo', hSurdo.includes('callback_query'),
+    'a linha dos botoes existe e tem nome');
+diz('surdo', hSurdo.includes('descarta os toques'),
+    'e explica o sintoma exato — botao que acende e nao faz nada');
+diz('surdo', hSurdo.includes('Registrar de novo'),
+    'apontando para o remedio, que esta logo abaixo');
+diz('surdo', hSurdo.includes('fora do ar'),
+    'e o selo NAO diz "no ar" com metade do bot surda');
+
+const OUVINDO = remix({
+  allowed_updates: ['message', 'edited_message', 'callback_query'],
+  aceita_botoes: true,
+});
+diz('ouvindo', !B._servidorTg.call(B, OUVINDO).includes('descarta os toques'),
+    'com callback_query permitido, a linha some do vermelho');
+
+/* ── 10 · O VARREDOR DEIXA RASTRO ──────────────────────────────────
+   Ele ficou mudo um dia inteiro e o unico lugar onde isso aparecia era
+   o log do servidor — justamente onde o Arquiteto nao olha. */
+const agora = new Date().toISOString();
+const velho = new Date(Date.now() - 40 * 60000).toISOString();
+
+diz('varredura', B._servidorTg.call(B, remix({
+      varredura: { em: agora, hunters: 1, avisos: 2, erros: 0 } }))
+    .includes('Última varredura'),
+    'quando rodou ha pouco, o painel diz quando foi');
+
+diz('varredura', B._servidorTg.call(B, remix({
+      varredura: { em: velho, hunters: 1, avisos: 0, erros: 0 }, pronto: false }))
+    .includes('devia ser a cada 5 min'),
+    '40 minutos sem varrer vira acusacao, nao informacao neutra');
+
+diz('varredura', B._servidorTg.call(B, remix({ varredura: {} }))
+    .includes('ainda não rodou'),
+    'e "nunca rodou" e dito, em vez de a linha sumir');
+
+diz('varredura', B._servidorTg.call(B, remix({
+      varredura: { em: agora, erros: 1,
+                   ultimo_erro: 'Jh3ffth: no such column: canal_avisos' } }))
+    .includes('canal_avisos'),
+    'o TEXTO do erro aparece — "1 erro" manda abrir o servidor, '
+    + 'o texto manda abrir o arquivo certo');
+
 console.log(falhas ? '\n' + falhas + ' FALHA(S)\n' : '\n=== PAINEL OK ===\n');
 process.exit(falhas ? 1 : 0);
