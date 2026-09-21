@@ -1309,8 +1309,75 @@ class PreferenciaAviso(Base):
     silencio_de  = Column(String(5), default="23:00")
     silencio_ate = Column(String(5), default="06:00")
 
+    # ── POR ONDE OS AVISOS SAEM ──────────────────────────────────────
+    #
+    # "telegram" | "whatsapp" | "ambos". Com os dois canais vinculados e
+    # sem esta escolha, o mesmo "faltam 15 min" chegaria duas vezes — e
+    # o caminho mais curto para alguém silenciar os DOIS é receber tudo
+    # em dobro.
+    #
+    # O canal não escolhido continua aceitando comandos normalmente:
+    # isto decide quem o Sistema PROCURA, não com quem ele conversa.
+    canal_avisos = Column(String(12), default="telegram")
+
     atualizado_em = Column(DateTime, default=datetime.utcnow,
                            onupdate=datetime.utcnow)
+
+
+class MensagemWhats(Base):
+    """
+    AS MENSAGENS QUE A EVOLUTION JÁ ENTREGOU.
+
+    A Evolution REENTREGA. Um webhook que demora, uma reconexão, uma
+    instabilidade do Baileys — e a mesma mensagem chega de novo, com o
+    mesmo `key.id`. O Telegram tem `update_id` e retries previsíveis;
+    aqui a repetição é rotina.
+
+    Num bot de leitura isso seria irritante. Neste, `/ok` entregue duas
+    vezes é XP em dobro, corrente contada duas vezes e um lançamento
+    fantasma no Extrato. O `UNIQUE` é a defesa, e ele mora no banco
+    porque um `set()` na memória morre a cada deploy.
+
+    Aprendido do SoloCMV, que já resolveu isto em produção com a
+    `MensagemProcessadaWhatsApp`.
+    """
+    __tablename__ = "mensagens_whats"
+
+    id          = Column(Integer, primary_key=True, index=True)
+    mensagem_id = Column(String(120), nullable=False, unique=True, index=True)
+    recebida_em = Column(DateTime, default=datetime.utcnow, index=True)
+
+
+class EscolhaPendente(Base):
+    """
+    O MENU NUMERADO DE QUEM NÃO TEM BOTÃO.
+
+    No Telegram, "achei três missões com esse nome" vira três botões e
+    um toque. No WhatsApp não há botão confiável — o Baileys parou de
+    renderizar interativos em conta não-oficial, e o SoloCMV, que roda
+    em produção, não usa um sequer.
+
+    A substituta honesta é a lista numerada: o bot escreve 1, 2, 3 e
+    espera o número. Isso exige LEMBRAR o que foi oferecido, e é o que
+    esta tabela guarda — uma linha por hunter e canal, sobrescrita.
+
+    VALIDADE CURTA (minutos). Um "2" digitado meia hora depois quase
+    nunca responde àquela pergunta: responde à seguinte, ou a nada. E
+    aplicar esse "2" na lista velha é concluir a missão errada — o
+    defeito que o menu existe justamente para evitar.
+    """
+    __tablename__ = "escolhas_pendentes"
+
+    id         = Column(Integer, primary_key=True, index=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    canal      = Column(String(20), nullable=False, index=True)
+    # JSON: [{"rotulo": "...", "dados": "ok|r|12"}, ...]
+    opcoes     = Column(Text, nullable=False)
+    criada_em  = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("usuario_id", "canal", name="uq_escolha_usuario_canal"),
+    )
 
 
 class ContaCalendario(Base):

@@ -52,22 +52,35 @@
         return;
       }
       cx.innerHTML = this._telegram(this._dados.telegram)
-                   + this._avisos(this._pref, this._dados.telegram)
-                   + this._whatsapp(this._dados.whatsapp);
+                   + this._whatsapp(this._dados.whatsapp)
+                   + this._avisos(this._pref, this._dados);
       this._ligar(cx);
     },
 
     /* ── OS AVISOS ────────────────────────────────────────────────────
-       O cartão fica DEPOIS do Telegram e não antes: escolher quais
+       O cartão fica DEPOIS dos dois canais e não antes: escolher quais
        avisos receber antes de existir um canal para recebê-los é
-       configurar o nada. E se o canal ainda não está conectado, o
-       cartão diz isso em vez de oferecer chaves que não ligam coisa
-       alguma.
+       configurar o nada. Se nenhum canal está conectado, o cartão diz
+       isso em vez de oferecer chaves que não ligam coisa alguma.
 
        CADA LINHA DIZ O QUE CUSTA. "Missão começou" com dez missões de
        janela na agenda são dez eventos por dia — e a pessoa merece
        saber disso ANTES de ligar, não depois de silenciar o bot. */
-    _avisos(p, t) {
+    _avisos(p, dados) {
+      /* Aceita o objeto inteiro OU só o Telegram, porque o teste do
+         painel chamava com a segunda forma antes de o WhatsApp existir.
+         Quebrar a chamada antiga para mudar um argumento seria trocar
+         um defeito por outro. */
+      const d = (dados && dados.telegram) ? dados : { telegram: dados || {} };
+      const t = d.telegram || {};
+      const w = d.whatsapp || {};
+      const canais = [];
+      if (t.vinculado) canais.push(['telegram', 'Telegram']);
+      if (w.vinculado) canais.push(['whatsapp', 'WhatsApp']);
+      return this._avisosCartao(p, t, w, canais);
+    },
+
+    _avisosCartao(p, t, w, canais) {
       const cabeca = `
         <div class="bot-topo">
           <div class="bot-marca bot-marca--av">${this._g('relogio', 22)}</div>
@@ -84,12 +97,29 @@
             <span>Não consegui ler suas preferências de aviso.</span></p></div>`;
       }
 
-      if (!t || !t.vinculado) {
+      if (!canais.length) {
         return `<div class="card bot-card">${cabeca}
-          <p class="bot-nota">Conecte o Telegram acima e estas opções
-            passam a valer. Enquanto não houver canal, não há para onde
-            o Sistema te avisar.</p></div>`;
+          <p class="bot-nota">Conecte o Telegram ou o WhatsApp acima e
+            estas opções passam a valer. Enquanto não houver canal, não
+            há para onde o Sistema te avisar.</p></div>`;
       }
+
+      /* O SELETOR SÓ APARECE COM DOIS CANAIS. Com um só, ele seria uma
+         pergunta de resposta única — e toda pergunta na tela cobra um
+         segundo de quem lê, mesmo quando não há o que decidir. */
+      const escolhido = p.canal_avisos || canais[0][0];
+      const seletor = canais.length < 2 ? '' : `
+        <div class="bot-canal">
+          <span>Receber avisos por</span>
+          <select data-av="canal_avisos">
+            ${canais.map(([v, r]) => `<option value="${v}"
+              ${escolhido === v ? 'selected' : ''}>${r}</option>`).join('')}
+            <option value="ambos" ${escolhido === 'ambos' ? 'selected' : ''}>Os dois</option>
+          </select>
+        </div>
+        <p class="bot-nota">O canal não escolhido continua aceitando
+          comandos — isto decide quem o Sistema <b>procura</b>, não com
+          quem ele conversa.</p>`;
 
       const chave = (campo, titulo, custo) => `
         <label class="bot-chave">
@@ -106,6 +136,7 @@
         </label>`;
 
       return `<div class="card bot-card">${cabeca}
+        ${seletor}
         <div class="bot-chaves">
           ${chave('beira', 'Falta pouco para o prazo',
                   'o último aviso que ainda salva a missão')}
@@ -301,8 +332,9 @@
             <h3 class="bot-titulo">WhatsApp
               ${w.vinculado ? '<span class="bot-selo on">conectado</span>'
                             : '<span class="bot-selo">desconectado</span>'}</h3>
-            <p class="bot-sub">Os mesmos avisos, no aplicativo que você
-              já deixa aberto.</p>
+            <p class="bot-sub">Os mesmos comandos e os mesmos avisos, no
+              aplicativo que você já deixa aberto — só que sem botão:
+              aqui as escolhas vêm numeradas.</p>
           </div>
         </div>`;
 
@@ -365,7 +397,8 @@
           <li><b>Gere seu código</b> aqui embaixo (vale 10 minutos).</li>
           <li><b>Mande os seis dígitos</b> para o número do Sistema no
               WhatsApp. Só os números, sem mais nada.</li>
-          <li>Pronto. Ele responde confirmando o seu nome.</li>
+          <li>Pronto. Mande <code>/ajuda</code> e ele lista tudo — são os
+              mesmos comandos do Telegram.</li>
         </ol>
         <div class="bot-codigo-area" data-bot-area="whatsapp"></div>
         <div class="bot-acoes">

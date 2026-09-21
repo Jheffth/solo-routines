@@ -36,6 +36,7 @@ from routers.auras    import router as auras_router
 from routers.versao   import router as versao_router
 from routers.calendario import router as calendario_router
 from routers.bots       import router as bots_router
+from routers.bot_whatsapp import router as whats_router
 from routers.pagamentos import router as pagamentos_router
 
 # ==============================================================================
@@ -104,6 +105,7 @@ app.include_router(auras_router,         prefix="/api")
 app.include_router(pagamentos_router,    prefix="/api")
 app.include_router(calendario_router,    prefix="/api")
 app.include_router(bots_router,           prefix="/api")
+app.include_router(whats_router,          prefix="/api")
 app.include_router(versao_router)
 
 # ==============================================================================
@@ -244,6 +246,13 @@ def _job_faxina_avisos():
         n = avisos.limpar_antigos(db)
         if n:
             print(f"[AVISOS] faxina: {n} registro(s) antigos removidos")
+        # A idempotência do WhatsApp tem a própria validade: a Evolution
+        # desiste de reentregar muito antes de uma semana, e a tabela
+        # cresce a cada mensagem recebida.
+        from routers import bot_whatsapp
+        m = bot_whatsapp.limpar_mensagens_antigas(db)
+        if m:
+            print(f"[WHATSAPP] faxina: {m} mensagem(ns) antigas removidas")
     except Exception as e:
         print(f"[AVISOS] faxina falhou: {e}")
     finally:

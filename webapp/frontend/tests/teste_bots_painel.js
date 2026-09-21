@@ -173,5 +173,37 @@ diz('escape', !B._avisos.call(B,
       { vinculado: true }).includes('<img'),
     'valor de campo vai escapado');
 
+
+/* ── O SELETOR DE CANAL ────────────────────────────────────────────
+   Com dois canais vinculados e sem escolha, o mesmo "faltam 15 min"
+   chegaria no Telegram E no WhatsApp — e o caminho mais curto para
+   alguém silenciar os DOIS é receber tudo em dobro. */
+const SO_TG  = { telegram: { vinculado: true },  whatsapp: { vinculado: false } };
+const SO_WA  = { telegram: { vinculado: false }, whatsapp: { vinculado: true } };
+const DOIS   = { telegram: { vinculado: true },  whatsapp: { vinculado: true } };
+const NENHUM = { telegram: { vinculado: false }, whatsapp: { vinculado: false } };
+const PW = Object.assign({}, PREF, { canal_avisos: 'whatsapp' });
+
+diz('nenhum canal', !B._avisos.call(B, PW, NENHUM).includes('data-av='),
+    'sem canal nenhum nao oferece chave');
+diz('nenhum canal', B._avisos.call(B, PW, NENHUM).includes('Telegram ou o WhatsApp'),
+    'e cita os dois caminhos possiveis');
+
+[['so telegram', SO_TG], ['so whatsapp', SO_WA]].forEach(([nome, d]) => {
+  const h = B._avisos.call(B, PW, d);
+  diz(nome, h.includes('data-av="beira"'), 'um canal ja libera as chaves');
+  diz(nome, !h.includes('canal_avisos'),
+      'e o seletor nao aparece — pergunta de resposta unica custa a leitura de quem ja decidiu');
+});
+
+const hD = B._avisos.call(B, PW, DOIS);
+diz('dois canais', hD.includes('canal_avisos'), 'com dois, o seletor aparece');
+diz('dois canais', hD.includes('value="ambos"'), 'com a opcao de receber nos dois');
+diz('dois canais', hD.includes('procura'),
+    'e explica que o canal nao escolhido continua aceitando comandos');
+
+diz('compat', B._avisos.call(B, PW, { vinculado: true }).includes('data-av="beira"'),
+    'a chamada antiga (so o telegram) continua desenhando');
+
 console.log(falhas ? '\n' + falhas + ' FALHA(S)\n' : '\n=== PAINEL OK ===\n');
 process.exit(falhas ? 1 : 0);

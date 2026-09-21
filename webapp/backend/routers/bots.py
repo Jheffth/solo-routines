@@ -94,6 +94,7 @@ class PrefAviso(BaseModel):
     minutos_portao: Optional[int] = None
     silencio_de:  Optional[str] = None
     silencio_ate: Optional[str] = None
+    canal_avisos: Optional[str] = None
 
 
 def _pref_dict(p) -> dict:
@@ -104,6 +105,7 @@ def _pref_dict(p) -> dict:
         "minutos_portao": p.minutos_portao or 30,
         "silencio_de": p.silencio_de or "23:00",
         "silencio_ate": p.silencio_ate or "06:00",
+        "canal_avisos": p.canal_avisos or "telegram",
     }
 
 
@@ -150,6 +152,13 @@ def salvar_avisos(payload: PrefAviso,
             if not _hora_valida(v):
                 raise HTTPException(400, f"Horário inválido: {v}. Use HH:MM.")
             setattr(p, campo, v)
+
+    # O CANAL PREFERIDO. Um valor desconhecido vira "telegram" em vez de
+    # ser guardado: uma string errada no banco calaria os avisos sem
+    # nenhuma pista na tela — o pior modo de falhar que este sistema tem.
+    if payload.canal_avisos is not None:
+        v = str(payload.canal_avisos).lower().strip()
+        p.canal_avisos = v if v in ("telegram", "whatsapp", "ambos") else "telegram"
 
     db.commit()
     return _pref_dict(p)
@@ -213,78 +222,14 @@ def encerrar_sessao(usuario: Usuario = Depends(get_arquiteto)):
     return {"ok": evolution.desconectar()}
 
 
-@router.post("/whatsapp/webhook")
-async def webhook_whatsapp(request: Request, db: Session = Depends(get_db)):
-    """
-    O que a Evolution empurra para cá.
-
-    SEM SEGREDO NO CABEÇALHO — a Evolution v2 não oferece um. A proteção é
-    de rede: este endpoint só deve ser alcançável de dentro do Docker
-    (`http://app:8000/...`), nunca publicado no Caddy. Se um dia precisar
-    ser público, um token na query vira obrigatório.
-
-    NUNCA LEVANTA. Webhook que responde erro faz a Evolution reenviar em
-    laço, e um defeito nosso viraria uma tempestade de repetições.
-    """
-    try:
-        corpo = await request.json()
-    except Exception:
-        return {"ok": True}
-
-    try:
-        evento = (corpo.get("event") or "").upper().replace(".", "_")
-        dados = corpo.get("data") or {}
-
-        if evento == "MESSAGES_UPSERT":
-            _mensagem_recebida(db, dados)
-    except Exception as e:
-        print(f"[WHATSAPP] webhook ignorado: {e}")
-    return {"ok": True}
-
-
-def _mensagem_recebida(db: Session, dados: dict) -> None:
-    chave = dados.get("key") or {}
-    if chave.get("fromMe"):
-        return                      # eco do que nós mesmos mandamos
-
-    jid = chave.get("remoteJid") or ""
-    if not jid or "@g.us" in jid:
-        return                      # grupo não é conversa de hunter
-
-    msg = dados.get("message") or {}
-    texto = (msg.get("conversation")
-             or (msg.get("extendedTextMessage") or {}).get("text")
-             or "").strip()
-    if not texto:
-        return
-
-    u = vinculo.por_origem(db, "whatsapp", jid)
-
-    if not u:
-        codigo = "".join(c for c in texto if c.isdigit())
-        if len(codigo) == vinculo.DIGITOS:
-            try:
-                novo = vinculo.vincular(db, "whatsapp", codigo, jid,
-                                        nome=jid.split("@")[0])
-                evolution.enviar(jid, f"✅ Conversa vinculada a {novo.nome}.")
-            except vinculo.ErroVinculo as e:
-                evolution.enviar(jid, f"❌ {e.mensagem}")
-        else:
-            evolution.enviar(jid,
-                "🔒 Esta conversa não está vinculada.\n\n"
-                "Abra o Solo Routines em *Bots*, gere o código do WhatsApp "
-                "e mande os 6 dígitos aqui.")
-        return
-
-    if texto.lower().startswith("/desvincular"):
-        vinculo.desvincular(db, u, "whatsapp")
-        evolution.enviar(jid, "🔌 Conversa desvinculada.")
-        return
-
-    # POR ENQUANTO SÓ AVISA, NÃO OBEDECE. Os comandos do Telegram
-    # (`/hoje`, `/ok`) mexem na economia do Sistema, e replicá-los aqui
-    # antes de o canal estar provado seria abrir dois caminhos para
-    # errar. O WhatsApp entra como canal de SAÍDA primeiro.
-    evolution.enviar(jid,
-        f"👋 Olá, {u.nome}. Este canal ainda é só de avisos.\n"
-        "Para agir nas missões, use o app ou o bot do Telegram.")
+# ── O WEBHOOK DO WHATSAPP MUDOU DE CASA ──────────────────────────────
+#
+# Ele vivia aqui e agora é `routers/bot_whatsapp.py`, em
+# `/api/whats/webhook`. A razão: deixou de ser "um aviso de boas-vindas"
+# e virou a porta de um bot completo — idempotência, eco do próprio
+# aparelho, escolha numerada. Isso é transporte de canal, não
+# configuração de aba.
+#
+# QUEM JÁ TIVER A URL ANTIGA registrada na Evolution precisa trocá-la:
+# `EVOLUTION_WEBHOOK` no .env aponta para o caminho novo, e o botão da
+# aba Bots reconfigura.

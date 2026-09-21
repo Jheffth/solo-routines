@@ -36,7 +36,7 @@ URL      = os.getenv("EVOLUTION_API_URL", "http://whatsapp:8080").rstrip("/")
 API_KEY  = os.getenv("EVOLUTION_API_KEY", "")
 INSTANCIA = os.getenv("EVOLUTION_INSTANCE", "solo_rotinas")
 WEBHOOK  = os.getenv("EVOLUTION_WEBHOOK",
-                     "http://app:8000/api/bots/whatsapp/webhook")
+                     "http://app:8000/api/whats/webhook")
 
 EVENTOS = ["QRCODE_UPDATED", "CONNECTION_UPDATE", "MESSAGES_UPSERT"]
 
