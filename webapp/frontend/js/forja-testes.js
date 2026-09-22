@@ -139,6 +139,7 @@ const ForjaTestes = {
     { id: 'ascensao',  rotulo: '⬆ Ascensão'    },
     { id: 'efeitos',   rotulo: '✨ Efeitos'     },
     { id: 'interface', rotulo: '🗂 Interface'   },
+    { id: 'dungeon',   rotulo: '⚔ Dungeon'     },
     { id: 'hunters',   rotulo: '👥 Hunters'    },
   ],
 
@@ -296,6 +297,10 @@ const ForjaTestes = {
       { id: 'comemorativas', rotulo: 'Comemorativas',       desc: 'conceder / ocultar' },
       { id: 'enviarAura',    rotulo: 'Enviar aura a hunter',desc: 'presente real' },
     ],
+    dungeon: [
+      { id: 'cardDungeonModelos', rotulo: '⚔ Novos Modelos de Card',  desc: 'Alpha · Beta · Gamma — propostas para aprovação' },
+      { id: 'cardMissao',         rotulo: '🗂 Card Atual (referência)',desc: 'vitrine do componente real em uso' },
+    ],
   },
 
   _render() {
@@ -417,6 +422,8 @@ const ForjaTestes = {
       convites:    () => A?.convites(),
       comemorativas: () => A?.comemorativas(),
       enviarAura:  () => A?.enviarAura(),
+      // Novos modelos de card de dungeon
+      cardDungeonModelos: () => A?.cardDungeonModelos(),
     };
     const fn = mapa[arg];
     if (!fn) return;
@@ -425,7 +432,7 @@ const ForjaTestes = {
     // visível para serem usados — eclipsar só o que é animação.
     const painel = ['convites', 'comemorativas', 'enviarAura',
                     'cardMissao', 'forjaMissao', 'banner', 'bannerPremium',
-                    'estandarte'].includes(arg);
+                    'estandarte', 'cardDungeonModelos'].includes(arg);
     // O Eco toma a tela inteira: fechar a Forja antes seria o certo,
     // mas ele já cobre tudo — e voltar para a Forja depois é o que o
     // Arquiteto vai querer, para disparar o próximo.

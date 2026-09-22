@@ -520,6 +520,176 @@ const ArquitetoConsole = {
     }
   },
 
+  /* ── Vitrine dos Novos Modelos de Card de Dungeon ──────────── */
+  cardDungeonModelos() {
+    const ex = document.getElementById('dgv2-vitrine-overlay');
+    if (ex) { ex.remove(); return; }
+
+    /* Cor da dungeon: usa a que estiver ativa ou roxo padrão */
+    const cor = getComputedStyle(document.documentElement)
+      .getPropertyValue('--dg-a').trim() || '#7c3aed';
+
+    /* Glifos SVG inline para não depender de Glifos.js */
+    const SVG_PADRAO = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 2l8 10-8 10-8-10z"/></svg>`;
+    const SVG_META   = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4" fill="currentColor" opacity=".4"/></svg>`;
+    const SVG_REP    = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 2l4 4-4 4M3 7h18M7 22l-4-4 4-4M21 17H3"/></svg>`;
+    const SVG_CIR    = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M17 14l2 2 4-4" stroke-linecap="round"/></svg>`;
+    const icones = { PADRAO: SVG_PADRAO, META: SVG_META, REPETICAO: SVG_REP, CIRCUITO: SVG_CIR };
+
+    /* ── Gerador ALPHA "Runa" ── */
+    const alpha = ({ titulo, natureza = 'PADRAO', nat = 'Padrão', xp = 180, mo = 0,
+                     risco = 0, status = 'PENDENTE', descricao = '' }) => {
+      const done = status === 'CONCLUIDA';
+      const cur  = status === 'EM_PROGRESSO';
+      const ico  = icones[natureza] || SVG_PADRAO;
+      const rankMap = { PADRAO: 'Padrão', META: 'Meta', REPETICAO: 'Rep.', CIRCUITO: 'Circ.' };
+      return `
+      <article class="dgv2-alpha${done ? ' done' : ''}${cur ? ' emcurso' : ''}" style="--dg-a:${cor}">
+        <div class="dgv2-alpha-faixa">
+          ${ico}
+          <span class="dgv2-alpha-rank">${rankMap[natureza] || 'Padrão'}</span>
+        </div>
+        <div class="dgv2-alpha-corpo">
+          <div class="dgv2-alpha-titulo${done ? ' done' : ''}">${titulo}</div>
+          ${descricao ? `<div class="dgv2-alpha-meta">${descricao}</div>` : ''}
+          <div class="dgv2-alpha-chips">
+            <span class="dgv2-alpha-chip nat">${nat}</span>
+            <span class="dgv2-alpha-chip xp">+${xp} XP</span>
+            ${mo ? `<span class="dgv2-alpha-chip mo">+${mo}</span>` : ''}
+            ${risco ? `<span class="dgv2-alpha-chip risco">−${risco} falha</span>` : ''}
+            ${cur  ? `<span class="dgv2-alpha-chip status-cur">⬤ Em curso</span>` : ''}
+            ${done ? `<span class="dgv2-alpha-chip status-ok">✔ Concluída</span>` : ''}
+          </div>
+        </div>
+        <div class="dgv2-alpha-acao">
+          ${done ? `<div class="dgv2-alpha-check">✔</div>` :
+            cur  ? `<button class="dgv2-alpha-btn primario">✓ Cumprir</button>
+                    <button class="dgv2-alpha-btn ghost">⏸</button>` :
+                   `<button class="dgv2-alpha-btn primario">▶ Iniciar</button>
+                    <button class="dgv2-alpha-btn ghost">✕</button>`}
+        </div>
+      </article>`;
+    };
+
+    /* ── Gerador BETA "Relicário" ── */
+    const beta = ({ titulo, natureza = 'PADRAO', nat = 'Padrão', xp = 180, mo = 0,
+                    risco = 0, status = 'PENDENTE' }) => {
+      const done = status === 'CONCLUIDA';
+      const cur  = status === 'EM_PROGRESSO';
+      const ico  = icones[natureza] || SVG_PADRAO;
+      return `
+      <div class="dgv2-beta${done ? ' done' : ''}${cur ? ' emcurso' : ''}" style="--dg-a:${cor}">
+        <div class="dgv2-beta-ico">${ico}</div>
+        <div class="dgv2-beta-corpo">
+          <div class="dgv2-beta-titulo${done ? ' done' : ''}">${titulo}</div>
+          <div class="dgv2-beta-sub">
+            <span class="dgv2-beta-tag nat">${nat}</span>
+            ${cur  ? `<span class="dgv2-beta-tag cur">⬤ Em curso</span>` : ''}
+            ${done ? `<span class="dgv2-beta-tag ok">✔ Concluída</span>` : ''}
+          </div>
+        </div>
+        <div class="dgv2-beta-loot">
+          <div class="dgv2-beta-loot-item xp">
+            <span class="dgv2-beta-loot-icon xp"></span>+${xp} XP
+          </div>
+          ${mo ? `<div class="dgv2-beta-loot-item mo"><span class="dgv2-beta-loot-icon mo"></span>+${mo}</div>` : ''}
+          ${risco ? `<div class="dgv2-beta-loot-item risco"><span class="dgv2-beta-loot-icon risco"></span>−${risco}</div>` : ''}
+        </div>
+      </div>`;
+    };
+
+    /* ── Gerador GAMMA "Manuscrito" ── */
+    const gamma = ({ titulo, natureza = 'PADRAO', nat = 'Padrão', xp = 180, mo = 0,
+                     risco = 0, status = 'PENDENTE', categoria = 'Missão', shimmer = false }) => {
+      const done = status === 'CONCLUIDA';
+      const cur  = status === 'EM_PROGRESSO';
+      const ico  = icones[natureza] || SVG_PADRAO;
+      const dot  = done ? 'done' : cur ? 'cur' : '';
+      const tit  = shimmer && !done
+        ? `<span class="dgv2-gamma-titulo-shimmer">${titulo}</span>`
+        : titulo;
+      return `
+      <article class="dgv2-gamma${done ? ' done' : ''}${cur ? ' emcurso' : ''}" style="--dg-a:${cor}">
+        <div class="dgv2-gamma-faixa"></div>
+        <div class="dgv2-gamma-corpo">
+          <div class="dgv2-gamma-ico">
+            ${ico}
+            <span class="dgv2-gamma-dot ${dot}"></span>
+          </div>
+          <div class="dgv2-gamma-info">
+            <div class="dgv2-gamma-categoria">${categoria}</div>
+            <div class="dgv2-gamma-titulo${done ? ' done' : ''}">${tit}</div>
+            <div class="dgv2-gamma-placas">
+              <span class="dgv2-gamma-placa nat">${nat}</span>
+              <span class="dgv2-gamma-placa xp">+${xp} XP</span>
+              ${mo ? `<span class="dgv2-gamma-placa mo">+${mo}</span>` : ''}
+              ${risco ? `<span class="dgv2-gamma-placa risco">−${risco} falha</span>` : ''}
+            </div>
+          </div>
+        </div>
+        <div class="dgv2-gamma-rodape">
+          ${cur  ? `<span class="dgv2-gamma-crono">⏱ 12:44</span>` : '<span style="margin-right:auto"></span>'}
+          ${done ? `<span class="dgv2-gamma-check">✔</span>` : ''}
+          ${!done && !cur ? `<button class="dgv2-gamma-btn primario">▶ Iniciar</button>
+                             <button class="dgv2-gamma-btn ghost">✕</button>` : ''}
+          ${cur  ? `<button class="dgv2-gamma-btn primario">✓ Cumprir</button>
+                    <button class="dgv2-gamma-btn ghost">⏸</button>` : ''}
+        </div>
+      </article>`;
+    };
+
+    /* ── Amostras de missão ── */
+    const missoes = [
+      { titulo: 'Estudar 45 min de Português',   natureza: 'PADRAO',    nat: 'Padrão',    xp: 180, mo: 15, risco: 30, categoria: 'Estudo'   },
+      { titulo: 'Ler 20 páginas de Anatomia',     natureza: 'META',      nat: 'Meta',      xp: 220, mo: 20,            categoria: 'Estudo',  shimmer: true },
+      { titulo: 'Fazer 3 séries de flexão',       natureza: 'REPETICAO', nat: 'Repetição', xp: 90,  mo: 8,             categoria: 'Saúde'    },
+      { titulo: 'Completar circuito de estudo',   natureza: 'CIRCUITO',  nat: 'Circuito',  xp: 320, mo: 30, risco: 60, categoria: 'Estudo'   },
+    ];
+
+    const bloco = (titulo, gerador, extra = {}) => {
+      const cards = [
+        gerador({ ...missoes[0], status: 'PENDENTE',     ...extra }),
+        gerador({ ...missoes[1], status: 'EM_PROGRESSO', ...extra }),
+        gerador({ ...missoes[2], status: 'CONCLUIDA',    ...extra }),
+        gerador({ ...missoes[3], status: 'PENDENTE',     ...extra }),
+      ].join('');
+      return `<div class="dgv2-grupo">
+        <div class="dgv2-rotulo-modelo"><strong>${titulo}</strong>
+          &nbsp;—&nbsp; Pendente · Em Curso · Concluída · Missão Circuito</div>
+        ${cards}</div>`;
+    };
+
+    const el = document.createElement('div');
+    el.id = 'dgv2-vitrine-overlay';
+    el.innerHTML = `
+      <div id="dgv2-vitrine-box">
+        <div style="display:flex;align-items:center;gap:.7rem;margin-bottom:1.2rem">
+          <span style="font-size:1.3rem">⚔</span>
+          <div style="flex:1">
+            <div style="font-family:var(--font-title);font-size:1.05rem;color:#c4b5fd">Novos Modelos de Card de Dungeon</div>
+            <div style="font-family:var(--font-section);font-size:.58rem;letter-spacing:.18em;color:var(--text-muted);margin-top:.2rem">
+              FORJA DE TESTES · TRÊS PROPOSTAS PARA APROVAÇÃO · SÓ O ARQUITETO VÊ</div>
+          </div>
+          <button onclick="document.getElementById('dgv2-vitrine-overlay').remove()"
+            style="background:none;border:1px solid rgba(167,139,250,.3);color:#c4b5fd;font-size:.85rem;cursor:pointer;padding:.3rem .65rem">✕</button>
+        </div>
+        <div class="dgv2-vitrine">
+          ${bloco('ALPHA — "Runa" · Faixa lateral + chips de recompensa', alpha)}
+          ${bloco('BETA — "Relicário" · Ícone em quadro + loot-box de recompensas', beta)}
+          ${bloco('GAMMA — "Manuscrito" · Ícone expandido + título shimmer + painel de ação', gamma, { shimmer: true })}
+        </div>
+        <div style="font-size:.62rem;color:var(--text-dim);margin-top:1.2rem;font-family:var(--font-section);line-height:1.7;border-top:1px solid rgba(167,139,250,.12);padding-top:.9rem">
+          <b>Alpha</b> — denso e escaneável, ideal para listas longas de missão.<br>
+          <b>Beta</b> — compacto, foco no loot-drop visual de recompensa.<br>
+          <b>Gamma</b> — imersivo, com faixa de status animada e título shimmer em missões ativas.<br>
+          Todos herdam <code>--dg-a</code> da dungeon ativa e suportam todos os estados do sistema.
+        </div>
+      </div>`;
+
+    el.addEventListener('click', e => { if (e.target === el) el.remove(); });
+    document.body.appendChild(el);
+  },
+
   /* ── Vitrine do Cartão de Missão (componente real, modo demo) ── */
   cardMissao() {
     let ex = document.getElementById('mc-vitrine');
