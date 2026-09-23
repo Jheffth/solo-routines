@@ -62,3 +62,39 @@ INICIAR_SOLO_ROUTINES.bat
 
 # Dependências dos testes de front — instaladas localmente, nunca versionadas.
 webapp/frontend/tests/node_modules/
+
+# ══════════════════════════════════════════════════════════════════
+# O COFRE — senhas, tokens e cópias de .env. NUNCA sobe.
+#
+# Tudo que é segredo mora em `_cofre/`. Ninguém — nem pessoa, nem
+# agente (Claude, Codex, Antigravity) — usa `git add -f` lá dentro.
+# A regra completa está em AGENTS.md.
+# ══════════════════════════════════════════════════════════════════
+/_cofre/
+
+# ── Os arquivos soltos na raiz que JÁ carregam segredo literal ──────
+# Em 23/09 havia 42 deles: scripts de SSH com a senha root escrita no
+# código e cópias do .env do servidor. Nenhum tinha ido para o git —
+# mas bastava um `git add -A`. Ficam bloqueados aqui até irem para o
+# `_cofre/` (e os scripts passarem a ler a senha de lá).
+#
+# As regras começam com `/` para valer só na RAIZ: `webapp/` fica de
+# fora. Arquivo já rastreado (ex.: check_images.py) não é afetado.
+/TELEGRAM_ENV.txt
+/env_remote.txt
+/*_remote*.txt
+/inspect.json
+/append_*.py
+/audit_vps.py
+/change_pass.py
+/check_*.py
+/create_db.py
+/fetch_*.py
+/inspect_*.py
+/logs_*.py
+/prep_deploy.py
+/register_webhook.py
+/restart_*.py
+/setup_evo.py
+/start_whatsapp*.py
+/upload_dc.py
