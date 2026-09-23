@@ -143,5 +143,21 @@ def enviar(jid: str, texto: str) -> bool:
 
 
 def desconectar() -> bool:
-    return _req("DELETE", f"/instance/logout/{INSTANCIA}",
-                timeout=8).get("status") in (200, 201)
+    """Encerrar uma sessão já encerrada também permite refazer o pareamento."""
+    r = _req("DELETE", f"/instance/logout/{INSTANCIA}", timeout=8)
+    if r.get("status") in (200, 201, 204):
+        return True
+    if r.get("status") not in (400, 404):
+        return False
+
+    # A Evolution recusa logout de uma instância já desconectada (400).
+    # Confirmar no servidor: estado() usa "close" também quando a consulta
+    # falha, e aceitar esse fallback esconderia timeout ou falta de acesso.
+    atual = _req("GET", f"/instance/connectionState/{INSTANCIA}", timeout=6)
+    if atual.get("status") == 404:
+        return True  # Instância ausente; o fluxo de QR vai criá-la.
+    if atual.get("status") != 200:
+        return False
+    dados = atual.get("dados") or {}
+    st = (dados.get("instance") or {}).get("state") or dados.get("state")
+    return st in ("close", "closed", "refused")

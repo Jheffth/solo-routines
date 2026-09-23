@@ -102,6 +102,9 @@ services:
     restart: always
     environment:
       - SERVER_URL=http://whatsapp:8080
+      # Esta instalação usa uma única Evolution, sem serviço Redis.
+      - CACHE_REDIS_ENABLED=false
+      - CACHE_LOCAL_ENABLED=true
       - DOCKER_ENV=true
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql

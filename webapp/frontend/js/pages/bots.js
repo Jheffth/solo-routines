@@ -360,13 +360,20 @@
     /* ── WHATSAPP ─────────────────────────────────────────────── */
     _whatsapp(w) {
       const sessao = w.sessao || {};
+      const arquiteto = !!(window.Auth && Auth.isCriador && Auth.isCriador());
+      const sessaoOk = sessao.conectado === true;
+      const recuperacao = arquiteto ? `
+        <div class="bot-acoes">
+          <button type="button" class="bot-bt" data-bot-reparear>
+            ${this._g('olho', 15)}<span>Refazer pareamento</span></button>
+        </div>` : '';
       const cabeca = `
         <div class="bot-topo">
           <div class="bot-marca bot-marca--wa">${this._svgWhatsapp()}</div>
           <div>
             <h3 class="bot-titulo">WhatsApp
-              ${w.vinculado ? '<span class="bot-selo on">conectado</span>'
-                            : '<span class="bot-selo">desconectado</span>'}</h3>
+              ${w.vinculado && sessaoOk ? '<span class="bot-selo on">conectado</span>'
+                            : `<span class="bot-selo">${w.vinculado ? 'sessão desconectada' : 'conta não vinculada'}</span>`}</h3>
             <p class="bot-sub">Os mesmos comandos e os mesmos avisos, no
               aplicativo que você já deixa aberto — só que sem botão:
               aqui as escolhas vêm numeradas.</p>
@@ -389,10 +396,15 @@
       }
 
       if (w.vinculado) {
-        return `<div class="card bot-card conectado">${cabeca}
+        return `<div class="card bot-card${sessaoOk ? ' conectado' : ''}">${cabeca}
           <p class="bot-nota">Vinculado ao número
             <b>${this._esc(w.numero || '—')}</b> desde
             <b>${w.desde ? new Date(w.desde).toLocaleDateString('pt-BR') : '—'}</b>.</p>
+          <p class="bot-nota">${sessaoOk ? 'Sessão do Sistema conectada.'
+            : 'A sessão do Sistema está desconectada. É preciso parear novamente para receber avisos.'}</p>
+          ${!sessaoOk && arquiteto ? `<div class="bot-qr-area" data-bot-area="qr"></div>
+            <button type="button" class="bot-bt" data-bot-qr><span>Mostrar QR</span></button>` : ''}
+          ${recuperacao}
           <div class="bot-acoes">
             <button type="button" class="bot-bt bot-bt--perigo" data-bot-sair="whatsapp">
               ${this._g('excluir', 15)}<span>Desvincular</span></button>
@@ -408,19 +420,18 @@
          todo mundo — isso é do dono da casa, não do plantão.
          A tela apenas esconde o botão; quem recusa de verdade é o
          `Depends(get_arquiteto)` no router, e é lá que a regra vale. */
-      const arquiteto = (window.Auth && Auth.isCriador && Auth.isCriador());
-      const sessaoOk = !!sessao.conectado;
-
       const passoQR = sessaoOk ? `
         <li class="feito">${this._g('concluida', 14)}
-          <b>Número do Sistema pareado.</b> Já dá para receber.</li>`
+          <b>Sessão do Sistema conectada.</b> Falta vincular sua conta pelos passos abaixo.
+          ${recuperacao}</li>`
         : (arquiteto ? `
         <li><b>Parear o número do Sistema</b> — só o Arquiteto faz, e uma
             vez só. Clique em "Mostrar QR" e escaneie pelo WhatsApp em
             <i>Aparelhos conectados</i>.
             <div class="bot-qr-area" data-bot-area="qr"></div>
             <button type="button" class="bot-bt" data-bot-qr>
-              ${this._g('olho', 15)}<span>Mostrar QR</span></button></li>`
+              ${this._g('olho', 15)}<span>Mostrar QR</span></button>
+            ${recuperacao}</li>`
         : `
         <li class="pendente">${this._g('ampulheta', 14)}
           <b>Aguardando o Arquiteto parear o número do Sistema.</b>
@@ -453,6 +464,8 @@
       });
       const q = cx.querySelector('[data-bot-qr]');
       if (q) q.onclick = () => this.mostrarQR(q);
+      const reparar = cx.querySelector('[data-bot-reparear]');
+      if (reparar) reparar.onclick = () => this.refazerPareamento(reparar);
       const w = cx.querySelector('[data-bot-webhook]');
       if (w) w.onclick = () => this.registrarWebhook(w);
       const s = cx.querySelector('[data-av-salvar]');
@@ -539,7 +552,9 @@
         const els = document.querySelectorAll('[data-bot-prazo]');
         if (!els.length) { clearInterval(this._relogio); return; }
         els.forEach(el => {
-          const resta = new Date(el.dataset.botPrazo) - Date.now();
+          // O servidor antigo envia UTC sem indicar o fuso no texto.
+          const prazo = el.dataset.botPrazo;
+          const resta = new Date(/[zZ]|[+-]\d{2}:?\d{2}$/.test(prazo) ? prazo : prazo + 'Z') - Date.now();
           if (resta <= 0) {
             el.textContent = 'expirado — gere outro';
             el.classList.add('vencido');
@@ -559,6 +574,7 @@
       bt.disabled = true;
       const rot = bt.querySelector('span');
       if (rot) rot.textContent = 'Buscando...';
+      if (area) area.textContent = 'Buscando um QR atualizado...';
       try {
         const r = await API.get('/bots/whatsapp/qrcode');
         if (area && r.qrcode) {
@@ -568,12 +584,40 @@
         } else if (area && r.pairing_code) {
           area.innerHTML = `<div class="bot-codigo">
             <span class="bot-codigo-num">${this._esc(r.pairing_code)}</span></div>`;
+        } else if (r.estado === 'open') {
+          await this.carregar();
+          SoloDialog.toast(this._dados.whatsapp.vinculado
+            ? 'Sessão do Sistema conectada.'
+            : 'Sessão do Sistema conectada. Agora vincule sua conta com o código de seis dígitos.', 'success');
+        } else if (area) {
+          area.textContent = 'O WhatsApp ainda está preparando o QR. Aguarde alguns segundos e clique em Mostrar QR novamente.';
         }
       } catch (e) {
+        if (area) area.textContent = 'Não foi possível obter o QR. Clique em Mostrar QR para tentar novamente.';
         SoloDialog.toast(e.message || 'A Evolution não respondeu.', 'error', 6000);
       } finally {
         bt.disabled = false;
         if (rot) rot.textContent = 'Mostrar QR';
+      }
+    },
+
+    async refazerPareamento(bt) {
+      const ok = await SoloDialog.confirm(
+        'Isso encerra a sessão atual do número do Sistema e pausa os avisos de WhatsApp de todos os usuários até você escanear o novo QR.',
+        { titulo: 'Refazer pareamento do WhatsApp?', btnOk: 'Refazer pareamento', tipo: 'warn' }
+      );
+      if (!ok) return;
+      bt.disabled = true;
+      try {
+        const r = await API.delete('/bots/whatsapp/sessao');
+        if (!r.ok) throw new Error('Não foi possível encerrar a sessão atual. Tente novamente.');
+        await this.carregar();
+        const qr = document.querySelector('[data-bot-qr]');
+        if (qr) await this.mostrarQR(qr);
+      } catch (e) {
+        SoloDialog.toast(e.message || 'Não consegui refazer o pareamento.', 'error', 6000);
+      } finally {
+        bt.disabled = false;
       }
     },
 
