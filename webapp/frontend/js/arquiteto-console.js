@@ -521,6 +521,8 @@ const ArquitetoConsole = {
   },
 
   /* ── Vitrine dos Novos Modelos de Card de Dungeon ──────────── */
+  cardDungeonDelta() { window.DungeonDeltaDemo.abrir(); },
+
   cardDungeonModelos() {
     const ex = document.getElementById('dgv2-vitrine-overlay');
     if (ex) { ex.remove(); return; }

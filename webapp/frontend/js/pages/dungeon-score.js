@@ -151,7 +151,7 @@ const DungeonScore = {
       <div class="dg-sc-missao">
         <span class="st" style="color:${cor}">${ico}</span>
         <span class="ico">${m.icone || this.NAT_ICO[m.natureza] || '⚔️'}</span>
-        <span class="titulo" style="${e.status === 'CONCLUIDA' ? '' : e.status === 'CANCELADA' || e.status === 'EXPIRADA' ? 'color:var(--text-muted);text-decoration:line-through' : 'color:var(--text-muted)'}">${m.titulo || '(sussurro)'}</span>
+        <span class="titulo" style="${e.status === 'CONCLUIDA' ? '' : e.status === 'CANCELADA' || e.status === 'EXPIRADA' ? 'color:var(--text-muted);text-decoration:line-through' : 'color:var(--text-muted)'}">${m.titulo || '(sussurro)'}<small> · ${e.status === 'EXPIRADA' ? 'Falhou' : e.status === 'CONCLUIDA' ? 'Concluída' : e.status} · sequência ${e.streak || 0}</small></span>
         <span class="nat">${this.NAT_ICO[m.natureza] || ''}</span>
         <span class="hora">${e.concluida_em ? hora(e.concluida_em) : '—'}</span>
         <span class="pts">${pontos}</span>

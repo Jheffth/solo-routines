@@ -14,8 +14,8 @@ para comparar com hora_entrada/hora_saida que são horários de parede do usuár
 import json
 import random
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from sqlalchemy.orm import Session, object_session
+from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import date, datetime, timedelta, timezone, time as dtime
 from motors import tempo
@@ -361,12 +361,65 @@ def _missao_to_dict(m: DungeonMissao) -> dict:
     }
 
 
+def _streak_exec(e):
+    """Sequência por ocorrência, reconstruída do histórico persistido e isolada por modo."""
+    db = object_session(e)
+    if not db or not e.id:
+        return 0
+    anteriores = db.query(DungeonMissaoExecucao.status).join(DungeonSessao).filter(
+        DungeonMissaoExecucao.dungeon_missao_id == e.dungeon_missao_id,
+        DungeonMissaoExecucao.id <= e.id,
+        DungeonSessao.modo_teste == bool(e.sessao.modo_teste),
+        DungeonMissaoExecucao.status.in_(("CONCLUIDA", "EXPIRADA", "CANCELADA")),
+    ).order_by(DungeonMissaoExecucao.id.desc()).all()
+    streak = 0
+    for (status,) in anteriores:
+        if status != "CONCLUIDA":
+            break
+        streak += 1
+    return streak
+
+
+def _agenda_sessao(s):
+    db = object_session(s)
+    if not db:
+        return []
+    execs = db.query(DungeonMissaoExecucao).filter(
+        DungeonMissaoExecucao.dungeon_sessao_id == s.id).all()
+    agenda = []
+    for m in s.dungeon.missoes.filter(DungeonMissao.ativo == True).all():
+        if not _missao_eh_de_hoje(m, s.data):
+            continue
+        lista = [e for e in execs if e.dungeon_missao_id == m.id]
+        inicio = fim = None
+        if m.natureza in _NATUREZAS_BONUS and s.entrada_em and s.status == "ATIVA":
+            base = max([e.disparada_em for e in lista if e.disparada_em] + [s.entrada_em])
+            if m.natureza == "BEM_ESTAR":
+                inicio = base + timedelta(minutes=m.intervalo_min or 45)
+            else:
+                inicio = base + timedelta(minutes=m.janela_disparo_min or 20)
+                fim = base + timedelta(minutes=max(m.janela_disparo_max or 60, (m.janela_disparo_min or 20)+1))
+            # Uma ocorrência permanece disponível até concluir ou vencer.
+            pendente = next((e for e in lista if e.status == "PENDENTE"), None)
+            if pendente and pendente.disparada_em:
+                limite = pendente.disparada_em + timedelta(minutes=m.expira_em_min or 5)
+                inicio = max(inicio, limite)
+                if fim: fim = max(fim, inicio)
+        elif m.natureza == "AGENDADA":
+            inicio = _parse_hhmm(m.hora_inicio, s.data) if m.hora_inicio else None
+        agenda.append({"missao": _missao_to_dict(m),
+                       "proxima_em": inicio.isoformat() if inicio else None,
+                       "janela_fim": fim.isoformat() if fim else None})
+    return agenda
+
+
 def _exec_to_dict(e: DungeonMissaoExecucao, m: DungeonMissao = None) -> dict:
     return {
         "id": e.id,
         "dungeon_missao_id": e.dungeon_missao_id,
         "dungeon_sessao_id": e.dungeon_sessao_id,
         "status": e.status,
+        "streak": _streak_exec(e),
         "progresso_pct": round(e.progresso_pct or 0.0, 1),
         "disparada_em": e.disparada_em.isoformat() if e.disparada_em else None,
         "concluida_em": e.concluida_em.isoformat() if e.concluida_em else None,
@@ -381,6 +434,8 @@ def _sessao_to_dict(s: DungeonSessao) -> dict:
         return None
     return {
         "id": s.id, "dungeon_id": s.dungeon_id, "data": s.data.isoformat(),
+        "agenda": _agenda_sessao(s),
+        "agora_server": _agora().replace(tzinfo=_TZ_BRASILIA).isoformat(),
         "status": s.status,
         "modo_teste": bool(getattr(s, "modo_teste", False)),
         "entrada_em": s.entrada_em.isoformat() if s.entrada_em else None,
@@ -800,6 +855,50 @@ def criar_missao(
     return _missao_to_dict(m)
 
 
+class MissaoInteriorCreate(MissaoCreate):
+    sessao_id: int
+    titulo: str = Field(min_length=1, max_length=120)
+    descricao: Optional[str] = Field(default=None, max_length=1000)
+
+
+@router.post("/{dungeon_id}/sessao/missoes", status_code=201)
+def criar_missao_interior(dungeon_id: int, payload: MissaoInteriorCreate,
+                         db: Session = Depends(get_db),
+                         usuario: Usuario = Depends(get_usuario_atual)):
+    """Adiciona qualquer natureza ao acervo e arma a sessão conforme suas regras."""
+    d = _get_dungeon(db, dungeon_id, usuario)
+    s = db.query(DungeonSessao).filter(
+        DungeonSessao.id == payload.sessao_id,
+        DungeonSessao.dungeon_id == d.id,
+        DungeonSessao.usuario_id == usuario.id,
+    ).with_for_update().first()
+    if not s or s.status != "ATIVA" or s.data != tempo.hoje():
+        raise HTTPException(409, "Entre em uma sessão ativa para adicionar missões.")
+    if s.modo_teste and usuario.nivel_acesso != "Arquiteto":
+        raise HTTPException(403, "Somente o Arquiteto pode usar uma sessão de teste.")
+    prazo = _prazo_da_sessao(d, s)
+    if not s.modo_teste and prazo and _agora() >= prazo:
+        raise HTTPException(409, "O prazo desta sessão terminou.")
+    titulo = payload.titulo.strip()
+    if not titulo:
+        raise HTTPException(422, "Dê um título à missão.")
+    dados = payload.model_dump(exclude={"sessao_id"})
+    dados["titulo"] = titulo
+    if payload.natureza.upper() not in _NATUREZAS_ARMADAS + _NATUREZAS_BONUS + ("FLAVOR",):
+        raise HTTPException(422, "Natureza de missão inválida.")
+    m = _criar_missao(d.id, MissaoCreate(**dados))
+    db.add(m)
+    db.flush()
+    e = None
+    if m.natureza in _NATUREZAS_ARMADAS and _missao_eh_de_hoje(m, s.data):
+        e = DungeonMissaoExecucao(dungeon_missao_id=m.id, dungeon_sessao_id=s.id,
+                                 status="EM_PROGRESSO" if m.natureza == "RESISTENCIA" else "PENDENTE",
+                                 progresso_pct=0.0)
+        db.add(e)
+    db.commit()
+    return {"missao": _missao_to_dict(m), "execucao": _exec_to_dict(e, m) if e else None, "sessao": _sessao_to_dict(s)}
+
+
 @router.put("/missoes/{missao_id}")
 def atualizar_missao(
     missao_id: int,
@@ -1174,6 +1273,7 @@ def heartbeat(
                 "expirados": [], "sussurro": None, "execucoes": [],
                 "relatorio_auto": None}
 
+    s = db.query(DungeonSessao).filter(DungeonSessao.id == s.id).with_for_update().populate_existing().one()
     agora = _agora()
     ultimo = s.ultimo_heartbeat_em or s.entrada_em or agora
     delta_min = max(0.0, min((agora - ultimo).total_seconds() / 60.0, 5.0))  # cap anti-gap
@@ -1194,6 +1294,8 @@ def heartbeat(
     missoes = d.missoes.filter(DungeonMissao.ativo == True).all()
 
     for m in missoes:
+        if not _missao_eh_de_hoje(m, hoje):
+            continue
         lst = execs_por_missao.get(m.id, [])
 
         # ── RESISTENCIA: barra que enche com o tempo de presença ──
@@ -1409,6 +1511,10 @@ def iniciar_missao_exec(
     m = e.missao
     if e.status != "PENDENTE":
         raise HTTPException(400, f"Não é possível iniciar — status: {e.status}")
+    if m.natureza == "AGENDADA" and m.hora_limite:
+        limite = _parse_hhmm(m.hora_limite, e.sessao.data)
+        if limite and _agora() >= limite:
+            raise HTTPException(400, "O prazo desta missão venceu.")
     if m.natureza == "AGENDADA" and m.hora_inicio:
         inicio = _parse_hhmm(m.hora_inicio, e.sessao.data)
         if inicio and _agora() < inicio:
@@ -1934,7 +2040,7 @@ def score_dungeon(
         for e in execs:
             m = e.missao
             eh_contavel = m.natureza in _NATUREZAS_CONTAVEIS
-            eh_falha = e.status in ("CANCELADA", "EXPIRADA") and eh_contavel
+            eh_falha = e.status in ("CANCELADA", "EXPIRADA") and (eh_contavel or m.natureza in _NATUREZAS_BONUS)
             if e.status == "CONCLUIDA":
                 tot["eventos" if m.natureza in _NATUREZAS_BONUS else "concluidas"] += 1
             elif eh_falha:

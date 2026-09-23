@@ -137,6 +137,7 @@
        ABRIR
        ═══════════════════════════════════════════════════════════════ */
     abrir(dungeon, opcoes) {
+      this._interior = null;
       this._d        = dungeon || null;
       this._missoes  = dungeon ? (dungeon.missoes || []).slice() : [];
       this._folgas   = dungeon ? (dungeon.folgas || []).slice() : [];
@@ -146,6 +147,9 @@
       this._aoSalvar = (opcoes && opcoes.aoSalvar) || null;
 
       this._montar();
+      const palco = document.getElementById('fp-backdrop');
+      palco.classList.remove('fp-so-missoes');
+      (document.fullscreenElement || document.body).appendChild(palco);
       this._preencher(dungeon);
       this._irPara(0);
       this._pintar();
@@ -157,7 +161,59 @@
       this._carregarAcervo();
     },
 
+    abrirMissoes(dungeon, opcoes) {
+      this.abrir(dungeon);
+      this._interior = opcoes;
+      this._d = null;
+      this._missoes = [];
+      this._irPara(2);
+      this._renderMissoes();
+      const bd = document.getElementById('fp-backdrop');
+      bd.classList.add('fp-so-missoes');
+      const titulo = document.getElementById('fp-titulo');
+      titulo.textContent = titulo.dataset.txt = 'MISSÕES DA DUNGEON';
+      document.getElementById('fp-forjar').textContent = 'Adicionar à dungeon';
+      document.getElementById('fp-missoes-aviso').textContent =
+        'As missões ficam salvas nesta dungeon. Dias, horários e eventos seguem as regras de cada tipo.' +
+        (opcoes.modoTeste ? ' Modo Arquiteto: executar nesta sessão de teste não credita XP nem moedas ao perfil.' : '');
+      document.getElementById('fpm-titulo').value = '';
+      document.getElementById('fpm-titulo').focus();
+    },
+
+    async _salvarInterior() {
+      if (this._salvandoInterior) return;
+      if (document.getElementById('fpm-titulo').value.trim()) {
+        const antes = this._missoes.length;
+        this._pregarMissao();
+        if (this._missoes.length === antes) return;
+      }
+      if (!this._missoes.length) return this._toast('Adicione uma missão ao quadro.', 'error');
+      this._salvandoInterior = true;
+      const bd = document.getElementById('fp-backdrop');
+      bd.setAttribute('aria-busy', 'true');
+      const controles = [...bd.querySelectorAll('button,input,select,textarea')];
+      const estados = controles.map(c => c.disabled);
+      controles.forEach(c => c.disabled = true);
+      try {
+        while (this._missoes.length) {
+          await this._interior.aoAdicionar(this._missoes[0]);
+          this._missoes.shift(); // As já salvas não são reenviadas se a próxima falhar.
+        }
+        this._toast('Missões salvas na dungeon. Cada tipo seguirá seus dias e horários.', 'success');
+        this._salvandoInterior = false;
+        this.fechar();
+      } catch (err) {
+        this._renderMissoes();
+        this._toast('Não foi possível salvar: ' + (err.message || err), 'error');
+      } finally {
+        this._salvandoInterior = false;
+        bd.removeAttribute('aria-busy');
+        controles.forEach((c, i) => c.disabled = estados[i]);
+      }
+    },
+
     fechar() {
+      if (this._salvandoInterior) return;
       const bd = document.getElementById('fp-backdrop');
       if (!bd) return;
       bd.classList.remove('on');
@@ -176,6 +232,9 @@
       el.id = 'fp-backdrop';
       el.className = 'fp-backdrop';
       el.style.display = 'none';
+      el.setAttribute('role', 'dialog');
+      el.setAttribute('aria-modal', 'true');
+      el.setAttribute('aria-labelledby', 'fp-titulo');
       el.innerHTML = `
       <div class="fp-caixa" id="fp-caixa">
         <div class="fp-borda"></div>
@@ -187,6 +246,7 @@
           <button class="fp-x" id="fp-x" title="Fechar">✕</button>
         </div>
 
+        <p id="fp-missoes-aviso"></p>
         <div class="fp-trilho" id="fp-trilho">
           ${this.PASSOS.map((p, i) => `
             <div class="fp-passo${i === 0 ? ' on' : ''}" data-fp-passo="${i}">
@@ -476,7 +536,14 @@
     _ligar(el) {
       const g = id => document.getElementById(id);
 
-      el.addEventListener('click', e => { if (e.target === el) this.fechar(); });
+      el.addEventListener('keydown', e => {
+        e.stopPropagation();
+        if (e.key === 'Escape') { e.preventDefault(); this.fechar(); }
+      });
+      el.addEventListener('click', e => {
+        if (this._salvandoInterior) { e.stopImmediatePropagation(); e.preventDefault(); return; }
+        if (e.target === el) this.fechar();
+      }, true);
       g('fp-x').addEventListener('click', () => this.fechar());
       g('fp-voltar').addEventListener('click', () => this._irPara(this._passo - 1));
       g('fp-avancar').addEventListener('click', () => this._irPara(this._passo + 1));
@@ -1083,6 +1150,7 @@
     },
 
     async _salvar() {
+      if (this._interior) return this._salvarInterior();
       const g = id => document.getElementById(id);
       const titulo = g('fp-titulo-i').value.trim();
       if (!titulo) {

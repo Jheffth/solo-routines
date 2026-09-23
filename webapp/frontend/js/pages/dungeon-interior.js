@@ -137,6 +137,7 @@ const DungeonInterior = {
   _bindTeclas() {
     this._escHandler = (ev) => {
       if (!this._aberto) return;
+      if (document.getElementById('fp-backdrop')?.classList.contains('on')) return;
       if (document.getElementById('dg-clear-report')?.classList.contains('on')) return;
 
       const alvo = ev.target;
@@ -297,6 +298,14 @@ const DungeonInterior = {
         <div class="dg-counter"><div class="num mc" id="dg-hud-mc">+${this._sessao?.moedas_ganhas || 0}</div><div class="lbl">Moedas</div></div>
       </div>` : '<div class="dg-hud-mid"></div>'}
       <div class="dg-hud-actions">
+        ${ativa ? `<div class="dg-hud-missoes" role="group" aria-label="Missões da dungeon">
+          <button type="button" class="dg-hud-acao dg-hud-acao-primary" id="dg-adicionar" aria-haspopup="dialog" title="Adicionar missão à dungeon">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Adicionar missão</span>
+          </button>
+          <button type="button" class="dg-hud-acao" id="dg-agenda-btn" aria-haspopup="dialog" title="Próximas missões e contagem regressiva">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg><span>Próximas missões</span>
+          </button>
+        </div>` : ''}
         <button class="dg-btn-ico" id="dg-btn-score" title="Crônica do Portão — score permanente">📜</button>
         ${ativa ? '<button class="dg-btn-ico" id="dg-btn-foco" title="Modo foco (F) — só a missão em curso">◎</button>' : ''}
         <button class="dg-btn-ico" id="dg-btn-som" title="Som ambiente">${this._audioOn ? '🔊' : '🔇'}</button>
@@ -311,6 +320,8 @@ const DungeonInterior = {
             : '<button class="dg-btn-sair" id="dg-btn-encerrar">⟁ Sair da Dungeon</button>'}
       </div>`;
 
+    document.getElementById('dg-agenda-btn')?.addEventListener('click', () => this._abrirAgenda());
+    document.getElementById('dg-adicionar')?.addEventListener('click', () => this._abrirForjaRapida());
     document.getElementById('dg-btn-fs')?.addEventListener('click', () => this._toggleFullscreen());
     document.getElementById('dg-btn-score')?.addEventListener('click', () => {
       if (typeof DungeonScore !== 'undefined') DungeonScore.abrir(this._dungeon);
@@ -352,6 +363,26 @@ const DungeonInterior = {
      Por isso agora a regra é por EXCLUSÃO, não por inclusão: o que não
      for passiva nem bônus vai para o quadro ativo, inclusive natureza
      que ainda não existe. Lista branca esquece; lista negra não. */
+  _abrirForjaRapida() {
+    if (!this._aberto || this._sessao?.status !== 'ATIVA') return;
+    const dungeonId = this._dungeon.id, sessaoId = this._sessao.id;
+    ForjaPortao.abrirMissoes(this._dungeon, {
+      modoTeste: this._modoTeste,
+      aoAdicionar: async missao => {
+        const resp = await API.post(`/dungeons/${dungeonId}/sessao/missoes`, {
+          ...missao, sessao_id: sessaoId,
+        });
+        if (this._aberto && this._sessao?.id === sessaoId && this._dungeon?.id === dungeonId) {
+          if (resp.sessao) this._sessao = resp.sessao;
+          if (resp.execucao && !this._execs.some(e => e.id === resp.execucao.id)) this._execs.push(resp.execucao);
+          this._renderMissoes();
+          this._atualizarContadores();
+        }
+        return resp;
+      },
+    });
+  },
+
   _PASSIVAS: ['RESISTENCIA'],
   _BONUS:    ['EVENTO_ALEATORIO', 'BEM_ESTAR', 'FLAVOR'],
 
@@ -360,19 +391,18 @@ const DungeonInterior = {
     const passivas = document.getElementById('dg-col-passivas');
     if (!ativas) return;
 
-    const padrao = this._execs.filter(e =>
-      !this._PASSIVAS.includes(e.missao.natureza) &&
-      !this._BONUS.includes(e.missao.natureza));
+    this._sincronizarRelogio();
+    const padrao = this._execs.filter(e => !this._PASSIVAS.includes(e.missao.natureza));
     const resist = this._execs.filter(e => this._PASSIVAS.includes(e.missao.natureza));
 
-    ativas.innerHTML = padrao.length ? padrao.map((e, i) => this._mcardHTML(e, i)).join('')
+    ativas.innerHTML = padrao.length ? padrao.map((e, i) => this._BONUS.includes(e.missao.natureza) ? this._ocorrenciaHTML(e) : this._mcardHTML(e, i)).join('')
       : '<div style="font-size:.78rem;color:var(--text-muted);padding:.5rem 0">Nenhuma missão ativa neste quadro.</div>';
 
     passivas.innerHTML = resist.length ? resist.map((e, i) => {
       const pct = Math.min(100, e.progresso_pct || 0);
       const C = 2 * Math.PI * 28;
       return `
-      <div class="dg-ring-card" style="animation-delay:${i * .07}s">
+      <div class="dg-ring-card" data-dg-card="${e.id}" style="animation-delay:${i * .07}s">
         <div class="dg-ring">
           <svg width="68" height="68" viewBox="0 0 68 68">
             <circle class="track" cx="34" cy="34" r="28" fill="none" stroke-width="5"/>
@@ -391,10 +421,92 @@ const DungeonInterior = {
     }).join('')
       : '<div style="font-size:.78rem;color:var(--text-muted);padding:.5rem 0">Nada progride sozinho aqui... ainda.</div>';
 
+    const previstas = (this._sessao.agenda || []).filter(a =>
+      this._BONUS.includes(a.missao.natureza) || !this._execs.some(e => e.dungeon_missao_id === a.missao.id));
+    ativas.insertAdjacentHTML('beforeend', previstas.map(a => this._previstaHTML(a)).join(''));
+    this._aplicarSentinela();
+    const aviso = document.getElementById('dg-proximas');
+    if (aviso) aviso.innerHTML = this._agendaHTML();
     document.querySelectorAll('[data-dg-cumprir]').forEach(b =>
       b.addEventListener('click', () => this._cumprir(parseInt(b.dataset.dgCumprir), b)));
     document.querySelectorAll('[data-dg-acao]').forEach(b =>
       b.addEventListener('click', () => this._acaoExec(b.dataset.dgAcao, parseInt(b.dataset.dgExec))));
+  },
+
+  _aplicarSentinela() {
+    // A dificuldade pertence à dungeon; não inventa níveis por missão.
+    const niveis = {
+      FACIL: ['Fácil', '#3b82f6'], NORMAL: ['Normal', '#94a3b8'],
+      DIFICIL: ['Difícil', '#f59e0b'], LENDARIO: ['Lendária', '#e11d48'],
+    };
+    const [nome, cor] = niveis[this._dungeon?.dificuldade] || niveis.NORMAL;
+    document.querySelectorAll('#dg-col-ativas .dg-mcard, #dg-col-passivas .dg-ring-card').forEach(card => {
+      card.classList.add('dg-sentinela');
+      card.style.setProperty('--ds-cor', cor);
+      const exec = this._execs.find(e => String(e.id) === card.dataset.dgCard);
+      let estado = card.classList.contains('dg-prevista') ? 'waiting' : 'ready';
+      if (exec) estado = ({CONCLUIDA:'done',EXPIRADA:'failed',CANCELADA:'failed',PAUSADA:'paused',EM_PROGRESSO:'running'})[exec.status] || (this._BONUS.includes(exec.missao.natureza) ? 'running' : 'ready');
+      if (card.querySelector('.dg-exec-tag.wait')) estado = 'waiting';
+      if (card.querySelector('.dg-exec-tag.exp')) estado = 'failed';
+      card.dataset.sentinela = estado;
+      card.insertAdjacentHTML('afterbegin', '<span class="ds-fio" aria-hidden="true"></span><span class="ds-corrente" aria-hidden="true"></span>');
+      const info = card.querySelector('.info');
+      if (info) {
+        const selo = document.createElement('div');
+        selo.className = 'ds-identidade';
+        selo.innerHTML = `<span class="ds-dificuldade">Dungeon · ${nome}</span><span class="ds-estado">${({waiting:'Aguardando',ready:'Disponível',running:'Em andamento',paused:'Pausada',done:'Concluída',failed:'Falhou'})[estado]}</span>`;
+        info.prepend(selo);
+      }
+      const ico = card.querySelector(':scope > .ico');
+      if (ico) {
+        ico.classList.add('ds-sigilo');
+        ico.innerHTML = `<svg class="ds-orbitas" viewBox="0 0 100 100" aria-hidden="true"><circle class="ds-anel" cx="50" cy="50" r="45"/><circle class="ds-interior" cx="50" cy="50" r="35"/><path class="ds-arco" d="M50 5a45 45 0 0 1 45 45"/><path class="ds-runa" d="m50 21 29 29-29 29-29-29Z"/></svg><span class="ds-nucleo">${ico.innerHTML}</span>`;
+      }
+      card.querySelectorAll('button').forEach(b => {
+        if (b.dataset.dgAcao) b.setAttribute('aria-label', ({iniciar:'Iniciar missão',pausar:'Pausar missão',retomar:'Retomar missão',cancelar:'Cancelar missão'})[b.dataset.dgAcao] || b.textContent);
+      });
+    });
+  },
+
+  _seguro(v) { return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); },
+  _instante(iso) { return iso ? new Date(/[zZ]|[+-]\d\d:\d\d$/.test(iso) ? iso : iso + '-03:00').getTime() : null; },
+  _sincronizarRelogio() {
+    const hora = this._sessao?.agora_server;
+    if (hora && hora !== this._ultimaHoraServidor) {
+      this._timeOffset = Date.now() - this._instante(hora);
+      this._ultimaHoraServidor = hora;
+    }
+  },
+  _contagemHTML(iso) {
+    return iso ? `<strong class="dg-contagem" data-dg-contagem="${this._instante(iso)}">--:--</strong>` : '';
+  },
+  _previstaHTML(a) {
+    const m = a.missao;
+    const legenda = a.janela_fim ? 'Janela de aparecimento' : a.proxima_em ? 'Próxima ativação em' : m.natureza === 'FLAVOR' ? 'Sussurro do dia · aparece durante a sessão' : 'Missão registrada para hoje';
+    return `<article class="dg-mcard dg-prevista"><div class="ico">${this._glifo(m.natureza)}</div><div class="info"><div class="titulo">${this._seguro(m.titulo)}</div><div class="desc">${legenda}</div>${this._contagemHTML(a.proxima_em)}${a.janela_fim ? ' até ' + this._contagemHTML(a.janela_fim) : ''}<div class="desc">${m.natureza === 'BEM_ESTAR' ? 'Lembrete automático · cada ocorrência fica no histórico' : this._rotuloNatureza(m.natureza)}</div></div></article>`;
+  },
+  _ocorrenciaHTML(e) {
+    const m = e.missao, expira = this._instante(e.disparada_em) + (m.expira_em_min || 5) * 60000;
+    const falhou = ['EXPIRADA','CANCELADA'].includes(e.status);
+    const concluida = e.status === 'CONCLUIDA';
+    const hora = e.disparada_em ? new Date(this._instante(e.disparada_em)).toLocaleTimeString('pt-BR', {timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit'}) : '';
+    return `<article class="dg-mcard ${falhou ? 'dg-falhou' : concluida ? 'done' : 'emcurso'}" data-dg-card="${e.id}"><div class="ico">${this._glifo(m.natureza)}</div><div class="info"><div class="titulo">${this._seguro(m.titulo)}</div><div class="desc">Ocorrência ${hora} · sequência: ${e.streak || 0} conclusões</div><div class="desc">${falhou ? 'Falhou — prazo encerrado' : concluida ? 'Concluída' : 'Disponível · conclua antes do prazo'}</div>${!falhou && !concluida ? `<span>Tempo restante </span><strong class="dg-contagem" data-dg-contagem="${expira}">--:--</strong>` : ''}</div>${!falhou && !concluida ? `<button class="dg-btn-cumprir" data-dg-cumprir="${e.id}">Concluir</button>` : ''}</article>`;
+  },
+  _agendaHTML() {
+    const proximas = (this._sessao?.agenda || []).filter(a => a.proxima_em &&
+      (this._BONUS.includes(a.missao.natureza) || this._instante(a.proxima_em) > Date.now() - (this._timeOffset || 0)));
+    return proximas.length ? proximas.map(a => `<div class="dg-proxima"><span>${this._seguro(a.missao.titulo)}${a.janela_fim ? ' · janela' : ''}</span>${this._contagemHTML(a.proxima_em)}${a.janela_fim ? ' até ' + this._contagemHTML(a.janela_fim) : ''}</div>`).join('') : '<p>Nenhuma ativação futura prevista nesta sessão.</p>';
+  },
+  _abrirAgenda() {
+    document.getElementById('dg-agenda-modal')?.remove();
+    const modal = document.createElement('dialog');
+    modal.id = 'dg-agenda-modal';
+    modal.innerHTML = `<h2>Próximas missões</h2><p>Contagem regressiva sincronizada com a dungeon.</p><div id="dg-proximas">${this._agendaHTML()}</div><button class="dg-btn-cumprir">Voltar ao quadro</button>`;
+    (document.fullscreenElement || document.body).appendChild(modal);
+    modal.addEventListener('keydown', ev => ev.stopPropagation());
+    modal.querySelector('button').onclick = () => modal.close();
+    modal.showModal();
+    this._tickUI();
   },
 
   /* Card de missão de livre execução (PADRAO/AGENDADA) com ciclo de vida */
@@ -406,8 +518,8 @@ const DungeonInterior = {
     let janela = '', aindaNaoAbriu = false, jaExpirou = false;
     if (agendada) {
       janela = `<div class="desc" style="color:var(--dg-a)">🕒 ${m.hora_inicio || '--:--'} → prazo ${m.hora_limite || '--:--'}</div>`;
-      const agora = new Date();
-      const hm = t => { const [h, mm] = t.split(':').map(Number); const x = new Date(); x.setHours(h, mm, 0, 0); return x; };
+      const agora = new Date(Date.now() - (this._timeOffset || 0));
+      const hm = t => new Date(`${this._sessao.data}T${t}:00-03:00`);
       if (m.hora_inicio && agora < hm(m.hora_inicio)) aindaNaoAbriu = true;
       if (m.hora_limite && agora > hm(m.hora_limite) && !['CONCLUIDA'].includes(e.status)) jaExpirou = true;
     }
@@ -420,7 +532,7 @@ const DungeonInterior = {
     else if (e.status === 'EXPIRADA' || jaExpirou)
                                         acoes = '<span class="dg-exec-tag exp">⌛ Expirada</span>';
     else if (e.status === 'CANCELADA')  acoes = '<span class="dg-exec-tag can">✕ Cancelada</span>';
-    else if (aindaNaoAbriu)             acoes = `<span class="dg-exec-tag wait">🔒 abre às ${m.hora_inicio}</span>`;
+    else if (aindaNaoAbriu)             acoes = `<span class="dg-exec-tag wait">Abre em <b data-dg-contagem="${this._instante(this._sessao.data + 'T' + m.hora_inicio + ':00')}">--:--</b></span>`;
     else if (e.status === 'PENDENTE')   acoes = btn('iniciar', '▶ Iniciar') + btn('cancelar', '✕', true);
     else if (e.status === 'EM_PROGRESSO')
       acoes = `<button class="dg-btn-cumprir" data-dg-cumprir="${e.id}">✓ Cumprir</button>` +
@@ -449,6 +561,7 @@ const DungeonInterior = {
           <div class="titulo">${m.titulo}${e.status === 'PAUSADA' ? ' <span class="dg-mc-pausada">pausada</span>' : ''}</div>
           ${m.descricao ? `<div class="desc">${m.descricao}</div>` : ''}
           ${janela}
+          <div class="desc">Sequência: ${e.streak || 0} conclusões</div>
           ${this._corpoNatureza(m)}
           <div class="dg-mc-placas">
             <span class="pl nat">${g}${this._rotuloNatureza(m.natureza)}</span>
@@ -692,6 +805,16 @@ const DungeonInterior = {
     // O rank que ele levaria se saísse agora
     this._atualizarProjecao();
 
+    let venceu = false;
+    document.querySelectorAll('[data-dg-contagem]').forEach(t => {
+      const segundos = Math.max(0, Math.ceil((Number(t.dataset.dgContagem) - agoraSync) / 1000));
+      t.textContent = segundos > 0 ? [Math.floor(segundos / 3600), Math.floor(segundos / 60) % 60, segundos % 60].map(n => String(n).padStart(2, '0')).join(':') : 'Atualizando…';
+      if (!segundos) venceu = true;
+    });
+    if (venceu && Date.now() - (this._ultimaAtualizacaoAgenda || 0) > 10000) {
+      this._ultimaAtualizacaoAgenda = Date.now();
+      this._heartbeat();
+    }
     // Timers dos eventos pop-in
     document.querySelectorAll('.dg-evento [data-expira]').forEach(t => {
       const resta = Math.floor((parseInt(t.dataset.expira) - agoraSync) / 1000);
@@ -701,7 +824,8 @@ const DungeonInterior = {
   },
 
   async _heartbeat() {
-    if (!this._aberto || this._sessao?.status !== 'ATIVA') return;
+    if (!this._aberto || this._sessao?.status !== 'ATIVA' || this._hbEmCurso) return;
+    this._hbEmCurso = true;
     try {
       const resp = await API.dungeons.heartbeat(this._dungeon.id, this._modoTeste);
 
@@ -733,6 +857,7 @@ const DungeonInterior = {
       if (resp.sussurro) this._sussurrar(resp.sussurro);
       this._fxEventosXP(resp.eventos_xp);
     } catch (_) { /* rede oscilou — tenta no próximo pulso */ }
+    finally { this._hbEmCurso = false; }
   },
 
   _atualizarContadores() {
@@ -806,7 +931,7 @@ const DungeonInterior = {
     const stack = document.getElementById('dg-evento-stack');
     if (!stack) return;
     const m = execEvento.missao;
-    const expiraTs = Date.now() + (m.expira_em_min || 5) * 60000;
+    const expiraTs = this._instante(execEvento.disparada_em) + (m.expira_em_min || 5) * 60000;
     const el = document.createElement('div');
     el.className = 'dg-evento';
     el.innerHTML = `
@@ -818,9 +943,8 @@ const DungeonInterior = {
       </div>
       <button class="dg-btn-cumprir">${m.natureza === 'BEM_ESTAR' ? 'Feito ✓' : 'Capturar'}</button>`;
     el.querySelector('button').addEventListener('click', async () => {
-      el.classList.add('out');
-      setTimeout(() => el.remove(), 350);
       await this._cumprir(execEvento.id);
+      if (this._execs.find(e => e.id === execEvento.id)?.status === 'CONCLUIDA') el.remove();
     });
     stack.appendChild(el);
     this._log(`${m.icone || '⚡'} ${m.titulo}`, '');

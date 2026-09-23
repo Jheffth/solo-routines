@@ -298,6 +298,7 @@ const ForjaTestes = {
       { id: 'enviarAura',    rotulo: 'Enviar aura a hunter',desc: 'presente real' },
     ],
     dungeon: [
+      { id: 'cardDungeonDelta', rotulo: 'Delta · Sentinela', desc: 'Proposta Codex · cards interativos, cronômetros e histórico' },
       { id: 'cardDungeonModelos', rotulo: '⚔ Novos Modelos de Card',  desc: 'Alpha · Beta · Gamma — propostas para aprovação' },
       { id: 'cardMissao',         rotulo: '🗂 Card Atual (referência)',desc: 'vitrine do componente real em uso' },
     ],
@@ -424,6 +425,7 @@ const ForjaTestes = {
       enviarAura:  () => A?.enviarAura(),
       // Novos modelos de card de dungeon
       cardDungeonModelos: () => A?.cardDungeonModelos(),
+      cardDungeonDelta: () => A?.cardDungeonDelta(),
     };
     const fn = mapa[arg];
     if (!fn) return;
@@ -432,7 +434,7 @@ const ForjaTestes = {
     // visível para serem usados — eclipsar só o que é animação.
     const painel = ['convites', 'comemorativas', 'enviarAura',
                     'cardMissao', 'forjaMissao', 'banner', 'bannerPremium',
-                    'estandarte', 'cardDungeonModelos'].includes(arg);
+                    'estandarte', 'cardDungeonModelos', 'cardDungeonDelta'].includes(arg);
     // O Eco toma a tela inteira: fechar a Forja antes seria o certo,
     // mas ele já cobre tudo — e voltar para a Forja depois é o que o
     // Arquiteto vai querer, para disparar o próximo.

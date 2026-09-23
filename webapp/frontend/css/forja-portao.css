@@ -714,3 +714,12 @@
   .fp-linha .v.pulsa { animation: none; }
   .fp-camara.on { animation: none; }
 }
+
+/* O quadro original também abre durante a travessia. */
+#fp-missoes-aviso { display: none; }
+.fp-so-missoes #fp-missoes-aviso { display: block; margin: 0; padding: .8rem 1.4rem; color: var(--text-secondary); font-size: .8rem; line-height: 1.5; }
+.fp-so-missoes .fp-trilho, .fp-so-missoes .fp-previa,
+.fp-so-missoes #fp-voltar, .fp-so-missoes #fp-avancar { display: none; }
+.fp-so-missoes .fp-corpo { grid-template-columns: minmax(0, 1fr); }
+.fp-so-missoes .fp-campos { width: 100%; }
+.fp-so-missoes[aria-busy="true"] .fp-corpo { pointer-events: none; opacity: .65; }

@@ -2025,3 +2025,73 @@
   clip-path: polygon(20px 0, 100% 0, 100% calc(100% - 20px),
                      calc(100% - 20px) 100%, 0 100%, 0 20px);
 }
+
+/* Agenda e ocorrências preservadas no quadro do dia. */
+.dg-prevista { border: 1px dashed rgba(96,165,250,.4); background: rgba(30,58,138,.12); }
+.dg-contagem { display: inline-block; font: 700 1.2rem var(--font-mono,monospace); color: #67e8f9; letter-spacing: .08em; margin: .35rem 0; font-variant-numeric: tabular-nums; }
+.dg-falhou { border-left: 3px solid #fb7185; }
+.dg-falhou .desc { color: #fda4af; }
+.dg-agenda-btn { border: 1px solid #2563eb; color: #bfdbfe; background: #101b35; padding: .65rem 1rem; border-radius: .5rem; margin-bottom: 1rem; cursor: pointer; }
+#dg-agenda-modal { color: #e2e8f0; background: #0b1020; border: 1px solid #3b82f6; border-radius: 1rem; padding: 1.5rem; width: min(560px,90vw); max-height: 85vh; overflow: auto; }
+#dg-agenda-modal::backdrop { background: #020617bb; backdrop-filter: blur(5px); }
+.dg-proxima { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; border-bottom: 1px solid #334155; padding: 1rem 0; }
+
+/* Ações de missão integradas à barra fixa da travessia. */
+.dg-hud { flex-shrink: 0; }
+.dg-hud-actions { flex-wrap: wrap; }
+.dg-hud-missoes { display: inline-flex; align-items: center; gap: .3rem; padding-right: .65rem; margin-right: .15rem; border-right: 1px solid color-mix(in srgb, var(--dg-a, #7c3aed) 25%, transparent); }
+.dg-hud-acao { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; min-height: 36px; padding: .5rem .7rem; border: 1px solid rgba(148,163,184,.2); border-radius: 9px; background: rgba(255,255,255,.035); color: var(--text-secondary, #cbd5e1); font-family: var(--font-section); font-size: .7rem; font-weight: 600; white-space: nowrap; cursor: pointer; transition: background .18s, border-color .18s, color .18s; }
+.dg-hud-acao svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+.dg-hud-acao-primary { color: var(--text-primary, #f1f5f9); border-color: color-mix(in srgb, var(--dg-a, #7c3aed) 45%, transparent); background: color-mix(in srgb, var(--dg-a, #7c3aed) 14%, transparent); }
+.dg-hud-acao:hover { color: #fff; border-color: var(--dg-a, #7c3aed); background: color-mix(in srgb, var(--dg-a, #7c3aed) 23%, transparent); }
+.dg-hud-acao:focus-visible { outline: 2px solid var(--dg-a, #a78bfa); outline-offset: 3px; }
+@media (max-width: 700px) {
+  .dg-hud { gap: .65rem; padding: .65rem .8rem; }
+  .dg-hud-actions { width: 100%; gap: .4rem; }
+  .dg-hud-missoes { flex: 1 0 100%; border-right: 0; padding-right: 0; margin-right: 0; }
+  .dg-hud-acao { flex: 1; min-height: 44px; }
+  .dg-hud-mid { gap: .8rem; }
+}
+
+/* Sentinela II — aplicação visual sobre os controles reais da dungeon. */
+#dungeon-interior .dg-sentinela {--ds-cor:#94a3b8;isolation:isolate;position:relative;display:flex;flex-wrap:wrap;align-items:flex-start;gap:14px;padding:19px;margin-bottom:14px;clip-path:none;border-radius:14px;border:1px solid color-mix(in srgb,var(--ds-cor) 28%,transparent);border-left:3px solid var(--ds-cor);background:radial-gradient(120% 140% at 0 0,color-mix(in srgb,var(--ds-cor) 14%,transparent),transparent 58%),linear-gradient(145deg,#0b0916ab,#06060dc4);backdrop-filter:blur(14px);overflow:hidden;opacity:1;filter:none;transition:transform .22s,box-shadow .22s}
+#dungeon-interior .dg-sentinela:hover {transform:translateY(-2px);box-shadow:0 8px 26px #0007,0 0 24px color-mix(in srgb,var(--ds-cor) 16%,transparent)}
+#dungeon-interior .dg-sentinela:before,#dungeon-interior .dg-sentinela:after,#dungeon-interior .dg-sentinela .dg-mc-borda {display:none}
+#dungeon-interior .dg-sentinela > :not(.ds-corrente):not(.ds-fio){position:relative;z-index:1}
+#dungeon-interior .dg-sentinela .info {flex:1;min-width:0}
+#dungeon-interior .dg-sentinela .titulo {white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;font-family:var(--font-section);font-size:1.08rem;line-height:1.35;text-decoration:none;color:#e8eefb;text-shadow:0 0 18px color-mix(in srgb,var(--ds-cor) 18%,transparent)}
+#dungeon-interior .dg-sentinela .desc {line-height:1.6;color:#a8b7cc}
+.ds-identidade {display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;font-size:.62rem;letter-spacing:.05em}
+.ds-dificuldade {color:var(--ds-cor);border:1px solid color-mix(in srgb,var(--ds-cor) 30%,transparent);background:color-mix(in srgb,var(--ds-cor) 9%,transparent);padding:3px 7px;border-radius:4px}
+.ds-estado {color:#b9c6d9}
+#dungeon-interior .ds-sigilo {flex:0 0 64px;width:64px;height:64px;display:grid;place-items:center;background:radial-gradient(circle,color-mix(in srgb,var(--ds-cor) 17%,transparent),transparent 68%);color:var(--ds-cor);border:0;border-radius:0;clip-path:none;padding:0;box-shadow:none}
+#dungeon-interior .ds-orbitas {position:absolute;inset:0;width:64px;height:64px;fill:none;stroke:currentColor;stroke-width:1;overflow:visible}
+.ds-anel {stroke-dasharray:2 8;opacity:.6;transform-origin:50px 50px;animation:ds-giro 18s linear infinite}
+.ds-interior {stroke-dasharray:34 10;opacity:.3;transform-origin:50px 50px;animation:ds-giro 24s linear infinite reverse}
+.ds-arco {stroke-width:2;opacity:.75;transform-origin:50px 50px;animation:ds-giro 6s linear infinite}
+.ds-runa {opacity:.3}.ds-nucleo {display:grid;place-items:center;z-index:1}.ds-nucleo svg {width:24px;height:24px}.ds-nucleo .emoji {font-size:24px}
+.ds-fio {position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--ds-cor),#fff,var(--ds-cor),transparent);background-size:200% 100%;opacity:.2;pointer-events:none}
+.ds-corrente {display:none;position:absolute;inset:0;pointer-events:none;opacity:.5;background-image:repeating-linear-gradient(115deg,transparent 0 22px,color-mix(in srgb,var(--ds-cor) 13%,transparent) 22px 24px,transparent 24px 46px),repeating-linear-gradient(65deg,transparent 0 22px,color-mix(in srgb,var(--ds-cor) 13%,transparent) 22px 24px,transparent 24px 46px);background-size:92px 100%;mask-image:linear-gradient(90deg,transparent,#000 22%,#000 78%,transparent)}
+#dungeon-interior [data-sentinela=running] {border-color:color-mix(in srgb,var(--ds-cor) 65%,transparent);box-shadow:0 0 22px color-mix(in srgb,var(--ds-cor) 12%,transparent)}
+[data-sentinela=running] .ds-fio {opacity:1;animation:ds-fio 2.4s linear infinite}
+[data-sentinela=running] .ds-corrente {display:block;animation:ds-corrente 2.8s linear infinite}
+#dungeon-interior [data-sentinela=waiting] {border-top-style:dashed}
+[data-sentinela=waiting] .ds-estado {color:#7dd3fc}
+[data-sentinela=paused] .ds-estado {color:#fcd34d}
+[data-sentinela=paused] .ds-orbitas * {animation-play-state:paused}
+#dungeon-interior [data-sentinela=done] {border-left-color:#34d399}
+#dungeon-interior [data-sentinela=failed] {border-left-color:#fb7185}
+[data-sentinela=done] .ds-estado {color:#6ee7b7}[data-sentinela=failed] .ds-estado {color:#fda4af}
+[data-sentinela=done] .ds-orbitas *,[data-sentinela=failed] .ds-orbitas * {animation:none}
+#dungeon-interior .dg-sentinela .dg-mc-lado {flex:1 0 100%;display:flex;flex-direction:row;align-items:center;justify-content:space-between;border-top:1px solid #ffffff12;padding-top:12px;gap:12px}
+#dungeon-interior .dg-sentinela .dg-mc-acoes {display:flex;flex-wrap:wrap;gap:7px;margin-left:auto}
+#dungeon-interior .dg-sentinela .dg-btn-cumprir {min-height:38px;clip-path:none;border-radius:7px;border:1px solid color-mix(in srgb,var(--ds-cor) 60%,transparent);background:linear-gradient(135deg,color-mix(in srgb,var(--ds-cor) 65%,#121526),color-mix(in srgb,var(--ds-cor) 30%,#121526));color:white;font-size:.75rem;padding:8px 12px;box-shadow:0 0 14px color-mix(in srgb,var(--ds-cor) 12%,transparent)}
+#dungeon-interior .dg-sentinela .dg-btn-ghost-mini {background:#ffffff05;color:#cbd5e1}
+#dungeon-interior .dg-sentinela button:focus-visible {outline:2px solid var(--ds-cor);outline-offset:3px}
+#dungeon-interior .dg-sentinela .dg-contagem,#dungeon-interior .dg-sentinela .dg-mc-crono {font:700 1.35rem var(--font-mono,monospace);font-variant-numeric:tabular-nums;color:color-mix(in srgb,var(--ds-cor) 40%,white);text-shadow:0 0 18px color-mix(in srgb,var(--ds-cor) 30%,transparent)}
+#dungeon-interior .dg-sentinela .dg-ring .fill {stroke:var(--ds-cor)}
+@keyframes ds-giro {to{transform:rotate(360deg)}}
+@keyframes ds-fio {from{background-position:200% 0}to{background-position:-200% 0}}
+@keyframes ds-corrente {from{background-position:0 0,0 0}to{background-position:92px 0,-92px 0}}
+@media(max-width:600px){#dungeon-interior .dg-sentinela{padding:14px;gap:10px}#dungeon-interior .ds-sigilo{flex-basis:52px;width:52px;height:52px}#dungeon-interior .ds-orbitas{width:52px;height:52px}#dungeon-interior .dg-sentinela .dg-btn-cumprir{min-height:44px}}
+@media(prefers-reduced-motion:reduce){#dungeon-interior .dg-sentinela,#dungeon-interior .dg-sentinela *{animation:none!important;transition:none!important}}
