@@ -112,6 +112,12 @@ def main_teste():
         cod_arq = r.json()["codigo"]
         ok(len(cod_arq) == 6 and cod_arq.isdigit(), "seis digitos")
 
+        # O PRAZO SAI COM FUSO. Sem ele o navegador le UTC como hora local
+        # e, em Sao Paulo, o contador de 10 minutos mostrava 3h10.
+        exp = r.json()["expira_em"]
+        ok(exp.endswith("+00:00") or exp.endswith("Z"),
+           "expira_em carrega o fuso — a tela nao precisa adivinhar")
+
         cod_kaio = c.post(P + "/bots/codigo/telegram", headers=K).json()["codigo"]
         ok(cod_kaio != cod_arq, "cada hunter recebe o seu")
 

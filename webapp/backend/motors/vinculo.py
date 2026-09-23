@@ -41,7 +41,7 @@ Desenho emprestado do Solo CMV, que já resolveu isto em produção.
 from __future__ import annotations
 
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from database import CodigoVinculo, TentativaVinculo, Usuario
 
@@ -62,6 +62,26 @@ class ErroVinculo(Exception):
 
 def _agora() -> datetime:
     return datetime.utcnow()
+
+
+def _iso_utc(dt: datetime | None) -> str | None:
+    """
+    O horário COM o fuso dito por extenso.
+
+    O banco guarda UTC sem fuso (`utcnow()`), e `isoformat()` de um
+    datetime sem fuso sai "2026-09-22T13:10:00" — sem Z, sem offset. O
+    navegador lê isso como hora LOCAL. Em São Paulo, isso empurra o prazo
+    três horas para frente: o contador de um código que vale 10 minutos
+    mostrava 3h10.
+
+    O Codex corrigiu isso na tela (acrescentando o Z quando falta). A
+    correção de verdade é aqui, na origem: qualquer outro leitor desta
+    resposta erraria do mesmo jeito. A da tela fica, como rede — ela já
+    aceita o formato com offset.
+    """
+    if dt is None:
+        return None
+    return dt.replace(tzinfo=timezone.utc).isoformat()
 
 
 def _canal_valido(canal: str) -> str:
@@ -96,7 +116,7 @@ def gerar(db, usuario: Usuario, canal: str) -> dict:
                          codigo=codigo, expira_em=expira))
     db.commit()
 
-    return {"codigo": codigo, "expira_em": expira.isoformat(),
+    return {"codigo": codigo, "expira_em": _iso_utc(expira),
             "validade_min": MINUTOS_VALIDADE, "canal": canal}
 
 
@@ -243,13 +263,11 @@ def situacao(db, usuario: Usuario) -> dict:
         "telegram": {
             "vinculado": bool(usuario.telegram_chat_id),
             "nome": usuario.telegram_nome,
-            "desde": usuario.telegram_vinculado_em.isoformat()
-                     if usuario.telegram_vinculado_em else None,
+            "desde": _iso_utc(usuario.telegram_vinculado_em),
         },
         "whatsapp": {
             "vinculado": bool(usuario.whatsapp_jid),
             "numero": usuario.whatsapp_numero,
-            "desde": usuario.whatsapp_vinculado_em.isoformat()
-                     if usuario.whatsapp_vinculado_em else None,
+            "desde": _iso_utc(usuario.whatsapp_vinculado_em),
         },
     }
