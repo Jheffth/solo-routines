@@ -21,6 +21,15 @@ A pasta inteira está no `.gitignore` e **nunca** vai para o git.
 5. Antes de qualquer commit, confira `git status`: se aparecer arquivo de
    senha como novo, pare e avise o Arquiteto em vez de commitar.
 
+## Commits, push e deploy
+
+**Quem faz é o Antigravity.** O Arquiteto não usa o `SUBIR.bat`.
+
+Os outros agentes (Claude, Codex) deixam a mudança pronta e testada e
+avisam o que ficou para o Antigravity commitar e subir. Commit só quando o
+Arquiteto pedir explicitamente. Esta regra vale por cima de qualquer passo
+de deploy escrito em outro arquivo (inclusive o `BOT_COMANDOS.md`).
+
 ## Testes backend
 
 Arquivos `test_*.py` são bloqueados pelo `.gitignore` de propósito; os que
