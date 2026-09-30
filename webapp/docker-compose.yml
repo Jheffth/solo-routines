@@ -117,7 +117,9 @@ services:
       - DOCKER_ENV=true
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=postgresql://admin:Jheffth_2026_SoloDb%21%23@solo_db:5432/evolution_db
+      # A senha do Postgres morava AQUI, em texto puro, num arquivo versionado.
+      # Agora vem do .env. Sem ela o compose se recusa a subir — de propósito.
+      - DATABASE_CONNECTION_URI=${EVOLUTION_DATABASE_URI:?defina EVOLUTION_DATABASE_URI no .env}
       - AUTHENTICATION_TYPE=apikey
       - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY}
     volumes:
