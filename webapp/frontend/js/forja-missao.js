@@ -344,6 +344,16 @@ const ForjaMissao = {
     { id: 'Pessoal',  ico: 'pessoal', txt: 'Pessoal',  cor: '#f59e0b' },
     { id: 'Combate',  ico: 'combate', txt: 'Combate',  cor: '#ec4899' },
   ],
+  /* COMO A MISSÃO AVISA. O "quando" é global (aba Bots: começou, falta
+     pouco, venceu); aqui é só o "como", missão a missão. A voz é
+     escolha por missão de propósito: a fala é cobrada por caractere, e
+     ligada para tudo uma agenda de dez janelas viraria vinte falas por
+     dia. O `sub` diz o custo antes do clique, não depois. */
+  AVISOS: [
+    { id: 'texto',  ico: 'aviso_texto', txt: 'Por texto', cor: '#38bdf8', sub: 'mensagem no chat' },
+    { id: 'voz',    ico: 'aviso_voz',   txt: 'Por voz',   cor: '#a855f7', sub: 'o Sistema fala' },
+    { id: 'nenhum', ico: 'aviso_mudo',  txt: 'Sem aviso', cor: '#64748b', sub: 'só no app' },
+  ],
 
   /* Mesmas tabelas do backend (rotinas.py) — prévia fiel */
   _XP_TIPO:  { DIARIA: 50, SEMANAL: 200, MENSAL: 500, ANUAL: 2000 },
@@ -414,6 +424,7 @@ const ForjaMissao = {
       data_prevista: hoje,
       prazo_custom: false, prazo_valor: 30, prazo_unidade: 60,   // 30 × 60 = meia hora
       xp: null, mc: null, pen: null, auto: true, descricao: '',
+      aviso_modo: 'texto',
       rep_modo: 'META', alvo_repeticoes: '', contador_id: null,
       contador_novo: '',
       /* O PACTO. `pct_base` é onde a penitência começa; `pct_teto` é
@@ -756,6 +767,11 @@ const ForjaMissao = {
 
   _carregarEdicao(ed, tipoForcado) {
     const e = this._estado;
+
+    /* O modo de aviso volta para o formulário. Sem isto, editar só o
+       título de uma missão "por voz" e salvar a devolveria para texto
+       sem ninguém ter pedido. */
+    e.aviso_modo = ['voz', 'nenhum'].includes(ed.aviso_modo) ? ed.aviso_modo : 'texto';
 
     /* A META volta para o formulário. Mesma razão da bifurcação logo
        abaixo: sem hidratar, abrir para editar mostraria os campos em
@@ -1360,6 +1376,11 @@ const ForjaMissao = {
               </div>
             </div>
 
+            <div class="fm-bloco fm-full" id="fm-bloco-avisos">
+              <div class="fm-rotulo">${gl("aviso_voz")} Avisos desta missão</div>
+              ${grupo('aviso_modo', this.AVISOS, 3)}
+            </div>
+
             <div class="fm-bloco fm-full" id="fm-bloco-desc">
               <div class="fm-rotulo">${gl("avulsa")} Descrição (opcional)</div>
               <textarea class="fm-textarea" data-fm-campo-txt="descricao"
@@ -1754,6 +1775,7 @@ const ForjaMissao = {
     mostra('fm-bloco-categoria', !pacto);
     mostra('fm-bloco-janela',    !pacto);
     mostra('fm-bloco-desc',      !pacto);
+    mostra('fm-bloco-avisos',    !pacto);
     mostra('fm-caixa-premio',    !pacto);
     mostra('fm-caixa-punicao',   !pacto);
 
@@ -2168,6 +2190,7 @@ const ForjaMissao = {
         const payload = {
           titulo: e.titulo.trim(),
           descricao: e.descricao || null,
+          aviso_modo: e.aviso_modo || 'texto',
           tipo: freq,
           dias_semana: freq === 'SEMANAL' ? e.dias_semana : null,
           dia_mes:     e.frequencia === 'MENSAL'  ? parseInt(e.dia_mes, 10) : null,
@@ -2322,6 +2345,7 @@ const ForjaMissao = {
         const payload = {
           titulo: e.titulo.trim(),
           descricao: e.descricao || null,
+          aviso_modo: e.aviso_modo || 'texto',
           data_prevista: e.data_prevista || this._dataLocal(),
           hora_limite: e.janela ? (e.hora_fim || null) : null,
           categoria: e.categoria,

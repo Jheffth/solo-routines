@@ -308,6 +308,10 @@ def fechar_vencidas(db: Session, usuario: Usuario, ate: date | None = None) -> d
             # Missao geral nao tem medidor: ela e divida, nao insistencia.
             # Vence e continua la, no vermelho, ate ser feita.
             "rotina_id": None,
+            # O aviso de "venceu" precisa saber QUAL missao geral foi: sem
+            # o id, todas as do dia dividiam a mesma chave de "ja avisado"
+            # e so a primeira era anunciada.
+            "tarefa_id": t.id,
         })
 
     # Uma subtração só, no fim: XP nunca fica negativo.

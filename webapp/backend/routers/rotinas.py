@@ -4,6 +4,7 @@ Ciclo: PENDENTE → ATIVA → CONCLUIDA | FRACASSADA | CANCELADA
 Cada rotina gera um registro ExecucaoDia por dia que ela é devida.
 """
 import json
+from motors import avisos
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
@@ -70,6 +71,8 @@ class RotinaCreate(BaseModel):
     meta_especie:   Optional[str]   = None
     meta_inicial:   Optional[float] = None
     meta_passo:     Optional[float] = None
+    # Como a missão avisa: "texto" (padrão), "voz" ou "nenhum".
+    aviso_modo:     Optional[str]   = None
 
 
 class RotinaUpdate(BaseModel):
@@ -106,6 +109,8 @@ class RotinaUpdate(BaseModel):
     meta_unidade:   Optional[str]   = None
     meta_especie:   Optional[str]   = None
     meta_inicial:   Optional[float] = None
+    # Como a missão avisa: "texto" (padrão), "voz" ou "nenhum".
+    aviso_modo:     Optional[str]   = None
     meta_passo:     Optional[float] = None
 
 
@@ -194,6 +199,7 @@ def _rotina_to_dict(r: Rotina, exec_dia: "ExecucaoDia | None" = None,
         "condicional_vitoria":  getattr(ed, "condicional_vitoria",  None) if ed else None,
         "condicional_payload":  getattr(r, "condicional_payload",   None),
         "circuito_payload":     getattr(r, "circuito_payload",      None),
+        "aviso_modo":           avisos.modo_de(r),
         "meta_alvo":       getattr(r, "meta_alvo", None),
         "meta_unidade":    getattr(r, "meta_unidade", None),
         "meta_especie":    getattr(r, "meta_especie", None),
@@ -415,6 +421,7 @@ def criar_rotina(
     except Exception: pass
     try: rotina.hora_fim      = payload.hora_fim
     except Exception: pass
+    rotina.aviso_modo = avisos.normalizar_modo(payload.aviso_modo)
 
     # ROTINA DE REPETICOES. So o que e da MISSAO: o alvo, o balde e o
     # intervalo. O quanto vale cada clique e da Balanca.
@@ -533,6 +540,7 @@ def atualizar_rotina(
     if payload.icone        is not None: r.icone        = payload.icone
     if payload.cor          is not None: r.cor          = payload.cor
     if payload.ativo        is not None: r.ativo        = payload.ativo
+    if payload.aviso_modo   is not None: r.aviso_modo   = avisos.normalizar_modo(payload.aviso_modo)
 
     # PORTA 2 DE 4 — editar. Era a porta discreta no exploit de XP: criar
     # honesto e depois editar pedindo o que não pode. Aqui vale o mesmo:

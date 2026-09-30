@@ -290,7 +290,12 @@ def _canais_de_aviso(db: Session, usuario) -> list:
     import solobot_ponte
     if solobot_ponte.token() and solobot_ponte.situacao(usuario.id).get("conectado"):
         uid = usuario.id
-        return [("solobot", lambda texto: solobot_ponte.avisar(uid, texto))]
+        # A VOZ SÓ EXISTE POR AQUI. O Solo Bot sintetiza a fala; o Rotinas
+        # manda o roteiro (`falado`) e o pedido (`voz=True`) apenas quando
+        # alguma missão da varredura foi marcada "por voz" na Forja. Sem
+        # isso vai `voz=None`, e a Conta Solo decide como sempre decidiu.
+        return [("solobot", lambda texto, falado=None: solobot_ponte.avisar(
+            uid, texto, falado=falado, voz=True if falado else None))]
 
     from motors import avisos as _av
     pref = _av.preferencia(db, usuario)
@@ -310,11 +315,13 @@ def _canais_de_aviso(db: Session, usuario) -> list:
 
     if tem_tg and quer_tg:
         chat = usuario.telegram_chat_id
-        canais.append(("telegram", lambda texto: _tg(chat, texto)))
+        # O Telegram direto (sem Solo Bot) não fala: a missão marcada por
+        # voz chega por escrito, que é melhor que não chegar.
+        canais.append(("telegram", lambda texto, falado=None: _tg(chat, texto)))
     if tem_wa and quer_wa:
         from routers import bot_whatsapp as _wa
         jid = usuario.whatsapp_jid
-        canais.append(("whatsapp", lambda texto: _wa._enviar(jid, texto)))
+        canais.append(("whatsapp", lambda texto, falado=None: _wa._enviar(jid, texto)))
     return canais
 
 
@@ -403,7 +410,8 @@ def varrer_avisos(db: Session) -> dict:
                 if not lista:
                     continue
 
-                entregue = entregar(avisos.compor(lista))
+                entregue = entregar(avisos.compor(lista),
+                                    falado=avisos.compor_falado(lista))
                 if canal == "solobot" and entregue is False:
                     continue        # o Solo Bot não entregou: tenta na próxima varredura
 

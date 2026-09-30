@@ -106,6 +106,55 @@ def em_silencio(pref: PreferenciaAviso, agora: datetime) -> bool:
 
 
 # ══════════════════════════════════════════════════════════════════════
+# O MODO DE CADA MISSÃO — texto, voz ou nenhum
+#
+# QUANDO avisar é global (a preferência do hunter: acendeu, beira,
+# venceu). COMO avisar é da missão, escolhido na Forja. A voz é por
+# missão, e não uma chave geral, porque a fala custa por caractere e
+# porque nem toda missão merece interromper com som: "Colocar o Dolphin
+# para carregar" cabe numa linha de texto; "Acordar às 06:00" pede voz.
+# ══════════════════════════════════════════════════════════════════════
+MODOS_AVISO = ("texto", "voz", "nenhum")
+
+
+def normalizar_modo(valor) -> str | None:
+    """
+    O que o cliente mandou, em algo que se pode guardar.
+
+    "texto" vira NULL de propósito: é o padrão, e guardar o padrão
+    explícito faria uma mudança futura de padrão não alcançar as missões
+    antigas. Valor desconhecido também vira NULL — um modo inventado no
+    banco calaria ou faria falar uma missão sem ninguém ter pedido.
+    """
+    v = str(valor or "").strip().lower()
+    if v in ("voz", "nenhum"):
+        return v
+    return None
+
+
+def modo_de(obj) -> str:
+    return normalizar_modo(getattr(obj, "aviso_modo", None)) or "texto"
+
+
+def _hora_falada(dt: datetime | None) -> str:
+    """ "22 horas", "22 e 30", "meia-noite" — hora como se diz, não como se lê."""
+    if not dt:
+        return ""
+    h, m = dt.hour, dt.minute
+    if h == 0 and m == 0:
+        return "meia-noite"
+    if h == 12 and m == 0:
+        return "meio-dia"
+    if m == 0:
+        return f"{h} hora" + ("s" if h != 1 else "")
+    return f"{h} e {m:02d}"
+
+
+def _minutos_falados(n: int) -> str:
+    return "um minuto" if n == 1 else f"{n} minutos"
+
+
+# ══════════════════════════════════════════════════════════════════════
 # OS AVISOS
 # ══════════════════════════════════════════════════════════════════════
 class Aviso:
@@ -120,14 +169,20 @@ class Aviso:
     ainda dá para agir dentro daquela janela.
     """
 
-    __slots__ = ("tipo", "chave", "texto", "urgente", "quando")
+    __slots__ = ("tipo", "chave", "texto", "urgente", "quando", "voz", "falado")
 
-    def __init__(self, tipo, chave, texto, urgente=False, quando=None):
+    def __init__(self, tipo, chave, texto, urgente=False, quando=None,
+                 voz=False, falado=None):
         self.tipo = tipo
         self.chave = chave
         self.texto = texto
         self.urgente = urgente
         self.quando = quando
+        # `voz`: a missão pediu para ser avisada falando. `falado`: o texto
+        # escrito para o OUVIDO — sem emoji, sem asterisco, com a hora por
+        # extenso. Quem sintetiza é o Solo Bot; o Rotinas só diz o quê.
+        self.voz = voz
+        self.falado = falado
 
     def __repr__(self):                       # pragma: no cover
         return f"<Aviso {self.chave}>"
@@ -160,6 +215,9 @@ def pendentes(db, usuario, agora: datetime | None = None,
     # mentira pequena que faz perder a confiança no resto.
     if pref.acendeu:
         for ed, r in (acesas or []):
+            modo = modo_de(r)
+            if modo == "nenhum":
+                continue      # a missão pediu silêncio na Forja
             p = prazos.da_execucao(ed, r)
             fim = p.get("fim")
             quando = (f" · até {fim.strftime('%H:%M')}" if fim else "")
@@ -169,22 +227,46 @@ def pendentes(db, usuario, agora: datetime | None = None,
                 # Uma missão que ACABOU de abrir é acionável mesmo às
                 # 04:00 — é o protocolo de sono, e é o único momento em
                 # que ele pode ser cumprido.
-                urgente=True, quando=agora))
+                urgente=True, quando=agora,
+                voz=(modo == "voz"),
+                falado=(f"{r.titulo} começou agora"
+                        + (f", e vai até as {_hora_falada(fim)}." if fim else "."))))
 
     # ── VENCEU ───────────────────────────────────────────────────────
     if pref.venceu:
+        # O modo de cada missão que venceu, numa consulta por tabela.
+        rids = {f["rotina_id"] for f in (falhas or []) if f.get("rotina_id")}
+        tids = {f["tarefa_id"] for f in (falhas or []) if f.get("tarefa_id")}
+        modos = {}
+        if rids:
+            for r in db.query(Rotina).filter(Rotina.id.in_(rids)).all():
+                modos[("r", r.id)] = modo_de(r)
+        if tids:
+            for t in db.query(TarefaDia).filter(TarefaDia.id.in_(tids)).all():
+                modos[("t", t.id)] = modo_de(t)
+
         for f in (falhas or []):
-            rid = f.get("rotina_id") or f.get("tarefa_id") or "x"
+            if f.get("rotina_id"):
+                alvo = ("r", f["rotina_id"])
+            elif f.get("tarefa_id"):
+                alvo = ("t", f["tarefa_id"])
+            else:
+                alvo = ("x", "x")
+            modo = modos.get(alvo, "texto")
+            if modo == "nenhum":
+                continue
             dia = f.get("data") or hoje
             custo = f.get("xp") or 0
             fora.append(Aviso(
-                "venceu", f"venceu:{rid}:{dia}",
+                "venceu", f"venceu:{alvo[0]}:{alvo[1]}:{dia}",
                 f"❌ *{f.get('titulo')}* venceu"
                 + (f" — −{custo} XP" if custo else ""),
                 # NÃO é urgente: chega depois do estrago e não há o que
                 # fazer. Acordar alguém para dar uma má notícia que ele
                 # não pode desfazer é só crueldade com carimbo de recurso.
-                urgente=False, quando=agora))
+                urgente=False, quando=agora,
+                voz=(modo == "voz"),
+                falado=f"O prazo de {f.get('titulo')} venceu."))
 
     # ── BEIRA DA FALHA ───────────────────────────────────────────────
     if pref.beira:
@@ -212,10 +294,16 @@ def pendentes(db, usuario, agora: datetime | None = None,
                 # velório da manhã inteira de uma vez.
                 if not (0 < resta <= minutos):
                     continue
+                modo = modo_de(r)
+                if modo == "nenhum":
+                    continue
                 fora.append(Aviso(
                     "beira", f"beira:r:{r.id}:{ed.data.isoformat()}",
                     f"⏳ *{r.titulo}* — {int(resta)} min para o prazo",
-                    urgente=True, quando=fim))
+                    urgente=True, quando=fim,
+                    voz=(modo == "voz"),
+                    falado=(f"Faltam {_minutos_falados(int(resta))} "
+                            f"para o prazo de {r.titulo}.")))
 
         # A missão geral também corre contra o prazo, e é dívida: avisar
         # dela é ainda mais útil, porque ela não some no dia seguinte.
@@ -233,10 +321,16 @@ def pendentes(db, usuario, agora: datetime | None = None,
             resta = (fim - agora).total_seconds() / 60
             if not (0 < resta <= minutos):
                 continue
+            modo = modo_de(t)
+            if modo == "nenhum":
+                continue
             fora.append(Aviso(
                 "beira", f"beira:t:{t.id}:{hoje.isoformat()}",
                 f"⏳ *{t.titulo}* — {int(resta)} min para o prazo",
-                urgente=True, quando=fim))
+                urgente=True, quando=fim,
+                voz=(modo == "voz"),
+                falado=(f"Faltam {_minutos_falados(int(resta))} "
+                        f"para o prazo de {t.titulo}.")))
 
     # ── PORTÃO VAI ABRIR ─────────────────────────────────────────────
     if pref.portao:
@@ -342,6 +436,25 @@ def compor(lista: list) -> str:
     if len(itens) == 1:
         return itens[0].texto
     return "\n".join(["🔔 *Sistema*", ""] + [f"• {a.texto}" for a in itens])
+
+
+def compor_falado(lista: list) -> str | None:
+    """
+    O roteiro para o ouvido — só com os avisos das missões que pediram voz.
+
+    NUMA VARREDURA MISTA (uma missão de voz e duas de texto), a mensagem
+    escrita leva as três e a fala leva só a de voz. Falar as três
+    desrespeitaria a escolha feita na Forja para as outras duas, e seria
+    exatamente a interrupção que a pessoa decidiu não receber.
+
+    Devolve None quando ninguém pediu voz — e aí o Solo Bot nem cogita
+    falar.
+    """
+    faladas = [a for a in sorted(lista, key=lambda a: ORDEM.get(a.tipo, 9))
+               if a.voz and a.falado]
+    if not faladas:
+        return None
+    return " ".join(a.falado for a in faladas)
 
 
 def para_enviar(db, usuario, agora=None, acesas=None, falhas=None,

@@ -2,6 +2,7 @@
 Router de Tarefas do Dia — Missões Avulsas com prazo e prioridade.
 Ciclo de vida: PENDENTE → ATIVA → CONCLUIDA | CANCELADA
 """
+from motors import avisos
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -46,6 +47,8 @@ class TarefaCreate(BaseModel):
     contador_id: Optional[int] = None
     # SEM `xp_por_repeticao`: quem precifica e a Balanca.
     intervalo_min_seg: Optional[int] = None
+    # Como a missão avisa: "texto" (padrão), "voz" ou "nenhum".
+    aviso_modo: Optional[str] = None
 
 
 class TarefaUpdate(BaseModel):
@@ -67,6 +70,8 @@ class TarefaUpdate(BaseModel):
     contador_id: Optional[int] = None
     # SEM `xp_por_repeticao`: quem precifica e a Balanca.
     intervalo_min_seg: Optional[int] = None
+    # Como a missão avisa: "texto" (padrão), "voz" ou "nenhum".
+    aviso_modo: Optional[str] = None
 
 
 def _tarefa_to_dict(t: TarefaDia) -> dict:
@@ -107,6 +112,7 @@ def _tarefa_to_dict(t: TarefaDia) -> dict:
         "origem_titulo":     getattr(t, "origem_titulo", None),
         "origem_data":       t.origem_data.isoformat() if getattr(t, "origem_data", None) else None,
         "xp_a_reparar":      getattr(t, "xp_a_reparar", 0) or 0,
+        "aviso_modo":        avisos.modo_de(t),
     }
 
 
@@ -225,6 +231,7 @@ def criar_tarefa(
     )
 
     tarefa = TarefaDia(**campos)
+    tarefa.aviso_modo = avisos.normalizar_modo(payload.aviso_modo)
 
     # dificuldade e prazo: só atribui se a coluna existir no modelo
     try:
@@ -515,6 +522,7 @@ def atualizar_tarefa(
     if payload.prioridade is not None:         t.prioridade = payload.prioridade.upper()
     if payload.categoria is not None:          t.categoria = payload.categoria
     if payload.status is not None:             t.status = payload.status.upper()
+    if payload.aviso_modo is not None:         t.aviso_modo = avisos.normalizar_modo(payload.aviso_modo)
     try:
         if payload.dificuldade is not None:    t.dificuldade = payload.dificuldade.upper()
     except Exception:

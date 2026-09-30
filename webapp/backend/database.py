@@ -202,6 +202,13 @@ class Rotina(Base):
     # uma orientação de adaptação usa intervalos de propósito.
     circuito_payload        = Column(Text, nullable=True)  # JSON ou None
 
+    # COMO ESTA MISSÃO AVISA — "texto" (NULL = texto), "voz" ou "nenhum".
+    # A regra de QUANDO avisar é global (PreferenciaAviso); isto decide só
+    # a forma, missão a missão. Voz é escolha por missão, e não chave
+    # geral, porque a fala é cobrada por caractere: ligada para tudo, uma
+    # agenda com dez janelas por dia viraria vinte falas.
+    aviso_modo              = Column(String(10), nullable=True)
+
     # Controle
     ativo            = Column(Boolean, default=True)
     status           = Column(String(20), default="ATIVA")    # ATIVA | PAUSADA | CANCELADA | CONCLUIDA
@@ -449,6 +456,8 @@ class TarefaDia(Base):
     # MESMA FORMA, porque um cartão só desenha as duas.
     circuito_payload    = Column(Text, nullable=True)
     circuito_feito      = Column(Text, nullable=True)
+    # Como esta missão avisa: "texto" (NULL), "voz" ou "nenhum". Ver Rotina.
+    aviso_modo          = Column(String(10), nullable=True)
     contador_id         = Column(Integer, ForeignKey("contadores.id"), nullable=True, index=True)
     # SEM `xp_por_repeticao`. Ele existiu por cinco commits e nunca
     # deveria ter existido: guardava, por missao, um preco que so a

@@ -456,6 +456,31 @@ const Glifos = {
            + '<circle cx="12" cy="13.2" r="3.8"/>',
       luz: '<circle cx="12" cy="13.2" r="1.5" opacity=".9"/>',
     },
+
+    /* ── OS TRÊS MODOS DE AVISO DA FORJA ─────────────────────────
+       Texto é o balão; voz é o balão com ondas saindo; sem aviso é o
+       sino riscado. O sino riscado, e não o balão riscado, porque o que
+       a pessoa está desligando é a interrupção, não a escrita. */
+    aviso_texto: {   // aviso por escrito
+      base: '<path d="M4 5h16v11H9.5L5.6 19.4V16H4z"/>',
+      traco: '<path d="M4.2 5.2h15.6v10.6H9.6l-3.8 3.4v-3.4H4.2z"/>'
+           + '<path d="M8 9.2h8M8 12.2h5.4"/>',
+      luz: '<circle cx="16.4" cy="12.2" r=".9" opacity=".9"/>',
+    },
+
+    aviso_voz: {     // aviso falado
+      base: '<path d="M3.4 9.2h3.6L11.6 5v14l-4.6-4.2H3.4z"/>',
+      traco: '<path d="M3.4 9.2h3.6L11.6 5v14l-4.6-4.2H3.4z"/>'
+           + '<path d="M15 9a4.2 4.2 0 0 1 0 6M17.8 6.4a8 8 0 0 1 0 11.2"/>',
+      luz: '<circle cx="15.6" cy="12" r=".9" opacity=".95"/>',
+    },
+
+    aviso_mudo: {    // sem aviso
+      base: '<path d="M6 16.4V11a6 6 0 0 1 12 0v5.4l1.6 1.6H4.4z"/>',
+      traco: '<path d="M6.2 16.2V11a5.8 5.8 0 0 1 11.6 0v5.2l1.6 1.8H4.6z"/>'
+           + '<path d="M10.2 20.2a2 2 0 0 0 3.6 0M3.6 3.6l16.8 16.8"/>',
+      luz: '<circle cx="12" cy="5.2" r=".8" opacity=".8"/>',
+    },
   },
 
   /* O complemento entra no MESMO catálogo. Fundir aqui, e não
