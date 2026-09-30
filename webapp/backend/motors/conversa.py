@@ -474,17 +474,27 @@ def _somar(db: Session, usuario, canal, resto: str, hoje: date):
     from routers import execucoes as _exec
     from motors import meta as _mt
 
-    partes = (resto or "").rsplit(" ", 1)
-    if len(partes) < 2:
-        canal.enviar("⚠️ Use: `/somar título 50`\n_O valor vai por último._")
-        return
-    busca, cru = partes[0].strip(), partes[1].strip()
-    try:
+    def _num(t: str):
         # Vírgula decimal: é como se escreve em português, e recusar
         # "12,50" por causa disso seria implicância com o próprio idioma.
-        valor = float(cru.replace("R$", "").replace(",", "."))
-    except ValueError:
-        canal.enviar(f"⚠️ Não entendi *{cru}* como número.")
+        try:
+            v = float(t.replace("R$", "").replace(",", ".").strip())
+        except ValueError:
+            return None
+        return v if v == v and abs(v) != float("inf") else None      # "nan"/"inf" não são valor
+
+    # O valor vai por último ("/somar noite 25"), mas quem fala costuma dizer
+    # o número primeiro ("/somar 25 noite", "some 25 na noite"): aceita os dois.
+    palavras = (resto or "").replace("R$ ", "R$").split()
+    if len(palavras) < 2:
+        canal.enviar("⚠️ Use: `/somar título 50`\n_O valor vai por último._")
+        return
+    if _num(palavras[-1]) is not None:
+        busca, valor = " ".join(palavras[:-1]), _num(palavras[-1])
+    elif _num(palavras[0]) is not None:
+        busca, valor = " ".join(palavras[1:]), _num(palavras[0])
+    else:
+        canal.enviar(f"⚠️ Não entendi o valor em *{resto.strip()}*.\nUse: `/somar título 50`")
         return
 
     achados = [a for a in _procurar(db, usuario, busca, hoje)

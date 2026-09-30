@@ -12,6 +12,7 @@ Siga o `BOT_COMANDOS.md` da raiz do repositório. Todos os passos, na ordem:
 2. Linha no bloco `/ajuda` de `_processar()`.
 3. Linha em `webapp/backend/bot_manifesto.json` → `"comandos"`:
    `{"comando": "/nome", "descricao": "...", "exemplo": "/rot nome"}` (`"oculto": true` se não servir pelo Solo Bot).
+   Comando com argumentos leva também `"uso": "/nome <título> <valor>"`: a sintaxe exata, na ordem. A IA do Solo Bot segue isso ao transformar frase/áudio em comando.
 4. `versao` do manifesto = data do dia `AAAA.MM.DD` (mesmo dia: `.2`). `novidades`: pergunte ao Arquiteto; sem resposta, `[]`.
 5. `DATABASE_URL=sqlite:///./x.db SECRET_KEY=teste python test_solobot.py` e `... python test_bot_conversa.py`
    (+ asserts do comando novo; teste novo entra com `git add -f` nomeado).

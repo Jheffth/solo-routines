@@ -284,6 +284,15 @@ def main_teste():
         db.close()
         ok(abs(atual - 52.5) < 0.01, "aceita 12,50 com virgula")
 
+        # Quem fala diz o numero primeiro ("some 7,50 no turno"): tambem vale.
+        fala("/somar R$ 7,50 turno")
+        db = database.SessionLocal()
+        e = db.query(database.ExecucaoDia).filter_by(
+            rotina_id=rid_m, usuario_id=uid, data=hoje).first()
+        atual = float(getattr(e, "meta_atual", 0) or 0)
+        db.close()
+        ok(abs(atual - 60) < 0.01, "aceita o valor antes do titulo, com R$")
+
         caixa.limpar()
         fala("/somar Conseguir no turno abc")
         ok("não entendi" in caixa.ultima("111").lower(),

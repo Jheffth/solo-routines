@@ -41,6 +41,9 @@ WhatsApp de todos os sistemas Solo (repo `SOLO-BOT`, pasta `C:\JEFFERSON\PROJETO
    - `descricao`: curta, o que o hunter ganha.
    - `exemplo`: sempre com o prefixo `/rot`.
    - Se o comando existe mas NÃO faz sentido pelo Solo Bot, use `"oculto": true`.
+   - Comando com argumentos: `"uso": "/somar <título> <valor>"`, a sintaxe exata e na ordem.
+     É o que a IA do Solo Bot segue para transformar "some 25 na meta da noite" (texto ou áudio)
+     em `/somar noite 25`. Sem `uso`, ela só tem o `exemplo` para adivinhar.
 
 4. **Troque a `versao`** do manifesto para a data do dia: `AAAA.MM.DD`
    (ex.: `2026.10.05`; segundo ajuste no mesmo dia: `2026.10.05.2`).
