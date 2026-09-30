@@ -319,6 +319,14 @@ async def startup():
     except Exception as e:
         print(f"[STARTUP WARNING] balança: {e}")
 
+    # 4. Solo Bot: avisa quais comandos o bot tem (bot_manifesto.json). Em
+    #    segundo plano e sem nunca falhar: o Solo Bot pode estar subindo junto.
+    try:
+        import solobot_ponte
+        solobot_ponte.anunciar_manifesto_em_segundo_plano()
+    except Exception as e:
+        print(f"[STARTUP WARNING] Solo Bot (manifesto): {e}")
+
     try:
         scheduler.start()
         print("[STARTUP] ✅ Scheduler iniciado "

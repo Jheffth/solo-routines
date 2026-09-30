@@ -124,6 +124,34 @@ def main_teste():
                    json={"usuario_id": str(kaio_id), "texto": "/hoje"}).json()
         ok(r.get("desvinculado") is True, "hunter inativo: o Solo Bot desfaz o vinculo")
 
+        # ── 3 · o manifesto e o bot não se desencontram ──────────────
+        import json
+        import re
+        from motors import conversa
+        with open(solobot_ponte.MANIFESTO, encoding="utf-8") as f:
+            man = json.load(f)
+        ok(re.fullmatch(r"\d{4}\.\d{2}\.\d{2}(\.\d+)?", man["versao"]) is not None,
+           "versao do manifesto no formato AAAA.MM.DD")
+        nomes = [cmd["comando"] for cmd in man["comandos"]]
+        ok(len(nomes) == len(set(nomes)), "nenhum comando repetido no manifesto")
+
+        mortos = []
+        for nome in nomes:
+            r = c.post("/interno/bot/mensagem", headers=H, json={**corpo, "texto": nome}).json()
+            if any("não reconhecido" in m["texto"] for m in r["mensagens"]):
+                mortos.append(nome)
+        ok(not mortos, f"todo comando do manifesto existe no bot (mortos: {mortos})")
+
+        ajuda = c.post("/interno/bot/mensagem", headers=H,
+                       json={**corpo, "texto": "/ajuda"}).json()["mensagens"][0]["texto"]
+        na_ajuda = set(re.findall(r"(?<![\w/])/[a-z]+", ajuda))
+        faltam = sorted(na_ajuda - set(nomes))
+        ok(not faltam, f"todo comando da ajuda esta no manifesto (faltam: {faltam})")
+
+        ok(c.get("/interno/bot/manifesto").status_code == 403, "manifesto exige token")
+        m = c.get("/interno/bot/manifesto", headers=H).json()
+        ok(m["app"] == "rot" and "_leia" not in m, "a rota entrega o manifesto limpo")
+
         # ── 3 · avisos: sem duplicar ──────────────────────────────────
         enviados, original_tg, original_av = [], bt._tg, solobot_ponte.avisar
         bt._tg = lambda chat, texto, **k: enviados.append((chat, texto))
