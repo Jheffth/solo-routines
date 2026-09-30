@@ -26,3 +26,15 @@ A pasta inteira está no `.gitignore` e **nunca** vai para o git.
 Arquivos `test_*.py` são bloqueados pelo `.gitignore` de propósito; os que
 devem ir para o repositório entram com `git add -f` **nomeado, um por um**
 — nunca `git add -f .` ou `git add -A -f`.
+
+## Comandos do bot (Telegram / WhatsApp)
+
+**Sempre que pedirem um comando novo de bot — ou mudança num comando existente —
+siga o [BOT_COMANDOS.md](BOT_COMANDOS.md) inteiro.** Em resumo:
+
+1. Escrever o comando em `webapp/backend/motors/conversa.py` (`_processar()`; botões no formato neutro, ações em `agir()`).
+2. Colocar no bloco `/ajuda`.
+3. Acrescentar a linha em `webapp/backend/bot_manifesto.json`.
+4. Trocar a `versao` do manifesto para a data do dia (`AAAA.MM.DD`); `novidades` só se o Arquiteto quiser anunciar.
+5. Rodar `test_solobot.py` (falha se manifesto e bot se desencontrarem) e `test_bot_conversa.py`.
+6. Commit nomeado; deploy só do Rotinas. O Solo Bot não muda nem precisa de deploy.

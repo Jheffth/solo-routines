@@ -16,3 +16,10 @@ Ative-as explicitamente quando precisar de execução estruturada e verificada:
   Use quando: verificar se um trabalho foi realmente concluído com sucesso.
 - **fable-domain** → `.agents/skills/fable-method/skills/fable-domain/SKILL.md`
   Use quando: gerar adaptadores de domínio (marketing, devops, pesquisa, etc.).
+
+## Comandos do bot (Telegram/WhatsApp)
+
+Comando novo ou alterado: siga o `BOT_COMANDOS.md` da raiz, todos os passos — código no
+`motors/conversa.py`, `/ajuda`, linha no `webapp/backend/bot_manifesto.json`, `versao` nova,
+testes (`test_solobot.py`, `test_bot_conversa.py`), commit e deploy só do Rotinas.
+Skill: `.agents/skills/novo-comando-bot/SKILL.md`.
