@@ -42,56 +42,33 @@ Máquina Local (modificações) → Envia via SFTP / SCP → VPS Contabo (169.58
 
 ---
 
-## 🚀 Como fazer o Deploy no Contabo
+## 🚀 Como funciona o Deploy Automático (Git Hooks)
 
-Não estamos mais usando o Render. O deploy não é mais automático apenas dando `git push`. 
+O deploy voltou a ser **automático**, mas de forma independente e mais rápida que o antigo Render!
 
-**Para aplicar mudanças na produção:**
+Nós configuramos o repositório local (na sua máquina) para possuir **duas URLs de push** para o `origin`.
+Sempre que você rodar um `git push origin master`, o Git fará duas coisas:
+1. Envia o código para o **GitHub** (backup e histórico).
+2. Envia o código diretamente para o repositório oculto na **VPS Contabo**.
 
-> ### ⚠️ A senha root estava escrita aqui
->
-> Esta seção trazia a senha de root em texto puro, e este arquivo é
-> versionado. Ela foi removida do texto — mas **continua no histórico do
-> git** e, portanto, **continua comprometida até ser trocada no painel do
-> Contabo**. Apagar a linha não desfaz o vazamento; trocar a senha desfaz.
->
-> Depois de trocar, o melhor passo é não precisar mais dela: instale sua
-> chave pública (`ssh-copy-id root@<ip>`) e desligue o login por senha
-> (`PasswordAuthentication no` em `/etc/ssh/sshd_config`). Aí nenhum script
-> nem documento precisa guardar segredo nenhum.
+No servidor Contabo, configuramos um **Git Hook** (`post-receive`). Assim que o servidor recebe o seu push, ele automaticamente copia os arquivos para `/root/app/`, reconstrói a imagem Docker (`docker compose build api`) e sobe os contêineres atualizados.
 
-### Antes de qualquer deploy
+### Como fazer um deploy na prática:
 
-```bash
-python scripts/selar_build.py    # grava VERSION + commit em backend/build_info.json
-```
-
-Sem isso o rodapé sobe marcado como **"sem selo"** — de propósito. O servidor
-não consegue descobrir o commit sozinho (o `/root/app/` não é repositório
-git), então quem sela é a sua máquina. O selo precisa ir junto no commit: o
-deploy move só o que está em `git ls-files`.
-
-### Opção 1: Script Automático via Python
-1. Rode o script local `python scripts/deploy_contabo.py`.
-2. O script conecta em `169.58.116.61` como `root`, preferindo **chave SSH**.
-   Se não houver chave, ele pede a senha no terminal (ou lê de
-   `SOLO_DEPLOY_SENHA`). Nada de credencial gravada em arquivo.
-3. Ele reconstrói a imagem Docker. **A sincronia dos arquivos é por SFTP e
-   acontece antes** — o script não a faz.
-
-### Opção 2: Manual via SSH
-1. **Transferir os arquivos modificados:**
-   Use SCP ou um cliente FTP (como FileZilla/Termius) para enviar os arquivos da sua máquina para o diretório `/root/app/` no Contabo.
-2. **Acessar o servidor:**
-   `ssh root@169.58.116.61`
-3. **Reiniciar os contêineres:**
+1. **Selar o build localmente:**
    ```bash
-   cd /root/app/webapp
-   docker compose build api
-   docker compose up -d
+   python scripts/selar_build.py
+   git add webapp/backend/build_info.json
+   git commit -m "chore(build): atualiza build_info"
    ```
 
-*(Nota: Como o diretório /root/app/ no Contabo não é um repositório git, um simples git pull não funcionará lá).*
+2. **Enviar para produção:**
+   ```bash
+   git push origin master
+   ```
+   *Pronto! O próprio terminal mostrará o log de build do Docker acontecendo remotamente lá no Contabo. Quando o comando terminar, o site já estará no ar atualizado.*
+
+*(Nota: O antigo script `scripts/deploy_contabo.py` se tornou obsoleto com essa nova arquitetura).*
 
 ---
 
