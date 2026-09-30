@@ -219,7 +219,7 @@
       }
       if (st.conectado === null) {
         return `<div class="card bot-card bot-card--solo">${cabeca}
-          <p class="bot-nota">O Solo Bot não respondeu agora. Tente de novo em instantes.</p></div>`;
+          <p class="bot-nota">${this._esc(st.erro || 'O Solo Bot não respondeu agora. Tente de novo em instantes.')}</p></div>`;
       }
       if (st.conectado) {
         return `<div class="card bot-card bot-card--solo conectado">${cabeca}
