@@ -294,8 +294,14 @@ def _canais_de_aviso(db: Session, usuario) -> list:
         # manda o roteiro (`falado`) e o pedido (`voz=True`) apenas quando
         # alguma missão da varredura foi marcada "por voz" na Forja. Sem
         # isso vai `voz=None`, e a Conta Solo decide como sempre decidiu.
-        return [("solobot", lambda texto, falado=None: solobot_ponte.avisar(
-            uid, texto, falado=falado, voz=True if falado else None))]
+        #
+        # `valido_ate` vai COM FUSO: as horas do Rotinas são locais e sem
+        # tzinfo (motors/tempo.py), e o Solo Bot só leria "sem fuso" como
+        # Brasília por coincidência de configuração. Explícito não depende
+        # de coincidência.
+        return [("solobot", lambda texto, falado=None, valido_ate=None: solobot_ponte.avisar(
+            uid, texto, falado=falado, voz=True if falado else None,
+            valido_ate=(valido_ate.replace(tzinfo=tempo.FUSO) if valido_ate else None)))]
 
     from motors import avisos as _av
     pref = _av.preferencia(db, usuario)
@@ -317,11 +323,11 @@ def _canais_de_aviso(db: Session, usuario) -> list:
         chat = usuario.telegram_chat_id
         # O Telegram direto (sem Solo Bot) não fala: a missão marcada por
         # voz chega por escrito, que é melhor que não chegar.
-        canais.append(("telegram", lambda texto, falado=None: _tg(chat, texto)))
+        canais.append(("telegram", lambda texto, falado=None, valido_ate=None: _tg(chat, texto)))
     if tem_wa and quer_wa:
         from routers import bot_whatsapp as _wa
         jid = usuario.whatsapp_jid
-        canais.append(("whatsapp", lambda texto, falado=None: _wa._enviar(jid, texto)))
+        canais.append(("whatsapp", lambda texto, falado=None, valido_ate=None: _wa._enviar(jid, texto)))
     return canais
 
 
@@ -410,17 +416,23 @@ def varrer_avisos(db: Session) -> dict:
                 if not lista:
                     continue
 
-                entregue = entregar(avisos.compor(lista),
-                                    falado=avisos.compor_falado(lista))
-                if canal == "solobot" and entregue is False:
-                    continue        # o Solo Bot não entregou: tenta na próxima varredura
+                # Um lote por validade (ver `avisos.lotes`): os de prazo
+                # juntos, os que não vencem à parte.
+                for itens, valido_ate in avisos.lotes(lista):
+                    entregue = entregar(avisos.compor(itens),
+                                        falado=avisos.compor_falado(itens),
+                                        valido_ate=valido_ate)
+                    if canal == "solobot" and entregue is False:
+                        continue    # o Solo Bot não entregou: tenta na próxima varredura
 
-                # SÓ MARCA DEPOIS DE ENVIAR. Marcar antes e falhar no
-                # envio cala o aviso para sempre — e o silêncio de um
-                # defeito é indistinguível do silêncio de "não havia
-                # nada".
-                avisos.marcar(db, usuario, lista, canal=canal)
-                resultado["avisos"] += len(lista)
+                    # SÓ MARCA DEPOIS DE ENVIAR. Marcar antes e falhar no
+                    # envio cala o aviso para sempre — e o silêncio de um
+                    # defeito é indistinguível do silêncio de "não havia
+                    # nada". DESCARTADO POR VENCIDO conta como tratado: a
+                    # ponte devolve True, e um aviso vencido não deve ser
+                    # reenviado por lugar nenhum.
+                    avisos.marcar(db, usuario, itens, canal=canal)
+                    resultado["avisos"] += len(itens)
         except Exception as e:
             db.rollback()
             resultado["erros"] += 1

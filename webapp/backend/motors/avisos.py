@@ -169,10 +169,11 @@ class Aviso:
     ainda dá para agir dentro daquela janela.
     """
 
-    __slots__ = ("tipo", "chave", "texto", "urgente", "quando", "voz", "falado")
+    __slots__ = ("tipo", "chave", "texto", "urgente", "quando", "voz", "falado",
+                 "valido_ate")
 
     def __init__(self, tipo, chave, texto, urgente=False, quando=None,
-                 voz=False, falado=None):
+                 voz=False, falado=None, valido_ate=None):
         self.tipo = tipo
         self.chave = chave
         self.texto = texto
@@ -183,6 +184,12 @@ class Aviso:
         # extenso. Quem sintetiza é o Solo Bot; o Rotinas só diz o quê.
         self.voz = voz
         self.falado = falado
+        # ATÉ QUANDO O AVISO FAZ SENTIDO (hora local do app, sem fuso — o
+        # varredor põe o fuso ao mandar). "Faltam 10 minutos" entregue
+        # depois do prazo, quando a Conta Solo segurou o aviso no horário
+        # de silêncio, é pior que não entregar: o Solo Bot descarta.
+        # None = não vence ("venceu" é notícia, vale de manhã também).
+        self.valido_ate = valido_ate
 
     def __repr__(self):                       # pragma: no cover
         return f"<Aviso {self.chave}>"
@@ -227,7 +234,7 @@ def pendentes(db, usuario, agora: datetime | None = None,
                 # Uma missão que ACABOU de abrir é acionável mesmo às
                 # 04:00 — é o protocolo de sono, e é o único momento em
                 # que ele pode ser cumprido.
-                urgente=True, quando=agora,
+                urgente=True, quando=agora, valido_ate=fim,
                 voz=(modo == "voz"),
                 falado=(f"{r.titulo} começou agora"
                         + (f", e vai até as {_hora_falada(fim)}." if fim else "."))))
@@ -300,7 +307,7 @@ def pendentes(db, usuario, agora: datetime | None = None,
                 fora.append(Aviso(
                     "beira", f"beira:r:{r.id}:{ed.data.isoformat()}",
                     f"⏳ *{r.titulo}* — {int(resta)} min para o prazo",
-                    urgente=True, quando=fim,
+                    urgente=True, quando=fim, valido_ate=fim,
                     voz=(modo == "voz"),
                     falado=(f"Faltam {_minutos_falados(int(resta))} "
                             f"para o prazo de {r.titulo}.")))
@@ -327,7 +334,7 @@ def pendentes(db, usuario, agora: datetime | None = None,
             fora.append(Aviso(
                 "beira", f"beira:t:{t.id}:{hoje.isoformat()}",
                 f"⏳ *{t.titulo}* — {int(resta)} min para o prazo",
-                urgente=True, quando=fim,
+                urgente=True, quando=fim, valido_ate=fim,
                 voz=(modo == "voz"),
                 falado=(f"Faltam {_minutos_falados(int(resta))} "
                         f"para o prazo de {t.titulo}.")))
@@ -353,7 +360,7 @@ def pendentes(db, usuario, agora: datetime | None = None,
                 "portao", f"portao:{d.id}:{hoje.isoformat()}",
                 f"🚪 *{d.titulo}* abre em {int(faltam)} min "
                 f"({entrada})",
-                urgente=True, quando=abre))
+                urgente=True, quando=abre, valido_ate=abre))
 
     return fora
 
@@ -455,6 +462,35 @@ def compor_falado(lista: list) -> str | None:
     if not faladas:
         return None
     return " ".join(a.falado for a in faladas)
+
+
+def lotes(lista: list) -> list:
+    """
+    Como a varredura vira mensagens: `[(itens, valido_ate), ...]`.
+
+    NO MÁXIMO DUAS, e o corte é pela validade, não pelo tipo:
+
+      · os avisos DE PRAZO ("começou", "falta pouco", "portão abre") saem
+        juntos, com a validade do que vence PRIMEIRO. Conservador de
+        propósito: se a Conta Solo segurar a mensagem no silêncio, é
+        melhor perder um "começou" ainda válido do que entregar um
+        "faltam 9 minutos" de meia hora atrás. Um aviso vencido não deve
+        sair por lugar nenhum.
+      · os que NÃO VENCEM ("venceu") saem numa mensagem própria, sem
+        validade — senão iriam para o descarte junto com o lote de prazo,
+        e a notícia de uma derrota sumiria sem ser dada.
+
+    Na prática quase toda varredura tem só um dos dois, e continua
+    virando uma mensagem só.
+    """
+    com_prazo = [a for a in lista if a.valido_ate is not None]
+    sem_prazo = [a for a in lista if a.valido_ate is None]
+    saida = []
+    if com_prazo:
+        saida.append((com_prazo, min(a.valido_ate for a in com_prazo)))
+    if sem_prazo:
+        saida.append((sem_prazo, None))
+    return saida
 
 
 def para_enviar(db, usuario, agora=None, acesas=None, falhas=None,

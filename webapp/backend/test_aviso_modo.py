@@ -146,8 +146,9 @@ def main_teste():
         solobot_ponte.token = lambda: "tok"
         solobot_ponte.situacao = lambda _uid: {"conectado": True}
 
-        def _avisar(uid_, texto, opcoes=None, falado=None, voz=None):
-            chamadas.append({"texto": texto, "falado": falado, "voz": voz})
+        def _avisar(uid_, texto, opcoes=None, falado=None, voz=None, valido_ate=None):
+            chamadas.append({"texto": texto, "falado": falado, "voz": voz,
+                             "valido_ate": valido_ate})
             return True
         solobot_ponte.avisar = _avisar
         try:
@@ -163,6 +164,13 @@ def main_teste():
         ok(ch["falado"] and "Acordar" in ch["falado"], "e manda o roteiro falado")
         ok("Fio Dental" in ch["texto"] and "Dolphin" not in ch["texto"],
            "o texto leva a de texto e deixa de fora a silenciada")
+
+        # ── 4b · A VALIDADE ───────────────────────────────────────────
+        va = ch["valido_ate"]
+        ok(va is not None and va.tzinfo is not None,
+           "o aviso de prazo vai com valido_ate, e COM fuso")
+        ok(abs((va.replace(tzinfo=None) - (agora + timedelta(minutes=8))).total_seconds()) <= 60,
+           "valendo ate o fim da janela da missao")
 
         # ── 5 · SEM VOZ, voz=None (a Conta Solo decide) ────────────────
         chamadas.clear()
@@ -205,6 +213,37 @@ def main_teste():
         v_voz = [a for a in venc if "Acordar" in a.texto]
         ok(v_voz and v_voz[0].voz and "venceu" in (v_voz[0].falado or ""),
            "a de voz anuncia o vencimento falando")
+        ok(all(a.valido_ate is None for a in venc),
+           "'venceu' nao vence — e noticia, vale de manha tambem")
+
+        # ── 7 · OS LOTES ──────────────────────────────────────────────
+        cedo = avisos.Aviso("beira", "k1", "a", valido_ate=agora + timedelta(minutes=5))
+        tarde = avisos.Aviso("acendeu", "k2", "b", valido_ate=agora + timedelta(hours=2))
+        noticia = avisos.Aviso("venceu", "k3", "c")
+        lts = avisos.lotes([tarde, noticia, cedo])
+        ok(len(lts) == 2, "prazo e noticia saem em lotes separados")
+        itens_p, val_p = lts[0]
+        ok({a.chave for a in itens_p} == {"k1", "k2"} and val_p == cedo.valido_ate,
+           "o lote de prazo vale ate o que vence PRIMEIRO — nunca entrega contagem velha")
+        ok(lts[1][1] is None and lts[1][0][0].chave == "k3",
+           "e a noticia vai sem validade, para nao ser descartada junto")
+        ok(len(avisos.lotes([cedo])) == 1 and len(avisos.lotes([noticia])) == 1,
+           "com um tipo so, continua sendo uma mensagem so")
+
+        # ── 8 · A PONTE: descartado conta como tratado ────────────────
+        guard_post, guard_tok = solobot_ponte._post, solobot_ponte.token
+        enviados = []
+        solobot_ponte.token = lambda: "tok"
+        solobot_ponte._post = lambda cam, corpo: (enviados.append(corpo) or {"descartados": 1})
+        try:
+            from datetime import datetime as _dt
+            r = solobot_ponte.avisar(uid, "x", valido_ate=_dt(2026, 10, 1, 14, 30,
+                                                            tzinfo=tempo.FUSO))
+        finally:
+            solobot_ponte._post, solobot_ponte.token = guard_post, guard_tok
+        ok(r is True, "aviso descartado por vencido devolve True — nao cai para outro canal")
+        ok(enviados and enviados[0].get("valido_ate", "").endswith("-03:00"),
+           "e a validade viaja em ISO com o fuso")
 
         print("\n=== MODO DE AVISO OK ===\n")
 
