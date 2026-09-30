@@ -99,7 +99,9 @@ def _processar(texto: str, db: Session, canal):
     # vinculado". Tudo o mais exige saber de quem é a conversa.
     from motors import vinculo
 
-    usuario = vinculo.por_origem(db, canal.nome, canal.origem)
+    # O canal do Solo Bot já chega com o hunter provado (pelo vínculo da
+    # Conta Solo); os outros descobrem o hunter pelo chat.
+    usuario = getattr(canal, "usuario", None) or vinculo.por_origem(db, canal.nome, canal.origem)
 
     if txt.lower().startswith("/vincular") or (usuario is None and txt.strip().isdigit()):
         codigo = txt.split(maxsplit=1)[1] if " " in txt else txt.replace("/vincular", "")

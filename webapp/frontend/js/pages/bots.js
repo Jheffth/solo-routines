@@ -40,18 +40,23 @@
         /* As duas chamadas SAEM JUNTAS. Em série, a tela levaria a soma
            das duas latências para aparecer — e a segunda não depende em
            nada do resultado da primeira. */
-        const [dados, pref] = await Promise.all([
+        const [dados, pref, solo] = await Promise.all([
           API.get('/bots/status'),
           API.get('/bots/avisos').catch(() => null),
+          API.get('/solobot/status').catch(() => ({ disponivel: false, conectado: false })),
         ]);
         this._dados = dados;
         this._pref = pref;
+        this._solo = solo;
       } catch (e) {
         cx.innerHTML = `<div class="card bot-card"><p class="bot-vazio">
           Não consegui falar com o servidor. Tente de novo.</p></div>`;
         return;
       }
-      cx.innerHTML = this._telegram(this._dados.telegram)
+      cx.innerHTML = this._soloBot(this._solo)
+                   + `<p class="bot-legado">Canal antigo <span class="bot-selo">será desligado</span>
+                      — o bot próprio do Rotinas continua até a virada para o Solo Bot.</p>`
+                   + this._telegram(this._dados.telegram)
                    + this._whatsapp(this._dados.whatsapp)
                    + this._avisos(this._pref, this._dados);
       this._ligar(cx);
@@ -183,6 +188,74 @@
     },
 
     /* ── TELEGRAM ─────────────────────────────────────────────── */
+    /* ── O SOLO BOT ──────────────────────────────────────────────────
+       O bot único de todos os sistemas Solo. A conexão nasce AQUI, com o
+       hunter já autenticado: o servidor gera um código de uso único, o
+       navegador vai ao Solo Bot, o hunter confirma, e o Solo Bot troca o
+       código com o nosso backend pela rede interna. Nenhuma senha do
+       Rotinas sai daqui. */
+    _soloBot(st) {
+      st = st || {};
+      const canais = (st.canais || []).map(c => c === 'telegram' ? 'Telegram' : c === 'whatsapp' ? 'WhatsApp' : c);
+      const selo = !st.disponivel ? '<span class="bot-selo">não configurado</span>'
+        : st.conectado === null ? '<span class="bot-selo">fora do ar</span>'
+        : st.conectado ? '<span class="bot-selo on">conectado</span>'
+        : '<span class="bot-selo">desconectado</span>';
+      const cabeca = `
+        <div class="bot-topo">
+          <div class="bot-marca bot-marca--solo">◎</div>
+          <div>
+            <h3 class="bot-titulo">Solo Bot ${selo}</h3>
+            <p class="bot-sub">Um bot só para o Rotinas e o Finances — no Telegram
+              e no WhatsApp, com uma Conta Solo.</p>
+          </div>
+        </div>`;
+
+      if (!st.disponivel) {
+        return `<div class="card bot-card bot-card--solo">${cabeca}
+          <p class="bot-falta">${this._g('caveira', 15)}
+            <span>O servidor não tem <code>BOT_SERVICE_TOKEN</code> e
+            <code>SOLO_BOT_URL</code> configurados.</span></p></div>`;
+      }
+      if (st.conectado === null) {
+        return `<div class="card bot-card bot-card--solo">${cabeca}
+          <p class="bot-nota">O Solo Bot não respondeu agora. Tente de novo em instantes.</p></div>`;
+      }
+      if (st.conectado) {
+        return `<div class="card bot-card bot-card--solo conectado">${cabeca}
+          <p class="bot-nota">Ligado à Conta Solo de <b>${this._esc(st.conta)}</b>
+            (${this._esc(st.email)}).
+            ${canais.length ? `Respondendo por <b>${canais.join(' e ')}</b>.`
+                            : 'Nenhum canal ligado ainda — conecte Telegram ou WhatsApp no painel do Solo Bot.'}
+            No chat, <code>/rot</code> fala com o Rotinas.</p>
+          <div class="bot-acoes">
+            <button type="button" class="bot-bt" data-solobot-conectar>
+              ${this._g('etiqueta', 15)}<span>Reconectar</span></button>
+          </div></div>`;
+      }
+      return `<div class="card bot-card bot-card--solo">${cabeca}
+        <ol class="bot-passos">
+          <li><b>Toque em conectar.</b> Você vai para o Solo Bot.</li>
+          <li><b>Entre ou crie</b> sua Conta Solo e confirme.</li>
+          <li>Volte para cá. Telegram e WhatsApp se ligam uma vez, no painel do Solo Bot.</li>
+        </ol>
+        <div class="bot-acoes">
+          <button type="button" class="bot-bt bot-bt--on" data-solobot-conectar>
+            ${this._g('etiqueta', 15)}<span>Conectar ao Solo Bot</span></button>
+        </div></div>`;
+    },
+
+    async conectarSoloBot(bt) {
+      bt.disabled = true;
+      try {
+        const r = await API.post('/solobot/conectar', {});
+        location.href = r.url;
+      } catch (e) {
+        bt.disabled = false;
+        SoloDialog.toast(e.message || 'Não consegui falar com o Solo Bot.', 'error');
+      }
+    },
+
     _telegram(t) {
       const cabeca = `
         <div class="bot-topo">
@@ -456,6 +529,9 @@
 
     /* ── AÇÕES ────────────────────────────────────────────────── */
     _ligar(cx) {
+      cx.querySelectorAll('[data-solobot-conectar]').forEach(b => {
+        b.onclick = () => this.conectarSoloBot(b);
+      });
       cx.querySelectorAll('[data-bot-codigo]').forEach(b => {
         b.onclick = () => this.gerarCodigo(b.dataset.botCodigo, b);
       });

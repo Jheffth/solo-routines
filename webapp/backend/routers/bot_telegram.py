@@ -237,11 +237,34 @@ def _para_cada(db: Session, envio) -> None:
     apagou a conversa, deu block no bot — derrubaria a notificação de
     todo mundo, e o sintoma seria "o bot parou de funcionar".
     """
-    for usuario in _destinatarios(db):
+    import solobot_ponte
+    usuarios = _destinatarios(db)
+    if solobot_ponte.token():
+        # Com o Solo Bot, alcançável é também quem não tem Telegram próprio:
+        # `_avisar` tenta o Solo Bot e só cai no chat antigo se ele não entregar.
+        ja = {u.id for u in usuarios}
+        usuarios = usuarios + [u for u in db.query(Usuario).filter(Usuario.ativo == True).all()  # noqa: E712
+                               if u.id not in ja]
+    for usuario in usuarios:
         try:
             envio(db, usuario, usuario.telegram_chat_id)
         except Exception as e:
             print(f"[BOT] falha ao notificar {usuario.login}: {e}")
+
+
+def _avisar(usuario, chat, texto: str) -> bool:
+    """
+    O SOLO BOT PRIMEIRO. Se o hunter conectou o Rotinas ao Solo Bot, o aviso
+    sai por lá (em todos os canais da Conta Solo) e o chat antigo não recebe
+    — aviso em dobro é o caminho mais curto para o hunter silenciar tudo.
+    """
+    import solobot_ponte
+    if solobot_ponte.avisar(usuario.id, texto):
+        return True
+    if chat:
+        _tg(chat, texto)
+        return True
+    return False
 
 
 def _canais_de_aviso(db: Session, usuario) -> list:
@@ -262,6 +285,13 @@ def _canais_de_aviso(db: Session, usuario) -> list:
     canal que existe. Uma preferência que produz silêncio total é um
     defeito disfarçado de configuração.
     """
+    # CONECTADO AO SOLO BOT, o canal é ele — e só ele. A dedupe é por
+    # canal, então "solobot" tem a própria memória do que já avisou.
+    import solobot_ponte
+    if solobot_ponte.token() and solobot_ponte.situacao(usuario.id).get("conectado"):
+        uid = usuario.id
+        return [("solobot", lambda texto: solobot_ponte.avisar(uid, texto))]
+
     from motors import avisos as _av
     pref = _av.preferencia(db, usuario)
     escolha = (pref.canal_avisos or "telegram").lower()
@@ -373,7 +403,9 @@ def varrer_avisos(db: Session) -> dict:
                 if not lista:
                     continue
 
-                entregar(avisos.compor(lista))
+                entregue = entregar(avisos.compor(lista))
+                if canal == "solobot" and entregue is False:
+                    continue        # o Solo Bot não entregou: tenta na próxima varredura
 
                 # SÓ MARCA DEPOIS DE ENVIAR. Marcar antes e falhar no
                 # envio cala o aviso para sempre — e o silêncio de um
@@ -410,7 +442,7 @@ def _manha(db: Session, usuario, chat: str):
         TarefaDia.data_prevista == hoje,
     ).count()
 
-    _tg(chat, (
+    _avisar(usuario, chat, (
         f"⚔️ *Sistema de Missões Ativado!*\n"
         f"📅 {hoje.strftime('%A, %d/%m/%Y')}\n\n"
         f"🔄 Rotinas hoje: *{len(rotinas)}*\n"
@@ -438,7 +470,7 @@ def _tarde(db: Session, usuario, chat: str):
     msg = "🔔 *Missões críticas pendentes:*\n\n"
     for t in pendentes:
         msg += f"🔴 {t.titulo}\n"
-    _tg(chat, msg)
+    _avisar(usuario, chat, msg)
 
 
 def notificar_noite(db: Session):
@@ -455,7 +487,7 @@ def _noite(db: Session, usuario, chat: str):
     xp_hoje = sum(e.xp_ganho or 0 for e in execs)
     mc_hoje = sum(e.moedas_ganhas or 0 for e in execs)
 
-    _tg(chat, (
+    _avisar(usuario, chat, (
         f"🌑 *Fim do Dia — Relatório*\n\n"
         f"✅ Missões concluídas: *{len(execs)}*\n"
         f"✨ XP ganho hoje: *{xp_hoje}*\n"

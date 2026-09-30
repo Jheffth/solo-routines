@@ -91,6 +91,15 @@ services:
       - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:-}
       - EVOLUTION_INSTANCE=${EVOLUTION_INSTANCE:-solo_rotinas}
       - EVOLUTION_WEBHOOK=${EVOLUTION_WEBHOOK:-http://api:8000/api/whats/webhook}
+
+      # ── SOLO BOT ──────────────────────────────────────────────────
+      # O bot único de todos os sistemas Solo. Vazio = a aba Bots mostra
+      # "não configurado" e os avisos seguem pelo caminho antigo.
+      # Mesma lição da lista acima: sem estas linhas, o .env não chega aqui.
+      - BOT_SERVICE_TOKEN=${BOT_SERVICE_TOKEN:-}
+      - SOLO_BOT_URL=${SOLO_BOT_URL:-}
+      - SOLO_BOT_INTERNO=${SOLO_BOT_INTERNO:-http://solo_bot:8000}
+      - SOLO_BOT_APP=${SOLO_BOT_APP:-rot}
     volumes:
       - solo_uploads:/app/backend/uploads
     networks:
