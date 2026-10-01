@@ -95,6 +95,7 @@ class PrefAviso(BaseModel):
     silencio_de:  Optional[str] = None
     silencio_ate: Optional[str] = None
     canal_avisos: Optional[str] = None
+    sussurros: Optional[str] = None
 
 
 def _pref_dict(p) -> dict:
@@ -106,6 +107,7 @@ def _pref_dict(p) -> dict:
         "silencio_de": p.silencio_de or "23:00",
         "silencio_ate": p.silencio_ate or "06:00",
         "canal_avisos": p.canal_avisos or "telegram",
+        "sussurros": p.sussurros or "voz",
     }
 
 
@@ -124,6 +126,12 @@ def salvar_avisos(payload: PrefAviso,
                   usuario: Usuario = Depends(get_usuario_atual)):
     from motors import avisos
     p = avisos.preferencia(db, usuario)
+
+    if payload.sussurros is not None:
+        modo = payload.sussurros.strip().lower()
+        if modo not in ("desligado", "texto", "voz"):
+            raise HTTPException(422, "Escolha Desligado, Só texto ou Com voz para os sussurros.")
+        p.sussurros = modo
 
     for campo in ("acendeu", "beira", "venceu", "portao"):
         v = getattr(payload, campo)

@@ -603,6 +603,8 @@ def _cobrar(db, usuario, penitencia, alvo, dia_julgado, gatilho, dobrar):
                           rotina_id=alvo.get("rotina_id"))
     r["gatilho"] = gatilho
     r["dia_julgado"] = str(dia_julgado)
+    from motors import sussurros
+    sussurros.apos_commit(db, usuario, r.get("eco"))
 
     # ── A BARRA QUE COBROU, ESVAZIA ───────────────────────────────
     #

@@ -146,8 +146,8 @@ const PREF = {
 console.log('\n=== CARTAO DOS AVISOS ===');
 
 let a = B._avisos.call(B, PREF, { vinculado: false, disponivel: true });
-diz('sem canal', !a.includes('data-av='),
-    'nao oferece chave nenhuma — configurar o nada engana');
+diz('sem canal legado', a.includes('data-av="sussurros"') && !a.includes('data-av="beira"'),
+    'permite configurar sussurros do Solo Bot sem habilitar controles dos canais antigos');
 diz('sem canal', a.includes('Conecte o Telegram'), 'e diz o que fazer antes');
 
 diz('sem preferencia', B._avisos.call(B, null, { vinculado: true })
@@ -184,8 +184,9 @@ const DOIS   = { telegram: { vinculado: true },  whatsapp: { vinculado: true } }
 const NENHUM = { telegram: { vinculado: false }, whatsapp: { vinculado: false } };
 const PW = Object.assign({}, PREF, { canal_avisos: 'whatsapp' });
 
-diz('nenhum canal', !B._avisos.call(B, PW, NENHUM).includes('data-av='),
-    'sem canal nenhum nao oferece chave');
+diz('nenhum canal legado', B._avisos.call(B, PW, NENHUM).includes('data-av="sussurros"')
+    && !B._avisos.call(B, PW, NENHUM).includes('data-av="canal_avisos"'),
+    'sussurros podem ser configurados antes do vinculo ao Solo Bot; seletor legado continua oculto');
 diz('nenhum canal', B._avisos.call(B, PW, NENHUM).includes('Telegram ou o WhatsApp'),
     'e cita os dois caminhos possiveis');
 

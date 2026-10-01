@@ -345,6 +345,8 @@ def encher_medidor(rotina_id: int, corpo: MedidorIn | None = None,
             dobrar=(r.prioridade or "").upper() == "CRITICA",
             rotina_id=r.id, teste=True)
         punicao["gatilho"] = "medidor_teste"
+        from motors import sussurros
+        sussurros.apos_commit(db, usuario, punicao.get("eco"), teste=True, autor_id=usuario.id)
         medidor.esvaziar(db, r)
 
     db.commit()

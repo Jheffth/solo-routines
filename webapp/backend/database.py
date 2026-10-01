@@ -1339,9 +1339,30 @@ class PreferenciaAviso(Base):
     # O canal não escolhido continua aceitando comandos normalmente:
     # isto decide quem o Sistema PROCURA, não com quem ele conversa.
     canal_avisos = Column(String(12), default="telegram")
+    sussurros = Column(String(12), nullable=False, default="voz", server_default="voz")
 
     atualizado_em = Column(DateTime, default=datetime.utcnow,
                            onupdate=datetime.utcnow)
+
+
+class SussurroAgenda(Base):
+    """Um sorteio e uma tentativa por dia/hunter, inclusive após restart."""
+    __tablename__ = "sussurros_agenda"
+    __table_args__ = (UniqueConstraint("usuario_id", "dia", name="uq_sussurro_dia"),)
+    id = Column(Integer, primary_key=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    dia = Column(Date, nullable=False)
+    horario = Column(DateTime, nullable=False)  # Brasília, como motors.tempo
+    disparado_em = Column(DateTime, nullable=True)
+
+
+class SussurroEnviado(Base):
+    """Últimas dez frases aceitas pelo Solo Bot, sem variáveis preenchidas."""
+    __tablename__ = "sussurros_enviados"
+    id = Column(Integer, primary_key=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    cru = Column(Text, nullable=False)
+    criado_em = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 class MensagemWhats(Base):

@@ -126,18 +126,20 @@ def cobrar(db, usuario, missao_titulo: str, missao_data: date,
     hoje = tempo.hoje()
     regras = economia.punicao_regras(db)
     ja = contar(db, usuario.id)
+    from motors import sussurros
+    evitar = sussurros.recentes(db, usuario.id)
 
     # REGRA 2 — o teto. O Sistema para de criar e diz isso.
     if ja >= regras["divida_teto"]:
         return {"criadas": [], "no_teto": True, "pendentes": ja,
                 "eco": ecos.sortear(ecos.FRIA,
                                     {"jogador": "Jogador", "n": ja,
-                                     "missao": missao_titulo})}
+                                     "missao": missao_titulo}, evitar=evitar)}
 
     if not tem_pacto(db, usuario.id):
         return {"criadas": [], "sem_pacto": True, "pendentes": ja,
                 "eco": ecos.sortear(ecos.VAZIO,
-                                    {"jogador": "Jogador", "missao": missao_titulo})}
+                                    {"jogador": "Jogador", "missao": missao_titulo}, evitar=evitar)}
 
     quantas = 2 if dobrar else 1
     quantas = min(quantas, regras["divida_teto"] - ja)
@@ -214,7 +216,7 @@ def cobrar(db, usuario, missao_titulo: str, missao_data: date,
         "pendentes": total,
         "eco": ecos.para_falha(total, True,
                                {"jogador": "Jogador", "missao": missao_titulo,
-                                "n": total}),
+                                "n": total}, evitar=evitar),
     }
 
 

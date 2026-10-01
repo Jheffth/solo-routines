@@ -104,9 +104,11 @@
 
       if (!canais.length) {
         return `<div class="card bot-card">${cabeca}
-          <p class="bot-nota">Conecte o Telegram ou o WhatsApp acima e
-            estas opções passam a valer. Enquanto não houver canal, não
-            há para onde o Sistema te avisar.</p></div>`;
+          ${this._sussurros(p)}
+          <p class="bot-nota">Conecte o Telegram ou o WhatsApp no Solo Bot para receber os sussurros.
+            Você pode guardar sua preferência antes de conectar.</p>
+          <div class="bot-acoes"><button type="button" class="bot-bt bot-bt--on" data-av-salvar>
+            ${this._g('salvar', 15)}<span>Salvar</span></button></div></div>`;
       }
 
       /* O SELETOR SÓ APARECE COM DOIS CANAIS. Com um só, ele seria uma
@@ -142,6 +144,7 @@
 
       return `<div class="card bot-card">${cabeca}
         ${seletor}
+        ${this._sussurros(p)}
         <div class="bot-chaves">
           ${chave('beira', 'Falta pouco para o prazo',
                   'o último aviso que ainda salva a missão')}
@@ -174,6 +177,18 @@
             ${this._g('salvar', 15)}<span>Salvar</span></button>
         </div>
       </div>`;
+    },
+
+    _sussurros(p) {
+      const modo = p.sussurros || 'voz';
+      return `<div class="bot-canal"><label for="bot-sussurros">Sussurros do Sistema</label>
+        <select id="bot-sussurros" data-av="sussurros">
+          <option value="desligado" ${modo === 'desligado' ? 'selected' : ''}>Desligado</option>
+          <option value="texto" ${modo === 'texto' ? 'selected' : ''}>Só texto</option>
+          <option value="voz" ${modo === 'voz' ? 'selected' : ''}>Com voz</option>
+        </select></div><p class="bot-nota">A voz do Sistema ao cobrar penitências.
+        Com quatro ou mais dívidas, até um sussurro espontâneo por dia, entre 10h e 21h.
+        A escolha Personalizada / Sempre / Nunca no Solo Bot continua decidindo sobre a voz.</p>`;
     },
 
     _esc(s) {

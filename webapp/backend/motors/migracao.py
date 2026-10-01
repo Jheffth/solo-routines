@@ -251,6 +251,8 @@ COLUNAS = [
     # Um `except` largo transformou um erro de schema em silêncio.
     # ══════════════════════════════════════════════════════════════════
     ("preferencias_aviso", "canal_avisos", "VARCHAR(12)", "VARCHAR(12)"),
+    ("preferencias_aviso", "sussurros", "VARCHAR(12) NOT NULL DEFAULT 'voz'",
+     "VARCHAR(12) NOT NULL DEFAULT 'voz'"),
 
     # O MODO DE AVISO POR MISSÃO — texto, voz ou nenhum. Coluna nova em
     # tabela que JÁ EXISTE: é exatamente o caso que o `create_all` não
