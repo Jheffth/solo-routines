@@ -5,6 +5,7 @@ Cada rotina gera um registro ExecucaoDia por dia que ela é devida.
 """
 import json
 from motors import avisos
+from motors.habilidades import proteger_origem
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
@@ -528,6 +529,7 @@ def atualizar_rotina(
     ).first()
     if not r:
         raise HTTPException(404, "Rotina não encontrada")
+    proteger_origem(db, r.id)
 
     if payload.titulo       is not None: r.titulo       = payload.titulo
     if payload.descricao    is not None: r.descricao    = payload.descricao
@@ -629,6 +631,7 @@ def deletar_rotina(
     ).first()
     if not r:
         raise HTTPException(404, "Rotina não encontrada")
+    proteger_origem(db, r.id)
 
     if extinguir and usuario.nivel_acesso == "Arquiteto":
         # EXTINGUIR: a regra e tudo que ela gerou deixam de ter existido.
@@ -687,6 +690,7 @@ def iniciar_rotina(
     ).first()
     if not r:
         raise HTTPException(404, "Rotina não encontrada")
+    proteger_origem(db, r.id)
 
     hoje = tempo.hoje()
     ed = _obter_ou_criar_exec_dia(db, r, usuario.id, hoje)
@@ -713,6 +717,7 @@ def fracassar_rotina(
     ).first()
     if not r:
         raise HTTPException(404, "Rotina não encontrada")
+    proteger_origem(db, r.id)
 
     hoje = tempo.hoje()
     ed = _obter_ou_criar_exec_dia(db, r, usuario.id, hoje)
@@ -796,6 +801,7 @@ def retomar_rotina(
     ).first()
     if not r:
         raise HTTPException(404, "Rotina não encontrada")
+    proteger_origem(db, r.id)
 
     hoje = tempo.hoje()
     ed = _obter_ou_criar_exec_dia(db, r, usuario.id, hoje)
@@ -823,6 +829,7 @@ def pausar_rotina(
     ).first()
     if not r:
         raise HTTPException(404, "Rotina não encontrada")
+    proteger_origem(db, r.id)
     hoje = tempo.hoje()
     ed = _obter_ou_criar_exec_dia(db, r, usuario.id, hoje)
     if ed.status == "ATIVA":

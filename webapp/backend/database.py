@@ -276,6 +276,17 @@ class Rotina(Base):
 # EXECUÇÃO DIÁRIA (Instância diária de uma rotina recorrente)
 # Cada dia cria um registro separado: PENDENTE → ATIVA → CONCLUIDA/FRACASSADA
 # ==============================================================================
+class Habilidade(Base):
+    """Marco permanente; a rotina de origem e suas execuções são preservadas."""
+    __tablename__ = "habilidades"
+    id = Column(Integer, primary_key=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    rotina_id = Column(Integer, ForeignKey("rotinas.id"), nullable=False, unique=True)
+    nome = Column(String(80), nullable=False)
+    evidencia = Column(JSON, nullable=False)
+    criado_em = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
 class ExecucaoDia(Base):
     __tablename__ = "execucao_dia"
 

@@ -300,7 +300,8 @@ const App = {
         case 'perfil':    await Perfil.carregar();    break;
       case 'bots':      await Bots.carregar();      break;
       case 'calendario': await Calendario.carregar(); break;
-        case 'rotinas':   await Rotinas.carregar();   break;
+        case 'habilidades': await Habilidades.carregar(); break;
+      case 'rotinas':   await Rotinas.carregar();   break;
         case 'tarefas':   await Tarefas.carregar();   break;
         case 'progressivas': await Progressivas.carregar(); break;
         case 'pacto':     await Pacto.carregar();     break;
@@ -381,6 +382,7 @@ const App = {
     // Carrega conteudo
     switch (page) {
       case 'dashboard': await Dashboard.carregar(); break;
+      case 'habilidades': await Habilidades.carregar(); break;
       case 'rotinas':   await Rotinas.carregar();   break;
       case 'tarefas':   await Tarefas.carregar();   break;
         case 'progressivas': await Progressivas.carregar(); break;

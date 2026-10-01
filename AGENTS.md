@@ -23,12 +23,14 @@ A pasta inteira está no `.gitignore` e **nunca** vai para o git.
 
 ## Commits, push e deploy
 
-**Quem faz é o Antigravity.** O Arquiteto não usa o `SUBIR.bat`.
+**Todo agente deve fazer commit ao concluir uma alteração pronta e testada.**
+Esta é a regra atual do Arquiteto: não é necessário pedir autorização de
+commit a cada entrega. Incluir somente os arquivos da alteração, preservando
+trabalho alheio e respeitando as regras do cofre.
 
-Os outros agentes (Claude, Codex) deixam a mudança pronta e testada e
-avisam o que ficou para o Antigravity commitar e subir. Commit só quando o
-Arquiteto pedir explicitamente. Esta regra vale por cima de qualquer passo
-de deploy escrito em outro arquivo (inclusive o `BOT_COMANDOS.md`).
+**Push e deploy continuam com o Antigravity**, salvo instrução explícita do
+Arquiteto. Ele não usa o `SUBIR.bat`. Esta regra vale por cima de qualquer
+passo de deploy escrito em outro arquivo (inclusive o `BOT_COMANDOS.md`).
 
 ## Testes backend
 

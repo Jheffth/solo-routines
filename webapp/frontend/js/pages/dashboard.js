@@ -56,6 +56,7 @@ const Dashboard = {
         API.get('/dashboard/stats'),
         API.get('/dashboard/corrente?dias=30'),
         API.get('/dashboard/penitencia'),
+        Habilidades.dashboard(),
       ]);
 
       if (corrente.status === 'fulfilled') this.renderCorrente(corrente.value);

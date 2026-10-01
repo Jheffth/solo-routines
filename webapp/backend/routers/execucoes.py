@@ -11,6 +11,7 @@ from motors import tempo, prazos, economia, especiais
 from motors import meta as motor_meta
 from motors import circuito as motor_circuito
 
+from motors.habilidades import proteger_origem
 from database import (get_db, Rotina, Execucao, ExecucaoDia, TarefaDia,
                       Usuario, MetaAporte)
 from auth.router import get_usuario_atual
@@ -82,6 +83,7 @@ def concluir(db: Session, usuario: Usuario, rotina: Rotina, hoje: date,
     Quem conclui rotina agora passa por aqui. Levanta `HTTPException`
     com mensagens já escritas para humanos: o bot as repassa ao chat.
     """
+    proteger_origem(db, rotina.id)
     # Evita duplo registro no mesmo dia
     ja_executou = db.query(Execucao).filter(
         Execucao.usuario_id == usuario.id,
@@ -301,6 +303,7 @@ def reerguer(
     rotina = db.query(Rotina).filter(Rotina.id == ed.rotina_id).first()
     if not rotina:
         raise HTTPException(404, "Rotina não encontrada")
+    proteger_origem(db, rotina.id)
 
     if ed.status != "FRACASSADA":
         raise HTTPException(400, "Só uma missão fracassada pode ser reerguida.")
@@ -400,6 +403,7 @@ def confessar(
     rotina = db.query(Rotina).filter(Rotina.id == ed.rotina_id).first()
     if not rotina:
         raise HTTPException(404, "Rotina não encontrada")
+    proteger_origem(db, rotina.id)
 
     if not especiais.eh_premium(getattr(rotina, "natureza", None)):
         raise HTTPException(400, "Só missões passivas podem ser confessadas. "
@@ -542,6 +546,7 @@ def responder_condicional(
 
     if not rotina:
         raise HTTPException(404, "Rotina não encontrada")
+    proteger_origem(db, rotina.id)
 
     if not especiais.eh_condicional(getattr(rotina, "natureza", None)):
         raise HTTPException(400, "Esta missão não é condicional.")
@@ -736,6 +741,7 @@ def _rotina_de_repeticao(db: Session, usuario: Usuario, rotina_id: int) -> Rotin
     ).first()
     if not rotina:
         raise HTTPException(404, "Rotina não encontrada")
+    proteger_origem(db, rotina.id)
     if especiais.normalizar(getattr(rotina, "natureza", None)) != especiais.REPETICAO:
         raise HTTPException(400, "Esta rotina não é uma rotina de repetições")
     return rotina
@@ -1056,6 +1062,7 @@ def _alvo_de_meta(db: Session, usuario: Usuario, rotina_id, tarefa_id):
             Rotina.ativo == True).first()
         if not rotina:
             raise HTTPException(404, "Rotina não encontrada")
+        proteger_origem(db, rotina.id)
         if not motor_meta.eh_meta_valida(rotina):
             raise HTTPException(400, "Esta rotina não é uma missão de meta")
         return rotina, _execucao_do_dia(db, usuario, rotina, tempo.hoje())
@@ -1350,6 +1357,7 @@ def _alvo_de_circuito(db: Session, usuario: Usuario, rotina_id, tarefa_id):
             Rotina.ativo == True).first()
         if not rotina:
             raise HTTPException(404, "Rotina não encontrada")
+        proteger_origem(db, rotina.id)
         if not motor_circuito.eh_circuito(rotina):
             raise HTTPException(400, "Esta rotina não é uma missão de circuito")
         return rotina, _execucao_do_dia(db, usuario, rotina, tempo.hoje())

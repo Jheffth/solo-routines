@@ -12,6 +12,7 @@ from seed import popular_banco
 from auth.router import router as auth_router
 from auth.oauth import router as oauth_router
 from routers.rotinas import router as rotinas_router
+from routers.habilidades import router as habilidades_router
 from routers.tarefas import router as tarefas_router
 from routers.execucoes import router as execucoes_router
 from routers.contadores import router as contadores_router
@@ -82,6 +83,7 @@ def health():
 app.include_router(auth_router,          prefix="/api")
 app.include_router(oauth_router,         prefix="/api")
 app.include_router(rotinas_router,       prefix="/api")
+app.include_router(habilidades_router,   prefix="/api")
 app.include_router(tarefas_router,       prefix="/api")
 app.include_router(execucoes_router,     prefix="/api")
 app.include_router(contadores_router,    prefix="/api")

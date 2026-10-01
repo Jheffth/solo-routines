@@ -107,8 +107,10 @@ const Rotinas = {
     cont.classList.add('mc-lista');
     cont.innerHTML = this._notaDePapel()
       + '<div style="display:flex;flex-direction:column;gap:.9rem">'
-      + lista.map(r => MissaoCard.html(r, { modo: 'agenda' })).join('')
+      + lista.map(r => MissaoCard.html(r, { modo: 'agenda' }) + `<div data-hab-rotina="${r.id}"></div>`).join('')
       + '</div>';
+
+    Habilidades.montarRotinas(cont);
 
     document.getElementById('btn-rotinas-ir-dash')
       ?.addEventListener('click', () => { if (typeof App !== 'undefined') App.navigate('dashboard'); });
