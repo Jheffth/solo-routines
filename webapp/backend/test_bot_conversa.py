@@ -362,6 +362,50 @@ def main_teste():
            "e NAO reabre por fora — nada de setima verdade sobre a economia")
 
         # ══════════════════════════════════════════════════════════════
+        # 8b · ACENTO NÃO É NOME DIFERENTE
+        #     O caso real: a missão "Ler um versiculo antes de dormir"
+        #     (sem acento) e o Arquiteto dizendo por voz "concluir o
+        #     versículo". A transcrição escreve com acento, e o bot
+        #     respondia "não achei" com a missão aberta na lista.
+        # ══════════════════════════════════════════════════════════════
+        rid_v = nova("Ler um versiculo antes de dormir")
+        rid_m = nova("Treino da Manhã")
+        c.get(P + "/dashboard/stats", headers=A)
+
+        caixa.limpar()
+        fala("/ok versículo")
+        ok(estado(rid_v) == "CONCLUIDA",
+           "'/ok versículo' (com acento) conclui a missao 'versiculo' (sem)")
+
+        caixa.limpar()
+        fala("/iniciar TREINO DA MANHA")
+        ok(estado(rid_m) == "ATIVA",
+           "e o contrario: titulo com acento, digitado sem acento e em maiusculas")
+
+        caixa.limpar()
+        fala("/ok versículo")
+        ok("já foi concluída" in caixa.ultima("111"),
+           "a segunda vez diz que ja foi concluida, sem confundir com 'nao achei'")
+
+        # ── SINÔNIMO: "leitura" para uma missão chamada "Ler ..." ──────
+        # Por voz, "concluir leitura antes de dormir" virou "/ok leitura".
+        # Nenhum titulo tem "leitura". Em vez de "nao achei", o bot
+        # OFERECE as parecidas — e nao conclui nenhuma sozinho.
+        rid_l = nova("Ler 05 paginas de um bom livro")
+        c.get(P + "/dashboard/stats", headers=A)
+        caixa.limpar()
+        fala("/ok leitura")
+        txt = caixa.ultima("111")
+        ok("Era uma destas" in txt, "sem casar pelo nome, o bot oferece as parecidas")
+        ok("Não achei nenhuma" not in txt, "em vez do beco sem saida do 'nao achei'")
+        ok(estado(rid_l) == "PENDENTE", "e NAO conclui nada sozinho por semelhanca")
+        opcoes = caixa.dados_dos_botoes()
+        ok(f"ok|r|{rid_l}" in opcoes, "'Ler 05 paginas...' esta entre as opcoes, ja com a acao certa")
+        ok(len(opcoes) <= 5, "no maximo cinco opcoes")
+        toca(f"ok|r|{rid_l}")
+        ok(estado(rid_l) == "CONCLUIDA", "o toque na opcao conclui a missao escolhida")
+
+        # ══════════════════════════════════════════════════════════════
         # 9 · A AJUDA LEVA AO CAMINHO SEGURO
         # ══════════════════════════════════════════════════════════════
         caixa.limpar()

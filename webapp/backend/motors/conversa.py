@@ -248,6 +248,25 @@ def _processar(texto: str, db: Session, canal):
                         "CANCELADA": "está cancelada"}.get(a.status, a.status)
                 canal.enviar(f"⚠️ *{a.titulo}* {nome}.")
                 return
+            # NÃO ACHOU PELO NOME: OFERECE AS PARECIDAS, nunca escolhe.
+            #
+            # O caso real: "Concluir leitura antes de dormir", por voz,
+            # virou `/ok leitura` — e nenhum título tem "leitura": as
+            # missões se chamam "Ler 05 páginas..." e "Ler um versiculo
+            # antes de dormir". Quem fala usa sinônimo; o título é a
+            # palavra que a pessoa escreveu num outro dia. "Não achei"
+            # ali era um beco sem saída com a missão aberta na lista.
+            #
+            # O que NÃO se faz: concluir a "mais parecida" sozinho.
+            # Parecido não é igual, e concluir a errada custa XP e deixa
+            # a certa em aberto. A semelhança só ORDENA as opções; quem
+            # decide é o hunter, num toque ou num número.
+            parecidas = _parecidos(db, usuario, busca, hoje,
+                                   abertas_apenas=acao not in ("reer", "conf"))
+            if parecidas:
+                _menu_escolha(canal, acao, parecidas,
+                              f"Não achei *{busca}* pelo nome. Era uma destas, para {verbo}?")
+                return
             canal.enviar(f"❌ Não achei nenhuma missão de hoje com *{busca}*.")
             return
         if len(achados) > 1:
@@ -768,23 +787,88 @@ def _alvos_do_dia(db: Session, usuario, hoje: date, abertas_apenas=False) -> lis
     return lista
 
 
+def _dobrar(texto: str) -> str:
+    """
+    O texto como se COMPARA, não como se escreve: sem acento, sem
+    maiúscula, com os espaços colapsados.
+
+    O DEFEITO QUE OBRIGOU ISTO: a missão se chama "Ler um versiculo antes
+    de dormir", sem acento, e o hunter disse por voz "concluir o
+    versículo". A transcrição escreve certo — com acento — e a busca
+    comparava letra por letra: "versículo" não está dentro de
+    "versiculo", e o bot respondia "não achei" com a missão aberta na
+    lista logo abaixo. Por texto acontecia o mesmo com "ás"/"às",
+    "manhã"/"manha".
+
+    A voz tornou isto inevitável: quem fala não escolhe a grafia, quem
+    transcreve escolhe por ele. A comparação tem de ignorar o que a
+    pessoa não controla.
+    """
+    import unicodedata
+    t = unicodedata.normalize("NFKD", str(texto or ""))
+    t = "".join(c for c in t if not unicodedata.combining(c))
+    return " ".join(t.lower().split())
+
+
+def _parecidos(db: Session, usuario, busca: str, hoje: date,
+               abertas_apenas=True, limite: int = 5) -> list:
+    """
+    As missões do dia ORDENADAS pela semelhança com o que foi dito —
+    para oferecer, nunca para escolher.
+
+    A nota mistura duas coisas: o quanto a frase inteira se parece com o
+    título, e o quanto cada palavra dita se parece com alguma palavra do
+    título ("versiculo" ~ "versículo", "dormir" = "dormir"). Palavras de
+    uma ou duas letras não contam ("o", "de", "um" casam com tudo).
+
+    Sem nenhuma semelhança, devolve as abertas mesmo assim, na ordem do
+    dia: com cinco ou seis missões em aberto, mostrar todas é melhor do
+    que mandar o hunter de volta para o `/hoje`.
+    """
+    from difflib import SequenceMatcher
+
+    termo = _dobrar(busca)
+    if not termo:
+        return []
+    todos = _alvos_do_dia(db, usuario, hoje, abertas_apenas=abertas_apenas)
+    if not todos:
+        return []
+
+    palavras = [w for w in termo.split() if len(w) > 2]
+
+    def nota(a):
+        tit = _dobrar(a.titulo)
+        geral = SequenceMatcher(None, termo, tit).ratio()
+        das_palavras = 0.0
+        if palavras:
+            pt = [w for w in tit.split() if len(w) > 2] or [tit]
+            das_palavras = sum(max(SequenceMatcher(None, w, x).ratio() for x in pt)
+                               for w in palavras) / len(palavras)
+        return geral + das_palavras
+
+    ordenados = sorted(todos, key=nota, reverse=True)
+    return ordenados[:limite]
+
+
 def _procurar(db: Session, usuario, busca: str, hoje: date,
               abertas_apenas=True) -> list:
     """
     Os alvos que casam com o texto. Pode devolver zero, um ou vários —
     e quem chama TEM de tratar os três casos.
+
+    A comparação passa por `_dobrar`: acento e maiúscula não contam.
     """
-    termo = (busca or "").strip().lower()
+    termo = _dobrar(busca)
     if not termo:
         return []
     todos = _alvos_do_dia(db, usuario, hoje, abertas_apenas=abertas_apenas)
 
     # Casar o título inteiro vence: quem digitou o nome exato não quer
     # ver um menu de desambiguação por causa de um prefixo compartilhado.
-    exatos = [a for a in todos if (a.titulo or "").strip().lower() == termo]
+    exatos = [a for a in todos if _dobrar(a.titulo) == termo]
     if exatos:
         return exatos
-    return [a for a in todos if termo in (a.titulo or "").lower()]
+    return [a for a in todos if termo in _dobrar(a.titulo)]
 
 
 def _menu_escolha(canal, acao: str, alvos: list, cabecalho: str):
