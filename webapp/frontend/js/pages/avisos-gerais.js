@@ -1,8 +1,8 @@
 const AvisosGerais = {
   _regras: [], _catalogo: [],
   esc(v) { return String(v ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); },
-  _origens: {TAREFA:'Missão geral',ROTINA:'Rotina',DUNGEON:'Dungeon'},
-  _eventos: {STATUS:'Acompanhar status',ABRE:'Portão prestes a abrir',FECHA:'Portão prestes a fechar'},
+  _origens: {TAREFA:'Missão geral',ROTINA:'Rotina',DUNGEON:'Dungeon',MISSAO:'Missão interna da dungeon'},
+  _eventos: {STATUS:'Acompanhar status',ABRE:'Portão prestes a abrir',FECHA:'Portão prestes a fechar',PRAZO:'Tempo da sessão prestes a acabar',ATIVA_EM:'Missão prestes a aparecer',EXPIRA_EM:'Ocorrência prestes a vencer'},
   _formatos: {texto:'Texto',audio:'Áudio',ambos:'Texto e áudio'},
   async carregar() {
     const host=document.getElementById('avisos-gerais-conteudo'); if(!host) return;
@@ -64,13 +64,15 @@ const AvisosGerais = {
       <label data-antecedencia>Minutos antes<input name="antecedencia_min" type="number" min="5" max="180" value="${padrao.antecedencia_min}" required></label></div>
       <fieldset data-estados><legend>Avisar nestes estados</legend>${[['PENDENTE','Não iniciada'],['ATIVA','Em andamento'],['PAUSADA','Pausada'],['ATRASADA','Atrasada']].map(([v,t])=>`<label><input type="checkbox" name="estados" value="${v}" ${padrao.estados.includes(v)?'checked':''}> ${t}</label>`).join('')}</fieldset>
       <div class="ag-form-grid"><label>Receber a partir de<input type="time" name="janela_de" value="${padrao.janela_de}" required></label><label>Até<input type="time" name="janela_ate" value="${padrao.janela_ate}" required></label></div>
-      <p class="ag-nota">O envio verifica os alvos a cada cinco minutos. A repetição começa após o intervalo escolhido. Encerrar a missão impede novos avisos.</p><p class="ag-erro" role="alert"></p>
+      <p class="ag-nota">O envio verifica os alvos a cada cinco minutos. A repetição começa após o intervalo escolhido. Nas dungeons, cada ocorrência tem seus próprios avisos; concluir ou expirar um card encerra os lembretes dele. Missões internas precisam de uma sessão real iniciada; saúde segue os eventos registrados pela dungeon. Janelas muito curtas podem terminar entre duas verificações.</p><p class="ag-erro" role="alert"></p>
       <button class="btn btn-primary" type="submit">Salvar aviso</button></form>`);
     const f=d.querySelector('form'), origem=f.elements.origem, alvos=f.elements.alvo_id, evento=f.elements.evento;
     const eventos=()=>{
       const atual=evento.value||padrao.evento;
       const alvo=this._catalogo.find(o=>o.origem===origem.value&&o.id===Number(alvos.value));
-      evento.innerHTML=opts(origem.value==='DUNGEON'&&!alvo?.sempre_aberta?this._eventos:{STATUS:this._eventos.STATUS},atual);
+      if(!r&&origem.value==='MISSAO'&&['BEM_ESTAR','EVENTO_ALEATORIO'].includes(alvo?.natureza))f.elements.intervalo_min.value='5';
+      const permitidos=alvo?.eventos||(origem.value==='DUNGEON'?['STATUS','PRAZO',...(!alvo?.sempre_aberta?['ABRE','FECHA']:[])]:['STATUS']);
+      evento.innerHTML=opts(Object.fromEntries(permitidos.map(e=>[e,this._eventos[e]])),atual);
       campos();
     };
     const campos=()=>{

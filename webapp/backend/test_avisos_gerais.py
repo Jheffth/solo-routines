@@ -11,7 +11,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from database import (Base,Usuario,TarefaDia,Rotina,ExecucaoDia,Dungeon,DungeonSessao,
+from database import (Base,Usuario,TarefaDia,Rotina,ExecucaoDia,Dungeon,DungeonSessao,DungeonMissao,DungeonMissaoExecucao,
     RegraAvisoGeral,TentativaAvisoGeral,get_db)
 from auth.router import get_usuario_atual
 from motors import avisos_gerais as m
@@ -164,6 +164,129 @@ class AvisosTest(unittest.TestCase):
             self.assertEqual(post.call_args.args[1]['formato'],'audio')
             self.assertTrue(solobot_ponte.avisar(1,'Lembrete'))
             self.assertNotIn('formato',post.call_args.args[1])
+
+    def interna(self,natureza='AGENDADA',**extra):
+        d=Dungeon(usuario_id=self.u.id,titulo='Estudo',hora_entrada='08:00',hora_saida='22:00',status='ATIVA')
+        self.db.add(d);self.db.flush()
+        s=DungeonSessao(dungeon_id=d.id,usuario_id=self.u.id,data=self.agora.date(),status='ATIVA',entrada_em=self.agora-timedelta(minutes=30),modo_teste=False)
+        missao=DungeonMissao(dungeon_id=d.id,titulo='Beber água',natureza=natureza,**extra)
+        self.db.add_all([s,missao]);self.db.commit()
+        return d,s,missao
+
+    def execucao(self,s,missao,**extra):
+        e=DungeonMissaoExecucao(dungeon_missao_id=missao.id,dungeon_sessao_id=s.id,**extra)
+        self.db.add(e);self.db.commit();return e
+
+    def test_interna_agendada_antecipacao_status_prazo_e_encerramento(self):
+        d,s,missao=self.interna(hora_inicio='12:15',hora_limite='13:00')
+        e=self.execucao(s,missao,status='PENDENTE')
+        self.regra('MISSAO',missao.id,evento='ATIVA_EM')
+        self.assertEqual(self.varrer(),1);self.assertEqual(self.varrer(),0)
+        self.assertIn('disponível em 15 minutos',self.enviar.call_args.args[1])
+        self.assertEqual(self.enviar.call_args.kwargs['valido_ate'].hour,12)
+        self.regra('MISSAO',missao.id,evento='STATUS',intervalo_min=5)
+        self.regra('MISSAO',missao.id,evento='EXPIRA_EM',antecedencia_min=10)
+        self.agora=self.agora.replace(minute=10);self.assertEqual(self.varrer(),0)
+        self.agora=self.agora.replace(minute=20);self.assertEqual(self.varrer(),1)
+        e.status='EM_PROGRESSO';self.db.commit();self.agora=self.agora.replace(minute=50)
+        self.assertEqual(self.varrer(),2);self.assertEqual(self.varrer(),0)
+        self.assertIn('vence em 10 minutos',self.enviar.call_args.args[1])
+        e.status='CONCLUIDA';self.db.commit();self.agora+=timedelta(minutes=5)
+        self.assertEqual(self.varrer(),0)
+
+    def test_saude_proxima_ocorrencia_expiracao_e_novo_card(self):
+        d,s,missao=self.interna('BEM_ESTAR',intervalo_min=45,expira_em_min=10)
+        self.regra('MISSAO',missao.id,evento='ATIVA_EM',antecedencia_min=20)
+        self.regra('MISSAO',missao.id,evento='EXPIRA_EM',antecedencia_min=5)
+        self.assertEqual(self.varrer(),1);self.assertEqual(self.varrer(),0)
+        self.agora+=timedelta(minutes=15)
+        e=self.execucao(s,missao,status='PENDENTE',disparada_em=self.agora)
+        self.assertEqual(self.varrer(),0)
+        self.agora+=timedelta(minutes=5);self.assertEqual(self.varrer(),1)
+        self.assertEqual(self.enviar.call_args.kwargs['valido_ate'].minute,25)
+        self.assertEqual(self.varrer(),0)
+        self.agora+=timedelta(minutes=6)
+        # Mesmo sem heartbeat para mudar o status, não cobra card vencido.
+        self.assertEqual(self.varrer(),0)
+        e.status='EXPIRADA';self.db.commit()
+        self.agora=self.agora.replace(minute=45);self.assertEqual(self.varrer(),1)
+        self.assertIn('disponível em 15 minutos',self.enviar.call_args.args[1])
+        self.agora=self.agora.replace(hour=13,minute=0)
+        novo=self.execucao(s,missao,status='PENDENTE',disparada_em=self.agora)
+        self.agora+=timedelta(minutes=5);self.assertEqual(self.varrer(),1)
+        novo.status='CONCLUIDA';self.db.commit();self.assertEqual(self.varrer(),0)
+        self.assertEqual(self.db.query(TentativaAvisoGeral).count(),4)
+
+    def test_missao_interna_propriedade_folgas_e_sessoes_teste(self):
+        d,s,missao=self.interna(hora_inicio='12:15',hora_limite='13:00')
+        self.execucao(s,missao,status='PENDENTE')
+        self.regra('MISSAO',missao.id,evento='ATIVA_EM')
+        s.modo_teste=True;self.db.commit();self.assertEqual(self.varrer(),0)
+        s.modo_teste=False;missao.dias_semana='[4]';self.db.commit();self.assertEqual(self.varrer(),0)
+        missao.dias_semana=None;self.db.commit()
+        itens=self.client.get('/avisos-gerais/catalogo').json()
+        self.assertEqual(next(i for i in itens if i['origem']=='MISSAO')['eventos'],['STATUS','ATIVA_EM','EXPIRA_EM'])
+        self.u=self.outro
+        self.assertEqual(self.client.post('/avisos-gerais/',json={'origem':'MISSAO','alvo_id':missao.id}).status_code,404)
+        self.assertFalse(any(i['origem']=='MISSAO' for i in self.client.get('/avisos-gerais/catalogo').json()))
+
+    def test_prazo_sessao_conta_primeira_entrada_mesmo_suspensa(self):
+        d,s,missao=self.interna()
+        d.sempre_aberta=True;d.hora_saida=None;d.duracao_max_min=45;s.status='SUSPENSA';self.db.commit()
+        self.regra('DUNGEON',d.id,evento='PRAZO',antecedencia_min=20)
+        self.assertEqual(self.varrer(),1);self.assertEqual(self.varrer(),0)
+        self.assertIn('termina em 15 minutos',self.enviar.call_args.args[1])
+        self.assertEqual(self.enviar.call_args.kwargs['valido_ate'].minute,15)
+        self.agora+=timedelta(minutes=16);self.assertEqual(self.varrer(),0)
+
+    def test_aleatoria_anuncia_janela_sem_promessa_de_horario(self):
+        d,s,missao=self.interna('EVENTO_ALEATORIO',janela_disparo_min=45,janela_disparo_max=60)
+        self.regra('MISSAO',missao.id,evento='ATIVA_EM')
+        self.assertEqual(self.varrer(),1)
+        self.assertIn('pode aparecer na janela das 12:15 às 12:30',self.enviar.call_args.args[1])
+        self.assertEqual(self.db.query(DungeonMissaoExecucao).count(),0,'pré-aviso não gera card')
+
+    def test_interna_rejeita_eventos_impossiveis_e_missao_inativa(self):
+        d,s,missao=self.interna('PADRAO')
+        for ev in ('ABRE','PRAZO','ATIVA_EM','EXPIRA_EM'):
+            self.assertEqual(self.client.post('/avisos-gerais/',json={'origem':'MISSAO','alvo_id':missao.id,'evento':ev}).status_code,422)
+        missao.tipo='PASSIVA';self.db.commit()
+        self.assertEqual(self.client.post('/avisos-gerais/',json={'origem':'MISSAO','alvo_id':missao.id}).status_code,422)
+        missao.tipo='ATIVA';missao.ativo=False;self.db.commit()
+        self.assertEqual(self.client.post('/avisos-gerais/',json={'origem':'MISSAO','alvo_id':missao.id}).status_code,409)
+
+    def test_prazo_sessao_limita_card_e_impede_antecipar_apos_fim(self):
+        d,s,missao=self.interna(hora_inicio='12:15',hora_limite='13:00')
+        d.duracao_max_min=40;self.db.commit() # primeira entrada 11:30 -> 12:10
+        self.execucao(s,missao,status='PENDENTE')
+        self.regra('MISSAO',missao.id,evento='ATIVA_EM')
+        self.assertEqual(self.varrer(),0,'não promete card que só abriria após o fim')
+        missao.hora_inicio='11:45';self.db.commit()
+        self.regra('MISSAO',missao.id,evento='EXPIRA_EM')
+        self.assertEqual(self.varrer(),1)
+        self.assertIn('vence em 10 minutos',self.enviar.call_args.args[1])
+        self.assertEqual(self.enviar.call_args.kwargs['valido_ate'].minute,10)
+        self.regra('DUNGEON',d.id,evento='STATUS',intervalo_min=5)
+        self.agora+=timedelta(minutes=11);self.assertEqual(self.varrer(),0)
+
+    def test_troca_ocorrencia_entre_reserva_e_entrega_nao_manda_outro_card(self):
+        d,s,missao=self.interna('BEM_ESTAR',intervalo_min=45,expira_em_min=10)
+        e=self.execucao(s,missao,status='PENDENTE',disparada_em=self.agora-timedelta(minutes=5))
+        self.regra('MISSAO',missao.id,evento='EXPIRA_EM')
+        original=m.mensagem;chamadas=0
+        def trocar(db,r,agora=None):
+            nonlocal chamadas
+            chamadas+=1
+            if chamadas==2:
+                db.get(DungeonMissaoExecucao,e.id).status='CONCLUIDA'
+                db.add(DungeonMissaoExecucao(dungeon_missao_id=missao.id,dungeon_sessao_id=s.id,status='PENDENTE',disparada_em=self.agora))
+                db.commit()
+            return original(db,r,agora)
+        with patch.object(m,'mensagem',side_effect=trocar):
+            self.assertEqual(self.varrer(),0)
+        self.enviar.assert_not_called()
+        self.assertEqual(self.db.query(TentativaAvisoGeral).one().status,'IGNORADO')
+        self.assertEqual(self.varrer(),1,'nova ocorrência tem sua própria oportunidade')
 
 
 if __name__=='__main__':unittest.main()

@@ -73,3 +73,35 @@ Validação: testes isolados do motor e das rotas, fluxo do formulário em DOM,
 navegação e sintaxe do frontend; suíte completa do Solo Bot e testes de
 integração da ponte do Finances. Transportes simulados, sem envio ao hunter.
 Publicação e conferência visual no site ainda dependem do Antigravity.
+
+## Segunda entrega — missões internas e prazo da sessão
+
+Implementada a origem **Missão interna da dungeon** na Central. A regra
+escolhida acompanha as ocorrências futuras da mesma missão, sem habilitar
+avisos automaticamente. Eventos disponíveis conforme a natureza:
+
+- Status de um card real: pendente, em progresso ou pausado; termina ao
+  concluir, cancelar, expirar ou vencer o prazo efetivo.
+- Agendadas: antecedência antes de ficar disponível ou antes de vencer.
+- Saúde (`BEM_ESTAR`): próxima ocorrência calculada pela própria agenda da
+  sessão, mais aviso de vencimento do card já disparado; cada card tem chave
+  distinta. A sugestão de intervalo de acompanhamento é de 5 minutos.
+- Aleatórias: informa o começo da janela possível, sem prometer a hora exata;
+  o vencimento usa a ocorrência realmente disparada.
+- Dungeon: **Tempo da sessão prestes a acabar**, com o prazo existente que
+  considera a primeira entrada e continua correndo durante a suspensão.
+
+Só sessões reais iniciadas participam. Folgas, missões desativadas, dungeons
+arquivadas e sessões de teste são ignoradas. Passivas automáticas e falas
+decorativas não oferecem acompanhamento de cards. O motor apenas lê a agenda:
+não gera, inicia, expira nem conclui execução e não aplica XP.
+
+Os avisos antecipados são únicos por ocorrência/evento. Uma nova confirmação
+do estado antes da entrega também exige que ainda seja a mesma ocorrência
+reservada. Validade nunca ultrapassa o prazo do card/sessão. A varredura segue
+em passos de 5 minutos: eventos muito curtos podem terminar entre dois passos;
+o disparo das missões de saúde segue dependendo do heartbeat existente da
+dungeon. Cancelar avisos já na fila do Solo Bot permanece como evolução.
+
+Sem mudança de esquema ou do contrato do Bot nesta etapa. Publicar apenas
+o Rotinas após a extensão de formatos da primeira entrega estar no Solo Bot.

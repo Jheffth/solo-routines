@@ -4,18 +4,21 @@ import logging
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from database import (Rotina, TarefaDia, ExecucaoDia, Dungeon, DungeonSessao,
+from database import (Rotina, TarefaDia, ExecucaoDia, Dungeon, DungeonSessao, DungeonMissao,
                       RegraAvisoGeral, TentativaAvisoGeral)
 from motors import tempo, prazos, calendario_projecao as proj
 from motors.fechamento import rotina_devida_em
 import solobot_ponte
 
 log = logging.getLogger(__name__)
-MODELOS = {"TAREFA": TarefaDia, "ROTINA": Rotina, "DUNGEON": Dungeon}
+MODELOS = {"TAREFA": TarefaDia, "ROTINA": Rotina, "DUNGEON": Dungeon, "MISSAO": DungeonMissao}
 FINAIS = {"CONCLUIDA", "CANCELADA", "CONFESSADA", "FRACASSADA_FATAL"}
 
 
 def alvo(db, uid, origem, oid):
+    if origem=='MISSAO':
+        return db.query(DungeonMissao).join(Dungeon).filter(
+            DungeonMissao.id==oid,Dungeon.usuario_id==uid).first()
     cls = MODELOS.get(origem)
     return db.query(cls).filter(cls.id == oid, cls.usuario_id == uid).first() if cls else None
 
@@ -41,6 +44,9 @@ def mensagem(db, r, agora=None):
     obj = alvo(db, r.usuario_id, r.origem, r.alvo_id)
     if not obj:
         return None
+    if r.origem == 'MISSAO':
+        from motors import avisos_dungeon
+        return avisos_dungeon.mensagem(db,r,obj,agora)
     if r.origem == 'DUNGEON':
         return _dungeon(db, r, obj, agora)
     if r.origem == 'ROTINA':
@@ -89,6 +95,9 @@ def mensagem(db, r, agora=None):
 def _dungeon(db, r, d, agora):
     if d.status != 'ATIVA':
         return None
+    if r.evento=='PRAZO':
+        from motors import avisos_dungeon
+        return avisos_dungeon.tempo_sessao(db,r,d,agora)
     if d.sempre_aberta and r.evento != 'STATUS':
         return None
     for dia in (agora.date()-timedelta(days=1), agora.date(), agora.date()+timedelta(days=1)):
@@ -115,6 +124,13 @@ def _dungeon(db, r, d, agora):
         sessao = db.query(DungeonSessao).filter_by(dungeon_id=d.id,usuario_id=r.usuario_id,data=dia,modo_teste=False).order_by(DungeonSessao.id.desc()).first()
         if sessao and sessao.status in FINAIS | {'FRACASSADA'}:
             return None
+        if sessao and sessao.entrada_em:
+            from motors.avisos_dungeon import prazo_sessao
+            limite=prazo_sessao(d,sessao)
+            if limite and agora>=limite:
+                return None
+            if limite:
+                fecha=min(fecha,limite) if fecha else limite
         estado = ('PAUSADA' if sessao.status == 'SUSPENSA' else sessao.status) if sessao else 'PENDENTE'
         if estado not in r.estados:
             return None
@@ -131,7 +147,7 @@ def serializar(db,r):
     ultima = db.query(TentativaAvisoGeral).filter_by(regra_id=r.id).order_by(TentativaAvisoGeral.id.desc()).first()
     def iso(v): return v.replace(tzinfo=tempo.FUSO).isoformat() if v else None
     return {k:getattr(r,k) for k in ('id','origem','alvo_id','evento','formato','intervalo_min','antecedencia_min','estados','janela_de','janela_ate','ativo')} | {
-        'titulo':obj.titulo if obj else 'Alvo removido', 'proximo_em':iso(r.proximo_em),
+        'titulo':(f'{obj.dungeon.titulo} · {obj.titulo}' if r.origem=='MISSAO' else obj.titulo) if obj else 'Alvo removido', 'proximo_em':iso(r.proximo_em),
         'ultimo_enviado_em':iso(r.ultimo_enviado_em),
         'ultima_tentativa':{'status':ultima.status,'em':iso(ultima.criado_em)} if ultima else None}
 
@@ -176,7 +192,7 @@ def _processar(bind,rid,agora):
         db.expire_all()
         r=db.get(RegraAvisoGeral,rid)
         atual=mensagem(db,r,tempo.agora()) if r and r.ativo else None
-        if not atual:
+        if not atual or (m['chave_evento'] and atual['chave_evento']!=m['chave_evento']):
             tentativa.status='IGNORADO';db.commit();return False
         valido=min(proximo,atual['fim']) if atual['fim'] else proximo
         # Estado atual confirma o conteúdo imediatamente antes da entrega.
