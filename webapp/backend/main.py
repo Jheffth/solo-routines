@@ -37,6 +37,7 @@ from routers.auras    import router as auras_router
 from routers.versao   import router as versao_router
 from routers.calendario import router as calendario_router
 from routers.bots       import router as bots_router
+from routers.avisos_gerais import router as avisos_gerais_router
 from routers.bot_whatsapp import router as whats_router
 from routers import solobot
 from routers.pagamentos import router as pagamentos_router
@@ -108,6 +109,7 @@ app.include_router(auras_router,         prefix="/api")
 app.include_router(pagamentos_router,    prefix="/api")
 app.include_router(calendario_router,    prefix="/api")
 app.include_router(bots_router,           prefix="/api")
+app.include_router(avisos_gerais_router,  prefix="/api")
 app.include_router(whats_router,          prefix="/api")
 # Solo Bot: aba Bots (/api/solobot/*) e a porta interna (/interno/bot/*, sem /api)
 app.include_router(solobot.publico)

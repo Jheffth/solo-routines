@@ -298,6 +298,7 @@ const App = {
       switch (this.currentPage) {
         case 'dashboard': await Dashboard.carregar(); break;
         case 'perfil':    await Perfil.carregar();    break;
+      case 'avisos': await AvisosGerais.carregar(); break;
       case 'bots':      await Bots.carregar();      break;
       case 'calendario': await Calendario.carregar(); break;
         case 'habilidades': await Habilidades.carregar(); break;
@@ -401,6 +402,7 @@ const App = {
       case 'dungeons':  await Dungeons.carregar();  break;
       case 'loja':      await Loja.carregar();      break;
       case 'perfil':    await Perfil.carregar();    break;
+      case 'avisos': await AvisosGerais.carregar(); break;
       case 'bots':      await Bots.carregar();      break;
       case 'calendario': await Calendario.carregar(); break;
       case 'materiais': await Materiais.carregar(); break;

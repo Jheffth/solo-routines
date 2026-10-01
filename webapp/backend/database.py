@@ -1345,6 +1345,38 @@ class PreferenciaAviso(Base):
                            onupdate=datetime.utcnow)
 
 
+class RegraAvisoGeral(Base):
+    __tablename__ = "regras_aviso_geral"
+    __table_args__ = (UniqueConstraint("usuario_id", "origem", "alvo_id", "evento", name="uq_regra_aviso_alvo"),)
+    id = Column(Integer, primary_key=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    origem = Column(String(12), nullable=False)
+    alvo_id = Column(Integer, nullable=False)
+    evento = Column(String(12), nullable=False, default="STATUS")
+    formato = Column(String(10), nullable=False, default="texto")
+    intervalo_min = Column(Integer, nullable=False, default=60)
+    antecedencia_min = Column(Integer, nullable=False, default=30)
+    estados = Column(JSON, nullable=False, default=lambda: ["PENDENTE", "ATIVA", "PAUSADA", "ATRASADA"])
+    janela_de = Column(String(5), nullable=False, default="08:00")
+    janela_ate = Column(String(5), nullable=False, default="22:00")
+    ativo = Column(Boolean, nullable=False, default=True)
+    proximo_em = Column(DateTime, nullable=False)  # Brasília
+    ultima_chave = Column(String(160), nullable=True)
+    ultimo_enviado_em = Column(DateTime, nullable=True)
+    criado_em = Column(DateTime, default=datetime.utcnow)
+    tentativas = relationship("TentativaAvisoGeral", cascade="all, delete-orphan", lazy="dynamic")
+
+
+class TentativaAvisoGeral(Base):
+    __tablename__ = "tentativas_aviso_geral"
+    id = Column(Integer, primary_key=True)
+    regra_id = Column(Integer, ForeignKey("regras_aviso_geral.id"), nullable=False, index=True)
+    chave = Column(String(200), nullable=False, unique=True)
+    status = Column(String(12), nullable=False, default="RESERVADO")
+    texto = Column(Text, nullable=False)
+    criado_em = Column(DateTime, nullable=False)  # Brasília
+
+
 class SussurroAgenda(Base):
     """Um sorteio e uma tentativa por dia/hunter, inclusive após restart."""
     __tablename__ = "sussurros_agenda"
