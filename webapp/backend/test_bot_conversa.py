@@ -179,6 +179,13 @@ def main_teste():
         ok(estado(rid_a) == "ATIVA", "titulo exato age direto, sem menu")
         ok(estado(rid_b) == "PENDENTE", "e nao encosta na irma de prefixo")
 
+        # Iniciar o que ja esta em andamento: orientar, nao despejar o status do banco.
+        caixa.limpar()
+        fala("/iniciar Acordar as 06:00")
+        ok("já está em andamento" in caixa.ultima("111") and "/ok" in caixa.ultima("111"),
+           "iniciar missao ATIVA diz o que fazer")
+        ok("status atual" not in caixa.ultima("111"), "sem o status cru do banco")
+
         # ══════════════════════════════════════════════════════════════
         # 3 · O CICLO DO DIA
         # ══════════════════════════════════════════════════════════════

@@ -984,6 +984,12 @@ def _agir(db: Session, usuario, canal, acao: str, alvo: Alvo, hoje: date):
             return True, f"+{res['xp_ganho']} XP", longa
 
         if acao == "ini":
+            # Já em andamento: dizer o que fazer, não o status cru do banco
+            # ("Não é possível iniciar — status atual: ATIVA").
+            if alvo.status == "ATIVA":
+                return (False, "Já está em andamento.",
+                        f"⏳ *{alvo.titulo}* já está em andamento.\n"
+                        f"Para concluir: `/ok {alvo.titulo}` — ou diga “concluí {alvo.titulo}”.")
             (_rot.iniciar_rotina if alvo.tipo == "r" else _tar.iniciar_tarefa)(
                 alvo.id, db, usuario)
             _registrar_ato(db, usuario, canal, "ini", alvo)
