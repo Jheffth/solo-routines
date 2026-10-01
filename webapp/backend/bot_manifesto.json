@@ -1,7 +1,7 @@
 {
   "_leia": "O que o bot do Rotinas sabe fazer pelo Solo Bot. Comando novo no motors/conversa.py = uma linha aqui + versao nova (AAAA.MM.DD, com .2, .3 no mesmo dia). O que for escrito em 'novidades' vira mensagem para quem tem o Rotinas conectado ao Solo Bot; deixe [] para mudar em silêncio. 'oculto': true = existe, mas não faz sentido pelo Solo Bot. 'uso' = a sintaxe exata com os argumentos na ordem (ex.: \"/somar <título> <valor>\"): é o que a IA do Solo Bot segue ao traduzir uma frase ou um áudio em comando. O test_solobot.py falha se este arquivo e o bot se desencontrarem.",
   "app": "rot",
-  "versao": "2026.09.30.3",
+  "versao": "2026.10.01.2",
   "comandos": [
     {"comando": "/hoje",       "descricao": "Tudo do dia, com botões",                  "exemplo": "/rot hoje"},
     {"comando": "/pendentes",  "descricao": "Só o que falta hoje",                      "exemplo": "/rot pendentes"},
@@ -12,7 +12,8 @@
     {"comando": "/retomar",    "descricao": "Retomar a missão pausada",                 "exemplo": "/rot retomar"},
     {"comando": "/cancelar",   "descricao": "Cancelar uma missão",                      "exemplo": "/rot cancelar treino", "uso": "/cancelar <título>"},
     {"comando": "/desfazer",   "descricao": "Desfazer o último ato feito pelo bot",     "exemplo": "/rot desfazer"},
-    {"comando": "/somar",      "descricao": "Registrar progresso numa meta",            "exemplo": "/rot somar água 500", "uso": "/somar <título> <valor>"},
+    {"comando": "/somar",      "descricao": "Registrar progresso numa meta",            "exemplo": "/rot somar água 500", "uso": "/somar <título> <valor>. Título = só as palavras que identificam a meta (ex.: manhã, noite, água); números que fazem parte do nome da meta (ex.: \"conseguir 100\") NÃO são o valor. Valor = a quantia a somar, em reais, com vírgula nos centavos: ditos como \"21 e 10\" ou \"11:10\" (não é horário) = 21,10 / 11,10 — nunca junte os dígitos (11:10 NÃO é 1110)"},
+    {"comando": "/refazer",   "descricao": "Corrigir o valor do último /somar",       "exemplo": "/rot refazer 21,10", "uso": "/refazer <valor certo>"},
     {"comando": "/bloco",      "descricao": "Fechar uma etapa do circuito",             "exemplo": "/rot bloco treino", "uso": "/bloco <título>"},
     {"comando": "/confessar",  "descricao": "Confessar a passiva que você quebrou",     "exemplo": "/rot confessar açúcar", "uso": "/confessar <passiva>"},
     {"comando": "/reerguer",   "descricao": "Segunda chance numa missão (custa Mana)",  "exemplo": "/rot reerguer leitura", "uso": "/reerguer <título>"},

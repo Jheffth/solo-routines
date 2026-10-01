@@ -305,6 +305,46 @@ def main_teste():
         ok("não entendi" in caixa.ultima("111").lower(),
            "e recusa o que nao e numero, em vez de somar zero")
 
+        def _saldo_m():
+            d = database.SessionLocal()
+            x = d.query(database.ExecucaoDia).filter_by(
+                rotina_id=rid_m, usuario_id=uid, data=hoje).first()
+            v = float(getattr(x, "meta_atual", 0) or 0)
+            d.close()
+            return v
+
+        # Por voz, "R$ 3,10" chega como "3 e 10": e o valor, nao titulo + 10.
+        fala("/somar Conseguir no turno 3 e 10")
+        ok(abs(_saldo_m() - 63.10) < 0.01, "\"3 e 10\" falado vira 3,10")
+
+        # /refazer troca o valor do ultimo /somar.
+        fala("/refazer 3,50")
+        ok(abs(_saldo_m() - 63.50) < 0.01, "/refazer apaga o ultimo lancamento e lanca o certo")
+
+        caixa.limpar()
+        fala("/refazer")
+        ok("qual é o valor" in caixa.ultima("111").lower() and abs(_saldo_m() - 63.50) < 0.01,
+           "/refazer sem valor so pergunta, sem mexer no saldo")
+
+        fala("/desfazer")
+        ok(abs(_saldo_m() - 60) < 0.01, "/desfazer apaga o ultimo /somar")
+        caixa.limpar()
+        fala("/refazer 5")
+        ok("não há um" in caixa.ultima("111").lower(),
+           "sem /somar recente, /refazer recusa")
+        fala("/somar R$ 0 turno")   # deixa o ultimo ato como soma, saldo intacto
+        ok(abs(_saldo_m() - 60) < 0.01, "somar zero nao muda o saldo")
+
+        # "11:10" falado e R$ 11,10; se a IA entregar 1110, a trava pergunta.
+        antes_t = _saldo_m()
+        fala("/somar Conseguir no turno 11:10")
+        ok(abs(_saldo_m() - (antes_t + 11.10)) < 0.01, "\"11:10\" vira 11,10")
+        fala("/desfazer")
+        caixa.limpar()
+        fala("/somar Conseguir no turno 1110")
+        ok(abs(_saldo_m() - antes_t) < 0.01 and "parece alto" in caixa.ultima("111").lower(),
+           "valor muito acima do alvo nao e lancado: pergunta antes")
+
         # Bater o alvo fecha a missao — mas quem fecha e o motor, nao o bot.
         fala("/somar Conseguir no turno 50")
         ok(estado(rid_m) == "CONCLUIDA", "alcancar o alvo conclui a missao")

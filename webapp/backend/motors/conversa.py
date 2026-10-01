@@ -49,6 +49,7 @@ O motor não sabe nem precisa saber qual dos dois aconteceu.
 """
 from __future__ import annotations
 
+import re
 from datetime import date, datetime, timedelta
 
 from sqlalchemy.orm import Session
@@ -157,7 +158,8 @@ def _processar(texto: str, db: Session, canal):
             "▸ `/iniciar [título]` — dar a largada\n"
             "▸ `/ok [título]` — concluir\n"
             "▸ `/pausar` · `/retomar` · `/cancelar` `[título]`\n"
-            "▸ `/desfazer` — desfaz o último ato daqui\n\n"
+            "▸ `/desfazer` — desfaz o último ato daqui\n"
+            "▸ `/refazer [valor]` — corrige o último `/somar`\n\n"
             "*As especiais*\n"
             "▸ `/somar [título] [valor]` — registrar na meta\n"
             "▸ `/bloco [título]` — fechar etapa do circuito\n"
@@ -322,6 +324,11 @@ def _processar(texto: str, db: Session, canal):
         _desfazer(db, usuario, canal, hoje)
         return
 
+    # ── /refazer [valor] — corrige o último /somar ────────
+    if txt.lower().startswith("/refazer"):
+        _refazer(db, usuario, canal, txt[8:].strip(), hoje)
+        return
+
     # ── /somar [título] [valor] — as metas ────────────────
     if txt.lower().startswith("/somar"):
         _somar(db, usuario, canal, txt[6:].strip(), hoje)
@@ -471,6 +478,11 @@ def _desfazer(db: Session, usuario, canal, hoje: date):
             if ok else f"⚠️ {curta}")
         return
 
+    if ato.acao == "som":
+        _, msg = _soma_desfazer(db, usuario, canal, alvo, ato)
+        canal.enviar(msg)
+        return
+
     if ato.acao == "ok":
         canal.enviar((
             f"↩️ *Desfazer conclusão de {alvo.titulo}*\n\n"
@@ -487,31 +499,38 @@ def _desfazer(db: Session, usuario, canal, hoje: date):
 # ══════════════════════════════════════════════════════════════════════
 # AS ESPECIAIS
 # ══════════════════════════════════════════════════════════════════════
+def _numero(t: str):
+    """Número em português: aceita `12,50`, `R$ 12,50` e o ditado `21 e 10`."""
+    t = (t or "").replace("R$", "").strip()
+    # Por voz, "R$ 21,10" chega como "21 e 10" (reais e centavos).
+    m = re.fullmatch(r"(\d+)\s+e\s+(\d{1,2})", t, flags=re.I)
+    if m:
+        t = f"{m.group(1)},{m.group(2)}"
+    try:
+        v = float(t.replace(",", "."))
+    except ValueError:
+        return None
+    return v if v == v and abs(v) != float("inf") else None      # "nan"/"inf" não são valor
+
+
 def _somar(db: Session, usuario, canal, resto: str, hoje: date):
     """`/somar título valor` — registra na meta do dia."""
-    from fastapi import HTTPException as _HTTPErro
-    from routers import execucoes as _exec
     from motors import meta as _mt
 
-    def _num(t: str):
-        # Vírgula decimal: é como se escreve em português, e recusar
-        # "12,50" por causa disso seria implicância com o próprio idioma.
-        try:
-            v = float(t.replace("R$", "").replace(",", ".").strip())
-        except ValueError:
-            return None
-        return v if v == v and abs(v) != float("inf") else None      # "nan"/"inf" não são valor
+    # "21 e 10" falado = 21,10. Junta antes de separar as palavras, senão
+    # o "10" viraria o valor e o "21 e" ficaria no título.
+    resto = re.sub(r"(?<![\d,.])(\d+)(?:\s+e\s+|:)(\d{1,2})(?![\d,.:])", r"\1,\2", resto or "", flags=re.I)
 
     # O valor vai por último ("/somar noite 25"), mas quem fala costuma dizer
     # o número primeiro ("/somar 25 noite", "some 25 na noite"): aceita os dois.
-    palavras = (resto or "").replace("R$ ", "R$").split()
+    palavras = resto.replace("R$ ", "R$").split()
     if len(palavras) < 2:
         canal.enviar("⚠️ Use: `/somar título 50`\n_O valor vai por último._")
         return
-    if _num(palavras[-1]) is not None:
-        busca, valor = " ".join(palavras[:-1]), _num(palavras[-1])
-    elif _num(palavras[0]) is not None:
-        busca, valor = " ".join(palavras[1:]), _num(palavras[0])
+    if _numero(palavras[-1]) is not None:
+        busca, valor = " ".join(palavras[:-1]), _numero(palavras[-1])
+    elif _numero(palavras[0]) is not None:
+        busca, valor = " ".join(palavras[1:]), _numero(palavras[0])
     else:
         canal.enviar(f"⚠️ Não entendi o valor em *{resto.strip()}*.\nUse: `/somar título 50`")
         return
@@ -526,7 +545,42 @@ def _somar(db: Session, usuario, canal, resto: str, hoje: date):
                       f"Achei {len(achados)} metas com *{busca}*.")
         return
 
-    a = achados[0]
+    _soma_registrar(db, usuario, canal, achados[0], valor)
+
+
+def _soma_registrar(db: Session, usuario, canal, a, valor: float,
+                    confirmado: bool = False) -> bool:
+    """Lança `valor` na meta `a`, guarda o ato (para desfazer/refazer) e responde."""
+    from fastapi import HTTPException as _HTTPErro
+    from routers import execucoes as _exec
+    from motors import meta as _mt
+
+    # ── TRAVA DE VALOR ABSURDO ──────────────────────────────────────
+    # Por voz, "R$ 11,10" chega como "11:10" e a IA entrega `1110`: R$ 1.110
+    # numa meta de R$ 50. Num acúmulo, um valor MUITO acima do alvo quase
+    # sempre é vírgula perdida — pergunta antes de lançar, em vez de pagar
+    # a meta (e o XP) com um erro de transcrição.
+    alvo_t = float(getattr(a.obj, "meta_alvo", 0) or 0)
+    esp_t = getattr(a.obj, "meta_especie", None)
+    modo_t = _mt.modo(getattr(a.obj, "meta_modo", None), esp_t)
+    if (not confirmado and modo_t != _mt.MEDICAO and alvo_t > 0
+            and valor > alvo_t * 5):
+        un_t = _mt.unidade_de(a.obj)
+        acoes = []
+        if float(valor).is_integer() and valor >= 100:
+            sug = valor / 100
+            acoes.append({"rotulo": f"✅ {_mt.formatar(sug, esp_t, un_t)}",
+                          "dados": f"smv|{a.chave}|{sug:.2f}"})
+        acoes.append({"rotulo": f"{_mt.formatar(valor, esp_t, un_t)} mesmo",
+                      "dados": f"smv|{a.chave}|{valor:.2f}"})
+        canal.enviar(
+            f"🤔 *{_mt.formatar(valor, esp_t, un_t)}* numa meta de "
+            f"*{_mt.formatar(alvo_t, esp_t, un_t)}* — parece alto. "
+            "Pode ser a vírgula que se perdeu. Qual é o valor certo?\n"
+            "_Ou mande_ `/somar título 11,10`",
+            opcoes=[{"titulo": a.titulo, "acoes": acoes}])
+        return False
+
     try:
         pedido = _exec.MetaRegistrarRequest(
             rotina_id=a.id if a.tipo == "r" else None,
@@ -535,7 +589,10 @@ def _somar(db: Session, usuario, canal, resto: str, hoje: date):
         r = _exec.meta_registrar(pedido, db, usuario) or {}
     except _HTTPErro as e:
         canal.enviar(f"⚠️ {e.detail}")
-        return
+        return False
+
+    # Guarda o ato: é o que deixa `/desfazer` e `/refazer` agirem sobre ESTA soma.
+    _registrar_ato(db, usuario, canal, "som", a, None)
 
     esp = getattr(a.obj, "meta_especie", None)
     un = _mt.unidade_de(a.obj)
@@ -549,7 +606,78 @@ def _somar(db: Session, usuario, canal, resto: str, hoje: date):
     # dentro — o bot só conta, não decide.
     if r.get("concluida") or r.get("alcancada"):
         linha += "\n\n✅ *Meta alcançada — missão concluída.*"
-    canal.enviar(linha)
+    linha += "\n\n_Errou o valor? Toque abaixo ou mande_ `/refazer 21,10`"
+    canal.enviar(linha, opcoes=[{
+        "titulo": a.titulo,
+        "acoes": [{"rotulo": "↩️ Desfazer", "dados": f"dsm|{a.chave}"},
+                  {"rotulo": "✏️ Refazer", "dados": f"rfm|{a.chave}"}]}])
+    return True
+
+
+def _soma_desfazer(db: Session, usuario, canal, alvo, ato=None):
+    """
+    Apaga o último valor lançado na meta pelo bot. Devolve `(ok, mensagem)`.
+
+    Só desfaz se o ÚLTIMO ato daqui ainda for esta soma: um botão antigo
+    não pode apagar um aporte posterior ou de outro canal.
+    """
+    from fastapi import HTTPException as _HTTPErro
+    from routers import execucoes as _exec
+    from database import AtoBot
+
+    ato = ato or db.query(AtoBot).filter(AtoBot.usuario_id == usuario.id,
+                                         AtoBot.canal == canal.nome).first()
+    tipo = "rotina" if alvo.tipo == "r" else "tarefa"
+    if (not ato or ato.acao != "som" or ato.alvo_tipo != tipo
+            or ato.alvo_id != alvo.id):
+        return False, "Esse lançamento já não é o último daqui — ajuste pelo app."
+    try:
+        r = _exec.meta_desfazer(_exec.MetaDesfazerRequest(
+            rotina_id=alvo.id if alvo.tipo == "r" else None,
+            tarefa_id=alvo.id if alvo.tipo == "t" else None), db, usuario) or {}
+    except _HTTPErro as e:
+        return False, f"⚠️ {e.detail}"
+    db.query(AtoBot).filter(AtoBot.id == ato.id).delete()
+    db.commit()
+    msg = f"↩️ Lançamento desfeito em *{alvo.titulo}*."
+    if r.get("reabriu"):
+        msg += "\n_A missão foi reaberta e o XP daquela conclusão devolvido._"
+    return True, msg
+
+
+def _refazer(db: Session, usuario, canal, resto: str, hoje: date):
+    """
+    `/refazer 21,10` — corrige o ÚLTIMO `/somar`: apaga o lançamento e
+    lança o valor certo na mesma meta. Sem valor, só explica como.
+    """
+    from database import AtoBot
+    ato = db.query(AtoBot).filter(AtoBot.usuario_id == usuario.id,
+                                  AtoBot.canal == canal.nome).first()
+    idade = ((datetime.utcnow() - (ato.criado_em or datetime.utcnow())).total_seconds()
+             if ato else 0)
+    if not ato or ato.acao != "som" or idade > 3600:
+        canal.enviar("Não há um `/somar` recente para refazer por aqui.")
+        return
+    alvo = _por_chave(db, usuario, "r" if ato.alvo_tipo == "rotina" else "t",
+                      ato.alvo_id, hoje)
+    if not alvo:
+        canal.enviar("A meta do último lançamento não está mais disponível.")
+        return
+
+    resto = re.sub(r"(?<![\d,.])(\d+)(?:\s+e\s+|:)(\d{1,2})(?![\d,.:])", r"\1,\2",
+                   resto or "", flags=re.I)
+    valor = _numero(resto.replace("R$ ", "R$").split()[-1]) if resto.strip() else None
+    if valor is None:
+        canal.enviar(f"✏️ Qual é o valor certo para *{alvo.titulo}*?\n"
+                     "Mande `/refazer 21,10` — eu apago o último lançamento "
+                     "e lanço esse no lugar.")
+        return
+
+    ok, msg = _soma_desfazer(db, usuario, canal, alvo, ato)
+    if not ok:
+        canal.enviar(msg)
+        return
+    _soma_registrar(db, usuario, canal, alvo, valor)
 
 
 def _bloco(db: Session, usuario, canal, busca: str, hoje: date):
@@ -1174,6 +1302,22 @@ def agir(db: Session, usuario, canal: Canal, dados: str, hoje: date | None = Non
         # Para quem toca, os dois casos são o mesmo — e é melhor assim:
         # um "não é sua" confirmaria que o id existe.
         return False, "Essa missão não está mais disponível.", None
+
+    if acao == "smv" and len(partes) >= 4:
+        v = _numero(partes[3])
+        if v is None or v < 0:
+            return False, "Valor inválido.", None
+        _soma_registrar(db, usuario, canal, alvo, v, confirmado=True)
+        return True, "Lançado.", None
+
+    if acao == "dsm":
+        ok, msg = _soma_desfazer(db, usuario, canal, alvo)
+        return ok, "Lançamento desfeito." if ok else "Não foi possível desfazer.", msg
+
+    if acao == "rfm":
+        return True, "Mande o valor certo.", (
+            f"✏️ Qual é o valor certo para *{alvo.titulo}*?\n"
+            "Mande `/refazer 21,10` — eu apago o último lançamento e lanço esse no lugar.")
 
     if acao == "blk" and len(partes) >= 4:
         from fastapi import HTTPException as _HTTPErro
