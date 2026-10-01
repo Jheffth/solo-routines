@@ -16,6 +16,7 @@ from database import (Base,Usuario,TarefaDia,Rotina,ExecucaoDia,Dungeon,DungeonS
 from auth.router import get_usuario_atual
 from motors import avisos_gerais as m
 from routers import avisos_gerais as r
+from routers import solobot as router_bot
 import solobot_ponte
 
 
@@ -33,7 +34,7 @@ class AvisosTest(unittest.TestCase):
             criado_em=self.agora+timedelta(hours=3),status='PENDENTE') # criado em UTC = meio-dia Brasília
         self.db.add(self.t);self.db.commit()
         self.patch=patch.object(solobot_ponte,'avisar',return_value=True);self.enviar=self.patch.start()
-        app=FastAPI();app.include_router(r.router)
+        app=FastAPI();app.include_router(r.router);app.include_router(router_bot.interno)
         app.dependency_overrides[get_db]=lambda:self.db
         app.dependency_overrides[get_usuario_atual]=lambda:self.u
         self.client=TestClient(app)
@@ -160,10 +161,12 @@ class AvisosTest(unittest.TestCase):
     def test_ponte_transmite_formato_e_mantem_contrato_antigo(self):
         self.patch.stop()
         with patch.object(solobot_ponte,'token',return_value='fixture'), patch.object(solobot_ponte,'_post',return_value={'entregues':1}) as post:
-            self.assertTrue(solobot_ponte.avisar(1,'Lembrete',formato='audio',voz=True))
+            self.assertTrue(solobot_ponte.avisar(1,'Lembrete',formato='audio',voz=True,referencia='central:1:fixture'))
             self.assertEqual(post.call_args.args[1]['formato'],'audio')
+            self.assertEqual(post.call_args.args[1]['referencia'],'central:1:fixture')
             self.assertTrue(solobot_ponte.avisar(1,'Lembrete'))
             self.assertNotIn('formato',post.call_args.args[1])
+            self.assertNotIn('referencia',post.call_args.args[1])
 
     def interna(self,natureza='AGENDADA',**extra):
         d=Dungeon(usuario_id=self.u.id,titulo='Estudo',hora_entrada='08:00',hora_saida='22:00',status='ATIVA')
@@ -287,6 +290,63 @@ class AvisosTest(unittest.TestCase):
         self.enviar.assert_not_called()
         self.assertEqual(self.db.query(TentativaAvisoGeral).one().status,'IGNORADO')
         self.assertEqual(self.varrer(),1,'nova ocorrência tem sua própria oportunidade')
+
+    def pendente(self):
+        regra=self.regra();self.agora+=timedelta(hours=1)
+        self.assertEqual(self.varrer(),1)
+        return regra,self.enviar.call_args.kwargs['referencia']
+
+    def test_revalidacao_atualiza_status_e_revoga_apos_conclusao(self):
+        regra,ref=self.pendente()
+        self.assertTrue(m.validar_pendente(self.db,self.u.id,ref)['valido'])
+        self.t.status='ATIVA';self.db.commit()
+        self.assertIn('em andamento',m.validar_pendente(self.db,self.u.id,ref)['texto'])
+        self.t.status='CONCLUIDA';self.db.commit()
+        self.assertFalse(m.validar_pendente(self.db,self.u.id,ref)['valido'])
+
+    def test_revalidacao_pausa_edicao_remocao_e_usuario_inativo(self):
+        regra,ref=self.pendente();rid=regra['id']
+        self.client.patch(f'/avisos-gerais/{rid}',json={'ativo':False})
+        self.assertFalse(m.validar_pendente(self.db,self.u.id,ref)['valido'])
+        self.client.patch(f'/avisos-gerais/{rid}',json={'ativo':True})
+        # Mudar formato invalida áudio/texto enfileirado com a configuração antiga.
+        row=self.db.get(RegraAvisoGeral,rid);row.formato='audio';self.db.commit()
+        self.assertFalse(m.validar_pendente(self.db,self.u.id,ref)['valido'])
+        row.formato='texto';self.u.ativo=False;self.db.commit()
+        self.assertFalse(m.validar_pendente(self.db,self.u.id,ref)['valido'])
+        self.u.ativo=True;self.db.commit()
+        self.client.delete(f'/avisos-gerais/{rid}')
+        self.assertFalse(m.validar_pendente(self.db,self.u.id,ref)['valido'])
+
+    def test_revalidacao_protege_token_dono_e_referencia(self):
+        regra,ref=self.pendente()
+        url='/interno/bot/validar-aviso';body={'usuario_id':self.u.id,'referencia':ref}
+        with patch.object(solobot_ponte,'token',return_value='fixture'):
+            self.assertEqual(self.client.post(url,json=body).status_code,403)
+            self.assertTrue(self.client.post(url,json=body,headers={'X-Solo-Token':'fixture'}).json()['valido'])
+            body['usuario_id']=self.outro.id
+            self.assertFalse(self.client.post(url,json=body,headers={'X-Solo-Token':'fixture'}).json()['valido'])
+        for errado in ('x','central:x:y','central:9999:abc',ref+'0'):
+            self.assertFalse(m.validar_pendente(self.db,self.u.id,errado)['valido'])
+
+    def test_revalidacao_saude_nao_recicla_card_concluido_em_nova_ocorrencia(self):
+        d,s,missao=self.interna('BEM_ESTAR',intervalo_min=45,expira_em_min=30)
+        e=self.execucao(s,missao,status='PENDENTE',disparada_em=self.agora)
+        self.regra('MISSAO',missao.id,intervalo_min=5)
+        self.agora+=timedelta(minutes=5);self.assertEqual(self.varrer(),1)
+        ref=self.enviar.call_args.kwargs['referencia']
+        self.assertTrue(m.validar_pendente(self.db,self.u.id,ref)['valido'])
+        e.status='CONCLUIDA';self.db.commit()
+        self.execucao(s,missao,status='PENDENTE',disparada_em=self.agora)
+        self.assertFalse(m.validar_pendente(self.db,self.u.id,ref)['valido'])
+
+    def test_revalidacao_rotina_nao_transporta_ocorrencia_para_dia_seguinte(self):
+        rot=Rotina(usuario_id=self.u.id,titulo='Rotina',tipo='DIARIA',ativo=True)
+        self.db.add(rot);self.db.commit();self.regra('ROTINA',rot.id)
+        self.agora+=timedelta(hours=1);self.assertEqual(self.varrer(),1)
+        ref=self.enviar.call_args.kwargs['referencia']
+        self.agora+=timedelta(days=1)
+        self.assertFalse(m.validar_pendente(self.db,self.u.id,ref)['valido'])
 
 
 if __name__=='__main__':unittest.main()

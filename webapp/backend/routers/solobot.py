@@ -15,7 +15,7 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 import solobot_ponte as ponte
@@ -66,6 +66,17 @@ def conectar(usuario: Usuario = Depends(get_usuario_atual)):
 
 
 # ── Solo Bot → Rotinas ────────────────────────────────────────────
+class ValidarAviso(BaseModel):
+    usuario_id: int = Field(gt=0)
+    referencia: str = Field(min_length=1,max_length=160)
+
+
+@interno.post('/validar-aviso')
+def validar_aviso(p:ValidarAviso,db:Session=Depends(get_db)):
+    from motors.avisos_gerais import validar_pendente
+    return validar_pendente(db,p.usuario_id,p.referencia)
+
+
 class Resgate(BaseModel):
     codigo: str
 

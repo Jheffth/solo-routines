@@ -1,10 +1,12 @@
 """Lembretes escolhidos pelo hunter. Nunca altera o ciclo de vida dos alvos."""
 from datetime import datetime, time, timedelta
 import logging
+import hashlib
+import json
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from database import (Rotina, TarefaDia, ExecucaoDia, Dungeon, DungeonSessao, DungeonMissao,
+from database import (Usuario, Rotina, TarefaDia, ExecucaoDia, Dungeon, DungeonSessao, DungeonMissao,
                       RegraAvisoGeral, TentativaAvisoGeral)
 from motors import tempo, prazos, calendario_projecao as proj
 from motors.fechamento import rotina_devida_em
@@ -89,7 +91,8 @@ def mensagem(db, r, agora=None):
         texto += ' ' + prazo_texto(fim,agora)
     else:
         texto += ' Esta penitência permanece até ser quitada.'
-    return {'texto':texto, 'estado':estado, 'fim':fim if fim and fim>agora else None, 'chave_evento':None}
+    ocorrencia=f'rotina:{obj.id}:{dia}' if r.origem=='ROTINA' else f'tarefa:{obj.id}'
+    return {'texto':texto, 'estado':estado, 'fim':fim if fim and fim>agora else None, 'chave_evento':None, 'ocorrencia':ocorrencia}
 
 
 def _dungeon(db, r, d, agora):
@@ -138,7 +141,7 @@ def _dungeon(db, r, d, agora):
         texto = f"A dungeon {d.titulo} {descricao.get(estado,'aguarda sua entrada.')}"
         if fecha and not d.sempre_aberta:
             texto += f" O portão fecha às {fecha:%H:%M}."
-        return {'texto':texto,'estado':estado,'fim':fecha,'chave_evento':None}
+        return {'texto':texto,'estado':estado,'fim':fecha,'chave_evento':None,'ocorrencia':f'dungeon:{d.id}:{dia}'}
     return None
 
 
@@ -164,6 +167,35 @@ def varrer(bind, uid):
         except Exception:
             log.warning('Não foi possível processar um aviso geral.')
     return aceitos
+
+
+def referencia(r,t,m):
+    """Carimbo de configuração e ocorrência. Estado/progresso podem mudar."""
+    campos=('id','origem','alvo_id','evento','formato','intervalo_min','antecedencia_min','estados','janela_de','janela_ate')
+    dados={k:getattr(r,k) for k in campos}
+    dados.update(criado_em=r.criado_em.isoformat(), proximo_em=r.proximo_em.isoformat(), tentativa=t.chave,
+                 ocorrencia=m.get('ocorrencia') or m['chave_evento'])
+    digest=hashlib.sha256(json.dumps(dados,sort_keys=True).encode()).hexdigest()[:32]
+    return f'central:{t.id}:{digest}'
+
+
+def validar_pendente(db,uid,ref):
+    """Só o Bot autenticado consulta. Não envia, não altera estados/XP."""
+    try:
+        prefixo,tid,_=ref.split(':')
+        if prefixo!='central': return {'valido':False}
+        t=db.get(TentativaAvisoGeral,int(tid))
+        r=db.get(RegraAvisoGeral,t.regra_id) if t else None
+        usuario=db.get(Usuario,uid)
+        if not r or r.usuario_id!=uid or not r.ativo or not usuario or not usuario.ativo:
+            return {'valido':False}
+        agora=tempo.agora()
+        atual=mensagem(db,r,agora) if na_janela(r,agora) else None
+        if not atual or referencia(r,t,atual)!=ref:
+            return {'valido':False}
+        return {'valido':True,'texto':atual['texto']}
+    except (ValueError,TypeError,AttributeError):
+        return {'valido':False}
 
 
 def _processar(bind,rid,agora):
@@ -199,10 +231,11 @@ def _processar(bind,rid,agora):
         tentativa.texto=atual['texto']
         formato=r.formato
         uid=r.usuario_id
+        ref=referencia(r,tentativa,atual)
         db.commit()
     try:
         entregue=solobot_ponte.avisar(uid,atual['texto'],falado=atual['texto'],
-            voz=formato!='texto',formato=formato,valido_ate=valido.replace(tzinfo=tempo.FUSO))
+            voz=formato!='texto',formato=formato,valido_ate=valido.replace(tzinfo=tempo.FUSO),referencia=ref)
     except Exception:
         entregue=False
     with Session(bind=bind) as db:

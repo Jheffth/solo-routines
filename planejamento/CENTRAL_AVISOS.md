@@ -31,8 +31,9 @@ provoca repetição imediata; a próxima oportunidade segue a frequência da reg
 
 Cada aviso tem validade até o próximo intervalo ou prazo do evento, o que vier
 primeiro. Isso evita liberar mensagens velhas após o silêncio do Solo Bot.
-Aviso já aceito/enfileirado pelo Bot não pode ser cancelado pelo Rotinas no
-contrato atual; cancelamento de fila por alvo é uma evolução planejada.
+Avisos novos da Central têm referência e são revalidados na fila pelo Rotinas
+(terceira entrega abaixo). Avisos antigos sem referência continuam sujeitos
+apenas à validade original.
 
 Só o dono pode selecionar alvo ou administrar regras. Portão sempre aberto não
 oferece alerta de abertura/fechamento. Sessões de teste não geram lembretes.
@@ -56,8 +57,9 @@ Publicar a extensão do Bot antes de ativar áudio exclusivo no Rotinas.
 5. Habilidades: meta de maestria atingida, convite para conversão e trajetória.
 6. Canal específico, teto diário, agrupamento de lembretes simultâneos e botão
    “adiar 1h”. Hoje os canais/silêncio são os escolhidos na Conta Solo.
-7. Cancelamento dos avisos enfileirados ao concluir ou editar o alvo, usando
-   chave de alvo e revisão no contrato entre Rotinas e Solo Bot.
+7. Cancelamento dos avisos enfileirados: implementado pela revalidação da
+   terceira entrega. Uma futura limpeza imediata por evento pode reduzir a
+   espera até o próximo passo de um minuto do Solo Bot.
 
 Push/publicação ficam com o Antigravity. Commit nomeado após os testes.
 
@@ -101,7 +103,38 @@ do estado antes da entrega também exige que ainda seja a mesma ocorrência
 reservada. Validade nunca ultrapassa o prazo do card/sessão. A varredura segue
 em passos de 5 minutos: eventos muito curtos podem terminar entre dois passos;
 o disparo das missões de saúde segue dependendo do heartbeat existente da
-dungeon. Cancelar avisos já na fila do Solo Bot permanece como evolução.
+dungeon. A terceira entrega permite revogar os avisos novos ainda na fila.
 
 Sem mudança de esquema ou do contrato do Bot nesta etapa. Publicar apenas
 o Rotinas após a extensão de formatos da primeira entrega estar no Solo Bot.
+
+## Terceira entrega — fila revalidada
+
+A Central envia `referencia` opaca, com carimbo de configuração, tentativa e
+ocorrência. O Solo Bot preserva esse campo no JSON já existente da fila. A cada
+passo de um minuto, mesmo no silêncio, consulta o sistema de origem pela rota
+autenticada `POST /interno/bot/validar-aviso`. O endereço vem do registro interno
+do Bot, nunca da mensagem. O hunter vem do vínculo atual da Conta Solo.
+
+O Rotinas rejeita missão concluída, cancelada, vencida quando terminal, removida,
+regra pausada/removida/editada, usuário inativo ou outra ocorrência de rotina,
+sessão ou saúde. Status e progresso podem mudar: quando ainda válido, o texto
+atual substitui a mensagem guardada e o áudio é sintetizado com esse texto.
+Regras de atraso de missões gerais continuam válidas se configuradas assim.
+
+Resposta `valido=false` remove o aviso. Falha de rede, resposta inválida ou
+endpoint indisponível conserva a fila para nova tentativa, sem entregar; a
+validade original nunca é estendida. Referências iguais nos dois canais
+compartilham uma consulta por passo. Vínculo/canal removido ou desabilitado
+também descarta o aviso identificado. Avisos sem referência preservam o contrato
+legado; não é possível identificar e revogar retroativamente os antigos.
+
+Sem migração de banco nesta etapa. Publicar primeiro Rotinas (endpoint) e depois
+Solo Bot (revalidação) é compatível: o Bot antigo ignora o campo novo. A proteção
+fica ativa após os dois estarem atualizados. Ponte compartilhada sincronizada
+também no Finances, cujas chamadas antigas não mudam.
+
+Limite: isso protege avisos ainda na fila; não desfaz mensagens já entregues e
+não bloqueia a conclusão durante os instantes entre a última confirmação e o
+envio ao aplicativo. Conferência visual e envio real ficam para a publicação
+pelo Antigravity. Testes locais usam serviços e transportes simulados.

@@ -22,8 +22,8 @@ def proximidade(momento, agora, antecedencia):
     return momento and 0 < (momento-agora).total_seconds() <= antecedencia*60
 
 
-def aviso(texto, estado, fim, chave=None):
-    return {'texto':texto, 'estado':estado, 'fim':fim, 'chave_evento':chave}
+def aviso(texto, estado, fim, chave=None, ocorrencia=None):
+    return {'texto':texto, 'estado':estado, 'fim':fim, 'chave_evento':chave, 'ocorrencia':ocorrencia}
 
 
 def sessao(db, uid, dungeon_id, agora):
@@ -112,5 +112,5 @@ def mensagem(db,r,m,agora):
             continue
         descricao={'PENDENTE':'está disponível e ainda não foi iniciada.',
                    'ATIVA':'está em andamento. Você está prestes a concluir?', 'PAUSADA':'está pausada.'}
-        return aviso(f"A missão {titulo} {descricao[estado]} O prazo desta ocorrência é até {fim:%H:%M}.",estado,fim)
+        return aviso(f"A missão {titulo} {descricao[estado]} O prazo desta ocorrência é até {fim:%H:%M}.",estado,fim,ocorrencia=f'execucao:{e.id}')
     return None
