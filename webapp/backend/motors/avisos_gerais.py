@@ -155,6 +155,20 @@ def serializar(db,r):
         'ultima_tentativa':{'status':ultima.status,'em':iso(ultima.criado_em)} if ultima else None}
 
 
+def varrer_todos(bind):
+    """Só hunters ativos com regras ativas; nenhum fechamento neste ciclo."""
+    with Session(bind=bind) as db:
+        ids=[uid for (uid,) in db.query(RegraAvisoGeral.usuario_id).join(Usuario).filter(
+            Usuario.ativo==True,RegraAvisoGeral.ativo==True).distinct().all()]
+    aceitos=0
+    for uid in ids:
+        try:
+            aceitos+=varrer(bind,uid)
+        except Exception:
+            log.warning('Não foi possível verificar avisos de um hunter.')
+    return aceitos
+
+
 def varrer(bind, uid):
     """Uma sessão por regra; confirmação antes da rede, sem repor lotes perdidos."""
     agora = tempo.agora()
@@ -203,13 +217,14 @@ def _processar(bind,rid,agora):
         r=db.get(RegraAvisoGeral,rid)
         if not r or not r.ativo or not na_janela(r,agora):
             return False
+        if r.evento=='STATUS' and r.proximo_em>agora:
+            return False
         m=mensagem(db,r,agora)
         if not m:
             return False
-        if r.evento=='STATUS' and r.proximo_em>agora:
-            return False
         chave=m['chave_evento'] or r.proximo_em.isoformat()
-        proximo=agora+timedelta(minutes=r.intervalo_min)
+        # Disponibilidade não tem repetição; a validade é a do próprio card.
+        proximo=m['fim'] if r.evento=='DISPONIVEL' else agora+timedelta(minutes=r.intervalo_min)
         q=db.query(RegraAvisoGeral).filter_by(id=rid,ativo=True)
         q=q.filter(RegraAvisoGeral.proximo_em<=agora) if r.evento=='STATUS' else q.filter(or_(RegraAvisoGeral.ultima_chave.is_(None),RegraAvisoGeral.ultima_chave!=chave))
         if not q.update({'proximo_em':proximo,'ultima_chave':chave},synchronize_session=False):

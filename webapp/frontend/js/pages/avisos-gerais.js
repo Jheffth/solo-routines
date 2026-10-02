@@ -2,7 +2,7 @@ const AvisosGerais = {
   _regras: [], _catalogo: [],
   esc(v) { return String(v ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); },
   _origens: {TAREFA:'Missão geral',ROTINA:'Rotina',DUNGEON:'Dungeon',MISSAO:'Missão interna da dungeon'},
-  _eventos: {STATUS:'Acompanhar status',ABRE:'Portão prestes a abrir',FECHA:'Portão prestes a fechar',PRAZO:'Tempo da sessão prestes a acabar',ATIVA_EM:'Missão prestes a aparecer',EXPIRA_EM:'Ocorrência prestes a vencer'},
+  _eventos: {STATUS:'Acompanhar status',ABRE:'Portão prestes a abrir',FECHA:'Portão prestes a fechar',PRAZO:'Tempo da sessão prestes a acabar',ATIVA_EM:'Missão prestes a aparecer',EXPIRA_EM:'Ocorrência prestes a vencer',DISPONIVEL:'Quando o card aparecer'},
   _formatos: {texto:'Texto',audio:'Áudio',ambos:'Texto e áudio'},
   async carregar() {
     const host=document.getElementById('avisos-gerais-conteudo'); if(!host) return;
@@ -38,7 +38,7 @@ const AvisosGerais = {
     const tentativa=r.ultima_tentativa;
     const status={ACEITO:'Aceito pelo Solo Bot',FALHOU:'Última tentativa não foi aceita',RESERVADO:'Tentativa registrada',IGNORADO:'Alvo encerrado antes de enviar'};
     return `<article class="ag-card ${r.ativo?'':'ag-pausado'}"><div class="ag-topo"><span class="ag-tipo">${this._origens[r.origem]} · ${r.ativo?'Ativo':'Pausado'}</span><span class="ag-formato">${this._formatos[r.formato]}</span></div>
-      <h3>${this.esc(r.titulo)}</h3><p>${this._eventos[r.evento]} · ${r.evento==='STATUS'?`a cada ${r.intervalo_min} min`:`${r.antecedencia_min} min antes`}</p>
+      <h3>${this.esc(r.titulo)}</h3><p>${this._eventos[r.evento]} · ${r.evento==='STATUS'?`a cada ${r.intervalo_min} min`:r.evento==='DISPONIVEL'?'uma vez por ocorrência':`${r.antecedencia_min} min antes`}</p>
       <p class="ag-nota">Das ${r.janela_de} às ${r.janela_ate} · horário de Brasília</p>
       ${r.evento==='STATUS'&&r.ativo?`<p class="ag-proximo">Próxima verificação: ${this.quando(r.proximo_em)}</p>`:''}
       ${tentativa?`<p class="ag-nota">${status[tentativa.status]||'Tentativa registrada'} · ${this.quando(tentativa.em)}</p>`:''}
@@ -64,7 +64,7 @@ const AvisosGerais = {
       <label data-antecedencia>Minutos antes<input name="antecedencia_min" type="number" min="5" max="180" value="${padrao.antecedencia_min}" required></label></div>
       <fieldset data-estados><legend>Avisar nestes estados</legend>${[['PENDENTE','Não iniciada'],['ATIVA','Em andamento'],['PAUSADA','Pausada'],['ATRASADA','Atrasada']].map(([v,t])=>`<label><input type="checkbox" name="estados" value="${v}" ${padrao.estados.includes(v)?'checked':''}> ${t}</label>`).join('')}</fieldset>
       <div class="ag-form-grid"><label>Receber a partir de<input type="time" name="janela_de" value="${padrao.janela_de}" required></label><label>Até<input type="time" name="janela_ate" value="${padrao.janela_ate}" required></label></div>
-      <p class="ag-nota">O envio verifica os alvos a cada cinco minutos. A repetição começa após o intervalo escolhido. Nas dungeons, cada ocorrência tem seus próprios avisos; concluir ou expirar um card encerra os lembretes dele. Missões internas precisam de uma sessão real iniciada; saúde segue os eventos registrados pela dungeon. Janelas muito curtas podem terminar entre duas verificações.</p><p class="ag-erro" role="alert"></p>
+      <p class="ag-nota">Os avisos são verificados a cada 30 segundos. Acompanhar status respeita o intervalo escolhido. Para saúde, “Quando o card aparecer” avisa uma vez por ocorrência, sem esperar esse intervalo. Concluir ou expirar um card encerra seus lembretes. Saúde segue os eventos registrados pela dungeon; silêncio e disponibilidade dos bots podem adiar a entrega.</p><p class="ag-erro" role="alert"></p>
       <button class="btn btn-primary" type="submit">Salvar aviso</button></form>`);
     const f=d.querySelector('form'), origem=f.elements.origem, alvos=f.elements.alvo_id, evento=f.elements.evento;
     const eventos=()=>{
@@ -77,7 +77,7 @@ const AvisosGerais = {
     };
     const campos=()=>{
       f.querySelector('[data-intervalo]').hidden=evento.value!=='STATUS';
-      f.querySelector('[data-antecedencia]').hidden=evento.value==='STATUS';
+      f.querySelector('[data-antecedencia]').hidden=['STATUS','DISPONIVEL'].includes(evento.value);
       f.querySelector('[data-estados]').hidden=evento.value!=='STATUS';
     };
     const selecionar=()=>{

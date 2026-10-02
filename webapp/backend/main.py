@@ -244,6 +244,21 @@ scheduler.add_job(_job_avisos, 'cron', minute='*/5',
                   max_instances=1, coalesce=True, misfire_grace_time=120)
 
 
+def _job_central_avisos():
+    # Eventos curtos exigem leitura frequente. Não repete fechamento/XP.
+    from database import engine
+    from motors import avisos_gerais
+    try:
+        avisos_gerais.varrer_todos(engine)
+    except Exception:
+        import logging
+        logging.getLogger('avisos.central').warning('Falha ao verificar a central de avisos.')
+
+
+scheduler.add_job(_job_central_avisos, 'cron', second='*/30', id='central_avisos',
+                  max_instances=1, coalesce=True, misfire_grace_time=20)
+
+
 # A faxina do histórico de avisos: a chave carrega a data, então um
 # registro de duas semanas atrás nunca mais será consultado. Tabela que
 # só cresce vira o problema seguinte.
@@ -334,7 +349,7 @@ async def startup():
     try:
         scheduler.start()
         print("[STARTUP] ✅ Scheduler iniciado "
-              "(07h, 14h, 21h · fechamento 00h05 · avisos a cada 5 min).")
+              "(07h, 14h, 21h · fechamento 00h05 · avisos legados 5 min · central 30 s).")
     except Exception as e:
         print(f"[STARTUP WARNING] Scheduler: {e}")
 

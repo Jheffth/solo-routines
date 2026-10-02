@@ -7,7 +7,7 @@ const w = dom.window;
 w.HTMLDialogElement.prototype.showModal = function() {this.open=true;};
 w.HTMLDialogElement.prototype.close = function() {this.dispatchEvent(new w.Event('close'));};
 const catalogo=[{origem:'TAREFA',id:1,titulo:'Fio dental <img src=x>'},{origem:'DUNGEON',id:2,titulo:'Trabalho',sempre_aberta:false},{origem:'DUNGEON',id:3,titulo:'Livre',sempre_aberta:true},
-  {origem:'MISSAO',id:4,titulo:'Trabalho · Beber água',natureza:'BEM_ESTAR',eventos:['STATUS','ATIVA_EM','EXPIRA_EM']},
+  {origem:'MISSAO',id:4,titulo:'Trabalho · Beber água',natureza:'BEM_ESTAR',eventos:['STATUS','DISPONIVEL','ATIVA_EM','EXPIRA_EM']},
   {origem:'MISSAO',id:5,titulo:'Trabalho · Padrão',natureza:'PADRAO',eventos:['STATUS']}];
 let regras=[], chamadas=[];
 w.SoloDialog={toast:()=>assert.fail('erro inesperado')};
@@ -47,8 +47,13 @@ const A=w.AvisosGerais, tick=()=>new Promise(resolve=>setImmediate(resolve));
   assert.equal(w.document.querySelectorAll('article').length,0);
   w.document.querySelector('[data-ag=novo]').click();f=w.document.querySelector('form');
   f.elements.origem.value='MISSAO';f.elements.origem.dispatchEvent(new w.Event('change'));
-  assert.deepEqual([...f.elements.evento.options].map(o=>o.value),['STATUS','ATIVA_EM','EXPIRA_EM']);
+  assert.deepEqual([...f.elements.evento.options].map(o=>o.value),['STATUS','DISPONIVEL','ATIVA_EM','EXPIRA_EM']);
   assert.equal(f.elements.intervalo_min.value,'5','saúde sugere intervalo curto');
+  f.elements.evento.value='DISPONIVEL';f.elements.evento.dispatchEvent(new w.Event('change'));
+  assert.equal(f.querySelector('[data-intervalo]').hidden,true);
+  assert.equal(f.querySelector('[data-antecedencia]').hidden,true);
+  assert.equal(f.querySelector('[data-estados]').hidden,true);
+  assert.match(A.card({origem:'MISSAO',evento:'DISPONIVEL',formato:'texto',ativo:true,titulo:'Água',janela_de:'08:00',janela_ate:'22:00'}),/uma vez por ocorrência/);
   f.elements.evento.value='EXPIRA_EM';f.elements.evento.dispatchEvent(new w.Event('change'));
   assert.equal(f.querySelector('[data-estados]').hidden,true);
   assert.equal(f.querySelector('[data-antecedencia]').hidden,false);

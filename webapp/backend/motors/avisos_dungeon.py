@@ -11,6 +11,8 @@ def eventos(m):
     if m.tipo == 'PASSIVA' or m.natureza == 'FLAVOR':
         return []
     nomes = ['STATUS']
+    if m.natureza in BONUS:
+        nomes.append('DISPONIVEL')
     if (m.natureza == 'AGENDADA' and m.hora_inicio) or m.natureza in BONUS:
         nomes.append('ATIVA_EM')
     if (m.natureza == 'AGENDADA' and m.hora_limite) or m.natureza in BONUS:
@@ -101,6 +103,9 @@ def mensagem(db,r,m,agora):
         fim=min(fim,fim_s) if fim else fim_s
         if (inicio and agora<inicio) or agora>=fim:
             continue
+        if r.evento=='DISPONIVEL':
+            return aviso(f"A missão {titulo} está disponível. Conclua esta ocorrência até {fim:%H:%M}.",
+                         'DISPONIVEL',fim,f'execucao:{e.id}:DISPONIVEL')
         if r.evento=='EXPIRA_EM':
             if not proximidade(fim,agora,r.antecedencia_min):
                 continue

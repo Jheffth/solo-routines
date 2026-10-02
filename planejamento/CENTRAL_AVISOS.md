@@ -23,14 +23,15 @@ se o hunter escolheu receber sobre atrasos. Concluída/cancelada: nenhum novo en
 
 ## Regras técnicas de entrega
 
-Regras e tentativas ficam no banco. O varredor existente de cinco em cinco
-minutos processa a central após confirmar o fechamento. A tentativa é reservada
+Regras e tentativas ficam no banco. A Central tem um ciclo próprio de 30
+segundos; fechamento e avisos legados continuam a cada 5 minutos. A tentativa é reservada
 com atualização condicional antes da rede para impedir envio duplicado por dois
 varredores. Não despeja intervalos perdidos após reiniciar. Timeout ambíguo não
 provoca repetição imediata; a próxima oportunidade segue a frequência da regra.
 
-Cada aviso tem validade até o próximo intervalo ou prazo do evento, o que vier
-primeiro. Isso evita liberar mensagens velhas após o silêncio do Solo Bot.
+Avisos repetidos e antecipados têm validade até o próximo intervalo ou prazo
+do evento, o que vier primeiro. O aviso único de aparecimento tem a validade
+do próprio card. Isso evita liberar mensagens velhas após o silêncio do Solo Bot.
 Avisos novos da Central têm referência e são revalidados na fila pelo Rotinas
 (terceira entrega abaixo). Avisos antigos sem referência continuam sujeitos
 apenas à validade original.
@@ -100,8 +101,8 @@ não gera, inicia, expira nem conclui execução e não aplica XP.
 
 Os avisos antecipados são únicos por ocorrência/evento. Uma nova confirmação
 do estado antes da entrega também exige que ainda seja a mesma ocorrência
-reservada. Validade nunca ultrapassa o prazo do card/sessão. A varredura segue
-em passos de 5 minutos: eventos muito curtos podem terminar entre dois passos;
+reservada. Validade nunca ultrapassa o prazo do card/sessão. Na segunda entrega,
+a varredura tinha passos de 5 minutos (reduzidos na quarta entrega abaixo);
 o disparo das missões de saúde segue dependendo do heartbeat existente da
 dungeon. A terceira entrega permite revogar os avisos novos ainda na fila.
 
@@ -138,3 +139,37 @@ Limite: isso protege avisos ainda na fila; não desfaz mensagens já entregues e
 não bloqueia a conclusão durante os instantes entre a última confirmação e o
 envio ao aplicativo. Conferência visual e envio real ficam para a publicação
 pelo Antigravity. Testes locais usam serviços e transportes simulados.
+
+## Quarta entrega — avisos de saúde com resolução de 30 segundos
+
+A Central agora tem um job próprio a cada 30 segundos, sem executar fechamento,
+XP, disparo de eventos ou qualquer mudança no ciclo de vida das missões. O job
+de 5 minutos conserva os avisos legados e o fechamento. Só hunters ativos com
+regras ativas participam do ciclo rápido; falha de um hunter não impede os demais.
+Regras de status ainda obedecem à frequência configurada, e são descartadas da
+checagem antes de consultar o alvo se o próximo intervalo não chegou.
+
+Nova opção **Quando o card aparecer**, para Saúde e eventos aleatórios:
+envia uma vez por execução real, sem esperar o intervalo de acompanhamento.
+O aviso só participa enquanto o card ainda está aberto e dentro do prazo; não
+envia retroativamente cards vencidos. Concluir ou expirar a ocorrência encerra
+os avisos dela, e um novo card tem uma nova oportunidade. O usuário precisa
+selecionar essa opção; nenhuma regra existente muda automaticamente.
+
+O formulário esconde os campos de repetição e antecedência para essa opção e
+mostra “uma vez por ocorrência” no card da regra. Nesse aviso, a validade termina
+no prazo do card, sem depender do intervalo oculto. A revalidação da fila do
+Solo Bot permanece ativa e descarta o aviso caso o card seja concluído.
+
+Cadência de 30 segundos reduz atrasos, sem garantir entrega nesse tempo: fila
+de silêncio, síntese, rede, carga e indisponibilidade podem adiar. Eventos mais
+curtos que a cadência podem passar entre checagens. O heartbeat da dungeon
+continua responsável por criar as ocorrências; o sistema de avisos não inventa
+cards quando a dungeon está sem heartbeat. Não acumula ciclos perdidos ao
+reiniciar e não sobrepõe jobs na mesma instância.
+
+Testes: card de um minuto detectado após 20 segundos; nenhum reenvio no mesmo
+card, nenhuma entrega após o prazo e aviso próprio para o card seguinte;
+agendamento real de 30 segundos, isolamento de hunters e formulário atualizado.
+Sem alteração de banco ou do Solo Bot nesta etapa. Publicação do Rotinas fica
+com o Antigravity, após as extensões anteriores da fila estarem publicadas.

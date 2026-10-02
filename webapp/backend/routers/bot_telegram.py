@@ -384,7 +384,7 @@ def varrer_avisos(db: Session) -> dict:
     UM HUNTER COM PROBLEMA NÃO CALA OS OUTROS — mesma disciplina do
     `fechamento.rodar` e do `_para_cada`.
     """
-    from motors import avisos, fechamento, sussurros, avisos_gerais
+    from motors import avisos, fechamento, sussurros
 
     resultado = {"hunters": 0, "avisos": 0, "erros": 0, "ultimo_erro": ""}
 
@@ -406,7 +406,6 @@ def varrer_avisos(db: Session) -> dict:
             resultado["hunters"] += 1
             if sussurros.varrer(db, usuario):
                 resultado["avisos"] += 1
-            resultado["avisos"] += avisos_gerais.varrer(db.get_bind(), usuario.id)
 
             # Daqui para baixo é sobre AVISAR, e aí sim é preciso ter
             # para onde mandar.

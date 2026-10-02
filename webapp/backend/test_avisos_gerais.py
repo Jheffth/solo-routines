@@ -348,5 +348,70 @@ class AvisosTest(unittest.TestCase):
         self.agora+=timedelta(days=1)
         self.assertFalse(m.validar_pendente(self.db,self.u.id,ref)['valido'])
 
+    def test_card_curto_avisa_sem_esperar_intervalo_e_uma_vez_por_ocorrencia(self):
+        d,s,missao=self.interna('BEM_ESTAR',intervalo_min=45,expira_em_min=1)
+        self.regra('MISSAO',missao.id,evento='DISPONIVEL',intervalo_min=60)
+        e=self.execucao(s,missao,status='PENDENTE',disparada_em=self.agora)
+        self.agora+=timedelta(seconds=20)
+        self.assertEqual(m.varrer_todos(self.engine),1)
+        self.assertIn('está disponível',self.enviar.call_args.args[1])
+        self.assertEqual(self.enviar.call_args.kwargs['valido_ate'].minute,1)
+        self.agora+=timedelta(seconds=30)
+        self.assertEqual(m.varrer_todos(self.engine),0)
+        self.agora+=timedelta(seconds=30)
+        self.assertEqual(m.varrer_todos(self.engine),0,'não envia card já vencido')
+        e.status='EXPIRADA';self.db.commit()
+        self.execucao(s,missao,status='PENDENTE',disparada_em=self.agora)
+        self.assertEqual(m.varrer_todos(self.engine),1,'novo card não espera uma hora')
+        self.assertEqual(m.varrer_todos(self.engine),0)
+        self.assertEqual(self.db.query(TentativaAvisoGeral).count(),2)
+
+    def test_varredura_rapida_filtra_inativos_e_nao_interrompe_outro_hunter(self):
+        self.regra()
+        outra=TarefaDia(usuario_id=self.outro.id,titulo='Outra',status='PENDENTE',data_prevista=self.agora.date())
+        self.db.add(outra);self.db.commit()
+        self.u,self.outro=self.outro,self.u
+        self.regra('TAREFA',outra.id)
+        vistos=[]
+        def processar(bind,uid):
+            vistos.append(uid)
+            if uid==self.outro.id:raise RuntimeError('simulado')
+            return 1
+        with patch.object(m,'varrer',side_effect=processar):
+            self.assertEqual(m.varrer_todos(self.engine),1)
+        self.assertEqual(set(vistos),{self.u.id,self.outro.id})
+        self.outro.ativo=False;self.db.commit();vistos.clear()
+        with patch.object(m,'varrer',side_effect=processar):
+            self.assertEqual(m.varrer_todos(self.engine),1)
+        self.assertEqual(vistos,[self.u.id])
+        self.db.query(RegraAvisoGeral).update({'ativo':False});self.db.commit()
+        with patch.object(m,'varrer') as varrer:
+            self.assertEqual(m.varrer_todos(self.engine),0);varrer.assert_not_called()
+
+    def test_card_disponivel_revalidacao_para_ao_concluir(self):
+        d,s,missao=self.interna('EVENTO_ALEATORIO',expira_em_min=30)
+        e=self.execucao(s,missao,status='PENDENTE',disparada_em=self.agora)
+        self.regra('MISSAO',missao.id,evento='DISPONIVEL',intervalo_min=5)
+        self.assertEqual(self.varrer(),1)
+        ref=self.enviar.call_args.kwargs['referencia']
+        self.assertEqual(self.enviar.call_args.kwargs['valido_ate'].minute,30)
+        self.agora+=timedelta(minutes=10)
+        self.assertTrue(m.validar_pendente(self.db,self.u.id,ref)['valido'])
+        e.status='CONCLUIDA';self.db.commit()
+        self.assertFalse(m.validar_pendente(self.db,self.u.id,ref)['valido'])
+        self.assertEqual(self.varrer(),0)
+
+    def test_agendamento_central_30_segundos_e_falha_isolada(self):
+        import main
+        job=main.scheduler.get_job('central_avisos')
+        agora=self.agora.replace(second=10,tzinfo=m.tempo.FUSO)
+        primeiro=job.trigger.get_next_fire_time(None,agora)
+        segundo=job.trigger.get_next_fire_time(primeiro,primeiro)
+        self.assertEqual((primeiro-agora).total_seconds(),20)
+        self.assertEqual((segundo-primeiro).total_seconds(),30)
+        self.assertEqual(job.max_instances,1);self.assertTrue(job.coalesce)
+        with patch.object(m,'varrer_todos',side_effect=RuntimeError('simulado')):
+            main._job_central_avisos() # job não derruba o scheduler
+
 
 if __name__=='__main__':unittest.main()

@@ -14,7 +14,7 @@ router=APIRouter(prefix='/avisos-gerais',tags=['avisos-gerais'])
 class RegraIn(BaseModel):
     origem: Literal['TAREFA','ROTINA','DUNGEON','MISSAO']
     alvo_id: int=Field(gt=0)
-    evento: Literal['STATUS','ABRE','FECHA','PRAZO','ATIVA_EM','EXPIRA_EM']='STATUS'
+    evento: Literal['STATUS','ABRE','FECHA','PRAZO','ATIVA_EM','EXPIRA_EM','DISPONIVEL']='STATUS'
     formato: Literal['texto','audio','ambos']='texto'
     intervalo_min: int=Field(default=60,ge=5,le=1440)
     antecedencia_min: int=Field(default=30,ge=5,le=180)
