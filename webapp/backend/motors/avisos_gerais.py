@@ -59,6 +59,8 @@ def progresso(obj,acum):
 
 
 def alvo(db, uid, origem, oid):
+    if origem=='RESUMO':
+        return db.get(Usuario,uid) if oid==1 else None
     if origem=='MISSAO':
         return db.query(DungeonMissao).join(Dungeon).filter(
             DungeonMissao.id==oid,Dungeon.usuario_id==uid).first()
@@ -87,6 +89,9 @@ def mensagem(db, r, agora=None):
     obj = alvo(db, r.usuario_id, r.origem, r.alvo_id)
     if not obj:
         return None
+    if r.origem=='RESUMO':
+        from motors import avisos_resumos
+        return avisos_resumos.mensagem(db,r,agora)
     if r.origem == 'MISSAO':
         from motors import avisos_dungeon
         return avisos_dungeon.mensagem(db,r,obj,agora)
@@ -205,7 +210,7 @@ def serializar(db,r):
     ultima = db.query(TentativaAvisoGeral).filter_by(regra_id=r.id).order_by(TentativaAvisoGeral.id.desc()).first()
     def iso(v): return v.replace(tzinfo=tempo.FUSO).isoformat() if v else None
     return {k:getattr(r,k) for k in ('id','origem','alvo_id','evento','formato','intervalo_min','antecedencia_min','estados','janela_de','janela_ate','ativo')} | {
-        'titulo':(f'{obj.dungeon.titulo} · {obj.titulo}' if r.origem=='MISSAO' else obj.titulo) if obj else 'Alvo removido', 'proximo_em':iso(r.proximo_em),
+        'titulo':('Seu dia' if r.origem=='RESUMO' else (f'{obj.dungeon.titulo} · {obj.titulo}' if r.origem=='MISSAO' else obj.titulo)) if obj else 'Alvo removido', 'proximo_em':iso(r.proximo_em),
         'ultimo_enviado_em':iso(r.ultimo_enviado_em),
         'adiado_ate':iso(r.adiamento.ate) if r.adiamento else None,
         'ultima_tentativa':{'status':ultima.status,'em':iso(ultima.criado_em)} if ultima else None}

@@ -55,7 +55,8 @@ Publicar a extensão do Bot antes de ativar áudio exclusivo no Rotinas.
    Quantidades vêm dos motores existentes. Metas/circuitos internos da dungeon
    exigem uma extensão própria, com valores por execução real.
 3. Resumos: manhã com agenda, fechamento do dia, revisão semanal, atraso por
-   categoria. Um resumo agrupado ajuda quem quer poucos avisos.
+   categoria. Agenda e balanço diários implementados na sétima entrega;
+   revisão semanal e detalhamento por categoria ficam para uma extensão.
 4. Penitências: lembretes escolhidos pelo hunter sem duplicar os sussurros.
 5. Habilidades: meta de maestria atingida, convite para conversão e trajetória.
 6. Teto diário, agrupamento de lembretes simultâneos e botão “adiar 1h”
@@ -249,3 +250,40 @@ um card interno. Sem migração de banco e sem mudança no Solo Bot. Testes
 locais com transporte simulado cobrem marcos, atualização de fila, medição
 decrescente, circuito pausado, desafio entre dias, folgas, conclusão e prazo
 noturno. Push e publicação permanecem com o Antigravity.
+
+## Sétima entrega — agenda e balanço diários
+
+Nova origem **Resumo diário** na Central, com **Agenda do dia** e **Balanço
+do dia**, independentes e opcionais. Cada regra escolhe o horário de Brasília
+e texto, áudio ou ambos. O horário fica em `janela_de`; o servidor deriva
+`janela_ate` como uma hora depois. Não há nova tabela ou coluna. A chave
+diária de cada evento usa a mesma reserva persistente das demais regras,
+inclusive cota, adiamento, pausa, formato e revalidação da fila.
+
+O retrato consulta missões gerais do dia sem teste, rotinas ativas devidas
+na data respeitando folgas, execuções existentes e sessões/cards internos
+reais de dungeon sem modo de teste. Rotina prevista sem execução aparece
+como pendente, sem materializar derrota. Informa concluídas, abertas, falhas
+registradas, canceladas, missões antigas em aberto (sem penitências),
+dungeons previstas, sessões e cards registrados. Lista até três próximos
+prazos de missões/rotinas e até dois portões que ainda vão abrir, dentro do
+orçamento de áudio. Não inclui toda a lista de títulos; é um resumo compacto.
+O balanço é a situação **até o horário da consulta**, não um fechamento que
+altera missões, XP ou streak. As duas opções mostram o retrato atual do dia.
+
+Uma oportunidade de envio por dia/evento durante a hora seguinte ao horário
+escolhido, limitada à meia-noite. Se houver interrupção, silêncio, cota cheia
+ou adiamento até depois dessa janela, o resumo daquele dia é descartado.
+Não recupera dias perdidos e não atravessa a madrugada. Falha/timeout consome
+a tentativa como nas demais regras; não há repetição imediata. Adiar 1 hora
+durante a janela normalmente pula o resumo de hoje. A prévia pode ser vista
+fora do horário sem enviar: mostra os dados atuais, não prevê resultados.
+
+Enquanto estiver na fila, o resumo atualiza seus números e próximos prazos;
+concluir uma missão não invalida o resumo inteiro, apenas atualiza o retrato.
+Pausar/remover/editar/adiar a regra, trocar de hunter ou chegar ao vencimento
+invalida a mensagem. A voz continua sujeita às preferências da Conta Solo.
+Sem comandos novos e sem alteração do contrato do Bot. Publicação permanece
+com o Antigravity. Testes usam transporte simulado e verificam horário,
+unicidade/reinício, virada/atraso, dados atuais na fila, isolamento, folgas,
+ausência de execuções fictícias, cards de teste excluídos, limites e formulário.

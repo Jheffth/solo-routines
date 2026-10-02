@@ -9,7 +9,8 @@ w.HTMLDialogElement.prototype.close = function() {this.dispatchEvent(new w.Event
 const catalogo=[{origem:'TAREFA',id:1,titulo:'Fio dental <img src=x>'},{origem:'DUNGEON',id:2,titulo:'Trabalho',sempre_aberta:false},{origem:'DUNGEON',id:3,titulo:'Livre',sempre_aberta:true},
   {origem:'MISSAO',id:4,titulo:'Trabalho · Beber água',natureza:'BEM_ESTAR',eventos:['STATUS','DISPONIVEL','ATIVA_EM','EXPIRA_EM']},
   {origem:'MISSAO',id:5,titulo:'Trabalho · Padrão',natureza:'PADRAO',eventos:['STATUS']},
-  {origem:'TAREFA',id:6,titulo:'Ler 100 páginas',eventos:['STATUS','PRAZO','PROGRESSO']}];
+  {origem:'TAREFA',id:6,titulo:'Ler 100 páginas',eventos:['STATUS','PRAZO','PROGRESSO']},
+  {origem:'RESUMO',id:1,titulo:'Seu dia',eventos:['AGENDA','BALANCO']}];
 let regras=[], chamadas=[], pref={limite_diario:0,agrupar:false,usados_hoje:0};
 w.SoloDialog={toast:()=>assert.fail('erro inesperado')};
 w.API={
@@ -79,5 +80,18 @@ const A=w.AvisosGerais, tick=()=>new Promise(resolve=>setImmediate(resolve));
   f.dispatchEvent(new w.Event('submit',{cancelable:true}));await tick();
   assert.equal(pref.limite_diario,7);assert.equal(pref.agrupar,true);
   assert.match(w.document.getElementById('avisos-gerais-conteudo').textContent,/limite 7/);
+  w.document.querySelector('[data-ag=novo]').click();f=w.document.querySelector('form');
+  f.elements.origem.value='RESUMO';f.elements.origem.dispatchEvent(new w.Event('change'));
+  assert.deepEqual([...f.elements.evento.options].map(o=>o.value),['AGENDA','BALANCO']);
+  assert.equal(f.querySelector('[data-antecedencia]').hidden,true);
+  assert.equal(f.querySelector('[data-hora-ate]').hidden,true);
+  assert.equal(f.querySelector('[data-resumo]').hidden,false);
+  assert.match(f.querySelector('[data-hora-label]').textContent,/Horário do resumo/);
+  f.elements.evento.value='BALANCO';f.elements.janela_de.value='21:30';f.elements.formato.value='ambos';
+  f.dispatchEvent(new w.Event('submit',{cancelable:true}));await tick();
+  assert.equal(chamadas.at(-1).origem,'RESUMO');assert.equal(chamadas.at(-1).evento,'BALANCO');
+  assert.equal(chamadas.at(-1).janela_de,'21:30');assert.equal(chamadas.at(-1).formato,'ambos');
+  assert.match(w.document.querySelector('article').textContent,/uma vez por dia/);
+  assert.match(w.document.querySelector('article').textContent,/Todos os dias às 21:30/);
   console.log('Central de avisos: configuração, prévia, pausa, remoção e escape OK');
 })().catch(err=>{console.error(err);process.exitCode=1;});

@@ -12,9 +12,9 @@ router=APIRouter(prefix='/avisos-gerais',tags=['avisos-gerais'])
 
 
 class RegraIn(BaseModel):
-    origem: Literal['TAREFA','ROTINA','DUNGEON','MISSAO']
+    origem: Literal['TAREFA','ROTINA','DUNGEON','MISSAO','RESUMO']
     alvo_id: int=Field(gt=0)
-    evento: Literal['STATUS','ABRE','FECHA','PRAZO','ATIVA_EM','EXPIRA_EM','DISPONIVEL','PROGRESSO']='STATUS'
+    evento: Literal['STATUS','ABRE','FECHA','PRAZO','ATIVA_EM','EXPIRA_EM','DISPONIVEL','PROGRESSO','AGENDA','BALANCO']='STATUS'
     formato: Literal['texto','audio','ambos']='texto'
     intervalo_min: int=Field(default=60,ge=5,le=1440)
     antecedencia_min: int=Field(default=30,ge=5,le=180)
@@ -80,6 +80,14 @@ def minha(db,uid,rid):
 def validar(db,uid,p):
     obj=motor.alvo(db,uid,p.origem,p.alvo_id)
     if not obj: raise HTTPException(404,'Alvo não encontrado na sua conta.')
+    if p.origem=='RESUMO':
+        from motors.avisos_resumos import EVENTOS
+        if p.evento not in EVENTOS: raise HTTPException(422,'Escolha agenda ou balanço do dia.')
+        # janela_de guarda a hora diária; a tolerância de uma hora é fixa.
+        h=motor.horario(p.janela_de)
+        minutos=(h.hour*60+h.minute+60)%1440
+        p.janela_ate=f'{minutos//60:02d}:{minutos%60:02d}'
+        return
     if p.janela_de==p.janela_ate:
         raise HTTPException(422,'O início e fim da janela devem ser diferentes.')
     if p.origem=='MISSAO':
@@ -103,7 +111,7 @@ def validar(db,uid,p):
 
 @router.get('/catalogo')
 def catalogo(db:Session=Depends(get_db),usuario:Usuario=Depends(get_usuario_atual)):
-    itens=[]
+    itens=[{'origem':'RESUMO','id':1,'titulo':'Seu dia','eventos':['AGENDA','BALANCO']}]
     for origem,cls in motor.MODELOS.items():
         if origem=='MISSAO':
             missoes=db.query(DungeonMissao).join(Dungeon).filter(
@@ -166,7 +174,10 @@ def ativar(rid:int,p:Ativo,db:Session=Depends(get_db),usuario:Usuario=Depends(ge
 @router.get('/{rid}/previa')
 def previa(rid:int,db:Session=Depends(get_db),usuario:Usuario=Depends(get_usuario_atual)):
     r=minha(db,usuario.id,rid)
-    m=motor.mensagem(db,r)
+    if r.origem=='RESUMO':
+        from motors import avisos_resumos
+        m=avisos_resumos.mensagem(db,r,tempo.agora(),previa=True)
+    else: m=motor.mensagem(db,r)
     return {'texto':m['texto'] if m else 'Nenhum aviso seria enviado agora: o alvo está fora do horário, dos estados escolhidos ou já foi encerrado.'}
 
 

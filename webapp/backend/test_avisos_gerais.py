@@ -52,6 +52,110 @@ class AvisosTest(unittest.TestCase):
     def varrer(self):
         return m.varrer(self.engine,self.u.id)
 
+    def test_resumo_hora_unico_por_dia_validade_e_reinicio(self):
+        regra=self.regra('RESUMO',1,evento='AGENDA',janela_de='12:15',formato='audio')
+        self.assertEqual(regra['janela_ate'],'13:15')
+        self.assertEqual(regra['titulo'],'Seu dia');self.assertEqual(self.varrer(),0)
+        self.assertIn('Agenda do dia',self.client.get(f"/avisos-gerais/{regra['id']}/previa").json()['texto'])
+        self.enviar.assert_not_called()
+        self.agora+=timedelta(minutes=15);self.assertEqual(self.varrer(),1)
+        self.assertIn('Agenda do dia',self.enviar.call_args.args[1])
+        self.assertIn('Comprar fio dental',self.enviar.call_args.args[1])
+        self.assertEqual(self.enviar.call_args.kwargs['formato'],'audio')
+        self.assertEqual(self.enviar.call_args.kwargs['valido_ate'].replace(tzinfo=None),datetime(2026,10,1,13,15))
+        uid=self.u.id;tid=self.t.id
+        self.db.close();self.engine.dispose();self.db=Session(self.engine)
+        self.u=self.db.get(Usuario,uid);self.t=self.db.get(TarefaDia,tid)
+        self.assertEqual(self.varrer(),0)
+        self.agora+=timedelta(days=1);self.assertEqual(self.varrer(),1)
+        self.assertEqual(self.enviar.call_count,2)
+
+    def test_resumo_atualiza_fila_ao_concluir_e_expira(self):
+        self.regra('RESUMO',1,evento='BALANCO',janela_de='12:00')
+        self.assertEqual(self.varrer(),1);ref=self.enviar.call_args.kwargs['referencia']
+        self.t.status='CONCLUIDA';self.db.commit()
+        atual=m.validar_pendente(self.db,self.u.id,ref)
+        self.assertTrue(atual['valido']);self.assertIn('1 concluídas, 0 em aberto',atual['texto'])
+        self.assertNotIn('Comprar fio dental',atual['texto'])
+        self.assertFalse(m.validar_pendente(self.db,self.outro.id,ref)['valido'])
+        self.agora+=timedelta(hours=1)
+        self.assertFalse(m.validar_pendente(self.db,self.u.id,ref)['valido'])
+
+    def test_resumo_rotina_prevista_folga_nao_inventa_execucao(self):
+        rot=Rotina(usuario_id=self.u.id,titulo='Ler',tipo='SEMANAL',dias_semana='[3]',ativo=True)
+        folga=Rotina(usuario_id=self.u.id,titulo='Folga',tipo='SEMANAL',dias_semana='[4]',ativo=True)
+        self.db.add_all([rot,folga]);self.db.commit()
+        self.regra('RESUMO',1,evento='AGENDA',janela_de='12:00')
+        self.assertEqual(self.varrer(),1)
+        texto=self.enviar.call_args.args[1]
+        self.assertIn('2 previstas',texto);self.assertIn('Ler até',texto);self.assertNotIn('Folga',texto)
+        self.assertEqual(self.db.query(ExecucaoDia).count(),0)
+
+    def test_resumo_isolamento_testes_pendencias_e_cards_reais(self):
+        self.db.add_all([
+            TarefaDia(usuario_id=self.u.id,titulo='Antiga',data_prevista=self.agora.date()-timedelta(days=1),status='FRACASSADA'),
+            TarefaDia(usuario_id=self.u.id,titulo='Teste',data_prevista=self.agora.date(),teste=True),
+            TarefaDia(usuario_id=self.outro.id,titulo='Segredo de outro hunter',data_prevista=self.agora.date())])
+        d=Dungeon(usuario_id=self.u.id,titulo='Dungeon',status='ATIVA',sempre_aberta=True)
+        self.db.add(d);self.db.flush()
+        s=DungeonSessao(usuario_id=self.u.id,dungeon_id=d.id,data=self.agora.date(),modo_teste=False,status='ATIVA')
+        st=DungeonSessao(usuario_id=self.u.id,dungeon_id=d.id,data=self.agora.date(),modo_teste=True,status='ATIVA')
+        mi=DungeonMissao(dungeon_id=d.id,titulo='Card',tipo='ATIVA',natureza='PADRAO')
+        self.db.add_all([s,st,mi]);self.db.flush()
+        self.db.add_all([DungeonMissaoExecucao(dungeon_missao_id=mi.id,dungeon_sessao_id=s.id,status='CONCLUIDA'),
+            DungeonMissaoExecucao(dungeon_missao_id=mi.id,dungeon_sessao_id=st.id,status='PENDENTE')]);self.db.commit()
+        self.regra('RESUMO',1,evento='BALANCO',janela_de='12:00')
+        self.assertEqual(self.varrer(),1);texto=self.enviar.call_args.args[1]
+        self.assertIn('1 previstas',texto);self.assertIn('dias anteriores em aberto: 1',texto)
+        self.assertIn('1 sessões registradas',texto);self.assertIn('Cards internos registrados: 1, 1 concluídos, 0 em aberto',texto)
+        self.assertNotIn('Segredo',texto);self.assertNotIn('Teste',texto)
+
+    def test_resumo_nao_recupera_dias_perdidos_nem_madrugada(self):
+        self.regra('RESUMO',1,evento='AGENDA',janela_de='12:00')
+        self.agora+=timedelta(days=2,hours=2);self.assertEqual(self.varrer(),0)
+        self.client.delete('/avisos-gerais/1')
+        self.regra('RESUMO',1,evento='BALANCO',janela_de='23:30')
+        self.agora=datetime(2026,10,3,23,40);self.assertEqual(self.varrer(),1)
+        ref=self.enviar.call_args.kwargs['referencia']
+        self.assertEqual(self.enviar.call_args.kwargs['valido_ate'].replace(tzinfo=None),datetime(2026,10,4))
+        self.agora=datetime(2026,10,4,0,5)
+        self.assertFalse(m.validar_pendente(self.db,self.u.id,ref)['valido']);self.assertEqual(self.varrer(),0)
+
+    def test_resumo_pausa_adiamento_e_cota(self):
+        regra=self.regra('RESUMO',1,evento='AGENDA',janela_de='12:00')
+        self.client.post(f"/avisos-gerais/{regra['id']}/adiar",json={})
+        self.assertEqual(self.varrer(),0)
+        self.agora+=timedelta(hours=1);self.assertEqual(self.varrer(),0)
+        self.agora+=timedelta(days=1);self.agora=self.agora.replace(hour=12)
+        self.client.put('/avisos-gerais/preferencias',json={'limite_diario':1})
+        self.assertEqual(self.varrer(),1)
+        outra=self.regra('RESUMO',1,evento='BALANCO',janela_de='12:00')
+        self.assertEqual(self.varrer(),0)
+        self.client.put('/avisos-gerais/preferencias',json={'limite_diario':2})
+        self.client.patch(f"/avisos-gerais/{outra['id']}",json={'ativo':False})
+        self.assertEqual(self.varrer(),0)
+        self.client.patch(f"/avisos-gerais/{outra['id']}",json={'ativo':True})
+        self.assertEqual(self.varrer(),1)
+
+    def test_resumo_catalogo_validacao_duplicata_e_texto_curto(self):
+        item=next(i for i in self.client.get('/avisos-gerais/catalogo').json() if i['origem']=='RESUMO')
+        self.assertEqual(item['eventos'],['AGENDA','BALANCO'])
+        for extra,codigo in [({'evento':'STATUS'},422),({'evento':'AGENDA','alvo_id':self.outro.id},404),({'evento':'AGENDA','janela_de':'24:01'},422)]:
+            self.assertEqual(self.client.post('/avisos-gerais/',json={'origem':'RESUMO','alvo_id':1,**extra}).status_code,codigo)
+        self.t.titulo='x'*500;self.db.commit()
+        self.regra('RESUMO',1,evento='AGENDA',janela_de='12:00')
+        self.assertEqual(self.client.post('/avisos-gerais/',json={'origem':'RESUMO','alvo_id':1,'evento':'AGENDA'}).status_code,409)
+        self.assertEqual(self.varrer(),1);self.assertLess(len(self.enviar.call_args.args[1]),900)
+
+    def test_resumo_portoes_previstos_e_vazio_sem_mensagem_antiga(self):
+        self.t.teste=True
+        self.db.add(Dungeon(usuario_id=self.u.id,titulo='Biblioteca',status='ATIVA',hora_entrada='14:00',hora_saida='18:00'))
+        self.db.commit();self.regra('RESUMO',1,evento='AGENDA',janela_de='12:00')
+        self.assertEqual(self.varrer(),1)
+        texto=self.enviar.call_args.args[1]
+        self.assertIn('0 previstas',texto);self.assertIn('Portão de Biblioteca abre às 14:00',texto)
+        self.assertNotIn('Comprar fio dental',texto)
+
     def test_meta_marco_unico_e_fila_com_progresso_atual(self):
         self.t.meta_alvo=100;self.t.meta_atual=79;self.t.meta_unidade='págs';self.db.commit()
         self.regra(evento='PROGRESSO')

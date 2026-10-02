@@ -1,8 +1,8 @@
 const AvisosGerais = {
   _regras: [], _catalogo: [], _preferencias: {},
   esc(v) { return String(v ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); },
-  _origens: {TAREFA:'Missão geral',ROTINA:'Rotina',DUNGEON:'Dungeon',MISSAO:'Missão interna da dungeon'},
-  _eventos: {STATUS:'Acompanhar status e progresso',ABRE:'Portão prestes a abrir',FECHA:'Portão prestes a fechar',PRAZO:'Prazo prestes a acabar',ATIVA_EM:'Missão prestes a aparecer',EXPIRA_EM:'Ocorrência prestes a vencer',DISPONIVEL:'Quando o card aparecer',PROGRESSO:'Ao atingir 80% do objetivo'},
+  _origens: {TAREFA:'Missão geral',ROTINA:'Rotina',DUNGEON:'Dungeon',MISSAO:'Missão interna da dungeon',RESUMO:'Resumo diário'},
+  _eventos: {STATUS:'Acompanhar status e progresso',ABRE:'Portão prestes a abrir',FECHA:'Portão prestes a fechar',PRAZO:'Prazo prestes a acabar',ATIVA_EM:'Missão prestes a aparecer',EXPIRA_EM:'Ocorrência prestes a vencer',DISPONIVEL:'Quando o card aparecer',PROGRESSO:'Ao atingir 80% do objetivo',AGENDA:'Agenda do dia',BALANCO:'Balanço do dia'},
   _formatos: {texto:'Texto',audio:'Áudio',ambos:'Texto e áudio'},
   async carregar() {
     const host=document.getElementById('avisos-gerais-conteudo'); if(!host) return;
@@ -41,8 +41,8 @@ const AvisosGerais = {
     const tentativa=r.ultima_tentativa;
     const status={ACEITO:'Aceito pelo Solo Bot',FALHOU:'Última tentativa não foi aceita',RESERVADO:'Tentativa registrada',IGNORADO:'Alvo encerrado antes de enviar'};
     return `<article class="ag-card ${r.ativo?'':'ag-pausado'}"><div class="ag-topo"><span class="ag-tipo">${this._origens[r.origem]} · ${r.ativo?'Ativo':'Pausado'}</span><span class="ag-formato">${this._formatos[r.formato]}</span></div>
-      <h3>${this.esc(r.titulo)}</h3><p>${this._eventos[r.evento]} · ${r.evento==='STATUS'?`a cada ${r.intervalo_min} min`:r.evento==='DISPONIVEL'?'uma vez por ocorrência':r.evento==='PROGRESSO'?'uma vez por ocorrência ou desafio':`${r.antecedencia_min} min antes`}</p>
-      <p class="ag-nota">Das ${r.janela_de} às ${r.janela_ate} · horário de Brasília</p>
+      <h3>${this.esc(r.titulo)}</h3><p>${this._eventos[r.evento]} · ${r.origem==='RESUMO'?'uma vez por dia':r.evento==='STATUS'?`a cada ${r.intervalo_min} min`:r.evento==='DISPONIVEL'?'uma vez por ocorrência':r.evento==='PROGRESSO'?'uma vez por ocorrência ou desafio':`${r.antecedencia_min} min antes`}</p>
+      <p class="ag-nota">${r.origem==='RESUMO'?`Todos os dias às ${r.janela_de}`:`Das ${r.janela_de} às ${r.janela_ate}`} · horário de Brasília</p>
       ${r.adiado_ate&&new Date(r.adiado_ate)>new Date()?`<p class="ag-proximo">Silenciado até ${this.quando(r.adiado_ate)}</p>`:''}
       ${r.evento==='STATUS'&&r.ativo?`<p class="ag-proximo">Próxima verificação: ${this.quando(r.proximo_em)}</p>`:''}
       ${tentativa?`<p class="ag-nota">${status[tentativa.status]||'Tentativa registrada'} · ${this.quando(tentativa.em)}</p>`:''}
@@ -77,7 +77,8 @@ const AvisosGerais = {
       <div class="ag-form-grid"><label data-intervalo>A cada quantos minutos<input name="intervalo_min" type="number" min="5" max="1440" value="${padrao.intervalo_min}" required></label>
       <label data-antecedencia>Minutos antes<input name="antecedencia_min" type="number" min="5" max="180" value="${padrao.antecedencia_min}" required></label></div>
       <fieldset data-estados><legend>Avisar nestes estados</legend>${[['PENDENTE','Não iniciada'],['ATIVA','Em andamento'],['PAUSADA','Pausada'],['ATRASADA','Atrasada']].map(([v,t])=>`<label><input type="checkbox" name="estados" value="${v}" ${padrao.estados.includes(v)?'checked':''}> ${t}</label>`).join('')}</fieldset>
-      <div class="ag-form-grid"><label>Receber a partir de<input type="time" name="janela_de" value="${padrao.janela_de}" required></label><label>Até<input type="time" name="janela_ate" value="${padrao.janela_ate}" required></label></div>
+      <div class="ag-form-grid"><label><span data-hora-label>Receber a partir de</span><input type="time" name="janela_de" value="${padrao.janela_de}" required></label><label data-hora-ate>Até<input type="time" name="janela_ate" value="${padrao.janela_ate}" required></label></div>
+      <p class="ag-nota" data-resumo hidden>Uma vez por dia, no horário escolhido, com missões, rotinas e cards registrados nas dungeons. O balanço mostra a situação até agora. A oportunidade de envio e a validade duram uma hora, sem atravessar a meia-noite. Silêncio, limite ou adiamento podem fazer o resumo de hoje ser descartado. Nenhum resumo antigo é acumulado.</p>
       <p class="ag-nota">Os avisos são verificados a cada 30 segundos. Acompanhar status respeita o intervalo escolhido. Para saúde, “Quando o card aparecer” avisa uma vez por ocorrência, sem esperar esse intervalo. Metas e circuitos mostram o progresso registrado. O marco de 80% avisa uma vez antes de completar o objetivo: por ocorrência de missão/rotina, ou uma vez no desafio progressivo inteiro. Prazo prestes a acabar usa os minutos de antecedência escolhidos. Concluir ou expirar um card encerra seus lembretes. Saúde segue os eventos registrados pela dungeon; silêncio e disponibilidade dos bots podem adiar a entrega.</p><p class="ag-erro" role="alert"></p>
       <button class="btn btn-primary" type="submit">Salvar aviso</button></form>`);
     const f=d.querySelector('form'), origem=f.elements.origem, alvos=f.elements.alvo_id, evento=f.elements.evento;
@@ -90,9 +91,13 @@ const AvisosGerais = {
       campos();
     };
     const campos=()=>{
+      const resumo=origem.value==='RESUMO';
       f.querySelector('[data-intervalo]').hidden=evento.value!=='STATUS';
-      f.querySelector('[data-antecedencia]').hidden=['STATUS','DISPONIVEL','PROGRESSO'].includes(evento.value);
+      f.querySelector('[data-antecedencia]').hidden=resumo||['STATUS','DISPONIVEL','PROGRESSO'].includes(evento.value);
       f.querySelector('[data-estados]').hidden=evento.value!=='STATUS';
+      f.querySelector('[data-hora-ate]').hidden=resumo;
+      f.querySelector('[data-hora-label]').textContent=resumo?'Horário do resumo':'Receber a partir de';
+      f.querySelector('[data-resumo]').hidden=!resumo;
     };
     const selecionar=()=>{
       const lista=this._catalogo.filter(o=>o.origem===origem.value);
