@@ -51,7 +51,9 @@ Publicar a extensão do Bot antes de ativar áudio exclusivo no Rotinas.
    próxima ocorrência, prazo da sessão contado da primeira entrada; usar as
    ocorrências reais para evitar lembrar um card que já foi concluído.
 2. Progresso: metas perto do alvo, circuitos interrompidos, desafios progressivos
-   perto do prazo; quantidades vêm dos motores de meta/circuito/progressivas.
+   perto do prazo; missões gerais e rotinas implementadas na sexta entrega.
+   Quantidades vêm dos motores existentes. Metas/circuitos internos da dungeon
+   exigem uma extensão própria, com valores por execução real.
 3. Resumos: manhã com agenda, fechamento do dia, revisão semanal, atraso por
    categoria. Um resumo agrupado ajuda quem quer poucos avisos.
 4. Penitências: lembretes escolhidos pelo hunter sem duplicar os sussurros.
@@ -210,3 +212,40 @@ do Solo Bot: exige a revalidação da terceira entrega já publicada. Publicaç�
 do Rotinas continua com o Antigravity. Testes usam transporte simulado e
 incluem concorrência na última vaga, limite/virada, isolamento de hunters,
 adiamento, divisão por formato e remoção parcial de grupo na fila.
+
+## Sexta entrega — progresso e prazo de missões gerais/rotinas
+
+O acompanhamento de status agora inclui os valores registrados: leitura/alvo
+e quanto falta na meta, blocos entregues/restantes no circuito e dias cumpridos
+no desafio progressivo. Circuitos pausados preservam o estado e mostram os
+blocos já feitos. O motor de meta fornece o progresso de acúmulo e medição;
+uma meta de peso decrescente mede o caminho entre o valor inicial e o alvo,
+sem somar pesagens. Quando houver circuito ou meta na rotina progressiva, o
+detalhe acompanha o objetivo do card (circuito tem precedência sobre meta).
+
+Duas opções novas no catálogo de missões gerais/rotinas:
+- **Ao atingir 80% do objetivo**: uma tentativa enquanto o progresso está de
+  80% a menos de 100%, antes do prazo. Metas e circuitos usam uma chave por
+  ocorrência; um desafio progressivo sem meta/circuito usa uma chave para o
+  desafio inteiro, sem repetir a cada dia. Uma regra criada com o objetivo
+  já nessa faixa pode avisar na próxima checagem. Objetivos completos não
+  recebem o marco. O percentual é fixo nesta entrega e não é um novo campo.
+- **Prazo prestes a acabar**: uma tentativa por ocorrência e prazo real,
+  dentro da antecedência configurada. Usa os prazos existentes, incluindo
+  duração da intenção, janela noturna e reerguimento; penitências não oferecem
+  a opção, pois sua dívida não tem prazo. Não envia depois de vencer.
+
+Nenhuma opção nova é habilitada automaticamente. Janela de recebimento,
+folgas, pausa, adiamento, teto diário, agrupamento e revalidação da fila
+continuam valendo. No marco e no aviso antecipado, os estados escolhidos do
+acompanhamento não se aplicam; conclusão/cancelamento continuam encerrando
+o aviso. O texto enfileirado consulta o progresso atual e é descartado se
+o hunter concluir ou deixar a faixa do marco. Não cria execuções, aportes,
+XP nem mudança de estado.
+
+Os avisos existentes sobre missões internas da dungeon permanecem disponíveis;
+esta entrega não usa os acumulados da definição para inventar progresso de
+um card interno. Sem migração de banco e sem mudança no Solo Bot. Testes
+locais com transporte simulado cobrem marcos, atualização de fila, medição
+decrescente, circuito pausado, desafio entre dias, folgas, conclusão e prazo
+noturno. Push e publicação permanecem com o Antigravity.

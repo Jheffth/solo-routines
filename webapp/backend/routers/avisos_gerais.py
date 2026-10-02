@@ -14,7 +14,7 @@ router=APIRouter(prefix='/avisos-gerais',tags=['avisos-gerais'])
 class RegraIn(BaseModel):
     origem: Literal['TAREFA','ROTINA','DUNGEON','MISSAO']
     alvo_id: int=Field(gt=0)
-    evento: Literal['STATUS','ABRE','FECHA','PRAZO','ATIVA_EM','EXPIRA_EM','DISPONIVEL']='STATUS'
+    evento: Literal['STATUS','ABRE','FECHA','PRAZO','ATIVA_EM','EXPIRA_EM','DISPONIVEL','PROGRESSO']='STATUS'
     formato: Literal['texto','audio','ambos']='texto'
     intervalo_min: int=Field(default=60,ge=5,le=1440)
     antecedencia_min: int=Field(default=30,ge=5,le=180)
@@ -88,7 +88,7 @@ def validar(db,uid,p):
         if p.evento not in avisos_dungeon.eventos(obj):
             raise HTTPException(422,'Este evento não está disponível para esta missão.')
         return
-    permitidos=['STATUS','ABRE','FECHA','PRAZO'] if p.origem=='DUNGEON' else ['STATUS']
+    permitidos=['STATUS','ABRE','FECHA','PRAZO'] if p.origem=='DUNGEON' else motor.eventos(obj)
     if p.evento not in permitidos:
         raise HTTPException(422,'Este evento não está disponível para este alvo.')
     if p.origem=='DUNGEON' and obj.sempre_aberta and p.evento in ('ABRE','FECHA'):
@@ -121,7 +121,7 @@ def catalogo(db:Session=Depends(get_db),usuario:Usuario=Depends(get_usuario_atua
             if origem=='DUNGEON' and obj.status!='ATIVA': continue
             itens.append({'origem':origem,'id':obj.id,'titulo':obj.titulo,
                           'sempre_aberta':bool(getattr(obj,'sempre_aberta',False)),
-                          'eventos':(['STATUS','PRAZO']+([] if obj.sempre_aberta else ['ABRE','FECHA'])) if origem=='DUNGEON' else ['STATUS']})
+                          'eventos':(['STATUS','PRAZO']+([] if obj.sempre_aberta else ['ABRE','FECHA'])) if origem=='DUNGEON' else motor.eventos(obj)})
     return itens
 
 

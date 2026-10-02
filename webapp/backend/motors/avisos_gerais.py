@@ -4,6 +4,7 @@ import logging
 import hashlib
 import json
 import uuid
+from math import ceil
 from sqlalchemy import or_, case
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -16,6 +17,45 @@ import solobot_ponte
 log = logging.getLogger(__name__)
 MODELOS = {"TAREFA": TarefaDia, "ROTINA": Rotina, "DUNGEON": Dungeon, "MISSAO": DungeonMissao}
 FINAIS = {"CONCLUIDA", "CANCELADA", "CONFESSADA", "FRACASSADA_FATAL"}
+
+
+def eventos(obj):
+    """Opções de missões gerais/rotinas; sem prazo fictício para penitências."""
+    from motors import circuito
+    nomes=['STATUS']
+    if getattr(obj,'natureza',None)!='PUNICAO': nomes.append('PRAZO')
+    if (getattr(obj,'meta_alvo',None) is not None or circuito.eh_circuito(obj)
+            or (getattr(obj,'eh_progressiva',False) and (obj.dias_progressivos_alvo or 0)>0)):
+        nomes.append('PROGRESSO')
+    return nomes
+
+
+def progresso(obj,acum):
+    """Lê os motores existentes; não registra aportes nem conclui o alvo."""
+    from motors import meta, circuito
+    def numero(v): return f'{float(v):g}'.replace('.',',')
+    desenho=circuito.normalizar(getattr(obj,'circuito_payload',None))
+    if desenho:
+        p=circuito.progresso(desenho,circuito.ler_feito(getattr(acum,'circuito_feito',None)))
+        return {'texto':f"Circuito: {p['fechados']} de {p['total']} blocos entregues; faltam {p['faltam']}.",
+                'perto':p['total']>0 and .8<=p['fechados']/p['total']<1, 'escopo':None}
+    alvo=getattr(obj,'meta_alvo',None)
+    if alvo is not None:
+        modo=meta.modo(getattr(obj,'meta_modo',None),getattr(obj,'meta_especie',None))
+        inicial=getattr(obj,'meta_inicial',None)
+        atual=(inicial or 0) if acum is None and modo==meta.MEDICAO else (getattr(acum,'meta_atual',0) or 0)
+        pct=meta.progresso(atual,alvo,inicial,modo)
+        # Distância ao alvo: peso decrescente não é uma soma de pesagens.
+        falta=(0 if meta.alcancada(atual,alvo,inicial,modo) else abs(float(alvo)-float(atual))) if modo==meta.MEDICAO else max(0,float(alvo)-float(atual))
+        unidade=str(getattr(obj,'meta_unidade',None) or '')[:12]
+        leitura=f'leitura {numero(atual)}; alvo {numero(alvo)}' if modo==meta.MEDICAO else f'{numero(atual)} de {numero(alvo)}'
+        texto=f"Meta: {leitura} {unidade}. Faltam {numero(falta)} {unidade}."
+        return {'texto':texto, 'perto':.8<=pct<1, 'escopo':None}
+    if getattr(obj,'eh_progressiva',False) and (obj.dias_progressivos_alvo or 0)>0:
+        alvo=obj.dias_progressivos_alvo;ok=obj.dias_progressivos_ok or 0
+        return {'texto':f'Desafio progressivo: {ok} de {alvo} dias cumpridos; faltam {max(0,alvo-ok)}.',
+                'perto':.8<=ok/alvo<1, 'escopo':f'progressiva:{obj.id}:{alvo}'}
+    return None
 
 
 def alvo(db, uid, origem, oid):
@@ -82,6 +122,20 @@ def mensagem(db, r, agora=None):
             fim = None
     if fim and fim <= agora:
         estado = 'ATRASADA'
+    ocorrencia=f'rotina:{obj.id}:{dia}' if r.origem=='ROTINA' else f'tarefa:{obj.id}'
+    detalhe=progresso(obj,ed if r.origem=='ROTINA' else obj)
+    if r.evento=='PROGRESSO':
+        if not fim or fim<=agora or not detalhe or not detalhe['perto']:
+            return None
+        escopo=detalhe['escopo'] or ocorrencia
+        return {'texto':f"A missão {titulo} está perto do alvo. {detalhe['texto']} {prazo_texto(fim,agora)}",
+                'estado':'PROGRESSO','fim':fim,'chave_evento':f'{escopo}:PROGRESSO','ocorrencia':escopo}
+    if r.evento=='PRAZO':
+        if not fim or not 0<(fim-agora).total_seconds()<=r.antecedencia_min*60:
+            return None
+        texto=f"A missão {titulo} vence em {ceil((fim-agora).total_seconds()/60)} minutos. {prazo_texto(fim,agora)}"
+        if detalhe: texto+=' '+detalhe['texto']
+        return {'texto':texto,'estado':'PRAZO','fim':fim,'chave_evento':f'{ocorrencia}:PRAZO:{fim.isoformat()}', 'ocorrencia':ocorrencia}
     if estado not in r.estados:
         return None
     estados = {'PENDENTE':'ainda não foi iniciada.', 'ATIVA':'está em andamento. Você está prestes a concluir?',
@@ -92,7 +146,7 @@ def mensagem(db, r, agora=None):
         texto += ' ' + prazo_texto(fim,agora)
     else:
         texto += ' Esta penitência permanece até ser quitada.'
-    ocorrencia=f'rotina:{obj.id}:{dia}' if r.origem=='ROTINA' else f'tarefa:{obj.id}'
+    if detalhe: texto+=' '+detalhe['texto']
     return {'texto':texto, 'estado':estado, 'fim':fim if fim and fim>agora else None, 'chave_evento':None, 'ocorrencia':ocorrencia}
 
 

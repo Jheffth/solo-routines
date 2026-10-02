@@ -8,7 +8,8 @@ w.HTMLDialogElement.prototype.showModal = function() {this.open=true;};
 w.HTMLDialogElement.prototype.close = function() {this.dispatchEvent(new w.Event('close'));};
 const catalogo=[{origem:'TAREFA',id:1,titulo:'Fio dental <img src=x>'},{origem:'DUNGEON',id:2,titulo:'Trabalho',sempre_aberta:false},{origem:'DUNGEON',id:3,titulo:'Livre',sempre_aberta:true},
   {origem:'MISSAO',id:4,titulo:'Trabalho · Beber água',natureza:'BEM_ESTAR',eventos:['STATUS','DISPONIVEL','ATIVA_EM','EXPIRA_EM']},
-  {origem:'MISSAO',id:5,titulo:'Trabalho · Padrão',natureza:'PADRAO',eventos:['STATUS']}];
+  {origem:'MISSAO',id:5,titulo:'Trabalho · Padrão',natureza:'PADRAO',eventos:['STATUS']},
+  {origem:'TAREFA',id:6,titulo:'Ler 100 páginas',eventos:['STATUS','PRAZO','PROGRESSO']}];
 let regras=[], chamadas=[], pref={limite_diario:0,agrupar:false,usados_hoje:0};
 w.SoloDialog={toast:()=>assert.fail('erro inesperado')};
 w.API={
@@ -24,6 +25,16 @@ const A=w.AvisosGerais, tick=()=>new Promise(resolve=>setImmediate(resolve));
   await A.carregar();w.document.querySelector('[data-ag=novo]').click();
   let f=w.document.querySelector('form');
   assert.equal(f.elements.evento.options.length,1);
+  f.elements.alvo_id.value='6';f.elements.alvo_id.dispatchEvent(new w.Event('change'));
+  assert.equal(f.elements.evento.options.length,3);
+  f.elements.evento.value='PROGRESSO';f.elements.evento.dispatchEvent(new w.Event('change'));
+  assert.equal(f.querySelector('[data-antecedencia]').hidden,true);
+  assert.equal(f.querySelector('[data-intervalo]').hidden,true);
+  assert.equal(f.querySelector('[data-estados]').hidden,true);
+  assert.match(f.textContent,/desafio progressivo inteiro/);
+  f.elements.evento.value='PRAZO';f.elements.evento.dispatchEvent(new w.Event('change'));
+  assert.equal(f.querySelector('[data-antecedencia]').hidden,false);
+  assert.match(A.card({origem:'TAREFA',evento:'PROGRESSO',formato:'texto',ativo:true,titulo:'Ler',janela_de:'08:00',janela_ate:'22:00'}),/80%/);
   f.elements.origem.value='DUNGEON';f.elements.origem.dispatchEvent(new w.Event('change'));
   assert.equal(f.elements.evento.options.length,4);
   f.elements.evento.value='ABRE';f.elements.evento.dispatchEvent(new w.Event('change'));

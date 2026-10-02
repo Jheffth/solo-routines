@@ -3,6 +3,7 @@ import os
 os.environ['DATABASE_URL']='sqlite:///:memory:'
 os.environ['AMBIENTE']='test'
 import uuid
+import json
 import unittest
 from pathlib import Path
 from datetime import datetime,timedelta
@@ -50,6 +51,97 @@ class AvisosTest(unittest.TestCase):
 
     def varrer(self):
         return m.varrer(self.engine,self.u.id)
+
+    def test_meta_marco_unico_e_fila_com_progresso_atual(self):
+        self.t.meta_alvo=100;self.t.meta_atual=79;self.t.meta_unidade='págs';self.db.commit()
+        self.regra(evento='PROGRESSO')
+        self.assertEqual(self.varrer(),0)
+        self.t.meta_atual=80;self.db.commit()
+        self.assertEqual(self.varrer(),1);self.assertEqual(self.varrer(),0)
+        self.assertIn('Faltam 20 págs',self.enviar.call_args.args[1])
+        ref=self.enviar.call_args.kwargs['referencia']
+        self.t.meta_atual=90;self.db.commit()
+        self.assertIn('Faltam 10 págs',m.validar_pendente(self.db,self.u.id,ref)['texto'])
+        self.agora+=timedelta(minutes=5);self.assertEqual(self.varrer(),0)
+        self.t.meta_atual=70;self.db.commit()
+        self.assertFalse(m.validar_pendente(self.db,self.u.id,ref)['valido'])
+        self.t.meta_atual=100;self.db.commit();self.assertEqual(self.varrer(),0)
+
+    def test_medicao_decrescente_usa_caminho_ate_alvo(self):
+        self.t.meta_alvo=80;self.t.meta_inicial=100;self.t.meta_modo='MEDICAO'
+        self.t.meta_atual=85;self.t.meta_unidade='kg';self.db.commit()
+        self.regra(evento='PROGRESSO');self.assertEqual(self.varrer(),0)
+        self.t.meta_atual=84;self.db.commit();self.assertEqual(self.varrer(),1)
+        self.assertIn('Faltam 4 kg',self.enviar.call_args.args[1])
+        self.t.meta_atual=79;self.db.commit();self.assertEqual(self.varrer(),0)
+
+    def test_circuito_pausado_informa_blocos_reais_e_marco(self):
+        self.t.circuito_payload=json.dumps({'etapas':[{'id':str(i),'titulo':f'Bloco {i}','modo':'CHECK'} for i in range(5)]})
+        self.t.circuito_feito=json.dumps({str(i):{'feito':True} for i in range(4)})
+        self.t.status='PAUSADA';self.db.commit()
+        status=self.regra(estados=['PAUSADA']);self.regra(evento='PROGRESSO')
+        texto=self.client.get(f"/avisos-gerais/{status['id']}/previa").json()['texto']
+        self.assertIn('está pausada',texto);self.assertIn('4 de 5 blocos',texto)
+        self.assertEqual(self.varrer(),1)
+        self.t.circuito_feito=json.dumps({str(i):{'feito':True} for i in range(5)});self.db.commit()
+        self.assertEqual(self.varrer(),0)
+
+    def test_progressiva_marco_nao_repete_em_novo_dia(self):
+        rot=Rotina(usuario_id=self.u.id,titulo='Desafio',tipo='DIARIA',ativo=True,
+            eh_progressiva=True,dias_progressivos_alvo=10,dias_progressivos_ok=8)
+        self.db.add(rot);self.db.commit();self.regra('ROTINA',rot.id,evento='PROGRESSO')
+        self.assertEqual(self.varrer(),1)
+        self.assertIn('8 de 10 dias',self.enviar.call_args.args[1])
+        self.agora+=timedelta(days=1);self.assertEqual(self.varrer(),0)
+        rot.dias_progressivos_ok=10;self.db.commit();self.assertEqual(self.varrer(),0)
+
+    def test_prazo_unico_sem_aviso_vencido_e_sem_penitencia(self):
+        self.t.prazo_minutos=30;self.db.commit();self.regra(evento='PRAZO',antecedencia_min=15)
+        self.assertEqual(self.varrer(),0)
+        self.agora+=timedelta(minutes=15);self.assertEqual(self.varrer(),1)
+        self.assertIn('vence em 15 minutos',self.enviar.call_args.args[1])
+        ref=self.enviar.call_args.kwargs['referencia']
+        self.assertEqual(self.enviar.call_args.kwargs['valido_ate'].replace(tzinfo=None),datetime(2026,10,1,12,30))
+        self.agora+=timedelta(minutes=15);self.assertEqual(self.varrer(),0)
+        self.assertFalse(m.validar_pendente(self.db,self.u.id,ref)['valido'])
+        self.t.natureza='PUNICAO';self.db.commit()
+        self.assertEqual(self.client.put('/avisos-gerais/1',json={'origem':'TAREFA','alvo_id':self.t.id,'evento':'PRAZO'}).status_code,422)
+
+    def test_rotina_marco_por_ocorrencia_e_folga_sem_execucao_ficticia(self):
+        rot=Rotina(usuario_id=self.u.id,titulo='Ler',tipo='SEMANAL',dias_semana='[3,4]',ativo=True,meta_alvo=100)
+        self.db.add(rot);self.db.commit();self.regra('ROTINA',rot.id,evento='PROGRESSO')
+        self.assertEqual(self.varrer(),0);self.assertEqual(self.db.query(ExecucaoDia).count(),0)
+        for delta in (0,1):
+            if delta:self.agora+=timedelta(days=1)
+            self.db.add(ExecucaoDia(usuario_id=self.u.id,rotina_id=rot.id,data=self.agora.date(),status='ATIVA',meta_atual=80))
+            self.db.commit();self.assertEqual(self.varrer(),1);self.assertEqual(self.varrer(),0)
+        self.agora+=timedelta(days=1);self.assertEqual(self.varrer(),0)
+        self.assertEqual(self.db.query(ExecucaoDia).count(),2)
+
+    def test_catalogo_progresso_somente_alvos_compativeis(self):
+        self.assertEqual(self.client.post('/avisos-gerais/',json={'origem':'TAREFA','alvo_id':self.t.id,'evento':'PROGRESSO'}).status_code,422)
+        self.t.meta_alvo=100;self.db.commit()
+        item=next(i for i in self.client.get('/avisos-gerais/catalogo').json() if i['origem']=='TAREFA')
+        self.assertEqual(item['eventos'],['STATUS','PRAZO','PROGRESSO'])
+
+    def test_prazo_rotina_noturna_termina_ao_concluir(self):
+        rot=Rotina(usuario_id=self.u.id,titulo='Estudo',tipo='DIARIA',ativo=True,hora_inicio='22:00',hora_fim='01:00')
+        self.db.add(rot);self.db.commit();self.regra('ROTINA',rot.id,evento='PRAZO',janela_de='22:00',janela_ate='02:00')
+        dia=self.agora.date();self.agora=datetime(2026,10,2,0,30)
+        self.assertEqual(self.varrer(),1);self.assertEqual(self.varrer(),0)
+        self.assertIn('vence em 30 minutos',self.enviar.call_args.args[1])
+        ref=self.enviar.call_args.kwargs['referencia']
+        self.db.add(ExecucaoDia(usuario_id=self.u.id,rotina_id=rot.id,data=dia,status='CONCLUIDA'))
+        self.db.commit()
+        self.assertFalse(m.validar_pendente(self.db,self.u.id,ref)['valido'])
+
+    def test_marco_nao_envia_missao_concluida_mesmo_com_meta_incompleta(self):
+        self.t.meta_alvo=100;self.t.meta_atual=80;self.db.commit();self.regra(evento='PROGRESSO')
+        self.assertEqual(self.varrer(),1)
+        ref=self.enviar.call_args.kwargs['referencia']
+        self.t.status='CONCLUIDA';self.db.commit()
+        self.assertFalse(m.validar_pendente(self.db,self.u.id,ref)['valido'])
+        self.assertEqual(self.varrer(),0)
 
     def test_intervalo_estado_atraso_termino_validade_e_reinicio(self):
         regra=self.regra(formato='audio')
