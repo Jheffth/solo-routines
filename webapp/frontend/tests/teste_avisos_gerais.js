@@ -9,11 +9,12 @@ w.HTMLDialogElement.prototype.close = function() {this.dispatchEvent(new w.Event
 const catalogo=[{origem:'TAREFA',id:1,titulo:'Fio dental <img src=x>'},{origem:'DUNGEON',id:2,titulo:'Trabalho',sempre_aberta:false},{origem:'DUNGEON',id:3,titulo:'Livre',sempre_aberta:true},
   {origem:'MISSAO',id:4,titulo:'Trabalho · Beber água',natureza:'BEM_ESTAR',eventos:['STATUS','DISPONIVEL','ATIVA_EM','EXPIRA_EM']},
   {origem:'MISSAO',id:5,titulo:'Trabalho · Padrão',natureza:'PADRAO',eventos:['STATUS']}];
-let regras=[], chamadas=[];
+let regras=[], chamadas=[], pref={limite_diario:0,agrupar:false,usados_hoje:0};
 w.SoloDialog={toast:()=>assert.fail('erro inesperado')};
 w.API={
-  get:async url=>url.endsWith('catalogo')?catalogo:url.endsWith('previa')?{texto:'A missão ainda não foi iniciada.'}:regras,
-  post:async(url,body)=>{chamadas.push(body);regras=[{...body,id:1,titulo:catalogo[0].titulo,ativo:true}];},
+  get:async url=>url.endsWith('catalogo')?catalogo:url.endsWith('preferencias')?pref:url.endsWith('previa')?{texto:'A missão ainda não foi iniciada.'}:regras,
+  post:async(url,body)=>{if(url.endsWith('/adiar')){regras[0].adiado_ate=new Date(Date.now()+3600000).toISOString();return;}chamadas.push(body);regras=[{...body,id:1,titulo:catalogo[0].titulo,ativo:true}];},
+  put:async(url,body)=>{pref={...pref,...body};},
   patch:async(url,body)=>{regras[0].ativo=body.ativo;},
   delete:async()=>{regras=[];},
 };
@@ -41,6 +42,8 @@ const A=w.AvisosGerais, tick=()=>new Promise(resolve=>setImmediate(resolve));
   w.document.querySelector('[data-ag=previa]').click();await tick();
   assert.match(w.document.querySelector('dialog').textContent,/não foi iniciada/);
   w.document.querySelector('[data-fechar]').click();
+  w.document.querySelector('[data-ag=adiar]').click();await tick();
+  assert.match(w.document.querySelector('article').textContent,/Silenciado até/);
   w.document.querySelector('[data-ag=alternar]').click();await tick();
   assert.match(w.document.querySelector('article').textContent,/Pausado/);
   w.document.querySelector('[data-ag=excluir]').click();await tick();
@@ -60,5 +63,10 @@ const A=w.AvisosGerais, tick=()=>new Promise(resolve=>setImmediate(resolve));
   f.elements.alvo_id.value='5';f.elements.alvo_id.dispatchEvent(new w.Event('change'));
   assert.deepEqual([...f.elements.evento.options].map(o=>o.value),['STATUS']);
   w.document.querySelector('[data-fechar]').click();
+  w.document.querySelector('[data-ag=preferencias]').click();
+  f=w.document.querySelector('form');f.elements.limite.value='7';f.elements.agrupar.checked=true;
+  f.dispatchEvent(new w.Event('submit',{cancelable:true}));await tick();
+  assert.equal(pref.limite_diario,7);assert.equal(pref.agrupar,true);
+  assert.match(w.document.getElementById('avisos-gerais-conteudo').textContent,/limite 7/);
   console.log('Central de avisos: configuração, prévia, pausa, remoção e escape OK');
 })().catch(err=>{console.error(err);process.exitCode=1;});

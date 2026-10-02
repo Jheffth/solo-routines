@@ -1,5 +1,5 @@
 const AvisosGerais = {
-  _regras: [], _catalogo: [],
+  _regras: [], _catalogo: [], _preferencias: {},
   esc(v) { return String(v ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); },
   _origens: {TAREFA:'Missão geral',ROTINA:'Rotina',DUNGEON:'Dungeon',MISSAO:'Missão interna da dungeon'},
   _eventos: {STATUS:'Acompanhar status',ABRE:'Portão prestes a abrir',FECHA:'Portão prestes a fechar',PRAZO:'Tempo da sessão prestes a acabar',ATIVA_EM:'Missão prestes a aparecer',EXPIRA_EM:'Ocorrência prestes a vencer',DISPONIVEL:'Quando o card aparecer'},
@@ -8,8 +8,9 @@ const AvisosGerais = {
     const host=document.getElementById('avisos-gerais-conteudo'); if(!host) return;
     host.innerHTML='<p role="status">Consultando seus avisos…</p>';
     try {
-      [this._regras,this._catalogo]=await Promise.all([API.get('/avisos-gerais/'),API.get('/avisos-gerais/catalogo')]);
+      [this._regras,this._catalogo,this._preferencias]=await Promise.all([API.get('/avisos-gerais/'),API.get('/avisos-gerais/catalogo'),API.get('/avisos-gerais/preferencias')]);
       host.innerHTML=`<div class="ag-toolbar"><div><strong>${this._regras.filter(r=>r.ativo).length}</strong> avisos ativos<p>Você escolhe o que acompanhar. A missão concluída encerra os lembretes.</p></div><button class="btn btn-primary" data-ag="novo">+ Novo aviso</button></div>
+        <div class="ag-toolbar"><p>${this._preferencias.usados_hoje||0} tentativas hoje · ${this._preferencias.limite_diario?`limite ${this._preferencias.limite_diario}`:'sem limite diário'} · ${this._preferencias.agrupar?'agrupamento ligado':'avisos separados'}</p><button class="btn btn-secondary" data-ag="preferencias">Limite e agrupamento</button></div>
         <p class="ag-nota">Os avisos chegam pelos canais conectados ao Solo Bot. A preferência Sempre/Nunca e o silêncio da sua Conta Solo prevalecem. O áudio tem cópia escrita quando a voz está indisponível.</p>
         <div class="ag-lista">${this._regras.map(r=>this.card(r)).join('')||'<div class="ag-vazio">Nenhum aviso configurado. Escolha uma missão para começar — por exemplo, lembrar de comprar fio dental a cada hora.</div>'}</div>`;
       host.onclick=async e=>{
@@ -17,6 +18,7 @@ const AvisosGerais = {
         const acao=btn.dataset.ag;
         const r=this._regras.find(r=>r.id===Number(btn.dataset.id));
         if(acao==='novo') return this.formulario();
+        if(acao==='preferencias') return this.preferencias();
         if(!r) return;
         if(acao==='editar') return this.formulario(r);
         btn.disabled=true;
@@ -24,7 +26,8 @@ const AvisosGerais = {
           if(acao==='previa') {
             const p=await API.get(`/avisos-gerais/${r.id}/previa`);
             this.dialogo('Prévia do aviso',`<p class="ag-previa">${this.esc(p.texto)}</p><p class="ag-nota">Esta prévia consulta o estado atual e não envia mensagem.</p>`);
-          } else if(acao==='alternar') { await API.patch(`/avisos-gerais/${r.id}`,{ativo:!r.ativo}); await this.carregar(); }
+          } else if(acao==='adiar') {await API.post(`/avisos-gerais/${r.id}/adiar`,{});await this.carregar();}
+          else if(acao==='alternar') { await API.patch(`/avisos-gerais/${r.id}`,{ativo:!r.ativo}); await this.carregar(); }
           else if(acao==='excluir') { await API.delete(`/avisos-gerais/${r.id}`); await this.carregar(); }
         } catch(err) { SoloDialog.toast(err.message,'error'); }
         finally { btn.disabled=false; }
@@ -40,11 +43,22 @@ const AvisosGerais = {
     return `<article class="ag-card ${r.ativo?'':'ag-pausado'}"><div class="ag-topo"><span class="ag-tipo">${this._origens[r.origem]} · ${r.ativo?'Ativo':'Pausado'}</span><span class="ag-formato">${this._formatos[r.formato]}</span></div>
       <h3>${this.esc(r.titulo)}</h3><p>${this._eventos[r.evento]} · ${r.evento==='STATUS'?`a cada ${r.intervalo_min} min`:r.evento==='DISPONIVEL'?'uma vez por ocorrência':`${r.antecedencia_min} min antes`}</p>
       <p class="ag-nota">Das ${r.janela_de} às ${r.janela_ate} · horário de Brasília</p>
+      ${r.adiado_ate&&new Date(r.adiado_ate)>new Date()?`<p class="ag-proximo">Silenciado até ${this.quando(r.adiado_ate)}</p>`:''}
       ${r.evento==='STATUS'&&r.ativo?`<p class="ag-proximo">Próxima verificação: ${this.quando(r.proximo_em)}</p>`:''}
       ${tentativa?`<p class="ag-nota">${status[tentativa.status]||'Tentativa registrada'} · ${this.quando(tentativa.em)}</p>`:''}
-      <div class="ag-acoes">${[['previa','Prévia'],['editar','Editar'],['alternar',r.ativo?'Pausar':'Retomar'],['excluir','Remover']].map(([a,t])=>`<button class="btn btn-secondary btn-sm" data-ag="${a}" data-id="${r.id}">${t}</button>`).join('')}</div></article>`;
+      <div class="ag-acoes">${[['previa','Prévia'],['editar','Editar'],['adiar','Adiar 1 hora'],['alternar',r.ativo?'Pausar':'Retomar'],['excluir','Remover']].map(([a,t])=>`<button class="btn btn-secondary btn-sm" data-ag="${a}" data-id="${r.id}">${t}</button>`).join('')}</div></article>`;
   },
   quando(v) { return v?new Date(v).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—'; },
+  preferencias() {
+    const p=this._preferencias;
+    const d=this.dialogo('Limite e agrupamento',`<form class="ag-form"><label>Limite diário de tentativas<input name="limite" type="number" min="0" max="100" value="${p.limite_diario||0}" required></label><p class="ag-nota">0 significa sem limite. Um grupo conta como uma tentativa, mesmo enviado aos dois canais. Falhas também contam, evitando reenvios além do teto. O contador vira à meia-noite de Brasília.</p><label>Agrupar avisos coincidentes<input name="agrupar" type="checkbox" ${p.agrupar?'checked':''}></label><p class="ag-nota">Reúne até quatro avisos do mesmo formato na mesma checagem. O prazo mais curto vale para o grupo. Adiar uma regra por uma hora silencia seus avisos, sem mudar o prazo da missão; um card pode vencer durante esse período.</p><p class="ag-erro" role="alert"></p><button class="btn btn-primary" type="submit">Salvar preferências</button></form>`);
+    const f=d.querySelector('form');
+    f.onsubmit=async e=>{
+      e.preventDefault();const b=f.querySelector('[type=submit]');if(b.disabled)return;b.disabled=true;
+      try {await API.put('/avisos-gerais/preferencias',{limite_diario:Number(f.elements.limite.value),agrupar:f.elements.agrupar.checked});d.close();await this.carregar();}
+      catch(err){f.querySelector('.ag-erro').textContent=err.message;b.disabled=false;}
+    };
+  },
   dialogo(titulo,conteudo) {
     document.getElementById('ag-dialogo')?.close();
     const anterior=document.activeElement, d=document.createElement('dialog');

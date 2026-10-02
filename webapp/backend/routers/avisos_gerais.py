@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from database import get_db, Usuario, RegraAvisoGeral, Dungeon, DungeonMissao
+from database import get_db, Usuario, RegraAvisoGeral, Dungeon, DungeonMissao, AdiamentoAvisoGeral
 from auth.router import get_usuario_atual
 from motors import avisos_gerais as motor, avisos_dungeon, tempo
 
@@ -42,6 +42,33 @@ class RegraIn(BaseModel):
 
 class Ativo(BaseModel):
     ativo: bool
+
+
+class Preferencias(BaseModel):
+    limite_diario: int=Field(default=0,ge=0,le=100)
+    agrupar: bool=False
+
+
+@router.get('/preferencias')
+def preferencias(db:Session=Depends(get_db),usuario:Usuario=Depends(get_usuario_atual)):
+    return motor.preferencias(db,usuario.id)
+
+
+@router.put('/preferencias')
+def salvar_preferencias(p:Preferencias,db:Session=Depends(get_db),usuario:Usuario=Depends(get_usuario_atual)):
+    row=motor.preferencia(db,usuario.id)
+    row.limite_diario=p.limite_diario;row.agrupar=p.agrupar
+    db.commit();return motor.preferencias(db,usuario.id)
+
+
+@router.post('/{rid}/adiar')
+def adiar(rid:int,db:Session=Depends(get_db),usuario:Usuario=Depends(get_usuario_atual)):
+    r=minha(db,usuario.id,rid)
+    ate=tempo.agora()+timedelta(hours=1)
+    if r.adiamento: r.adiamento.ate=ate
+    else: r.adiamento=AdiamentoAvisoGeral(ate=ate)
+    r.proximo_em=max(r.proximo_em,ate)
+    db.commit();return motor.serializar(db,r)
 
 
 def minha(db,uid,rid):

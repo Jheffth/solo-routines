@@ -56,8 +56,9 @@ Publicar a extensão do Bot antes de ativar áudio exclusivo no Rotinas.
    categoria. Um resumo agrupado ajuda quem quer poucos avisos.
 4. Penitências: lembretes escolhidos pelo hunter sem duplicar os sussurros.
 5. Habilidades: meta de maestria atingida, convite para conversão e trajetória.
-6. Canal específico, teto diário, agrupamento de lembretes simultâneos e botão
-   “adiar 1h”. Hoje os canais/silêncio são os escolhidos na Conta Solo.
+6. Teto diário, agrupamento de lembretes simultâneos e botão “adiar 1h”
+   implementados na quinta entrega. Canal específico e adiamento direto pelo
+   bot ficam para uma extensão futura; hoje os canais são os da Conta Solo.
 7. Cancelamento dos avisos enfileirados: implementado pela revalidação da
    terceira entrega. Uma futura limpeza imediata por evento pode reduzir a
    espera até o próximo passo de um minuto do Solo Bot.
@@ -173,3 +174,39 @@ card, nenhuma entrega após o prazo e aviso próprio para o card seguinte;
 agendamento real de 30 segundos, isolamento de hunters e formulário atualizado.
 Sem alteração de banco ou do Solo Bot nesta etapa. Publicação do Rotinas fica
 com o Antigravity, após as extensões anteriores da fila estarem publicadas.
+
+## Quinta entrega — menos interrupções
+
+Na Central, cada regra ganhou **Adiar 1 hora**. Silencia a regra até o horário
+indicado, persiste após reinício e invalida suas referências que ainda estejam
+na fila. Não muda o prazo da missão nem repete avisos únicos já enviados; um
+card pode vencer durante o adiamento. Frequências maiores que uma hora mantêm
+o próximo intervalo original. Não há comando ou botão novo nos bots nesta etapa.
+
+O painel **Limite e agrupamento** configura um teto de 0 a 100 tentativas por
+dia/hunter (0 = ilimitado), com virada à meia-noite de Brasília. O teto abrange
+somente a Central: avisos legados, resumos fixos e sussurros continuam separados.
+Um envio aos dois canais consome uma tentativa. Falha/timeout também consome,
+pois não é possível saber se uma resposta perdida já resultou em entrega.
+Atualização condicional da cota impede duas entregas de tomar a última vaga.
+
+Agrupamento é opcional e vem desligado. Reúne avisos do mesmo formato e hunter
+prontos na mesma checagem, até quatro e com um orçamento de texto para áudio;
+não espera formar grupos nem mistura texto, áudio e ambos. O grupo consome uma
+tentativa; cada missão mantém seu registro próprio. Se o teto impedir um envio,
+as reservas sem entrega são devolvidas, conservando a próxima oportunidade;
+não gera uma fila de intervalos passados.
+
+Um grupo na fila tem validade igual ao prazo mais curto de seus membros. A
+referência do grupo é revalidada pelo endpoint já existente: concluir, pausar,
+remover ou adiar um membro o retira do texto atualizado, preservando os outros.
+Quando nenhum membro ainda vale, o Bot descarta o grupo. Grupos grandes são
+divididos para respeitar o espaço do roteiro de áudio; a contagem é por envio,
+não por número de regras reunidas.
+
+Persistência em três tabelas novas (preferências/cota, adiamentos e grupos),
+criadas no startup existente, sem alterar colunas antigas. Não muda o contrato
+do Solo Bot: exige a revalidação da terceira entrega já publicada. Publicação
+do Rotinas continua com o Antigravity. Testes usam transporte simulado e
+incluem concorrência na última vaga, limite/virada, isolamento de hunters,
+adiamento, divisão por formato e remoção parcial de grupo na fila.

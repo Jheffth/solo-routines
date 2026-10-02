@@ -3,11 +3,12 @@ from datetime import datetime, time, timedelta
 import logging
 import hashlib
 import json
-from sqlalchemy import or_
+import uuid
+from sqlalchemy import or_, case
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from database import (Usuario, Rotina, TarefaDia, ExecucaoDia, Dungeon, DungeonSessao, DungeonMissao,
-                      RegraAvisoGeral, TentativaAvisoGeral)
+                      RegraAvisoGeral, TentativaAvisoGeral, PreferenciaAvisoGeral, LoteAvisoGeral)
 from motors import tempo, prazos, calendario_projecao as proj
 from motors.fechamento import rotina_devida_em
 import solobot_ponte
@@ -152,6 +153,7 @@ def serializar(db,r):
     return {k:getattr(r,k) for k in ('id','origem','alvo_id','evento','formato','intervalo_min','antecedencia_min','estados','janela_de','janela_ate','ativo')} | {
         'titulo':(f'{obj.dungeon.titulo} · {obj.titulo}' if r.origem=='MISSAO' else obj.titulo) if obj else 'Alvo removido', 'proximo_em':iso(r.proximo_em),
         'ultimo_enviado_em':iso(r.ultimo_enviado_em),
+        'adiado_ate':iso(r.adiamento.ate) if r.adiamento else None,
         'ultima_tentativa':{'status':ultima.status,'em':iso(ultima.criado_em)} if ultima else None}
 
 
@@ -169,17 +171,51 @@ def varrer_todos(bind):
     return aceitos
 
 
+def preferencia(db,uid):
+    row=db.get(PreferenciaAvisoGeral,uid)
+    if not row:
+        row=PreferenciaAvisoGeral(usuario_id=uid)
+        db.add(row)
+        try: db.commit()
+        except IntegrityError:
+            db.rollback();row=db.get(PreferenciaAvisoGeral,uid)
+    return row
+
+
+def preferencias(db,uid):
+    p=preferencia(db,uid)
+    usados=p.usados if p.dia_cota==tempo.agora().date() else 0
+    return {'limite_diario':p.limite_diario,'agrupar':p.agrupar,'usados_hoje':usados,
+            'restantes':max(0,p.limite_diario-usados) if p.limite_diario else None}
+
+
+def adiado(r,agora):
+    return bool(r.adiamento and r.adiamento.ate>agora)
+
+
 def varrer(bind, uid):
     """Uma sessão por regra; confirmação antes da rede, sem repor lotes perdidos."""
     agora = tempo.agora()
     with Session(bind=bind) as db:
+        p=preferencias(db,uid)
+        if p['restantes']==0: return 0
         ids = [v for (v,) in db.query(RegraAvisoGeral.id).filter_by(usuario_id=uid,ativo=True).all()]
-    aceitos = 0
+    reservas=[]
     for rid in ids:
         try:
-            aceitos += int(_processar(bind,rid,agora))
+            item=_processar(bind,rid,agora,reservar=True)
+            if item: reservas.append(item)
         except Exception:
             log.warning('Não foi possível processar um aviso geral.')
+    grupos=[]
+    for item in reservas:
+        grupo=next((g for g in grupos if p['agrupar'] and g[0]['formato']==item['formato'] and
+                    len(g)<4 and sum(len(i['texto'])+3 for i in g)+len(item['texto'])<650),None)
+        if grupo is None: grupos.append([item])
+        else: grupo.append(item)
+    aceitos=0
+    for grupo in grupos:
+        aceitos+=_entregar(bind,grupo,agora)
     return aceitos
 
 
@@ -188,6 +224,7 @@ def referencia(r,t,m):
     campos=('id','origem','alvo_id','evento','formato','intervalo_min','antecedencia_min','estados','janela_de','janela_ate')
     dados={k:getattr(r,k) for k in campos}
     dados.update(criado_em=r.criado_em.isoformat(), proximo_em=r.proximo_em.isoformat(), tentativa=t.chave,
+                 adiado_ate=r.adiamento.ate.isoformat() if r.adiamento else None,
                  ocorrencia=m.get('ocorrencia') or m['chave_evento'])
     digest=hashlib.sha256(json.dumps(dados,sort_keys=True).encode()).hexdigest()[:32]
     return f'central:{t.id}:{digest}'
@@ -196,6 +233,12 @@ def referencia(r,t,m):
 def validar_pendente(db,uid,ref):
     """Só o Bot autenticado consulta. Não envia, não altera estados/XP."""
     try:
+        if ref.startswith('lote:'):
+            lote=db.get(LoteAvisoGeral,ref[5:])
+            if not lote or lote.usuario_id!=uid or lote.valido_ate<=tempo.agora():
+                return {'valido':False}
+            textos=[v['texto'] for v in (validar_pendente(db,uid,r) for r in lote.referencias) if v['valido']]
+            return {'valido':True,'texto':_texto_grupo(textos)} if textos else {'valido':False}
         prefixo,tid,_=ref.split(':')
         if prefixo!='central': return {'valido':False}
         t=db.get(TentativaAvisoGeral,int(tid))
@@ -204,6 +247,7 @@ def validar_pendente(db,uid,ref):
         if not r or r.usuario_id!=uid or not r.ativo or not usuario or not usuario.ativo:
             return {'valido':False}
         agora=tempo.agora()
+        if adiado(r,agora): return {'valido':False}
         atual=mensagem(db,r,agora) if na_janela(r,agora) else None
         if not atual or referencia(r,t,atual)!=ref:
             return {'valido':False}
@@ -212,10 +256,10 @@ def validar_pendente(db,uid,ref):
         return {'valido':False}
 
 
-def _processar(bind,rid,agora):
+def _processar(bind,rid,agora,reservar=False):
     with Session(bind=bind) as db:
         r=db.get(RegraAvisoGeral,rid)
-        if not r or not r.ativo or not na_janela(r,agora):
+        if not r or not r.ativo or not na_janela(r,agora) or adiado(r,agora):
             return False
         if r.evento=='STATUS' and r.proximo_em>agora:
             return False
@@ -223,6 +267,7 @@ def _processar(bind,rid,agora):
         if not m:
             return False
         chave=m['chave_evento'] or r.proximo_em.isoformat()
+        anterior=r.proximo_em;anterior_chave=r.ultima_chave
         # Disponibilidade não tem repetição; a validade é a do próprio card.
         proximo=m['fim'] if r.evento=='DISPONIVEL' else agora+timedelta(minutes=r.intervalo_min)
         q=db.query(RegraAvisoGeral).filter_by(id=rid,ativo=True)
@@ -248,16 +293,55 @@ def _processar(bind,rid,agora):
         uid=r.usuario_id
         ref=referencia(r,tentativa,atual)
         db.commit()
+    item={'rid':rid,'tid':tid,'uid':uid,'texto':atual['texto'],'formato':formato,'referencia':ref,
+          'valido':valido,'anterior':anterior,'anterior_chave':anterior_chave,'chave':chave,'proximo':proximo}
+    return item if reservar else bool(_entregar(bind,[item],agora))
+
+
+def _texto_grupo(textos):
+    return textos[0] if len(textos)==1 else 'Seus lembretes:\n'+'\n'.join('• '+t for t in textos)
+
+
+def _entregar(bind,itens,agora):
+    agora=tempo.agora()  # a cota pertence ao dia da tentativa, em Brasília
+    uid=itens[0]['uid']
+    with Session(bind=bind) as db:
+        vivos=[]
+        for item in itens:
+            atual=validar_pendente(db,uid,item['referencia'])
+            if atual['valido']:
+                item['texto']=atual['texto'];vivos.append(item)
+            else:
+                t=db.get(TentativaAvisoGeral,item['tid'])
+                if t:t.status='IGNORADO'
+        db.commit()
+        if not vivos: return 0
+        preferencia(db,uid)
+        cls=PreferenciaAvisoGeral;dia=agora.date()
+        q=db.query(cls).filter(cls.usuario_id==uid,or_(cls.limite_diario==0,cls.dia_cota.is_(None),cls.dia_cota!=dia,cls.usados<cls.limite_diario))
+        if not q.update({'dia_cota':dia,'usados':case((cls.dia_cota==dia,cls.usados+1),else_=1)},synchronize_session=False):
+            # Nada saiu para a rede: devolver as reservas para a próxima oportunidade.
+            for item in vivos:
+                db.query(RegraAvisoGeral).filter_by(id=item['rid'],ultima_chave=item['chave'],proximo_em=item['proximo']).update(
+                    {'proximo_em':item['anterior'],'ultima_chave':item['anterior_chave']},synchronize_session=False)
+                t=db.get(TentativaAvisoGeral,item['tid'])
+                if t:db.delete(t)
+            db.commit();return 0
+        texto=_texto_grupo([i['texto'] for i in vivos]);ref=vivos[0]['referencia']
+        valido=min(i['valido'] for i in vivos);formato=vivos[0]['formato']
+        if len(vivos)>1:
+            lote=LoteAvisoGeral(id=uuid.uuid4().hex,usuario_id=uid,referencias=[i['referencia'] for i in vivos],valido_ate=valido)
+            db.add(lote);ref='lote:'+lote.id
+        db.commit() # cota e grupo persistidos antes da rede
     try:
-        entregue=solobot_ponte.avisar(uid,atual['texto'],falado=atual['texto'],
+        entregue=solobot_ponte.avisar(uid,texto,falado=texto,
             voz=formato!='texto',formato=formato,valido_ate=valido.replace(tzinfo=tempo.FUSO),referencia=ref)
     except Exception:
         entregue=False
     with Session(bind=bind) as db:
-        tentativa=db.get(TentativaAvisoGeral,tid)
-        if tentativa:
-            tentativa.status='ACEITO' if entregue else 'FALHOU'
-        if entregue:
-            db.query(RegraAvisoGeral).filter_by(id=rid).update({'ultimo_enviado_em':agora})
+        for item in vivos:
+            tentativa=db.get(TentativaAvisoGeral,item['tid'])
+            if tentativa:tentativa.status='ACEITO' if entregue else 'FALHOU'
+            if entregue:db.query(RegraAvisoGeral).filter_by(id=item['rid']).update({'ultimo_enviado_em':agora})
         db.commit()
-    return bool(entregue)
+    return len(vivos) if entregue else 0

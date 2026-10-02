@@ -1365,6 +1365,30 @@ class RegraAvisoGeral(Base):
     ultimo_enviado_em = Column(DateTime, nullable=True)
     criado_em = Column(DateTime, default=datetime.utcnow)
     tentativas = relationship("TentativaAvisoGeral", cascade="all, delete-orphan", lazy="dynamic")
+    adiamento = relationship("AdiamentoAvisoGeral", cascade="all, delete-orphan", uselist=False)
+
+
+class AdiamentoAvisoGeral(Base):
+    __tablename__ = "adiamentos_aviso_geral"
+    regra_id = Column(Integer, ForeignKey("regras_aviso_geral.id"), primary_key=True)
+    ate = Column(DateTime, nullable=False)  # Brasília
+
+
+class PreferenciaAvisoGeral(Base):
+    __tablename__ = "preferencias_aviso_geral"
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), primary_key=True)
+    limite_diario = Column(Integer, nullable=False, default=0)
+    agrupar = Column(Boolean, nullable=False, default=False)
+    dia_cota = Column(Date, nullable=True)
+    usados = Column(Integer, nullable=False, default=0)
+
+
+class LoteAvisoGeral(Base):
+    __tablename__ = "lotes_aviso_geral"
+    id = Column(String(32), primary_key=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    referencias = Column(JSON, nullable=False)
+    valido_ate = Column(DateTime, nullable=False)
 
 
 class TentativaAvisoGeral(Base):

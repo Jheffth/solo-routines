@@ -413,5 +413,88 @@ class AvisosTest(unittest.TestCase):
         with patch.object(m,'varrer_todos',side_effect=RuntimeError('simulado')):
             main._job_central_avisos() # job não derruba o scheduler
 
+    def segunda_tarefa(self,formato='texto'):
+        t=TarefaDia(usuario_id=self.u.id,titulo='Comprar pão',data_prevista=self.agora.date(),criado_em=self.agora+timedelta(hours=3),status='PENDENTE')
+        self.db.add(t);self.db.commit();self.regra('TAREFA',t.id,formato=formato)
+        return t
+
+    def test_adiar_persistente_revoga_fila_sem_mudar_prazo(self):
+        regra,ref=self.pendente();rid=regra['id']
+        res=self.client.post(f'/avisos-gerais/{rid}/adiar')
+        self.assertEqual(res.status_code,200)
+        self.assertEqual(res.json()['adiado_ate'],'2026-10-01T14:00:00-03:00')
+        self.assertFalse(m.validar_pendente(self.db,self.u.id,ref)['valido'])
+        self.agora+=timedelta(minutes=59);self.assertEqual(self.varrer(),0)
+        self.agora+=timedelta(minutes=1);self.assertEqual(self.varrer(),1)
+        self.assertIn('23:59 de hoje',self.enviar.call_args.args[1])
+        self.u=self.outro
+        self.assertEqual(self.client.post(f'/avisos-gerais/{rid}/adiar').status_code,404)
+
+    def test_limite_diario_falhas_contam_e_virada_libera_sem_lote_perdido(self):
+        self.regra(intervalo_min=5)
+        self.assertEqual(self.client.put('/avisos-gerais/preferencias',json={'limite_diario':1,'agrupar':False}).status_code,200)
+        self.enviar.return_value=False;self.agora+=timedelta(minutes=5)
+        self.assertEqual(self.varrer(),0);self.enviar.assert_called_once()
+        self.agora+=timedelta(hours=2);self.assertEqual(self.varrer(),0)
+        p=self.client.get('/avisos-gerais/preferencias').json()
+        self.assertEqual(p['usados_hoje'],1);self.assertEqual(p['restantes'],0)
+        self.agora+=timedelta(days=1);self.enviar.return_value=True
+        self.assertEqual(self.varrer(),1);self.assertEqual(self.varrer(),0)
+        self.assertEqual(self.enviar.call_count,2)
+
+    def test_grupo_usa_uma_cota_mesmo_formato_e_revoga_so_membro_encerrado(self):
+        self.regra();t=self.segunda_tarefa()
+        self.client.put('/avisos-gerais/preferencias',json={'limite_diario':1,'agrupar':True})
+        self.agora+=timedelta(hours=1)
+        self.assertEqual(self.varrer(),2);self.enviar.assert_called_once()
+        self.assertIn('fio dental',self.enviar.call_args.args[1]);self.assertIn('Comprar pão',self.enviar.call_args.args[1])
+        ref=self.enviar.call_args.kwargs['referencia'];self.assertTrue(ref.startswith('lote:'))
+        self.assertEqual(self.client.get('/avisos-gerais/preferencias').json()['usados_hoje'],1)
+        self.t.status='CONCLUIDA';self.db.commit()
+        valido=m.validar_pendente(self.db,self.u.id,ref)
+        self.assertTrue(valido['valido']);self.assertNotIn('fio dental',valido['texto']);self.assertIn('Comprar pão',valido['texto'])
+        self.assertFalse(m.validar_pendente(self.db,self.outro.id,ref)['valido'])
+        t.status='CONCLUIDA';self.db.commit();self.assertFalse(m.validar_pendente(self.db,self.u.id,ref)['valido'])
+
+    def test_limite_devolve_reservas_nao_enviadas_e_formatos_nao_misturam(self):
+        self.regra(formato='audio');self.segunda_tarefa(formato='texto')
+        self.client.put('/avisos-gerais/preferencias',json={'limite_diario':1,'agrupar':True})
+        self.agora+=timedelta(hours=1);self.assertEqual(self.varrer(),1)
+        self.assertEqual(self.db.query(TentativaAvisoGeral).count(),1)
+        self.client.put('/avisos-gerais/preferencias',json={'limite_diario':2,'agrupar':True})
+        self.assertEqual(self.varrer(),1)
+        self.assertEqual({c.kwargs['formato'] for c in self.enviar.call_args_list},{'audio','texto'})
+        self.assertEqual(self.db.query(TentativaAvisoGeral).count(),2)
+
+    def test_preferencias_isoladas_e_limites_validados(self):
+        self.client.put('/avisos-gerais/preferencias',json={'limite_diario':7,'agrupar':True})
+        for v in (-1,101):
+            self.assertEqual(self.client.put('/avisos-gerais/preferencias',json={'limite_diario':v}).status_code,422)
+        self.u=self.outro
+        p=self.client.get('/avisos-gerais/preferencias').json()
+        self.assertEqual(p['limite_diario'],0);self.assertFalse(p['agrupar'])
+
+    def test_cota_atomica_duas_entregas_concorrentes(self):
+        from concurrent.futures import ThreadPoolExecutor
+        primeiro=self.regra();self.segunda_tarefa()
+        self.client.put('/avisos-gerais/preferencias',json={'limite_diario':1,'agrupar':False})
+        self.agora+=timedelta(hours=1)
+        ids=[rid for (rid,) in self.db.query(RegraAvisoGeral.id).all()]
+        reservas=[m._processar(self.engine,rid,self.agora,reservar=True) for rid in ids]
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            resultados=list(executor.map(lambda item:m._entregar(self.engine,[item],self.agora),reservas))
+        self.assertEqual(sorted(resultados),[0,1]);self.enviar.assert_called_once()
+        self.assertEqual(self.client.get('/avisos-gerais/preferencias').json()['usados_hoje'],1)
+
+    def test_agrupamento_respeita_tamanho_e_prazo_mais_curto(self):
+        self.regra();self.segunda_tarefa()
+        self.client.put('/avisos-gerais/preferencias',json={'agrupar':True})
+        self.agora+=timedelta(hours=1)
+        self.assertEqual(self.varrer(),2)
+        self.assertLess(len(self.enviar.call_args.kwargs['falado']),900)
+        ref=self.enviar.call_args.kwargs['referencia']
+        self.agora+=timedelta(hours=1)
+        self.assertFalse(m.validar_pendente(self.db,self.u.id,ref)['valido'])
+
 
 if __name__=='__main__':unittest.main()
