@@ -77,8 +77,9 @@ def rodar():
     limpar()
     p = penitencia_de(10)
     regras = economia.punicao_regras(db)
-    passo = regras["abate_por_missao"]
-    ok(passo >= 1, f"a Balança define o abatimento ({passo} por missão)")
+    ok(regras["abate_por_missao"] == 0,
+       "o abate automatico vem DESLIGADO: a barra so anda quando o hunter faz")
+    passo = max(1, regras["abate_por_missao"])   # a funcao em si continua testada
 
     for i in range(1, 4):
         penitencia.abater(db, u, passo)

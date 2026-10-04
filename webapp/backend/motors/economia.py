@@ -182,7 +182,12 @@ SEMENTE = [
     # acordar com quarenta cartoes.
     ("punicao", "dias_seguidos",   3, "Dias PUNIDOS seguidos que dobram a pena", 1),
     ("punicao", "limiar_dia",     50, "% de diarias falhadas que perde o dia", 2),
-    ("punicao", "abate_por_missao", 1, "Quanto cada missao cumprida abate da penitencia", 3),
+    # DESLIGADO POR PADRAO (0). Com 1, concluir QUALQUER missao enchia
+    # sozinho a barra da penitencia mais antiga ("3/20 flexoes" sem o
+    # hunter ter feito nenhuma) — parecia defeito e tirava da penitencia
+    # a unica coisa que ela tem: ser feita. Quem quiser a mecanica de volta
+    # sobe este valor na Balanca.
+    ("punicao", "abate_por_missao", 0, "Quanto cada missao cumprida abate da penitencia (0 = desligado)", 3),
     ("punicao", "divida_teto",     4, "Pendencias ate o Sistema parar de criar", 2),
     ("punicao", "escala_fator",    2, "Multiplicador a cada reincidencia", 3),
     ("punicao", "decaimento_dias", 7, "Dias limpos para recuar um degrau", 4),
@@ -272,6 +277,21 @@ def semear(db) -> int:
                                  rotulo=rotulo, ordem=ordem))
         novos += 1
     if novos:
+        db.commit()
+        invalidar_cache()
+
+    # UMA VEZ SO: desliga o abate automatico em bancos que ja o tinham
+    # ligado pela semente antiga (1). O marcador impede que o proximo
+    # deploy desfaca um valor que o Arquiteto religue de proposito.
+    from database import ConfiguracaoApp
+    marca = "migracao_abate_penitencia_desligado"
+    if not db.query(ConfiguracaoApp).filter(ConfiguracaoApp.chave == marca).first():
+        par = db.query(ParametroEconomia).filter(
+            ParametroEconomia.grupo == "punicao",
+            ParametroEconomia.chave == "abate_por_missao").first()
+        if par is not None:
+            par.valor = 0.0
+        db.add(ConfiguracaoApp(chave=marca, valor="1"))
         db.commit()
         invalidar_cache()
     return novos
@@ -491,7 +511,7 @@ def punicao_regras(db=None) -> dict:
         "limiar_dia":      max(1, min(100, int(_v(t, "punicao", "limiar_dia", 50)))),
         # Quanto cada missão cumprida tira da barra da penitência. Zero
         # desliga a mecânica inteira sem tocar em código.
-        "abate_por_missao": max(0, int(_v(t, "punicao", "abate_por_missao", 1))),
+        "abate_por_missao": max(0, int(_v(t, "punicao", "abate_por_missao", 0))),
         "divida_teto":     max(1, int(_v(t, "punicao", "divida_teto", 4))),
         "escala_fator":    max(1, int(_v(t, "punicao", "escala_fator", 2))),
         "decaimento_dias": max(1, int(_v(t, "punicao", "decaimento_dias", 7))),
