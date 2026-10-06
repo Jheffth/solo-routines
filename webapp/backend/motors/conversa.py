@@ -170,7 +170,9 @@ def _processar(texto: str, db: Session, canal):
             "▸ `/extrato` — o que rendeu hoje\n"
             "▸ `/penitencia` — dívida em aberto\n"
             "▸ `/portoes` — quais abrem hoje\n"
-            "▸ `/conquistas` · `/rotinas` · `/add [título]`\n"
+            "▸ `/conquistas` · `/rotinas` · `/add [título]` (tarefa para hoje)\n"
+            "▸ `/criarrotina título | prioridade | dificuldade | início | fim | descrição`\n"
+            "Ou diga: crie uma rotina diária. Oração matinal, prioridade crítica, dificuldade difícil, janela de horário 05:30 às 05:45, descrição: oração matinal. Todos os dias.\n"
         ))
         return
 
@@ -350,6 +352,26 @@ def _processar(texto: str, db: Session, canal):
         _portoes(db, usuario, canal, hoje)
         return
 
+
+    # A rotina é uma regra recorrente, distinta da tarefa avulsa do /add.
+    from motors import cadastro_bot
+    pedido = txt[4:].strip() if txt.lower().startswith('/add ') else txt
+    if txt.split(' ', 1)[0].lower() == '/criarrotina' or cadastro_bot.eh_pedido(pedido):
+        from fastapi import HTTPException
+        from routers.rotinas import RotinaCreate, criar_rotina
+        try:
+            dados = cadastro_bot.interpretar(pedido)
+            criar_rotina(RotinaCreate(**dados), db=db, usuario=usuario)
+        except (ValueError, HTTPException) as erro:
+            db.rollback()
+            canal.enviar('⚠️ ' + str(getattr(erro, 'detail', erro)))
+            return
+        janela = (f"{dados['hora_inicio']} às {dados['hora_fim']}"
+                  if dados['hora_inicio'] else 'Sem janela de horário')
+        canal.enviar(f"🔄 Rotina diária *{dados['titulo']}* criada!\n"
+                     f"Todos os dias · Prioridade: {dados['prioridade']} · Dificuldade: {dados['dificuldade']}\n"
+                     f"Horário: {janela}\nDescrição: {dados.get('descricao') or 'Sem descrição'}")
+        return
 
     # ── /add [título] ─────────────────────────────────────
     if txt.lower().startswith("/add"):

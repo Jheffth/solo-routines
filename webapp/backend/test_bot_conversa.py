@@ -456,6 +456,54 @@ def main_teste():
                     "/reerguer", "/desfazer", "/extrato", "/portoes"):
             ok(cmd in aj, f"{cmd} esta documentado")
 
+        # A frase completa cria uma regra diária, nunca uma tarefa avulsa.
+        from motors import conversa, cadastro_bot, economia
+        from routers.solobot import CanalSoloBot
+        db = database.SessionLocal()
+        usuario = db.get(database.Usuario, uid)
+        canal = CanalSoloBot('teste-criacao', usuario)
+        antes = db.query(database.TarefaDia).count()
+        pedido = ('Crie uma nova rotina diária. Oração matinal, prioridade crítica, '
+                  'dificuldade, difícil, janela de horário 05:30 às 05:45, '
+                  'descrição: oração matinal. Todos os dias')
+        ok(cadastro_bot.interpretar('/criarrotina ' + pedido) == cadastro_bot.interpretar(pedido),
+           'comando também aceita a frase completa sem descartar detalhes')
+        conversa.processar(canal, pedido, db)
+        r = db.query(database.Rotina).filter_by(titulo='Oração matinal', usuario_id=uid).one()
+        ok((r.tipo, r.prioridade, r.dificuldade, r.hora_inicio, r.hora_fim, r.descricao) ==
+           ('DIARIA', 'CRITICA', 'DIFICIL', '05:30', '05:45', 'oração matinal'),
+           'a rotina preserva todos os detalhes informados')
+        ok(db.query(database.TarefaDia).count() == antes, 'criação recorrente não vira missão avulsa')
+        ok(conversa.rotina_de_hoje(r, hoje + timedelta(days=1)), 'recorrência permanece no dia seguinte')
+        esperado = economia.recompensa_rotina('DIARIA', 'CRITICA', 'DIFICIL', 'Pessoal', db)
+        ok(r.xp_recompensa == esperado['xp_recompensa'], 'recompensa usa a mesma balança da tela')
+        ok('Prioridade: CRITICA' in canal.saida[-1]['texto'] and '05:30 às 05:45' in canal.saida[-1]['texto'],
+           'resposta mostra a configuração salva')
+        conversa.processar(canal, '/criarrotina Leitura | ALTA | FACIL | 20:00 | 20:30 | Ler um capítulo', db)
+        leitura = db.query(database.Rotina).filter_by(titulo='Leitura', usuario_id=uid).one()
+        ok((leitura.tipo, leitura.prioridade, leitura.dificuldade, leitura.descricao) ==
+           ('DIARIA', 'ALTA', 'FACIL', 'Ler um capítulo'), 'comando explícito conserva os argumentos')
+        antes = db.query(database.Rotina).count()
+        for invalido in [
+            '/criarrotina Erro | urgente | DIFICIL | 05:30 | 05:45 | teste',
+            '/criarrotina Erro | CRITICA | impossível | 05:30 | 05:45 | teste',
+            '/criarrotina Erro | CRITICA | DIFICIL | 25:30 | 05:45 | teste',
+            '/criarrotina Erro | CRITICA | DIFICIL | 05:30 | | teste',
+            'Crie uma rotina semanal. Teste, prioridade alta',
+        ]:
+            conversa.processar(canal, invalido, db)
+            ok(db.query(database.Rotina).count() == antes, 'configuração inválida não cria registro')
+        ok(cadastro_bot.interpretar('Crie uma rotina diária. Treino, horário 23:00 às 01:00')['hora_fim'] == '01:00',
+           'janela atravessando meia-noite é preservada')
+        antes = db.query(database.TarefaDia).count()
+        conversa.processar(canal, '/add Comprar pão', db)
+        ok(db.query(database.TarefaDia).count() == antes + 1, '/add simples continua tarefa avulsa')
+        canal2 = CanalSoloBot('teste-outro-hunter', db.query(database.Usuario).filter_by(login='kaio').one())
+        conversa.processar(canal2, '/criarrotina Outra rotina | MEDIA | NORMAL | 08:00 | 08:15 | teste', db)
+        ok(db.query(database.Rotina).filter_by(titulo='Outra rotina').one().usuario_id != uid,
+           'rotina pertence ao hunter autenticado, não ao primeiro usuário')
+        db.close()
+
         print("\n=== A CONVERSA OK ===\n")
 
 

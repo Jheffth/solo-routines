@@ -1,7 +1,7 @@
 {
   "_leia": "O que o bot do Rotinas sabe fazer pelo Solo Bot. Comando novo no motors/conversa.py = uma linha aqui + versao nova (AAAA.MM.DD, com .2, .3 no mesmo dia). O que for escrito em 'novidades' vira mensagem para quem tem o Rotinas conectado ao Solo Bot; deixe [] para mudar em silêncio. 'oculto': true = existe, mas não faz sentido pelo Solo Bot. 'uso' = a sintaxe exata com os argumentos na ordem (ex.: \"/somar <título> <valor>\"): é o que a IA do Solo Bot segue ao traduzir uma frase ou um áudio em comando. O test_solobot.py falha se este arquivo e o bot se desencontrarem.",
   "app": "rot",
-  "versao": "2026.10.01.2",
+  "versao": "2026.10.05",
   "comandos": [
     {"comando": "/hoje",       "descricao": "Tudo do dia, com botões",                  "exemplo": "/rot hoje"},
     {"comando": "/pendentes",  "descricao": "Só o que falta hoje",                      "exemplo": "/rot pendentes"},
@@ -23,9 +23,10 @@
     {"comando": "/portoes",    "descricao": "Quais portões abrem hoje",                 "exemplo": "/rot portoes"},
     {"comando": "/conquistas", "descricao": "Suas conquistas",                          "exemplo": "/rot conquistas"},
     {"comando": "/rotinas",    "descricao": "Todas as suas rotinas",                    "exemplo": "/rot rotinas"},
-    {"comando": "/add",        "descricao": "Criar uma tarefa para hoje",               "exemplo": "/rot add comprar pão", "uso": "/add <texto da tarefa>"},
+    {"comando": "/add",        "descricao": "Criar tarefa avulsa só para hoje; não cria rotina recorrente",               "exemplo": "/rot add comprar pão", "uso": "/add <texto da tarefa>"},
+    {"comando": "/criarrotina", "descricao": "Criar rotina diária com prioridade, dificuldade, janela de horário e descrição", "exemplo": "/rot criarrotina Oração matinal | CRITICA | DIFICIL | 05:30 | 05:45 | oração matinal", "uso": "/criarrotina <título> | <prioridade> | <dificuldade> | <início HH:MM> | <fim HH:MM> | <descrição>. Cria ROTINA DIARIA, nunca tarefa avulsa. Pedidos naturais de criação de rotina devem ser enviados na íntegra, preservando TODOS os detalhes."},
     {"comando": "/ajuda",      "descricao": "Todos os comandos do Rotinas",             "exemplo": "/rot ajuda"}
   ],
   "exemplos": [],
-  "novidades": []
+  "novidades": ["Agora o Sistema cria rotinas diárias por texto ou voz com /rot criarrotina, respeitando prioridade, dificuldade, horário e descrição. /rot add continua criando tarefas para hoje."]
 }
