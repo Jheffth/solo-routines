@@ -38,6 +38,7 @@ WhatsApp de todos os sistemas Solo (repo `SOLO-BOT`, pasta `C:\JEFFERSON\PROJETO
    {"comando": "/meta", "descricao": "Progresso das metas", "exemplo": "/rot meta"}
    ```
    - `comando`: minúsculas, sem espaço, sem acento, começando com `/`.
+   - `descricao`, `exemplo` e `uso`: no máximo **140 caracteres cada**. Texto maior faz o Solo Bot recusar o manifesto inteiro. Deixe a sintaxe e as regras essenciais em `uso`; explicações longas ficam na ajuda.
    - `descricao`: curta, o que o hunter ganha.
    - `exemplo`: sempre com o prefixo `/rot`.
    - Se o comando existe mas NÃO faz sentido pelo Solo Bot, use `"oculto": true`.

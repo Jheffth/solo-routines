@@ -135,6 +135,10 @@ def main_teste():
         nomes = [cmd["comando"] for cmd in man["comandos"]]
         ok(len(nomes) == len(set(nomes)), "nenhum comando repetido no manifesto")
 
+        longos = [(cmd['comando'], campo) for cmd in man['comandos']
+                  for campo in ('descricao', 'exemplo', 'uso') if len(cmd.get(campo) or '') > 140]
+        ok(not longos, f'campos do manifesto respeitam o limite do Solo Bot (longos: {longos})')
+
         mortos = []
         for nome in nomes:
             r = c.post("/interno/bot/mensagem", headers=H, json={**corpo, "texto": nome}).json()
