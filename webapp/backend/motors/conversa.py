@@ -162,6 +162,7 @@ def _processar(texto: str, db: Session, canal):
             "▸ `/refazer [valor]` — corrige o último `/somar`\n\n"
             "*As especiais*\n"
             "▸ `/somar [título] [valor]` — registrar na meta\n"
+            "Também aceita: `/somar R$ 30 ao turno da noite.`\n"
             "▸ `/bloco [título]` — fechar etapa do circuito\n"
             "▸ `/confessar [título]` — a passiva que você quebrou\n"
             "▸ `/reerguer [título]` — segunda chance (custa Mana)\n\n"
@@ -535,10 +536,30 @@ def _numero(t: str):
     return v if v == v and abs(v) != float("inf") else None      # "nan"/"inf" não são valor
 
 
+def _procurar_meta(db: Session, usuario, busca: str, hoje: date) -> list:
+    """Busca literal primeiro; depois palavras do título, sem conectivos da fala."""
+    from motors import meta as _mt
+    metas = [a for a in _alvos_do_dia(db, usuario, hoje, abertas_apenas=True)
+             if _mt.eh_meta_valida(a.obj)]
+    termo = _dobrar(busca)
+    exatos = [a for a in metas if _dobrar(a.titulo) == termo]
+    if exatos:
+        return exatos
+    conectivos = {"a", "ao", "aos", "as", "o", "os", "em", "na", "nas", "no", "nos",
+                  "de", "da", "das", "do", "dos", "para", "por", "pelo", "pela", "pelos", "pelas"}
+    palavras = set(re.findall(r"[a-z0-9]+", termo)) - conectivos
+    if not palavras:
+        return []
+    literais = [a for a in metas if termo in _dobrar(a.titulo)]
+    if literais:
+        return literais
+    # Todas as palavras relevantes precisam estar presentes. Não escolhe por
+    # semelhança nem ignora números do título; ambiguidades voltam como opções.
+    return [a for a in metas if palavras <= set(re.findall(r"[a-z0-9]+", _dobrar(a.titulo)))]
+
+
 def _somar(db: Session, usuario, canal, resto: str, hoje: date):
     """`/somar título valor` — registra na meta do dia."""
-    from motors import meta as _mt
-
     # "21 e 10" falado = 21,10. Junta antes de separar as palavras, senão
     # o "10" viraria o valor e o "21 e" ficaria no título.
     resto = re.sub(r"(?<![\d,.])(\d+)(?:\s+e\s+|:)(\d{1,2})(?![\d,.:])", r"\1,\2", resto or "", flags=re.I)
@@ -557,14 +578,13 @@ def _somar(db: Session, usuario, canal, resto: str, hoje: date):
         canal.enviar(f"⚠️ Não entendi o valor em *{resto.strip()}*.\nUse: `/somar título 50`")
         return
 
-    achados = [a for a in _procurar(db, usuario, busca, hoje)
-               if _mt.eh_meta_valida(a.obj)]
+    achados = _procurar_meta(db, usuario, busca, hoje)
     if not achados:
         canal.enviar(f"❌ Não achei missão de META hoje com *{busca}*.")
         return
     if len(achados) > 1:
-        _menu_escolha(canal, "ok", achados,
-                      f"Achei {len(achados)} metas com *{busca}*.")
+        _menu_escolha(canal, "som", achados,
+                      f"Achei {len(achados)} metas com *{busca}*.", valor=valor)
         return
 
     _soma_registrar(db, usuario, canal, achados[0], valor)
@@ -1021,14 +1041,14 @@ def _procurar(db: Session, usuario, busca: str, hoje: date,
     return [a for a in todos if termo in _dobrar(a.titulo)]
 
 
-def _menu_escolha(canal, acao: str, alvos: list, cabecalho: str):
+def _menu_escolha(canal, acao: str, alvos: list, cabecalho: str, valor=None):
     """Mais de uma casou: o hunter escolhe, o bot não adivinha."""
     # SEM `titulo` no grupo, e de propósito: aqui o próprio rótulo da
     # ação já é o nome da missão. Repetir viraria uma linha morta acima
     # de cada opção no Telegram, e "1. Acordar — Acordar" no WhatsApp.
     teclado = [{"titulo": "",
                 "acoes": [{"rotulo": f"{_SIMBOLO.get(a.status, '⬜')} {a.titulo[:40]}",
-                           "dados": f"{acao}|{a.chave}"}]} for a in alvos[:8]]
+                           "dados": f"{acao}|{a.chave}" + (f"|{valor}" if valor is not None else "")}]} for a in alvos[:8]]
     extra = ("\n\n_Mostrando as 8 primeiras._" if len(alvos) > 8 else "")
     canal.enviar(f"{cabecalho}\n\nQual delas?{extra}", opcoes=teclado)
 
@@ -1325,12 +1345,12 @@ def agir(db: Session, usuario, canal: Canal, dados: str, hoje: date | None = Non
         # um "não é sua" confirmaria que o id existe.
         return False, "Essa missão não está mais disponível.", None
 
-    if acao == "smv" and len(partes) >= 4:
+    if acao in ("som", "smv") and len(partes) == 4:
         v = _numero(partes[3])
         if v is None or v < 0:
             return False, "Valor inválido.", None
-        _soma_registrar(db, usuario, canal, alvo, v, confirmado=True)
-        return True, "Lançado.", None
+        ok = _soma_registrar(db, usuario, canal, alvo, v, confirmado=(acao == "smv"))
+        return ok, "Lançado." if ok else "Confira a resposta.", None
 
     if acao == "dsm":
         ok, msg = _soma_desfazer(db, usuario, canal, alvo)

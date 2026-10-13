@@ -349,6 +349,60 @@ def main_teste():
         fala("/somar Conseguir no turno 50")
         ok(estado(rid_m) == "CONCLUIDA", "alcancar o alvo conclui a missao")
 
+        # Meta falada como no pedido real da Bella: valor primeiro,
+        # preposição e pontuação não fazem parte do nome da missão.
+        rid_noite = nova("Conseguir 50R$ no turno da Noite", natureza="META", meta_alvo=50,
+                         meta_modo="SOMA", meta_especie="DINHEIRO")
+        rid_manha = nova("Conseguir R$100,00 no turno da manhã.", natureza="META", meta_alvo=100,
+                         meta_modo="SOMA", meta_especie="DINHEIRO")
+        rid_outro = nova("Conseguir 50R$ no turno da Noite", headers=K, natureza="META", meta_alvo=50,
+                         meta_modo="SOMA", meta_especie="DINHEIRO")
+        c.get(P + "/dashboard/stats", headers=A)
+        c.get(P + "/dashboard/stats", headers=K)
+        def saldo_meta(rid, dono=uid):
+            d = database.SessionLocal()
+            x = d.query(database.ExecucaoDia).filter_by(rotina_id=rid, usuario_id=dono, data=hoje).first()
+            valor = float(x.meta_atual or 0) if x else 0
+            d.close()
+            return valor
+        fala("/somar R$ 30 ao turno da noite.")
+        ok(saldo_meta(rid_noite) == 30 and saldo_meta(rid_manha) == 0,
+           'frase da Bella soma 30 somente na meta do turno da noite')
+        d = database.SessionLocal()
+        outro_uid = d.query(database.Usuario).filter_by(login='kaio').one().id
+        d.close()
+        ok(saldo_meta(rid_outro, dono=outro_uid) == 0, 'busca nao registra na meta de outro hunter')
+        fala("/somar R$ 2,50 no turno da NOITE!")
+        ok(saldo_meta(rid_noite) == 32.50, 'aceita preposicao, maiusculas e pontuacao sem perder centavos')
+        fala("/somar turno noite 1,25")
+        ok(saldo_meta(rid_noite) == 33.75, 'aceita palavras relevantes mesmo sem o da do titulo')
+        antes = saldo_meta(rid_noite)
+        for frase in ("/somar 30 ao turno da tarde.", "/somar 30 ao da.", "/somar 30 500 turno noite"):
+            caixa.limpar()
+            fala(frase)
+            ok('Não achei missão de META' in caixa.ultima('111') and saldo_meta(rid_noite) == antes,
+               'busca sem correspondencia nao adivinha nem ignora numeros do titulo')
+        # Sem turno específico, pergunta; a escolha SOMA o valor, não conclui.
+        caixa.limpar()
+        fala("/somar R$ 5 ao turno.")
+        botoes = caixa.dados_dos_botoes()
+        ok(any(d == f'som|r|{rid_noite}|5.0' for d in botoes)
+           and any(d == f'som|r|{rid_manha}|5.0' for d in botoes)
+           and not any(d.startswith('ok|') for d in botoes),
+           'metas ambiguas oferecem soma com o valor original')
+        ok(saldo_meta(rid_noite) == antes and saldo_meta(rid_manha) == 0,
+           'pedir escolha nao registra valor')
+        toca(f'som|r|{rid_noite}|5.0')
+        ok(saldo_meta(rid_noite) == antes + 5 and estado(rid_noite) != 'CONCLUIDA'
+           and saldo_meta(rid_manha) == 0, 'escolha soma somente na meta escolhida sem concluir')
+        caixa.limpar()
+        toca(f'som|r|{rid_noite}|5000')
+        ok(saldo_meta(rid_noite) == antes + 5 and 'parece alto' in caixa.ultima('111').lower(),
+           'escolher a meta nao pula a confirmacao de valor alto')
+        caixa.limpar()
+        toca(f'som|r|{rid_outro}|5.0')
+        ok(caixa.ultimo_toque()[1], 'botao de soma forjado para outro hunter e recusado')
+
         # ══════════════════════════════════════════════════════════════
         # 7 · A LEITURA NÃO MEXE EM NADA
         # ══════════════════════════════════════════════════════════════
