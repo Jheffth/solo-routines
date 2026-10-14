@@ -173,6 +173,7 @@ def _processar(texto: str, db: Session, canal):
             "▸ `/portoes` — quais abrem hoje\n"
             "▸ `/conquistas` · `/rotinas` · `/add [título]` (tarefa para hoje)\n"
             "▸ `/criarrotina título | prioridade | dificuldade | início | fim | descrição`\n"
+            "  Para META: acrescente `| META | alvo | unidade`, ou diga: rotina de metas conseguir 66,67 reais.\n"
             "Ou diga: crie uma rotina diária. Oração matinal, prioridade crítica, dificuldade difícil, janela de horário 05:30 às 05:45, descrição: oração matinal. Todos os dias.\n"
         ))
         return
@@ -369,9 +370,13 @@ def _processar(texto: str, db: Session, canal):
             return
         janela = (f"{dados['hora_inicio']} às {dados['hora_fim']}"
                   if dados['hora_inicio'] else 'Sem janela de horário')
+        meta = ''
+        if dados.get('natureza') == 'META':
+            from motors import meta as motor_meta
+            meta = '\nTipo: META · Alvo: ' + motor_meta.formatar(dados['meta_alvo'], dados['meta_especie'], dados['meta_unidade'])
         canal.enviar(f"🔄 Rotina diária *{dados['titulo']}* criada!\n"
                      f"Todos os dias · Prioridade: {dados['prioridade']} · Dificuldade: {dados['dificuldade']}\n"
-                     f"Horário: {janela}\nDescrição: {dados.get('descricao') or 'Sem descrição'}")
+                     f"Horário: {janela}{meta}\nDescrição: {dados.get('descricao') or 'Sem descrição'}")
         return
 
     # ── /add [título] ─────────────────────────────────────

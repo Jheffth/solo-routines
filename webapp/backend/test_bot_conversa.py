@@ -547,6 +547,49 @@ def main_teste():
         ]:
             conversa.processar(canal, invalido, db)
             ok(db.query(database.Rotina).count() == antes, 'configuração inválida não cria registro')
+        # Pedido real: natureza e alvo não podem sumir na tradução do hub.
+        pedido_meta = ('Crie uma nova rotina crítica, nível difícil . Duração das 06:00 às 23:00 '
+                       'todos os dias. Rotina de metas conseguir 66,67 reais para a cirurgia da vivi')
+        for frase in (pedido_meta, '/criarrotina ' + pedido_meta):
+            dados_meta = cadastro_bot.interpretar(frase)
+            ok((dados_meta['natureza'], dados_meta['meta_alvo'], dados_meta['meta_unidade'],
+                dados_meta['meta_especie'], dados_meta['prioridade'], dados_meta['dificuldade'],
+                dados_meta['hora_inicio'], dados_meta['hora_fim']) ==
+               ('META', 66.67, 'R$', 'VALOR', 'CRITICA', 'DIFICIL', '06:00', '23:00'),
+               'frase completa preserva META financeira, centavos e demais parâmetros')
+        conversa.processar(canal, '/criarrotina ' + pedido_meta, db)
+        criada_meta = db.query(database.Rotina).filter_by(titulo='conseguir 66,67 reais para a cirurgia da vivi', usuario_id=uid).one()
+        ok((criada_meta.tipo, criada_meta.natureza, criada_meta.meta_alvo, criada_meta.meta_especie,
+            criada_meta.meta_unidade, criada_meta.meta_modo, criada_meta.prioridade, criada_meta.dificuldade,
+            criada_meta.hora_inicio, criada_meta.hora_fim) ==
+           ('DIARIA', 'META', 66.67, 'VALOR', 'R$', 'ACUMULO', 'CRITICA', 'DIFICIL', '06:00', '23:00'),
+           'banco grava uma META diária, usando a mesma API da tela')
+        ok('Tipo: META' in canal.saida[-1]['texto'] and '66,67' in canal.saida[-1]['texto'],
+           'resposta permite conferir tipo META e alvo antes de somar')
+        ok(conversa.rotina_de_hoje(criada_meta, hoje + timedelta(days=1)), 'META continua recorrente no dia seguinte')
+        comandos_meta = [
+            '/criarrotina Cirurgia | CRITICA | DIFICIL | 06:00 | 23:00 | Vivi | META | 66,67 | R$',
+            'Crie uma rotina de meta. Cirurgia, prioridade crítica, dificuldade difícil, horário 06:00 às 23:00, alvo 66,67 reais',
+            'Crie uma rotina diária. Cirurgia, tipo META, alvo R$ 66,67, horário 06:00 às 23:00',
+        ]
+        for frase in comandos_meta:
+            dados_meta = cadastro_bot.interpretar(frase)
+            ok(dados_meta['natureza'] == 'META' and dados_meta['meta_alvo'] == 66.67,
+               'META funciona por campos explícitos e variações naturais')
+        ok(cadastro_bot.interpretar('Crie uma rotina de metas. Reserva 1.234,56 reais')['meta_alvo'] == 1234.56,
+           'alvo financeiro respeita separador de milhar e centavos')
+        ok(cadastro_bot.interpretar('Crie uma rotina de meta. Ler 40 páginas')['meta_especie'] == 'CONTAGEM',
+           'meta de páginas não é tratada como dinheiro')
+        normal = cadastro_bot.interpretar('Crie uma rotina diária. Rever finanças, descrição: minha meta é guardar 66,67 reais')
+        ok(normal.get('natureza') != 'META', 'a descrição não muda a natureza da rotina')
+        for frase in ('Crie uma rotina de metas. Cirurgia sem valor',
+                      'Crie uma rotina de meta. Cirurgia 0 reais',
+                      'Crie uma rotina de meta. Cirurgia -66,67 reais',
+                      'Crie uma rotina de meta. Juntar 66,67 reais e 30 reais'):
+            quantidade = db.query(database.Rotina).count()
+            conversa.processar(canal, frase, db)
+            ok(db.query(database.Rotina).count() == quantidade and '⚠️' in canal.saida[-1]['texto'],
+               'META inválida ou ambígua pede esclarecimento, nunca vira missão normal')
         ok(cadastro_bot.interpretar('Crie uma rotina diária. Treino, horário 23:00 às 01:00')['hora_fim'] == '01:00',
            'janela atravessando meia-noite é preservada')
         antes = db.query(database.TarefaDia).count()
