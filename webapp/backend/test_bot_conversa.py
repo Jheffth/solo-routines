@@ -18,6 +18,7 @@ Por isso o teste tem duas colunas de preocupação:
 
 Uso: DATABASE_URL=sqlite:///./x.db SECRET_KEY=... python test_bot_conversa.py
 """
+import json
 from datetime import timedelta
 
 from fastapi.testclient import TestClient
@@ -599,6 +600,73 @@ def main_teste():
         conversa.processar(canal2, '/criarrotina Outra rotina | MEDIA | NORMAL | 08:00 | 08:15 | teste', db)
         ok(db.query(database.Rotina).filter_by(titulo='Outra rotina').one().usuario_id != uid,
            'rotina pertence ao hunter autenticado, não ao primeiro usuário')
+        # PASSIVA é natureza; uma rotina sem dias escolhidos é diária.
+        pedido_passiva = ('/criarrotina Crie uma rotina diária: tipo passiva, PROIBIÇÃO: Entrar no escritório '
+                          'sem antes cumprir missões base ( banho, fio dental etc…) nível Crítica, difícil. '
+                          'Horário das 20:00 as 00:00')
+        titulo_passiva = 'PROIBIÇÃO: Entrar no escritório sem antes cumprir missões base ( banho, fio dental etc…)'
+        conversa.processar(canal, pedido_passiva, db)
+        passiva = db.query(database.Rotina).filter_by(titulo=titulo_passiva, usuario_id=uid).one()
+        ok((passiva.tipo, passiva.natureza, passiva.prioridade, passiva.dificuldade,
+            passiva.hora_inicio, passiva.hora_fim, passiva.dias_semana) ==
+           ('DIARIA', 'PASSIVA', 'CRITICA', 'DIFICIL', '20:00', '00:00', None),
+           'pedido real salva passiva diária, crítica e difícil, atravessando meia-noite')
+        ok(all(conversa.rotina_de_hoje(passiva, hoje + timedelta(days=d)) for d in range(7)),
+           'passiva sem dias definidos aparece todos os dias da semana')
+        from motors import prazos
+        janela_passiva = prazos.da_rotina(passiva, hoje)
+        ok(janela_passiva['fim'].date() == hoje + timedelta(days=1) and
+           janela_passiva['fim'].hour == 0 and janela_passiva['minutos'] == 240 and
+           janela_passiva['auto_inicia'], 'passiva do bot dura quatro horas e fecha à meia-noite do dia seguinte')
+        resposta = canal.saida[-1]['texto']
+        ok(all(t in resposta for t in ('Todos os dias', 'Tipo: PASSIVA', '20:00 às 00:00',
+                                      'Prioridade: CRITICA', 'Dificuldade: DIFICIL')),
+           'confirmação mostra natureza e frequência realmente salvas')
+        for frase in ('Crie uma rotina passiva. Protocolo, horário 20:00 às 00:00',
+                      'Crie uma rotina. Protocolo, natureza PASSIVA, horário 20:00 às 00:00',
+                      'Crie uma rotina. PROIBIDO: Café, horário 20:00 às 00:00',
+                      '/criarrotina Protocolo | ALTA | DIFICIL | 20:00 | 00:00 | teste | PASSIVA'):
+            dados_passiva = cadastro_bot.interpretar(frase)
+            ok((dados_passiva['tipo'], dados_passiva['natureza']) == ('DIARIA', 'PASSIVA'),
+               'variações de PASSIVA usam todos os dias como padrão')
+        conversa.processar(canal, 'Crie uma rotina. Protocolo semanal, tipo passiva, '
+                           'dias da semana segunda, quarta e sexta, horário 20:00 às 00:00', db)
+        semanal = db.query(database.Rotina).filter_by(titulo='Protocolo semanal', usuario_id=uid).one()
+        ok(semanal.natureza == 'PASSIVA' and semanal.tipo == 'SEMANAL' and
+           json.loads(semanal.dias_semana) == [0, 2, 4],
+           'dias explícitos são salvos sem confundir a natureza passiva')
+        ok(all(conversa.rotina_de_hoje(semanal, hoje + timedelta(days=d)) ==
+               ((hoje + timedelta(days=d)).weekday() in (0, 2, 4)) for d in range(7)),
+           'passiva com dias específicos só aparece nesses dias')
+        ok('Dias: segunda, quarta, sexta' in canal.saida[-1]['texto'] and
+           'Todos os dias' not in canal.saida[-1]['texto'], 'confirmação respeita os dias escolhidos')
+        for frase, dias in (
+            ('Crie uma rotina. Treinar de segunda a sexta', [0, 1, 2, 3, 4]),
+            ('Crie uma rotina semanal. Descansar aos sábados e domingos', [5, 6]),
+            ('Crie uma rotina. Ler às terças e quintas', [1, 3]),
+            ('Crie uma rotina. Ler todas as segundas-feiras e sextas-feiras', [0, 4]),
+        ):
+            dados_dias = cadastro_bot.interpretar(frase)
+            ok(dados_dias['tipo'] == 'SEMANAL' and dados_dias['dias_semana'] == dias,
+               'expressões explícitas de agenda conservam os dias')
+        normal = cadastro_bot.interpretar('Crie uma rotina. Preparar aula de segunda, descrição: tipo passiva')
+        ok(normal['tipo'] == 'DIARIA' and normal.get('natureza') is None and
+           normal['titulo'] == 'Preparar aula de segunda',
+           'título e descrição não inventam natureza nem dias de recorrência')
+        for frase in ('Crie uma rotina. Protocolo sem horário, tipo passiva',
+                      'Crie uma rotina. Protocolo, tipo misterioso, horário 20:00 às 00:00',
+                      'Crie uma rotina. Protocolo, tipo passiva, natureza META, conseguir 30 reais, horário 20:00 às 00:00',
+                      'Crie uma rotina. Protocolo, dias da semana indefinidos',
+                      'Crie uma rotina. Protocolo, dias da semana segunda e feriados',
+                      'Crie uma rotina. Protocolo, todos os dias, dias da semana segunda'):
+            quantidade = db.query(database.Rotina).count()
+            conversa.processar(canal, frase, db)
+            ok(db.query(database.Rotina).count() == quantidade and '⚠️' in canal.saida[-1]['texto'],
+               'configuração passiva ou agenda inválida não cria registro parcial')
+        quantidade = db.query(database.Rotina).count()
+        conversa.processar(canal2, 'Crie uma rotina. Protocolo restrito, tipo passiva, horário 20:00 às 00:00', db)
+        ok(db.query(database.Rotina).count() == quantidade and '⚠️' in canal2.saida[-1]['texto'],
+           'criação pelo bot mantém a permissão de Staff para passivas')
         db.close()
 
         print("\n=== A CONVERSA OK ===\n")

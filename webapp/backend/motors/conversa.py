@@ -173,6 +173,8 @@ def _processar(texto: str, db: Session, canal):
             "▸ `/portoes` — quais abrem hoje\n"
             "▸ `/conquistas` · `/rotinas` · `/add [título]` (tarefa para hoje)\n"
             "▸ `/criarrotina título | prioridade | dificuldade | início | fim | descrição`\n"
+            "  Sem dias informados: todos os dias. Para dias específicos, diga: dias da semana segunda, quarta e sexta.\n"
+            "  Para passiva: acrescente `| PASSIVA`, ou diga: tipo passiva. Informe início e fim.\n"
             "  Para META: acrescente `| META | alvo | unidade`, ou diga: rotina de metas conseguir 66,67 reais.\n"
             "Ou diga: crie uma rotina diária. Oração matinal, prioridade crítica, dificuldade difícil, janela de horário 05:30 às 05:45, descrição: oração matinal. Todos os dias.\n"
         ))
@@ -370,12 +372,17 @@ def _processar(texto: str, db: Session, canal):
             return
         janela = (f"{dados['hora_inicio']} às {dados['hora_fim']}"
                   if dados['hora_inicio'] else 'Sem janela de horário')
-        meta = ''
+        meta = '\nTipo: PASSIVA' if dados.get('natureza') == 'PASSIVA' else ''
         if dados.get('natureza') == 'META':
             from motors import meta as motor_meta
             meta = '\nTipo: META · Alvo: ' + motor_meta.formatar(dados['meta_alvo'], dados['meta_especie'], dados['meta_unidade'])
-        canal.enviar(f"🔄 Rotina diária *{dados['titulo']}* criada!\n"
-                     f"Todos os dias · Prioridade: {dados['prioridade']} · Dificuldade: {dados['dificuldade']}\n"
+        frequencia = 'diária' if dados['tipo'] == 'DIARIA' else 'semanal'
+        agenda = 'Todos os dias'
+        if dados.get('dias_semana'):
+            nomes = ('segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado', 'domingo')
+            agenda = 'Dias: ' + ', '.join(nomes[d] for d in dados['dias_semana'])
+        canal.enviar(f"🔄 Rotina {frequencia} *{dados['titulo']}* criada!\n"
+                     f"{agenda} · Prioridade: {dados['prioridade']} · Dificuldade: {dados['dificuldade']}\n"
                      f"Horário: {janela}{meta}\nDescrição: {dados.get('descricao') or 'Sem descrição'}")
         return
 
