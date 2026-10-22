@@ -3052,7 +3052,17 @@ const MissaoCard = {
         meta_atual: resp.meta_atual, meta_progresso: resp.meta_progresso,
         meta_texto: resp.meta_texto, meta_alvo_texto: resp.meta_alvo_texto,
         meta_aportes: resp.meta_aportes,
+        /* A superação também vem do servidor. Sem estes, o selo "acima da
+           meta" e o campo de lançar dependiam de recarregar a página
+           depois de bater o alvo. */
+        meta_alcancada: resp.meta_alcancada,
+        meta_excedente: resp.meta_excedente,
+        meta_excedente_texto: resp.meta_excedente_texto,
+        meta_fracao_total: resp.meta_fracao_total,
+        meta_janela_aberta: resp.meta_janela_aberta,
       });
+      if (resp.meta_cumprida) { m.status = 'CONCLUIDA'; m.status_hoje = 'CONCLUIDA'; }
+      if (resp.reabriu) { m.status = 'ATIVA'; m.status_hoje = 'ATIVA'; }
       if (resp.status) { m.status = resp.status; m.status_hoje = resp.status; }
       this.repintar(chave);
 

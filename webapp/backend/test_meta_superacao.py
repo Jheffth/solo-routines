@@ -189,6 +189,17 @@ ok(not meta.janela_aberta(r, a_reerg_ontem, as_(9, 0), HOJE),
    "reerguer devolve o resto DAQUELE dia, nao um passe vitalicio: "
    "a de ontem continua fechada")
 
+print("\n-- janela que atravessa a meia-noite --")
+# "20:00 as 00:00" (como o bot cria) dava fim = 00:00 DE HOJE: a meta
+# nascia fechada e recusava ate o primeiro aporte da noite.
+noite = Regra(hora_inicio="20:00", hora_fim="00:00")
+ok(meta.janela_aberta(noite, a_hoje, as_(21, 0), HOJE),
+   "20:00-00:00 aceita as 21h, mesmo ja concluida")
+ok(meta.janela_aberta(noite, a_hoje, as_(23, 59), HOJE),
+   "e ate o fim do dia")
+ok(not meta.janela_aberta(noite, a_ontem, as_(21, 0), HOJE),
+   "o acumulador de ontem continua fechado")
+
 print("\n-- prazo ilegivel nao tranca a porta --")
 quebrada = Regra(hora_fim="onze horas")
 ok(meta.janela_aberta(quebrada, a_hoje, as_(23, 0), HOJE),

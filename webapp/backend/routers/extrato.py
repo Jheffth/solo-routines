@@ -98,7 +98,7 @@ def _campos_meta(regra, acumulador) -> dict:
         # comportamento diferente em telas que desenham o mesmo cartão.
         "meta_excedente": None, "meta_excedente_texto": None,
         "meta_fracao_total": None, "meta_janela_aberta": False,
-        "meta_prazo": None,
+        "meta_prazo": None, "meta_alcancada": False,
     }
     if not motor_meta.eh_meta_valida(regra):
         return dict(VAZIO)
@@ -123,6 +123,7 @@ def _campos_meta(regra, acumulador) -> dict:
         "meta_unidade":    un,
         "meta_passo":      getattr(regra, "meta_passo", None) or e["passo"],
         "meta_progresso":  motor_meta.progresso(atual, alvo, ini, modo),
+        "meta_alcancada":  motor_meta.alcancada(atual, alvo, ini, modo),
         "meta_texto":      motor_meta.formatar(atual, esp, un),
         "meta_alvo_texto": motor_meta.formatar(alvo, esp, un),
         # O cartão precisa saber arredondar o que o hunter digita e qual

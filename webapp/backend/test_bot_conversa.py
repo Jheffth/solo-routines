@@ -350,6 +350,41 @@ def main_teste():
         fala("/somar Conseguir no turno 50")
         ok(estado(rid_m) == "CONCLUIDA", "alcancar o alvo conclui a missao")
 
+        # ── A META BATIDA CONTINUA ABERTA ENQUANTO HOUVER TEMPO ──────
+        # O defeito: a busca do /somar só via missões abertas, e a meta
+        # concluída sumia ("Não achei missão de META") com o turno ainda
+        # correndo. Quem fecha a meta é o relógio, não o alvo.
+        d = database.SessionLocal()
+        xp_antes = d.query(database.Usuario).get(uid).xp_total
+        d.close()
+        caixa.limpar()
+        fala("/somar Conseguir no turno 20")
+        ok(abs(_saldo_m() - 130) < 0.01,
+           "meta CONCLUIDA com prazo aberto ainda e encontrada e soma o excedente")
+        ok(estado(rid_m) == "CONCLUIDA", "somar alem do alvo mantem a missao concluida")
+        ok("acima da meta" in caixa.ultima("111").lower() and "30,00" in caixa.ultima("111"),
+           "a resposta mostra o excedente acima da meta")
+        d = database.SessionLocal()
+        ok(d.query(database.Usuario).get(uid).xp_total == xp_antes,
+           "o excedente nao paga XP de novo")
+        d.close()
+        fala("/somar R$ 5 conseguir turno")
+        ok(abs(_saldo_m() - 135) < 0.01, "busca por palavras tambem acha a meta ja batida")
+
+        # Com o prazo vencido, a meta concluída se fecha — e o bot diz por quê.
+        d = database.SessionLocal()
+        rot = d.query(database.Rotina).get(rid_m)
+        rot.hora_inicio, rot.hora_fim = "00:00", "00:01"
+        d.commit(); d.close()
+        caixa.limpar()
+        fala("/somar Conseguir no turno 10")
+        ok(abs(_saldo_m() - 135) < 0.01 and "encerrou" in caixa.ultima("111").lower(),
+           "meta com prazo vencido recusa e explica que encerrou")
+        d = database.SessionLocal()
+        rot = d.query(database.Rotina).get(rid_m)
+        rot.hora_inicio, rot.hora_fim = None, None
+        d.commit(); d.close()
+
         # Meta falada como no pedido real da Bella: valor primeiro,
         # preposição e pontuação não fazem parte do nome da missão.
         rid_noite = nova("Conseguir 50R$ no turno da Noite", natureza="META", meta_alvo=50,

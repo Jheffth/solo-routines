@@ -353,9 +353,27 @@ def janela_aberta(regra, acumulador, agora, hoje) -> bool:
 
     try:
         h, m = str(limite).split(":")[:2]
-        fim = agora.replace(hour=int(h), minute=int(m), second=59, microsecond=0)
+        h, m = int(h), int(m)
+        fim = agora.replace(hour=h, minute=m, second=59, microsecond=0)
     except (ValueError, TypeError):
         return True  # prazo ilegível não pode fechar a porta na cara do hunter
+
+    # ── JANELA QUE ATRAVESSA A MEIA-NOITE ────────────────────────────
+    #
+    # "20:00 às 00:00" (o bot cria assim) dava `fim` = 00:00 DE HOJE, e
+    # às 21h a conta respondia "fechada": a meta recusava o primeiro
+    # aporte da noite e, batida, não aceitava o excedente. Mesma regra de
+    # `prazos.da_rotina`: fim <= início quer dizer que o fim é amanhã — e,
+    # como a data do acumulador já foi conferida acima, o resto de hoje
+    # inteiro está dentro da janela.
+    inicio = getattr(regra, "hora_inicio", None)
+    if inicio:
+        try:
+            hi, mi = (int(x) for x in str(inicio).split(":")[:2])
+            if (h, m) <= (hi, mi):
+                return True
+        except (ValueError, TypeError):
+            pass
     return agora <= fim
 
 

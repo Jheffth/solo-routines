@@ -548,11 +548,33 @@ def _numero(t: str):
     return v if v == v and abs(v) != float("inf") else None      # "nan"/"inf" não são valor
 
 
-def _procurar_meta(db: Session, usuario, busca: str, hoje: date) -> list:
-    """Busca literal primeiro; depois palavras do título, sem conectivos da fala."""
+def _meta_aceita_valor(a, hoje: date) -> bool:
+    """
+    A meta ainda recebe valores pelo bot?
+
+    O DEFEITO: a busca só olhava as missões ABERTAS (pendente, ativa,
+    pausada). Bater o alvo conclui a missão — então, no instante em que o
+    hunter fazia R$ 100 no turno da manhã, a meta sumia do `/somar` e o
+    bot respondia "Não achei missão de META", com o turno ainda correndo.
+    O app já deixava ir além do alvo; o bot fechava a porta.
+
+    A regra é a mesma do servidor (`motors/meta.janela_aberta`): quem
+    fecha a meta é o RELÓGIO, não o alvo. CONCLUÍDA e com prazo é um
+    estado legítimo — a meta batida com tempo de sobra.
+    """
     from motors import meta as _mt
-    metas = [a for a in _alvos_do_dia(db, usuario, hoje, abertas_apenas=True)
-             if _mt.eh_meta_valida(a.obj)]
+    if not _mt.eh_meta_valida(a.obj):
+        return False
+    if a.status in ("PENDENTE", "ATIVA", "PAUSADA"):
+        return True
+    if a.status == "CONCLUIDA":
+        acum = a.ed if a.tipo == "r" else a.obj
+        return acum is not None and _mt.janela_aberta(a.obj, acum, tempo.agora(), hoje)
+    return False
+
+
+def _casar_meta(metas: list, busca: str) -> list:
+    """Busca literal primeiro; depois palavras do título, sem conectivos da fala."""
     termo = _dobrar(busca)
     exatos = [a for a in metas if _dobrar(a.titulo) == termo]
     if exatos:
@@ -568,6 +590,22 @@ def _procurar_meta(db: Session, usuario, busca: str, hoje: date) -> list:
     # Todas as palavras relevantes precisam estar presentes. Não escolhe por
     # semelhança nem ignora números do título; ambiguidades voltam como opções.
     return [a for a in metas if palavras <= set(re.findall(r"[a-z0-9]+", _dobrar(a.titulo)))]
+
+
+def _procurar_meta(db: Session, usuario, busca: str, hoje: date) -> list:
+    """As metas de hoje que ainda aceitam valor e casam com `busca` —
+    inclusive as já batidas cujo prazo não acabou."""
+    metas = [a for a in _alvos_do_dia(db, usuario, hoje) if _meta_aceita_valor(a, hoje)]
+    return _casar_meta(metas, busca)
+
+
+def _metas_encerradas(db: Session, usuario, busca: str, hoje: date) -> list:
+    """As metas de hoje que casam com `busca` mas já não aceitam valor —
+    para o bot dizer POR QUE recusou, em vez de "não achei"."""
+    from motors import meta as _mt
+    metas = [a for a in _alvos_do_dia(db, usuario, hoje)
+             if _mt.eh_meta_valida(a.obj) and not _meta_aceita_valor(a, hoje)]
+    return _casar_meta(metas, busca)
 
 
 def _somar(db: Session, usuario, canal, resto: str, hoje: date):
@@ -592,6 +630,15 @@ def _somar(db: Session, usuario, canal, resto: str, hoje: date):
 
     achados = _procurar_meta(db, usuario, busca, hoje)
     if not achados:
+        fechadas = _metas_encerradas(db, usuario, busca, hoje)
+        if len(fechadas) == 1:
+            a = fechadas[0]
+            limite = (getattr(a.obj, "hora_fim", None)
+                      or getattr(a.obj, "hora_limite", None))
+            canal.enviar(f"⌛ *{a.titulo}* já encerrou"
+                         f"{f' às {limite}' if limite else ''}. "
+                         "O total do dia está fechado.")
+            return
         canal.enviar(f"❌ Não achei missão de META hoje com *{busca}*.")
         return
     if len(achados) > 1:
@@ -657,9 +704,19 @@ def _soma_registrar(db: Session, usuario, canal, a, valor: float,
         linha += (f"\nAgora: *{_mt.formatar(atual, esp, un)}* "
                   f"de {_mt.formatar(alvo_n, esp, un)}")
     # Se o registro fechou a meta, quem fechou foi o `_liquidar` lá
-    # dentro — o bot só conta, não decide.
-    if r.get("concluida") or r.get("alcancada"):
+    # dentro — o bot só conta, não decide. As chaves são as de
+    # `execucoes._corpo_meta`: `meta_cumprida` só no aporte que bateu o
+    # alvo; depois dele, o que há é EXCEDENTE, e a meta segue aceitando
+    # valor até o prazo.
+    excedente = float(r.get("meta_excedente") or 0)
+    if r.get("meta_cumprida"):
         linha += "\n\n✅ *Meta alcançada — missão concluída.*"
+    if excedente > 0 and r.get("meta_excedente_texto"):
+        linha += f"\n🔥 Acima da meta: *+{r['meta_excedente_texto']}*"
+    if r.get("meta_alcancada") and r.get("meta_janela_aberta"):
+        prazo = r.get("meta_prazo")
+        linha += (f"\n_Ela continua aberta {f'até {prazo}' if prazo else 'até o fim do dia'}"
+                  " — pode seguir somando._")
     linha += "\n\n_Errou o valor? Toque abaixo ou mande_ `/refazer 21,10`"
     canal.enviar(linha, opcoes=[{
         "titulo": a.titulo,
