@@ -642,6 +642,16 @@ def deletar_rotina(
         usuario.xp_total = max(0, (usuario.xp_total or 0) - (total.xp    or 0))
         usuario.xp_atual = max(0, (usuario.xp_atual or 0) - (total.xp    or 0))
         usuario.moedas   = max(0, (usuario.moedas   or 0) - (total.moedas or 0))
+        # OS APORTES DE META SAEM ANTES DOS DIAS. `meta_aportes.execucao_id`
+        # aponta para `execucao_dia`: apagar o dia com aportes pendurados
+        # viola a FK no Postgres e o hunter via "Internal Server Error" ao
+        # extinguir qualquer META que já tivesse recebido um valor (o caso
+        # real foi "Conseguir 66,67 para a cirurgia"). O SQLite local não
+        # cobra FK, por isso o defeito só aparecia em produção.
+        from database import MetaAporte
+        ids_dia = db.query(ExecucaoDia.id).filter(ExecucaoDia.rotina_id == r.id)
+        db.query(MetaAporte).filter(MetaAporte.execucao_id.in_(ids_dia)) \
+          .delete(synchronize_session=False)
         db.query(Execucao).filter(Execucao.rotina_id == r.id).delete()
         db.query(ExecucaoDia).filter(ExecucaoDia.rotina_id == r.id).delete()
         db.delete(r)

@@ -592,6 +592,14 @@ def deletar_tarefa(
                 "motivo": "Penitência extinta pelo Arquiteto — o dia segue "
                           "julgado, e o Sistema não cobra de novo."}
 
+    # Quem aponta para a TarefaDia sai antes dela — pelo mesmo motivo da
+    # rotina: aportes de META (e execuções) pendurados violam a FK no
+    # Postgres e a exclusão estourava em Internal Server Error.
+    from database import MetaAporte, Execucao
+    db.query(MetaAporte).filter(MetaAporte.tarefa_id == t.id) \
+      .delete(synchronize_session=False)
+    db.query(Execucao).filter(Execucao.tarefa_id == t.id) \
+      .delete(synchronize_session=False)
     db.delete(t)
     db.commit()
     return {"ok": True, "extinguido": extinguir}
