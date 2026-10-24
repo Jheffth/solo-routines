@@ -53,24 +53,8 @@
   justify-content: space-between;
   gap: 2.5rem;
   padding: 2.5rem 3.5rem;
-  background:
-    radial-gradient(ellipse 50% 60% at 72% 50%, rgba(59,130,246,.20) 0%, rgba(124,58,237,.10) 55%, transparent 78%),
-    rgba(7, 7, 15, .6);
+  background: rgba(7, 7, 15, .6);
   overflow: hidden;
-}
-
-/* A AURA por trás da insígnia: a mesma cor do glow que a medalha emite,
-   para as duas lerem como uma luz só. Segue a insígnia para a direita. */
-.auth-marca::before {
-  content: "";
-  position: absolute;
-  width: 620px; height: 620px;
-  top: 50%; left: 72%;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(124,58,237,.28) 0%, transparent 70%);
-  filter: blur(50px);
-  pointer-events: none;
 }
 
 /* A trama de pontos. Discreta o bastante para ser textura, não padrão. */
@@ -107,18 +91,18 @@
   color: #94a3b8;
 }
 
-/* Chamada à esquerda, insígnia à direita. Quando a coluna aperta, a
-   insígnia desce para baixo do texto em vez de passar por cima dele. */
+/* Chamada à esquerda, insígnia CENTRADA no espaço que sobra à direita —
+   e não colada na borda do painel, que em tela larga a deixava longe de
+   tudo. Abaixo de 1080px ela sobe para cima do texto (ver o fim do
+   bloco). */
 .auth-marca-centro {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(300px, 520px) minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
   gap: 2rem 3rem;
 }
 .auth-marca-chamada {
-  flex: 1 1 320px;
-  max-width: 520px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 1.1rem;
@@ -134,10 +118,12 @@
 .auth-marca-frase {
   margin: 0;
   font-family: var(--font-title);
-  font-size: clamp(2.8rem, 4.6vw, 4.2rem);
+  font-size: clamp(2.4rem, 3.6vw, 4.2rem);
   font-weight: 900;
   line-height: 1.05;
   color: #f8fafc;
+  /* "Levante-se." quebrava no hífen em 1280px. É uma palavra só. */
+  white-space: nowrap;
 }
 .auth-marca-texto {
   margin: 0;
@@ -151,15 +137,40 @@
 /* A INSÍGNIA GRANDE. O script injeta a medalha a 90px; aqui ela cresce
    — é SVG, então crescer não custa nitidez. */
 .auth-marca-insignia {
-  flex: none;
+  position: relative;
+  justify-self: center;
   display: flex;
   align-items: center;
   justify-content: center;
   line-height: 0;
 }
 .auth-marca-insignia svg {
-  width: clamp(220px, 24vw, 380px);
-  height: clamp(220px, 24vw, 380px);
+  position: relative;
+  width: clamp(200px, 20vw, 400px);
+  height: clamp(200px, 20vw, 400px);
+}
+
+/* A AURA mora NA insígnia, não na coluna: assim ela vai junto aonde quer
+   que a medalha esteja. Mesma cor do glow que a medalha emite, para as
+   duas lerem como uma luz só. */
+.auth-marca-insignia::before {
+  content: "";
+  position: absolute;
+  width: 170%; height: 170%;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(124,58,237,.30) 0%, rgba(59,130,246,.12) 45%, transparent 70%);
+  filter: blur(40px);
+  pointer-events: none;
+}
+
+/* TELA MÉDIA (entre o celular e o desktop largo): não cabe lado a lado
+   sem espremer o título. A insígnia sobe, menor, alinhada ao texto. */
+@media (max-width: 1080px) {
+  .auth-marca-centro { grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+  .auth-marca-insignia { order: -1; justify-self: start; }
+  .auth-marca-insignia svg { width: 170px; height: 170px; }
 }
 
 /* ── A ESCADA DE RANKS ─────────────────────────────────────── */
