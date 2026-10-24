@@ -331,14 +331,26 @@ const BannerV4 = {
       String(u.streak_atual ?? 0),
     ];
     gemas.forEach((n, i) => {
-      if (valores[i] !== undefined && n.textContent !== valores[i]) n.textContent = valores[i];
+      if (valores[i] !== undefined && this._textoDe(n) !== valores[i]) {
+        n.textContent = valores[i];
+        if (!this._menosMovimento(el)) this.pulsarGema(n);
+      }
     });
 
     // XP
     const xp = Math.max(0, u.xp_atual || 0);
     const alvo = Math.max(1, u.xp_proximo_nivel || 100);
     const pct = Math.min(100, (xp / alvo) * 100);
-    texto('.pt-xp-num', `${xp.toLocaleString('pt-BR')} / ${alvo.toLocaleString('pt-BR')} XP`);
+    const numXp = el.querySelector('.pt-xp-num');
+    const txtXp = `${xp.toLocaleString('pt-BR')} / ${alvo.toLocaleString('pt-BR')} XP`;
+    if (numXp && this._textoDe(numXp) !== txtXp) numXp.textContent = txtXp;
+
+    // Ganho de XP dentro do MESMO nível. Ao subir de nível o xp_atual
+    // recomeça, e aí quem anuncia é a cerimônia de level-up, não a barra.
+    const xpAntes = Number(el.dataset.v4xp);
+    if (Number.isFinite(xpAntes) && xp > xpAntes) this.reagirXP(el, xp - xpAntes);
+    el.dataset.v4xp = String(xp);
+    this.marcarIminencia(el, pct);
 
     // A barra só é redesenhada se o preenchimento realmente andou.
     // Redesenhar à toa reiniciaria a animação dos feixes a cada
@@ -367,6 +379,112 @@ const BannerV4 = {
       this.ligarAcoes(el, dados, host);
     }
     return true;
+  },
+
+  /* ══════════════════════════════════════════════════════════
+     A VIDA — entrada, contagem e reações (24/10/2026)
+
+     Nada disto toca no `html()`: a marcação continua idêntica à do
+     htmlV4 (há teste comparando as duas). Tudo é posto DEPOIS, no
+     DOM já montado: uma classe que dispara a entrada, os números
+     contando do zero e as reações quando o XP ou uma gema mudam.
+
+     A ENTRADA SÓ ACONTECE NA MONTAGEM. A repintura (a cada missão)
+     nunca recoloca a classe — senão o cartão inteiro reencenaria a
+     chegada a cada número que muda, que é o "piscar" já combatido.
+     ══════════════════════════════════════════════════════════ */
+  QUASE: 85,       // % do nível a partir do qual a barra entra em iminência
+
+  _menosMovimento(el) {
+    const w = el.ownerDocument.defaultView;
+    return !!(w && w.matchMedia && w.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  },
+
+  /* Conta de 0 até o número que JÁ está escrito no nó. Se alguém
+     escrever outro texto no meio (a repintura chegou), a contagem
+     percebe que o texto não é mais o dela e para — quem escreveu
+     por último tem razão. */
+  /* `__contaAlvo` guarda o texto FINAL enquanto a contagem anda: a
+     repintura compara com ele, e não com o número de passagem — senão
+     toda contagem pareceria "valor mudou" e a gema pulsaria à toa no
+     instante em que as relíquias chegam. */
+  _contar(no, host, atraso, formato, textoFinal) {
+    const alvoTxt = textoFinal || no.textContent;
+    const alvo = Number(String(no.textContent).replace(/\D/g, ''));
+    if (!alvo) return;
+    const fmt = formato || (v => v.toLocaleString('pt-BR'));
+    let escrito = fmt(0);
+    no.textContent = escrito;
+    no.__contaAlvo = alvoTxt;
+    const fim = () => { delete no.__contaAlvo; };
+    host.espera(() => {
+      const t0 = performance.now(), dur = 1100;
+      host.quadro(t => {
+        if (no.textContent !== escrito) { fim(); return false; }
+        const p = Math.min(1, (t - t0) / dur);
+        const v = p < 1 ? Math.round(alvo * (1 - Math.pow(1 - p, 3))) : alvo;
+        escrito = p < 1 ? fmt(v) : alvoTxt;
+        no.textContent = escrito;
+        if (p >= 1) fim();
+        return p < 1;
+      });
+    }, atraso);
+  },
+
+  // O texto que o nó TERÁ — o final da contagem, se ela estiver andando.
+  _textoDe(no) { return no.__contaAlvo !== undefined ? no.__contaAlvo : no.textContent; },
+
+  animarEntrada(el, dados, host) {
+    const banner = el.querySelector('.pt-v4-banner');
+    if (!banner || this._menosMovimento(el)) return;
+    banner.classList.add('pt-v4-entrada');
+    /* A classe SAI quando a entrada termina (a última peça, a
+       epígrafe, acaba aos ~2,6s). Se ficasse, uma fileira de relíquias
+       redesenhada horas depois (troca no Altar) replicaria a queda
+       com 1s de atraso — uma pausa sem motivo. As relíquias que chegam
+       da rede logo na abertura ainda pegam a entrada. */
+    host.espera(() => banner.classList.remove('pt-v4-entrada'), 2800);
+
+    // Gemas: cada uma conta quando termina de cair (ver o CSS).
+    el.querySelectorAll('.pt-v4-gemas .gema-valor').forEach((n, i) =>
+      this._contar(n, host, 750 + i * 120));
+
+    /* O número do XP NÃO conta: quem anuncia o XP na entrada é o
+       feixe carregando (CSS). O número fica certo desde o primeiro
+       quadro — é ele que o leitor de tela lê e o teste confere. */
+  },
+
+  /* Iminência: perto de subir de nível, a barra muda de clima. */
+  marcarIminencia(el, pct) {
+    const caixa = el.querySelector('.pt-feixe-caixa');
+    if (caixa) caixa.classList.toggle('pt-quase', pct >= this.QUASE);
+  },
+
+  /* O XP SUBIU: o feixe dá um clarão e o ganho sobe em cima do
+     número. É a única hora em que o hunter VÊ a recompensa entrando
+     na barra — antes o número só trocava. */
+  reagirXP(el, ganho) {
+    const caixa = el.querySelector('.pt-feixe-caixa');
+    if (!caixa || ganho <= 0 || this._menosMovimento(el)) return;
+    caixa.classList.remove('pt-carga');
+    void caixa.offsetWidth;                 // reinicia a animação se vier outro ganho em seguida
+    caixa.classList.add('pt-carga');
+    const tag = el.ownerDocument.createElement('span');
+    tag.className = 'pt-xp-ganho';
+    tag.textContent = `+${ganho.toLocaleString('pt-BR')} XP`;
+    tag.addEventListener('animationend', () => tag.remove(), { once: true });
+    caixa.appendChild(tag);
+  },
+
+  /* Uma gema cujo valor mudou dá um pulso — a moeda que entrou, o
+     streak que cresceu. */
+  pulsarGema(no) {
+    const gema = no.closest && no.closest('.pt-gema');
+    if (!gema) return;
+    gema.classList.remove('pt-gema-pulso');
+    void gema.offsetWidth;
+    gema.classList.add('pt-gema-pulso');
+    gema.addEventListener('animationend', () => gema.classList.remove('pt-gema-pulso'), { once: true });
   },
 
   /* Os cliques não sabem o que fazem: pedem ao hospedeiro. É isto
@@ -468,8 +586,11 @@ if (typeof Pecas !== 'undefined') {
       el.dataset.v4rel = ((dados && dados.reliquias) || []).slice(0, 5).map(c => c.codigo).join(',');
 
       el.dataset.pecaSelo = host.selo;   // prende o BadgeCard a ESTA instância
+      el.dataset.v4xp = String(Math.max(0, u.xp_atual || 0));
       BannerV4.ligarCarrossel(el, host);
       BannerV4.ligarAcoes(el, dados, host);
+      BannerV4.marcarIminencia(el, Number(el.dataset.v4pct));
+      BannerV4.animarEntrada(el, dados, host);
     },
 
     // Repinta o que mudou; devolve false quando a moldura mudou e o

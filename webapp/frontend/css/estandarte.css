@@ -1762,3 +1762,199 @@
 @media (hover: none) {
   .pt-camera { opacity: .9; transform: scale(1); }
 }
+
+
+/* ══════════════════════════════════════════════════════════
+   V4 · A VIDA DO CARTÃO (24/10/2026)
+
+   Pedido do Arquiteto: mais animação e polimento no cartão do
+   hunter, MANTENDO tudo o que já existe. Nada aqui troca desenho —
+   é uma camada por cima, em três tempos:
+
+     1. ENTRADA — só na montagem (`.pt-v4-entrada`, posta pelo
+        banner-v4.js). A grade acende, o circuito se desenha, o
+        retrato surge com um clarão, o nome se revela, o feixe
+        carrega da esquerda para a direita, as relíquias e as gemas
+        caem uma a uma. Os números das gemas contam no JS.
+     2. VIGÍLIA — o que respira sempre: uma onda de energia saindo
+        do hexágono a cada poucos segundos e as gemas flutuando.
+     3. REAÇÃO — ganho de XP (clarão + "+N XP" subindo), gema que
+        muda de valor (pulso), e a barra em iminência perto do nível.
+
+   POR QUE `scale`/`translate`/`rotate` E NÃO `transform`
+   O carrossel do celular anima `transform` nas colunas, e a
+   epígrafe se centra com `transform: translateX(-50%)`. As
+   propriedades individuais se COMPÕEM com o `transform` em vez de
+   substituí-lo — a animação nova não desloca nada do que já estava.
+
+   POR QUE `backwards` E NÃO `both`
+   Animação com `forwards` trava o valor final para sempre, e aí o
+   hover (que mexe em `scale`/`translate`) nunca mais funciona.
+   `backwards` só segura o estado inicial durante o atraso; ao fim,
+   a peça volta a obedecer o resto da cascata.
+   ══════════════════════════════════════════════════════════ */
+
+/* ── 1 · ENTRADA ─────────────────────────────────────────── */
+.pt-v4-entrada .pt-v4-hologrid { animation: v4-grade 1.4s ease-out backwards; }
+@keyframes v4-grade {
+  from { opacity: 0; background-position: 0 -30px, -30px 0; }
+}
+
+/* O circuito se desenha. 420 cobre o traço mais longo do desenho
+   (os arcos têm ~210), então ao fim cada traço aparece inteiro. */
+.pt-v4-entrada .pt-circuito path,
+.pt-v4-entrada .pt-circuito circle {
+  stroke-dasharray: 420;
+  animation: v4-tracar 2s .15s cubic-bezier(.4, 0, .2, 1) backwards;
+}
+@keyframes v4-tracar { from { stroke-dashoffset: 420; } to { stroke-dashoffset: 0; } }
+
+.pt-v4-entrada .pt-retrato { animation: v4-surgir .9s cubic-bezier(.2, .9, .3, 1.25) backwards; }
+@keyframes v4-surgir { from { opacity: 0; scale: .55; } }
+
+/* O nome se revela da esquerda para a direita, com um rastro de luz
+   que esfria até a sombra normal. */
+.pt-v4-entrada .pt-nome { animation: v4-revelar 1s .35s cubic-bezier(.3, 0, .2, 1) backwards; }
+@keyframes v4-revelar {
+  from { clip-path: inset(0 100% 0 0); text-shadow: 0 0 22px #fff, 0 0 40px var(--pt-feixe2); }
+  70%  { text-shadow: 0 0 14px color-mix(in srgb, var(--pt-feixe2) 70%, transparent); }
+  to   { clip-path: inset(0 0 0 0); }
+}
+.pt-v4-entrada .pt-titulo { animation: v4-subir .6s .6s ease-out backwards; }
+.pt-v4-entrada .pt-chips  { animation: v4-subir .6s .75s ease-out backwards; }
+@keyframes v4-subir { from { opacity: 0; translate: 0 8px; } }
+
+/* O feixe CARREGA: o recorte abre da esquerda para a direita. As
+   margens negativas do `inset` deixam o brilho vertical (que vaza da
+   caixa do SVG) aparecer desde o começo. */
+.pt-v4-entrada .pt-v4-trilho-mestre { animation: v4-subir .6s .25s ease-out backwards; }
+.pt-v4-entrada .pt-barra { animation: v4-carregar 1.5s .55s cubic-bezier(.3, 0, .2, 1) backwards; }
+@keyframes v4-carregar {
+  from { clip-path: inset(-40px 100% -40px -40px); }
+  to   { clip-path: inset(-40px -40px -40px -40px); }
+}
+.pt-v4-entrada .pt-xp-num { animation: v4-acender .5s .6s ease-out backwards; }
+@keyframes v4-acender { from { opacity: 0; } }
+
+/* Relíquias: caem girando, uma de cada vez. */
+.pt-v4-entrada .pt-reliquias-fila .est-reliquia {
+  animation: v4-reliquia .7s cubic-bezier(.3, 1.5, .5, 1) backwards;
+}
+.pt-v4-entrada .pt-reliquias-fila .est-reliquia:nth-child(1) { animation-delay: 1.05s; }
+.pt-v4-entrada .pt-reliquias-fila .est-reliquia:nth-child(2) { animation-delay: 1.17s; }
+.pt-v4-entrada .pt-reliquias-fila .est-reliquia:nth-child(3) { animation-delay: 1.29s; }
+.pt-v4-entrada .pt-reliquias-fila .est-reliquia:nth-child(4) { animation-delay: 1.41s; }
+.pt-v4-entrada .pt-reliquias-fila .est-reliquia:nth-child(5) { animation-delay: 1.53s; }
+@keyframes v4-reliquia { from { opacity: 0; scale: .3; rotate: -25deg; } }
+
+.pt-v4-entrada .pt-v4-epigrafe { animation: v4-acender 1s 1.6s ease-out backwards; }
+
+/* ── 2 · VIGÍLIA ─────────────────────────────────────────── */
+/* A onda de energia: um hexágono do tamanho da foto que cresce e se
+   apaga a cada 4,5s. Fica ATRÁS da foto (z-index 1) — é o retrato
+   irradiando, não um aro desenhado por cima. */
+.pt-v4-banner .pt-retrato::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 96px; height: 108px;
+  translate: -50% -50%;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  background: radial-gradient(closest-side, transparent 62%, color-mix(in srgb, var(--pt-rank, #a855f7) 85%, #fff) 80%, transparent 100%);
+  opacity: 0;
+  z-index: 1;
+  pointer-events: none;
+  animation: v4-onda 4.5s 1.2s ease-out infinite;
+}
+@keyframes v4-onda {
+  0%   { opacity: 0;   scale: 1; }
+  8%   { opacity: .85; }
+  55%  { opacity: 0;   scale: 1.85; }
+  100% { opacity: 0;   scale: 1.85; }
+}
+
+/* As gemas flutuam, cada uma num tempo — sincronizadas pareceriam
+   uma peça só subindo e descendo. Na entrada, a queda vem antes. */
+.pt-v4-gemas .pt-gema { animation: v4-flutuar 5.5s ease-in-out infinite; }
+.pt-v4-gemas .pt-gema:nth-child(3) { animation-delay: -1.4s; }
+.pt-v4-gemas .pt-gema:nth-child(4) { animation-delay: -2.8s; }
+.pt-v4-gemas .pt-gema:nth-child(5) { animation-delay: -4.1s; }
+@keyframes v4-flutuar {
+  0%, 100% { translate: 0 0; }
+  50%      { translate: 0 -5px; }
+}
+.pt-v4-entrada .pt-v4-gemas .pt-gema {
+  animation: v4-gema .8s cubic-bezier(.3, 1.45, .5, 1) backwards, v4-flutuar 5.5s ease-in-out infinite;
+}
+/* O primeiro filho é o fio conector; as gemas são do 2º ao 5º. */
+.pt-v4-entrada .pt-v4-gemas .pt-gema:nth-child(2) { animation-delay: .7s,  0s; }
+.pt-v4-entrada .pt-v4-gemas .pt-gema:nth-child(3) { animation-delay: .82s, -1.4s; }
+.pt-v4-entrada .pt-v4-gemas .pt-gema:nth-child(4) { animation-delay: .94s, -2.8s; }
+.pt-v4-entrada .pt-v4-gemas .pt-gema:nth-child(5) { animation-delay: 1.06s, -4.1s; }
+@keyframes v4-gema { from { opacity: 0; scale: .35; } }
+
+/* Hover: a relíquia levanta e acende na cor do campo; a gema brilha. */
+.pt-reliquias .est-reliquia { transition: translate .25s ease, filter .25s ease; }
+.pt-reliquias .est-reliquia:hover {
+  translate: 0 -5px;
+  filter: drop-shadow(0 8px 10px rgba(0,0,0,.75)) drop-shadow(0 0 10px color-mix(in srgb, var(--pt-feixe2) 70%, transparent));
+}
+.pt-v4-gemas .pt-gema { transition: filter .25s ease; }
+.pt-v4-gemas .pt-gema:hover { filter: brightness(1.25) drop-shadow(0 0 12px color-mix(in srgb, var(--pt-feixe2) 60%, transparent)); }
+
+/* ── 3 · REAÇÃO ──────────────────────────────────────────── */
+/* XP entrou: clarão no feixe e o ganho sobe por cima do número. */
+.pt-feixe-caixa.pt-carga .pt-barra { animation: v4-carga 1s ease-out; }
+@keyframes v4-carga {
+  0%   { filter: brightness(1); }
+  18%  { filter: brightness(2.1) drop-shadow(0 0 14px var(--pt-feixe2)); }
+  100% { filter: brightness(1); }
+}
+.pt-xp-ganho {
+  position: absolute;
+  right: 2px; bottom: calc(100% + 12px);
+  font-family: 'Orbitron', monospace;
+  font-size: .78rem; font-weight: 700;
+  color: #fde68a;
+  text-shadow: 0 0 10px rgba(251,191,36,.9), 0 1px 3px rgba(0,0,0,.9);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: v4-ganho 1.7s cubic-bezier(.2, .8, .2, 1) forwards;
+}
+@keyframes v4-ganho {
+  0%   { opacity: 0; translate: 0 8px;   scale: .8; }
+  18%  { opacity: 1; translate: 0 0;     scale: 1.1; }
+  70%  { opacity: 1; }
+  100% { opacity: 0; translate: 0 -24px; scale: 1; }
+}
+
+/* Gema que mudou de valor: um pulso com brilho. Substitui a flutuação
+   durante 0,6s e devolve o lugar a ela ao terminar (o JS tira a classe). */
+.pt-v4-gemas .pt-gema.pt-gema-pulso { animation: v4-pulso-gema .6s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes v4-pulso-gema {
+  0%   { scale: 1;    filter: brightness(1); }
+  40%  { scale: 1.22; filter: brightness(1.6) drop-shadow(0 0 14px var(--pt-feixe2)); }
+  100% { scale: 1;    filter: brightness(1); }
+}
+
+/* IMINÊNCIA: a partir de 85% do nível o feixe pulsa em dourado — o
+   hunter SENTE que vai subir. Depois da carga da entrada, se houver. */
+.pt-feixe-caixa.pt-quase .pt-barra { animation: v4-iminencia 1.8s ease-in-out infinite; }
+.pt-v4-entrada .pt-feixe-caixa.pt-quase .pt-barra {
+  animation: v4-carregar 1.5s .55s cubic-bezier(.3, 0, .2, 1) backwards, v4-iminencia 1.8s 2.1s ease-in-out infinite;
+}
+.pt-feixe-caixa.pt-quase.pt-carga .pt-barra { animation: v4-carga 1s ease-out; }
+@keyframes v4-iminencia {
+  0%, 100% { filter: drop-shadow(0 0 2px rgba(251,191,36,.35)); }
+  50%      { filter: drop-shadow(0 0 12px rgba(251,191,36,.9)) brightness(1.15); }
+}
+.pt-feixe-caixa.pt-quase .pt-xp-num { color: #fde68a; }
+
+/* Quem pediu menos movimento recebe o cartão parado e completo. */
+@media (prefers-reduced-motion: reduce) {
+  .pt-v4-banner .pt-retrato::after,
+  .pt-v4-gemas .pt-gema,
+  .pt-feixe-caixa .pt-barra,
+  .pt-xp-ganho { animation: none !important; }
+  .pt-xp-ganho { display: none; }
+}
