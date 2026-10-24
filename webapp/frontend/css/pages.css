@@ -93,11 +93,14 @@
 
 /* Chamada à esquerda, insígnia CENTRADA no espaço que sobra à direita —
    e não colada na borda do painel, que em tela larga a deixava longe de
-   tudo. Abaixo de 1080px ela sobe para cima do texto (ver o fim do
+   tudo. Abaixo de 1180px ela sobe para cima do texto (ver o fim do
    bloco). */
 .auth-marca-centro {
   display: grid;
-  grid-template-columns: minmax(300px, 520px) minmax(0, 1fr);
+  /* A coluna da insígnia é `1fr` puro: o mínimo dela é o tamanho da
+     medalha, então quem cede quando falta espaço é o TEXTO, nunca ela.
+     Era `minmax(0, 1fr)` e a medalha encolhia até 105px em 1190. */
+  grid-template-columns: minmax(0, 520px) 1fr;
   align-items: center;
   gap: 2rem 3rem;
 }
@@ -146,8 +149,9 @@
 }
 .auth-marca-insignia svg {
   position: relative;
-  width: clamp(200px, 20vw, 400px);
-  height: clamp(200px, 20vw, 400px);
+  flex: none;
+  width: clamp(280px, 27vw, 520px);
+  height: clamp(280px, 27vw, 520px);
 }
 
 /* A AURA mora NA insígnia, não na coluna: assim ela vai junto aonde quer
@@ -167,10 +171,10 @@
 
 /* TELA MÉDIA (entre o celular e o desktop largo): não cabe lado a lado
    sem espremer o título. A insígnia sobe, menor, alinhada ao texto. */
-@media (max-width: 1080px) {
+@media (max-width: 1180px) {
   .auth-marca-centro { grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
   .auth-marca-insignia { order: -1; justify-self: start; }
-  .auth-marca-insignia svg { width: 170px; height: 170px; }
+  .auth-marca-insignia svg { width: 230px; height: 230px; }
 }
 
 /* ── A ESCADA DE RANKS ─────────────────────────────────────── */
