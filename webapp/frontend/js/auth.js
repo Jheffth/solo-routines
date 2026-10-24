@@ -222,7 +222,7 @@ Auth.bindLogin = function() {
         erroEl.textContent = resultado.erro || 'Login ou senha incorretos';
         erroEl.classList.remove('hidden');
       }
-      if (btn) { btn.disabled = false; btn.querySelector('span').textContent = 'Entrar no Sistema'; }
+      if (btn) { btn.disabled = false; btn.querySelector('span').textContent = 'Atravessar o portão'; }
     }
   });
 };

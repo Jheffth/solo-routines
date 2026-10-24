@@ -82,37 +82,30 @@
         <!-- A COLUNA DA MARCA. Some no celular (ver pages.css): numa
              tela estreita ela empurraria o botão Entrar para baixo da
              dobra, e quem abre no celular já decidiu entrar. -->
+        <!-- O PORTÃO (desenho B, escolhido pelo Arquiteto em 23/10/2026).
+             Os três pilares saíram: quem chega aqui já foi convocado, e a
+             escada de ranks diz o mesmo que eles em uma linha só. No lugar
+             do portal do mockup entra a insígnia que já gira no site. -->
         <aside class="auth-marca">
-          <div class="auth-marca-insignia js-insignia-solo" id="login-insignia"></div>
-          <h2 class="auth-marca-titulo">Solo Routines</h2>
-          <p class="auth-marca-assinatura">Sistema de Missões</p>
+          <div class="auth-marca-topo">
+            <span class="auth-marca-titulo">Solo Routines</span>
+            <span class="auth-marca-assinatura">Sistema de Missões</span>
+          </div>
 
-          <!-- OS TRÊS PILARES, no lugar dos cartões de venda do Turno.
-               Aqui não há ninguém a convencer: entra-se por convocação.
-               Então eles não vendem o software — declaram as regras a
-               quem já foi chamado. -->
-          <div class="auth-pilares">
-            <div class="auth-pilar">
-              <span class="auth-pilar-icone">&#9876;&#65039;</span>
-              <span class="auth-pilar-texto">
-                <strong>Missões</strong>
-                A rotina vira desafio, com prazo, dificuldade e recompensa.
-              </span>
+          <div class="auth-marca-centro">
+            <div class="auth-marca-chamada">
+              <span class="auth-marca-selo">Portão aberto</span>
+              <h2 class="auth-marca-frase">Levante-se.</h2>
+              <p class="auth-marca-texto">A rotina é a dungeon. Cada dia cumprido é um andar a menos — e o Sistema anota tudo.</p>
             </div>
-            <div class="auth-pilar">
-              <span class="auth-pilar-icone">&#9760;&#65039;</span>
-              <span class="auth-pilar-texto">
-                <strong>Penitência</strong>
-                Falhar tem preço. O Sistema cobra o que você mesmo firmou em pacto.
-              </span>
-            </div>
-            <div class="auth-pilar">
-              <span class="auth-pilar-icone">&#10024;</span>
-              <span class="auth-pilar-texto">
-                <strong>Ascensão</strong>
-                XP, ranks e insígnias — o progresso que se vê e não se compra.
-              </span>
-            </div>
+            <div class="auth-marca-insignia js-insignia-solo" id="login-insignia"></div>
+          </div>
+
+          <div class="auth-ranks">
+            <span class="auth-ranks-rotulo">Sua escalada de rank</span>
+            <ol class="auth-ranks-lista" aria-label="Ranks de E até S">
+              <li>E</li><li>D</li><li>C</li><li>B</li><li>A</li><li class="rank-s">S</li>
+            </ol>
           </div>
         </aside>
 
@@ -132,8 +125,8 @@
           <a href="#" id="link-ir-registro" class="auth-aba" role="tab" aria-selected="false">Criar Conta</a>
         </div>
 
-        <h1 class="login-title">Bem-vindo, Hunter</h1>
-        <p class="login-desc">Prove seu valor. Evolua todos os dias.<br>O sistema te observa.</p>
+        <h1 class="login-title">Identifique-se, Hunter</h1>
+        <p class="login-desc">As missões de hoje já estão esperando.</p>
         <form class="login-form" id="form-login" autocomplete="off">
           <div class="form-group">
             <label class="form-label" for="login-usuario">Login de Hunter</label>
@@ -154,7 +147,7 @@
           </div>
           <div id="login-erro" class="form-error hidden"></div>
           <button type="submit" class="btn btn-primary btn-full btn-glow" id="btn-entrar">
-            <span>Entrar no Sistema</span>
+            <span>Atravessar o portão</span>
           </button>
         </form>
 
@@ -198,32 +191,25 @@
              duas parecerem uma tela só com duas abas, em vez de dois
              lugares diferentes do app. -->
         <aside class="auth-marca">
-          <div class="auth-marca-insignia js-insignia-solo"></div>
-          <h2 class="auth-marca-titulo">Solo Routines</h2>
-          <p class="auth-marca-assinatura">Somente por convocação</p>
+          <div class="auth-marca-topo">
+            <span class="auth-marca-titulo">Solo Routines</span>
+            <span class="auth-marca-assinatura">Somente por convocação</span>
+          </div>
 
-          <div class="auth-pilares">
-            <div class="auth-pilar">
-              <span class="auth-pilar-icone">&#9876;&#65039;</span>
-              <span class="auth-pilar-texto">
-                <strong>Missões</strong>
-                A rotina vira desafio, com prazo, dificuldade e recompensa.
-              </span>
+          <div class="auth-marca-centro">
+            <div class="auth-marca-chamada">
+              <span class="auth-marca-selo">Convocação</span>
+              <h2 class="auth-marca-frase">Desperte.</h2>
+              <p class="auth-marca-texto">Todo hunter começou no rank E. O convite é o primeiro andar da dungeon.</p>
             </div>
-            <div class="auth-pilar">
-              <span class="auth-pilar-icone">&#9760;&#65039;</span>
-              <span class="auth-pilar-texto">
-                <strong>Penitência</strong>
-                Falhar tem preço. O Sistema cobra o que você mesmo firmou em pacto.
-              </span>
-            </div>
-            <div class="auth-pilar">
-              <span class="auth-pilar-icone">&#10024;</span>
-              <span class="auth-pilar-texto">
-                <strong>Ascensão</strong>
-                XP, ranks e insígnias — o progresso que se vê e não se compra.
-              </span>
-            </div>
+            <div class="auth-marca-insignia js-insignia-solo"></div>
+          </div>
+
+          <div class="auth-ranks">
+            <span class="auth-ranks-rotulo">Sua escalada de rank</span>
+            <ol class="auth-ranks-lista" aria-label="Ranks de E até S">
+              <li class="rank-atual">E</li><li>D</li><li>C</li><li>B</li><li>A</li><li class="rank-s">S</li>
+            </ol>
           </div>
         </aside>
 
@@ -1717,8 +1703,13 @@
        O id continua na primeira, para quem já dependia dele. */
     document.addEventListener('DOMContentLoaded', () => {
       if (!window.SoloFX || !SoloFX._svgMedalhaSolo) return;
-      document.querySelectorAll('.js-insignia-solo').forEach(slot => {
-        slot.innerHTML = SoloFX._svgMedalhaSolo(90);
+      document.querySelectorAll('.js-insignia-solo').forEach((slot, i) => {
+        // IDS ÚNICOS POR CÓPIA. As quatro medalhas traziam os mesmos ids
+        // de gradiente (`soloMetal`…), e `url(#soloMetal)` resolve para a
+        // PRIMEIRA — a da coluna da marca, que no celular está escondida.
+        // Resultado: a insígnia pequena do celular nascia invisível.
+        slot.innerHTML = SoloFX._svgMedalhaSolo(90)
+          .replace(/(id="|url\(#|href="#)(solo\w+)/g, `$1$2-${i}`);
         // O glow externo. O CSS do celular reduz o SVG para 64px; o
         // brilho acompanha porque é filtro, não medida fixa.
         const svg = slot.querySelector('svg');

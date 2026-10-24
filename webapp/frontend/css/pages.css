@@ -28,12 +28,18 @@
    mecânica continua a que já se sabe boa.
    ══════════════════════════════════════════════════════════════ */
 
-/* A moldura de duas colunas. */
+/* O PORTÃO — desenho B, escolhido pelo Arquiteto em 23/10/2026.
+
+   A estrutura de duas colunas continua; mudou a proporção e a pele. A
+   marca virou a cena principal (o painel fica com ~34% e nunca menos de
+   400px), e o formulário deixou de ser um cartão flutuando: é um painel
+   chapado, de altura inteira, com o ouro de rank S como acento. O roxo
+   continua sendo a luz da insígnia e do fundo. */
 .auth-tela {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: 1.05fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(400px, 34%);
   width: 100%;
   min-height: 100vh;
   min-height: 100dvh;
@@ -44,28 +50,25 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 1.5rem;
-  padding: 3.5rem 3rem;
-  text-align: center;
+  justify-content: space-between;
+  gap: 2.5rem;
+  padding: 2.5rem 3.5rem;
   background:
-    radial-gradient(ellipse 90% 70% at 50% 30%, rgba(124,58,237,.18) 0%, transparent 65%),
-    rgba(8, 6, 18, .55);
-  border-right: 1px solid rgba(124,58,237,.28);
+    radial-gradient(ellipse 50% 60% at 72% 50%, rgba(59,130,246,.20) 0%, rgba(124,58,237,.10) 55%, transparent 78%),
+    rgba(7, 7, 15, .6);
   overflow: hidden;
 }
 
-/* A AURA por trás da insígnia. No Turno é dourada; aqui é a mesma cor
-   do glow que a medalha já emite, para as duas lerem como uma luz só. */
+/* A AURA por trás da insígnia: a mesma cor do glow que a medalha emite,
+   para as duas lerem como uma luz só. Segue a insígnia para a direita. */
 .auth-marca::before {
   content: "";
   position: absolute;
-  width: 560px; height: 560px;
-  top: 26%; left: 50%;
+  width: 620px; height: 620px;
+  top: 50%; left: 72%;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(124,58,237,.30) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(124,58,237,.28) 0%, transparent 70%);
   filter: blur(50px);
   pointer-events: none;
 }
@@ -75,99 +78,131 @@
   content: "";
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(rgba(168,85,247,.18) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(168,85,247,.16) 1px, transparent 1px);
   background-size: 30px 30px;
-  opacity: .55;
+  opacity: .5;
   pointer-events: none;
 }
 
 .auth-marca > * { position: relative; z-index: 1; }
 
+.auth-marca-topo {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+}
+.auth-marca-titulo {
+  font-family: var(--font-title);
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  color: #ffffff;
+}
+.auth-marca-assinatura {
+  font-family: var(--font-section);
+  font-size: .75rem;
+  font-weight: 600;
+  letter-spacing: .26em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+/* Chamada à esquerda, insígnia à direita. Quando a coluna aperta, a
+   insígnia desce para baixo do texto em vez de passar por cima dele. */
+.auth-marca-centro {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem 3rem;
+}
+.auth-marca-chamada {
+  flex: 1 1 320px;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+.auth-marca-selo {
+  font-family: var(--font-mono);
+  font-size: .75rem;
+  font-weight: 600;
+  letter-spacing: .3em;
+  text-transform: uppercase;
+  color: var(--cyan-glow);
+}
+.auth-marca-frase {
+  margin: 0;
+  font-family: var(--font-title);
+  font-size: clamp(2.8rem, 4.6vw, 4.2rem);
+  font-weight: 900;
+  line-height: 1.05;
+  color: #f8fafc;
+}
+.auth-marca-texto {
+  margin: 0;
+  max-width: 440px;
+  font-family: var(--font-body);
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: #cbd5e1;
+}
+
+/* A INSÍGNIA GRANDE. O script injeta a medalha a 90px; aqui ela cresce
+   — é SVG, então crescer não custa nitidez. */
 .auth-marca-insignia {
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: center;
   line-height: 0;
 }
-
-.auth-marca-titulo {
-  font-family: var(--font-title);
-  font-size: 2.2rem;
-  font-weight: 800;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  margin: 0;
-  background: linear-gradient(135deg, #ffffff 30%, #c084fc 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+.auth-marca-insignia svg {
+  width: clamp(220px, 24vw, 380px);
+  height: clamp(220px, 24vw, 380px);
 }
 
-.auth-marca-assinatura {
-  font-family: var(--font-section);
-  font-size: .78rem;
-  color: #c084fc;
-  letter-spacing: .18em;
-  text-transform: uppercase;
-  margin: -.8rem 0 .2rem;
-}
-
-/* ── OS TRÊS PILARES ───────────────────────────────────────── */
-.auth-pilares {
+/* ── A ESCADA DE RANKS ─────────────────────────────────────── */
+.auth-ranks {
   display: flex;
   flex-direction: column;
   gap: .8rem;
-  margin-top: .5rem;
-  text-align: left;
-  max-width: 400px;
-  width: 100%;
 }
-
-.auth-pilar {
+.auth-ranks-rotulo {
+  font-family: var(--font-section);
+  font-size: .8rem;
+  font-weight: 600;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+.auth-ranks-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
-  align-items: center;
-  gap: .9rem;
-  padding: .8rem 1rem;
-  background: rgba(124,58,237,.06);
-  border: 1px solid rgba(124,58,237,.25);
-  border-radius: 12px;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  transition: border-color .18s ease, transform .18s ease, background .18s ease;
+  flex-wrap: wrap;
+  gap: .6rem;
 }
-.auth-pilar:hover {
-  border-color: rgba(168,85,247,.6);
-  background: rgba(124,58,237,.12);
-  transform: translateX(4px);
-}
-
-.auth-pilar-icone {
+.auth-ranks-lista li {
+  width: 46px; height: 46px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 38px; height: 38px;
-  flex-shrink: 0;
-  border-radius: 10px;
-  background: rgba(124,58,237,.16);
-  color: #c084fc;
+  font-family: var(--font-digits);
   font-size: 1.05rem;
-}
-
-.auth-pilar-texto {
-  font-family: var(--font-body);
-  font-size: .78rem;
+  font-weight: 900;
   color: #94a3b8;
-  line-height: 1.35;
+  background: rgba(148,163,184,.08);
+  clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
 }
-.auth-pilar-texto strong {
-  display: block;
-  font-family: var(--font-section);
-  font-size: .82rem;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: #ffffff;
-  margin-bottom: .15rem;
-}
+/* Do E ao A o hexágono vai acendendo; o S é ouro maciço. */
+.auth-ranks-lista li:nth-child(3) { color: #93c5fd; background: rgba(59,130,246,.14); }
+.auth-ranks-lista li:nth-child(4) { color: #c4b5fd; background: rgba(124,58,237,.2); }
+.auth-ranks-lista li:nth-child(5) { color: #e9d5ff; background: rgba(168,85,247,.3); }
+.auth-ranks-lista li.rank-s { color: #1a0533; background: var(--gold-bright); }
+/* No registro, o E é onde todo mundo começa. */
+.auth-ranks-lista li.rank-atual { color: #e2e8f0; background: rgba(148,163,184,.22); }
 
 /* ── O PAINEL ──────────────────────────────────────────────── */
 .auth-painel {
@@ -175,6 +210,57 @@
   align-items: center;
   justify-content: center;
   padding: 2.5rem 2rem;
+  background: rgba(13, 13, 26, .96);
+  border-left: 1px solid rgba(251,191,36,.18);
+}
+
+/* O cartão vira só a coluna do formulário: sem moldura, sem sombra. O
+   painel inteiro já é a moldura. Especificidade de dois níveis de
+   propósito — as regras do `.login-card` e do submit vêm depois no
+   arquivo e ganhariam num empate. */
+.auth-painel .login-card {
+  margin: 0;
+  max-width: 380px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.auth-painel .login-title {
+  text-align: left;
+  font-family: var(--font-title);
+  font-size: 1.6rem;
+  color: #f8fafc;
+  text-shadow: none;
+  margin: 0 0 .35rem;
+}
+.auth-painel .login-desc {
+  text-align: left;
+  font-size: .95rem;
+  margin: 0 0 1.6rem;
+}
+.auth-painel .login-form .input:focus,
+.auth-painel .login-form input:focus {
+  border-color: var(--gold-bright) !important;
+  box-shadow: 0 0 0 3px rgba(251,191,36,.18);
+}
+.auth-painel .login-form .btn-primary,
+.auth-painel .login-form button[type='submit'] {
+  background: var(--gold-bright) !important;
+  border: 0 !important;
+  color: #1a0533 !important;
+  font-size: 1.05rem;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  box-shadow: 0 0 24px rgba(251,191,36,.25);
+}
+.auth-painel .login-form .btn-primary:hover,
+.auth-painel .login-form button[type='submit']:hover {
+  background: #fcd34d !important;
+  box-shadow: 0 0 32px rgba(251,191,36,.4);
 }
 
 /* A insígnia pequena, só no celular (onde a coluna da marca some). */
@@ -184,39 +270,33 @@
 .auth-abas {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  padding: 5px;
-  margin: 0 0 1.5rem;
-  background: rgba(124,58,237,.07);
-  border: 1px solid rgba(124,58,237,.28);
-  border-radius: 14px;
+  margin: 0 0 1.75rem;
+  border-bottom: 1px solid rgba(148,163,184,.2);
 }
 
 .auth-aba {
   display: block;
-  padding: .7rem 1rem;
+  padding: .85rem 1rem;
+  margin-bottom: -1px;
   font-family: var(--font-section);
-  font-size: .78rem;
-  font-weight: 600;
-  letter-spacing: .1em;
+  font-size: .95rem;
+  font-weight: 700;
+  letter-spacing: .16em;
   text-transform: uppercase;
   text-align: center;
   text-decoration: none;
   color: #94a3b8;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 10px;
+  border-bottom: 2px solid transparent;
   cursor: pointer;
-  transition: color .18s ease, background .18s ease, border-color .18s ease;
+  transition: color .18s ease, border-color .18s ease;
 }
 .auth-aba:hover { color: #e2e8f0; }
 
 /* A aba da tela em que se está. Não é link — é onde você já está, e
    por isso não tem cursor de mão nem hover. */
 .auth-aba.ativa {
-  color: #ffffff;
-  background: rgba(8, 6, 18, .85);
-  border-color: rgba(168,85,247,.55);
-  box-shadow: 0 4px 14px rgba(124,58,237,.25);
+  color: var(--gold-bright);
+  border-bottom-color: var(--gold-bright);
   cursor: default;
 }
 
@@ -224,7 +304,7 @@
 @media (max-width: 920px) {
   .auth-tela { grid-template-columns: 1fr; }
   .auth-marca { display: none; }
-  .auth-painel { padding: 2rem 1.1rem; align-items: flex-start; }
+  .auth-painel { padding: 2rem 1.25rem; align-items: flex-start; border-left: 0; }
   .auth-logo-topo {
     display: flex;
     justify-content: center;
