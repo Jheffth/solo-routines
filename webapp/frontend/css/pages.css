@@ -39,7 +39,7 @@
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(400px, 34%);
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 34%);
   width: 100%;
   min-height: 100vh;
   min-height: 100dvh;
@@ -52,8 +52,12 @@
   flex-direction: column;
   justify-content: space-between;
   gap: 2.5rem;
-  padding: 2.5rem 3.5rem;
+  padding: 2.5rem clamp(1.75rem, 3.5vw, 3.5rem);
   background: rgba(7, 7, 15, .6);
+  /* Insígnia e título se medem pela largura DESTA coluna (cqw), não da
+     janela: assim os dois cabem lado a lado em qualquer desktop, com ou
+     sem zoom do navegador. */
+  container-type: inline-size;
   overflow: hidden;
 }
 
@@ -93,8 +97,8 @@
 
 /* Chamada à esquerda, insígnia CENTRADA no espaço que sobra à direita —
    e não colada na borda do painel, que em tela larga a deixava longe de
-   tudo. Abaixo de 1180px ela sobe para cima do texto (ver o fim do
-   bloco). */
+   tudo. Ela fica SEMPRE à direita do título; quando a coluna estreita,
+   os dois diminuem juntos (ver os `cqw` abaixo). */
 .auth-marca-centro {
   display: grid;
   /* A coluna da insígnia é `1fr` puro: o mínimo dela é o tamanho da
@@ -102,7 +106,7 @@
      Era `minmax(0, 1fr)` e a medalha encolhia até 105px em 1190. */
   grid-template-columns: minmax(0, 520px) 1fr;
   align-items: center;
-  gap: 2rem 3rem;
+  gap: clamp(1.25rem, 3cqw, 3rem);
 }
 .auth-marca-chamada {
   min-width: 0;
@@ -121,7 +125,7 @@
 .auth-marca-frase {
   margin: 0;
   font-family: var(--font-title);
-  font-size: clamp(2.4rem, 3.6vw, 4.2rem);
+  font-size: clamp(1.9rem, 5.4cqw, 4.2rem);
   font-weight: 900;
   line-height: 1.05;
   color: #f8fafc;
@@ -150,8 +154,8 @@
 .auth-marca-insignia svg {
   position: relative;
   flex: none;
-  width: clamp(280px, 27vw, 520px);
-  height: clamp(280px, 27vw, 520px);
+  width: clamp(170px, 40cqw, 520px);
+  height: clamp(170px, 40cqw, 520px);
 }
 
 /* A AURA mora NA insígnia, não na coluna: assim ela vai junto aonde quer
@@ -167,14 +171,6 @@
   background: radial-gradient(circle, rgba(124,58,237,.30) 0%, rgba(59,130,246,.12) 45%, transparent 70%);
   filter: blur(40px);
   pointer-events: none;
-}
-
-/* TELA MÉDIA (entre o celular e o desktop largo): não cabe lado a lado
-   sem espremer o título. A insígnia sobe, menor, alinhada ao texto. */
-@media (max-width: 1180px) {
-  .auth-marca-centro { grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
-  .auth-marca-insignia { order: -1; justify-self: start; }
-  .auth-marca-insignia svg { width: 230px; height: 230px; }
 }
 
 /* ── A ESCADA DE RANKS ─────────────────────────────────────── */
