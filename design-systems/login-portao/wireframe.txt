@@ -1,0 +1,28 @@
++----------------------------------------------------------------------+------------------------------------------+
+| section                                                              | section2                                 |
+| +-----------------------------+                                      |                                          |
+| | nav                         |                                      |                                          |
+| | [t1: SOLO ROUTINES]         |                                      |  +------------------------------------+  |
+| | [t3: SISTEMA DE MISSÕES]    |                                      |  | form                               |  |
+| +-----------------------------+                                      |  | [btn: ENTRAR]   [lnk: CRIAR CONTA] |  |
+|                                                                      |  |                                    |  |
+| +------------------------+  +------------------------------------+  |  | [h2: IDENTIFIQUE-SE, HUNTER]       |  |
+| | hero                   |  | media                              |  |  | [t2: As missões de hoje já estão   |  |
+| | [t3: PORTÃO ABERTO]    |  | [img: portal de runas]             |  |  |      esperando.]                   |  |
+| | [h1: LEVANTE-SE.]      |  |                                    |  |  |                                    |  |
+| | [t2: A rotina é a      |  |   +----------------------------+   |  |  | [t3: LOGIN DE HUNTER]              |  |
+| |  dungeon. Cada dia     |  |   | quote                      |   |  |  | [ico:escudo] [in: Seu login]       |  |
+| |  cumprido é um andar a]|  |   | [img: insignia]            |   |  |  |                                    |  |
+| | [t2: menos — e o       |  |   +----------------------------+   |  |  | [t3: SUA SENHA]                    |  |
+| |  Sistema anota tudo.]  |  |                                    |  |  | [ico:chave] [in: ...] [ico:olho]   |  |
+| +------------------------+  |                                    |  |  |                                    |  |
+|                             +------------------------------------+  |  | [btn2: ATRAVESSAR O PORTÃO]        |  |
+|                                                                      |  | [t3: ...]                          |  |
+| +-----------------------------+                                      |  | [btn3: [ico:google] Google]        |  |
+| | rail                        |                                      |  +------------------------------------+  |
+| | [t3: SUA ESCALADA DE RANK]  |                                      |                                          |
+| | [ico:rank-e] [ico:rank-d]   |                                      |                                          |
+| | [ico:rank-c] [ico:rank-b]   |                                      |                                          |
+| | [ico:rank-a] [ico:rank-s]   |                                      |                                          |
+| +-----------------------------+                                      |                                          |
++----------------------------------------------------------------------+------------------------------------------+

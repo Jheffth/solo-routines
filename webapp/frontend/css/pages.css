@@ -28,294 +28,487 @@
    mecânica continua a que já se sabe boa.
    ══════════════════════════════════════════════════════════════ */
 
-/* O PORTÃO — desenho B, escolhido pelo Arquiteto em 23/10/2026.
+/* O PORTÃO — o mock do Arquiteto, recriado em 24/10/2026.
+   A recriação de referência (HTML/CSS puros, com o mock ao lado) está em
+   design-systems/login-portao/. Este bloco é a mesma tela, presa aos ids
+   e às classes que o auth.js e o app.js já usam.
 
-   A estrutura de duas colunas continua; mudou a proporção e a pele. A
-   marca virou a cena principal (o painel fica com ~34% e nunca menos de
-   400px), e o formulário deixou de ser um cartão flutuando: é um painel
-   chapado, de altura inteira, com o ouro de rank S como acento. O roxo
-   continua sendo a luz da insígnia e do fundo. */
+   A UNIDADE `--u`. O mock é uma tela de 1920px reduzida para 1278: nele,
+   1u = 10px. A unidade acompanha a largura da janela para que tudo
+   mantenha a proporção do mock (e fique legível: 15px de u em 1920). Não
+   dá para usar rem aqui — mexer na raiz mudaria o app inteiro. */
+#login-screen,
+#registro-screen { --u: clamp(9px, 0.7825vw, 16px); }
+
+/* A moldura: arte com 66% da largura, como no mock (846 de 1278px). */
 .auth-tela {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 34%);
+  grid-template-columns: 66.2% minmax(0, 1fr);
   width: 100%;
   min-height: 100vh;
   min-height: 100dvh;
 }
 
-/* ── A COLUNA DA MARCA ─────────────────────────────────────── */
+/* ── A COLUNA DA ARTE ──────────────────────────────────────── */
+/* Container de TAMANHO: o portal faz "cover" com cqw/cqh e a insígnia
+   fica presa ao vórtice. Altura explícita porque, com contenção de
+   tamanho, `min-height` não chega ao cqh (ele sai 0). */
 .auth-marca {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 2.5rem;
-  padding: 2.5rem clamp(1.75rem, 3.5vw, 3.5rem);
-  background: rgba(7, 7, 15, .6);
-  /* Insígnia e título se medem pela largura DESTA coluna (cqw), não da
-     janela: assim os dois cabem lado a lado em qualquer desktop, com ou
-     sem zoom do navegador. */
-  container-type: inline-size;
   overflow: hidden;
+  container-type: size;
+  height: 100vh;
+  height: 100dvh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: calc(var(--u) * 1.6) calc(var(--u) * 2.4) calc(var(--u) * 1.9);
+  background: #07070f;
 }
 
-/* A trama de pontos. Discreta o bastante para ser textura, não padrão. */
+/* O quadro com a proporção exata da arte (2336×1744), crescido até cobrir
+   a coluna. cqw/cqh medem a caixa de CONTEÚDO; o padding volta na conta. */
+.auth-portal {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(calc(100cqw + var(--u) * 4.8), calc((100cqh + var(--u) * 3.5) * 2336 / 1744));
+  aspect-ratio: 2336 / 1744;
+  transform: translate(-50%, -50%);
+  background: url("../assets/img/login/portal.webp") center / 100% 100% no-repeat;
+}
+
+/* Véu: escurece a esquerda (onde fica o texto) e funde a borda direita
+   no painel escuro. */
 .auth-marca::after {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(rgba(168,85,247,.16) 1px, transparent 1px);
-  background-size: 30px 30px;
-  opacity: .5;
+  background:
+    linear-gradient(90deg, rgba(7,7,15,.45) 0%, rgba(7,7,15,.15) 22%, transparent 38%),
+    linear-gradient(270deg, rgba(10,10,22,.9) 0%, transparent 3%);
   pointer-events: none;
 }
+.auth-marca > .auth-marca-topo,
+.auth-marca > .auth-marca-centro,
+.auth-marca > .auth-ranks { position: relative; z-index: 2; }
 
-.auth-marca > * { position: relative; z-index: 1; }
+/* A INSÍGNIA no centro do vórtice: posição e tamanho em % da própria
+   arte, por isso ela não sai do portal em nenhuma tela. */
+.auth-marca-insignia {
+  position: absolute;
+  left: 64.5%;
+  top: 45%;
+  width: 31%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  line-height: 0;
+}
+.auth-marca-insignia::before {
+  content: "";
+  position: absolute;
+  inset: -35%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(216,180,254,.35) 0%, rgba(168,85,247,.18) 35%, transparent 65%);
+  filter: blur(12px);
+}
+.auth-marca-insignia svg {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
 
+/* ── A marca ── */
 .auth-marca-topo {
   display: flex;
   flex-direction: column;
-  gap: .2rem;
+  gap: calc(var(--u) * .4);
 }
 .auth-marca-titulo {
-  font-family: var(--font-title);
-  font-size: 1.25rem;
+  font-family: 'Cinzel', var(--font-title);
   font-weight: 700;
-  letter-spacing: .06em;
-  color: #ffffff;
+  font-size: calc(var(--u) * 1.15);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 0 calc(var(--u) * .8) rgba(196,181,253,.55);
+  line-height: 1;
+}
+/* O traço de luz sob a marca. */
+.auth-marca-titulo::after {
+  content: "";
+  display: block;
+  width: calc(var(--u) * 14.7);
+  height: 1px;
+  margin: calc(var(--u) * .45) 0 0 calc(var(--u) * -1.4);
+  background: linear-gradient(90deg, transparent, rgba(165,180,252,.95) 35%, rgba(165,180,252,.5) 65%, transparent);
+  box-shadow: 0 0 calc(var(--u) * .5) rgba(129,140,248,.8);
 }
 .auth-marca-assinatura {
   font-family: var(--font-section);
-  font-size: .75rem;
   font-weight: 600;
-  letter-spacing: .26em;
+  font-size: calc(var(--u) * .68);
+  letter-spacing: .2em;
   text-transform: uppercase;
-  color: #94a3b8;
+  color: #b9bdd3;
+  line-height: 1;
 }
 
-/* Chamada à esquerda, insígnia CENTRADA no espaço que sobra à direita —
-   e não colada na borda do painel, que em tela larga a deixava longe de
-   tudo. Ela fica SEMPRE à direita do título; quando a coluna estreita,
-   os dois diminuem juntos (ver os `cqw` abaixo). */
+/* ── A chamada ── */
 .auth-marca-centro {
-  display: grid;
-  /* A coluna da insígnia é `1fr` puro: o mínimo dela é o tamanho da
-     medalha, então quem cede quando falta espaço é o TEXTO, nunca ela.
-     Era `minmax(0, 1fr)` e a medalha encolhia até 105px em 1190. */
-  grid-template-columns: minmax(0, 520px) 1fr;
-  align-items: center;
-  gap: clamp(1.25rem, 3cqw, 3rem);
+  align-self: center;
+  margin-top: calc(var(--u) * -.6);
 }
 .auth-marca-chamada {
-  min-width: 0;
+  max-width: calc(var(--u) * 25);
   display: flex;
   flex-direction: column;
-  gap: 1.1rem;
 }
 .auth-marca-selo {
-  font-family: var(--font-mono);
-  font-size: .75rem;
-  font-weight: 600;
-  letter-spacing: .3em;
+  font-family: var(--font-section);
+  font-weight: 700;
+  font-size: calc(var(--u) * .82);
+  letter-spacing: .24em;
   text-transform: uppercase;
-  color: var(--cyan-glow);
+  color: #4e9ea6;
+  line-height: 1;
 }
 .auth-marca-frase {
-  margin: 0;
+  margin: calc(var(--u) * .9) 0 calc(var(--u) * .75);
   font-family: var(--font-title);
-  font-size: clamp(1.9rem, 5.4cqw, 4.2rem);
   font-weight: 900;
-  line-height: 1.05;
-  color: #f8fafc;
-  /* "Levante-se." quebrava no hífen em 1280px. É uma palavra só. */
+  font-size: calc(var(--u) * 3.37);
+  line-height: 1;
+  color: #ece8ff;
+  text-shadow: 0 0 calc(var(--u) * 1.6) rgba(168,85,247,.55), 0 calc(var(--u) * .2) calc(var(--u) * .4) rgba(0,0,0,.6);
+  /* "Levante-se." é uma palavra só: não quebra no hífen. */
   white-space: nowrap;
 }
 .auth-marca-texto {
   margin: 0;
-  max-width: 440px;
   font-family: var(--font-body);
-  font-size: 1.05rem;
-  line-height: 1.6;
-  color: #cbd5e1;
+  font-size: calc(var(--u) * .95);
+  line-height: 1.45;
+  color: #d4d2e4;
 }
 
-/* A INSÍGNIA GRANDE. O script injeta a medalha a 90px; aqui ela cresce
-   — é SVG, então crescer não custa nitidez. */
-.auth-marca-insignia {
-  position: relative;
-  justify-self: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 0;
-}
-.auth-marca-insignia svg {
-  position: relative;
-  flex: none;
-  width: clamp(170px, 40cqw, 520px);
-  height: clamp(170px, 40cqw, 520px);
-}
-
-/* A AURA mora NA insígnia, não na coluna: assim ela vai junto aonde quer
-   que a medalha esteja. Mesma cor do glow que a medalha emite, para as
-   duas lerem como uma luz só. */
-.auth-marca-insignia::before {
-  content: "";
-  position: absolute;
-  width: 170%; height: 170%;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(124,58,237,.30) 0%, rgba(59,130,246,.12) 45%, transparent 70%);
-  filter: blur(40px);
-  pointer-events: none;
-}
-
-/* ── A ESCADA DE RANKS ─────────────────────────────────────── */
+/* ── A escada de ranks ── */
 .auth-ranks {
   display: flex;
   flex-direction: column;
-  gap: .8rem;
+  gap: calc(var(--u) * .6);
 }
 .auth-ranks-rotulo {
   font-family: var(--font-section);
-  font-size: .8rem;
-  font-weight: 600;
-  letter-spacing: .22em;
+  font-weight: 700;
+  font-size: calc(var(--u) * .72);
+  letter-spacing: .18em;
   text-transform: uppercase;
-  color: #94a3b8;
+  color: #9da1b8;
+  line-height: 1;
 }
 .auth-ranks-lista {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
-  flex-wrap: wrap;
-  gap: .6rem;
+  gap: calc(var(--u) * .5);
 }
+/* O cristal é imagem (gerada do mock, sem letra); a letra é texto por
+   cima, para continuar legível e acessível. */
 .auth-ranks-lista li {
-  width: 46px; height: 46px;
+  position: relative;
+  width: calc(var(--u) * 2.3);
+  height: calc(var(--u) * 2.8);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-digits);
-  font-size: 1.05rem;
-  font-weight: 900;
-  color: #94a3b8;
-  background: rgba(148,163,184,.08);
-  clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+  font-family: var(--font-section);
+  font-weight: 700;
+  font-size: calc(var(--u) * .85);
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,.75);
+  background: center / contain no-repeat;
 }
-/* Do E ao A o hexágono vai acendendo; o S é ouro maciço. */
-.auth-ranks-lista li:nth-child(3) { color: #93c5fd; background: rgba(59,130,246,.14); }
-.auth-ranks-lista li:nth-child(4) { color: #c4b5fd; background: rgba(124,58,237,.2); }
-.auth-ranks-lista li:nth-child(5) { color: #e9d5ff; background: rgba(168,85,247,.3); }
-.auth-ranks-lista li.rank-s { color: #1a0533; background: var(--gold-bright); }
-/* No registro, o E é onde todo mundo começa. */
-.auth-ranks-lista li.rank-atual { color: #e2e8f0; background: rgba(148,163,184,.22); }
+.auth-ranks-lista li.rank-e { background-image: url("../assets/img/login/rank-e.png"); text-shadow: 0 1px 2px rgba(30,41,59,.9); }
+.auth-ranks-lista li.rank-d { background-image: url("../assets/img/login/rank-d.png"); }
+.auth-ranks-lista li.rank-c { background-image: url("../assets/img/login/rank-c.png"); }
+.auth-ranks-lista li.rank-b { background-image: url("../assets/img/login/rank-b.png"); }
+.auth-ranks-lista li.rank-a { background-image: url("../assets/img/login/rank-a.png"); }
+.auth-ranks-lista li.rank-s { background-image: url("../assets/img/login/rank-s.png"); color: #4a3205; text-shadow: 0 1px 0 rgba(255,240,180,.6); }
 
-/* ── O PAINEL ──────────────────────────────────────────────── */
+/* ── O PAINEL DIREITO ──────────────────────────────────────── */
 .auth-painel {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2.5rem 2rem;
-  background: rgba(13, 13, 26, .96);
-  border-left: 1px solid rgba(251,191,36,.18);
+  padding: calc(var(--u) * 2) calc(var(--u) * 1.6);
+  background:
+    radial-gradient(ellipse 70% 45% at 55% 48%, rgba(59,130,246,.10), transparent 70%),
+    radial-gradient(ellipse 40% 70% at 0% 55%, rgba(124,58,237,.22), transparent 70%),
+    linear-gradient(180deg, #0b0a18 0%, #0a0a16 55%, #06060d 100%);
 }
 
-/* O cartão vira só a coluna do formulário: sem moldura, sem sombra. O
-   painel inteiro já é a moldura. Especificidade de dois níveis de
-   propósito — as regras do `.login-card` e do submit vêm depois no
-   arquivo e ganhariam num empate. */
+/* ── O CARTÃO: vidro chanfrado com degrau no meio do topo e da base,
+   em duas camadas com o mesmo recorte — borda (::before) e vidro
+   (::after). Dois níveis de especificidade de propósito: as regras do
+   `.login-card` vêm depois no arquivo e ganhariam num empate. */
 .auth-painel .login-card {
+  --c: calc(var(--u) * 1.4);
+  --d: calc(var(--u) * .5);
+  --recorte: polygon(
+    var(--c) var(--d), calc(32% - var(--d)) var(--d), 32% 0, 68% 0, calc(68% + var(--d)) var(--d),
+    calc(100% - var(--c)) var(--d), 100% calc(var(--d) + var(--c)),
+    100% calc(100% - var(--d) - var(--c)), calc(100% - var(--c)) calc(100% - var(--d)),
+    calc(68% + var(--d)) calc(100% - var(--d)), 68% 100%, 32% 100%, calc(32% - var(--d)) calc(100% - var(--d)),
+    var(--c) calc(100% - var(--d)), 0 calc(100% - var(--d) - var(--c)), 0 calc(var(--d) + var(--c))
+  );
+  position: relative;
+  isolation: isolate;
+  width: calc(var(--u) * 28);
+  max-width: 100%;
   margin: 0;
-  max-width: 380px;
-  padding: 0;
+  padding: calc(var(--u) * 3) calc(var(--u) * 3.1);
   background: transparent;
   border: 0;
   border-radius: 0;
   box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  filter: drop-shadow(0 0 calc(var(--u) * .35) rgba(165,180,252,.45)) drop-shadow(0 0 calc(var(--u) * 1.8) rgba(99,102,241,.35));
 }
-.auth-painel .login-title {
-  text-align: left;
-  font-family: var(--font-title);
-  font-size: 1.6rem;
-  color: #f8fafc;
-  text-shadow: none;
-  margin: 0 0 .35rem;
+.auth-painel .login-card::before,
+.auth-painel .login-card::after {
+  content: "";
+  position: absolute;
+  clip-path: var(--recorte);
+  z-index: -1;
 }
-.auth-painel .login-desc {
-  text-align: left;
-  font-size: .95rem;
-  margin: 0 0 1.6rem;
+.auth-painel .login-card::before {
+  inset: 0;
+  background: linear-gradient(180deg, rgba(214,216,255,.9), rgba(150,150,210,.6) 45%, rgba(165,225,255,.8));
 }
-.auth-painel .login-form .input:focus,
-.auth-painel .login-form input:focus {
-  border-color: var(--gold-bright) !important;
-  box-shadow: 0 0 0 3px rgba(251,191,36,.18);
-}
-.auth-painel .login-form .btn-primary,
-.auth-painel .login-form button[type='submit'] {
-  background: var(--gold-bright) !important;
-  border: 0 !important;
-  color: #1a0533 !important;
-  font-size: 1.05rem;
-  letter-spacing: .18em;
-  text-transform: uppercase;
-  box-shadow: 0 0 24px rgba(251,191,36,.25);
-}
-.auth-painel .login-form .btn-primary:hover,
-.auth-painel .login-form button[type='submit']:hover {
-  background: #fcd34d !important;
-  box-shadow: 0 0 32px rgba(251,191,36,.4);
+.auth-painel .login-card::after {
+  inset: 2px;
+  background: linear-gradient(180deg, rgba(52,47,96,.9) 0%, rgba(30,34,58,.9) 38%, rgba(30,34,58,.9) 78%, rgba(42,64,92,.9) 100%);
 }
 
-/* A insígnia pequena, só no celular (onde a coluna da marca some). */
+/* A luz ciano nos degraus do topo e da base. */
+.auth-luz {
+  position: absolute;
+  left: 34%;
+  width: 32%;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, #a5f3fc 30%, #e0f2fe 50%, #a5f3fc 70%, transparent);
+  box-shadow: 0 0 calc(var(--u) * .7) 1px rgba(34,211,238,.75);
+}
+.auth-luz-topo { top: 0; }
+.auth-luz-base { bottom: 0; }
+
+/* Os clarões nos cantos chanfrados. */
+.auth-brilho {
+  position: absolute;
+  width: calc(var(--u) * 2.6);
+  height: calc(var(--u) * 2.6);
+  background:
+    linear-gradient(135deg, transparent 47%, rgba(255,255,255,.95) 50%, transparent 53%),
+    radial-gradient(circle, rgba(255,255,255,.95) 0%, rgba(165,225,255,.6) 16%, rgba(99,102,241,.22) 42%, transparent 68%);
+  -webkit-mask-image: radial-gradient(circle, #000 25%, transparent 62%);
+  mask-image: radial-gradient(circle, #000 25%, transparent 62%);
+  pointer-events: none;
+}
+.auth-brilho-tl { top: calc(var(--u) * -.55); left: calc(var(--u) * -.55); }
+.auth-brilho-br { bottom: calc(var(--u) * -.55); right: calc(var(--u) * -.55); }
+
+/* A insígnia pequena, só no celular (onde a coluna da arte some). */
 .auth-logo-topo { display: none; }
 
-/* ── AS ABAS ───────────────────────────────────────────────── */
+/* ── AS ABAS ── */
 .auth-abas {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  margin: 0 0 1.75rem;
-  border-bottom: 1px solid rgba(148,163,184,.2);
+  margin: 0;
+  border-bottom: 1px solid rgba(148,163,184,.18);
 }
-
 .auth-aba {
+  position: relative;
   display: block;
-  padding: .85rem 1rem;
-  margin-bottom: -1px;
+  padding: 0 0 calc(var(--u) * .85);
   font-family: var(--font-section);
-  font-size: .95rem;
+  font-size: calc(var(--u) * .72);
   font-weight: 700;
-  letter-spacing: .16em;
+  letter-spacing: .14em;
   text-transform: uppercase;
   text-align: center;
   text-decoration: none;
-  color: #94a3b8;
-  border-bottom: 2px solid transparent;
+  line-height: 1;
+  color: #c3c6d6;
   cursor: pointer;
-  transition: color .18s ease, border-color .18s ease;
+  transition: color .18s ease;
 }
-.auth-aba:hover { color: #e2e8f0; }
+.auth-aba:hover { color: #fff; }
+/* A aba da tela em que se está: ouro, traço e ponto de luz. Não é link
+   — é onde você já está, por isso sem cursor de mão. */
+.auth-aba.ativa { color: #e7b84a; cursor: default; }
+.auth-aba.ativa::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(231,184,74,.55), #f5d27a 50%, rgba(231,184,74,.55));
+}
+.auth-aba.ativa::before {
+  content: "";
+  position: absolute;
+  left: 50%; bottom: calc(var(--u) * -.3);
+  width: calc(var(--u) * .55);
+  height: calc(var(--u) * .55);
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: #fff3c4;
+  box-shadow: 0 0 calc(var(--u) * .5) calc(var(--u) * .15) rgba(251,191,36,.9);
+}
 
-/* A aba da tela em que se está. Não é link — é onde você já está, e
-   por isso não tem cursor de mão nem hover. */
-.auth-aba.ativa {
-  color: var(--gold-bright);
-  border-bottom-color: var(--gold-bright);
-  cursor: default;
+/* ── Título e campos ── */
+.auth-painel .login-title {
+  margin: calc(var(--u) * 1.6) 0 calc(var(--u) * .45);
+  text-align: left;
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: calc(var(--u) * 1.3);
+  line-height: 1.1;
+  color: #f1f0f8;
+  text-shadow: none;
 }
+.auth-painel .login-desc {
+  margin: 0;
+  text-align: left;
+  font-size: calc(var(--u) * .85);
+  line-height: 1.4;
+  color: #aeb3c6;
+}
+.auth-painel .login-form {
+  gap: 0;
+  margin-top: calc(var(--u) * 1.5);
+}
+/* O `.form-group` global tem gap de 8px e o input é inline-block (mais
+   4px de linha): os dois juntos afastavam o campo do rótulo. */
+.auth-painel .form-group { margin: 0 0 calc(var(--u) * 1.1); gap: 0; }
+.auth-painel .login-form .input { display: block; width: 100%; }
+.auth-painel .login-form .form-label {
+  font-family: var(--font-section);
+  font-weight: 700;
+  font-size: calc(var(--u) * .64);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #b8b2d6;
+  line-height: 1;
+  margin: 0 0 calc(var(--u) * .95);
+}
+.auth-painel .login-form .input {
+  height: calc(var(--u) * 2.3);
+  padding: 0 calc(var(--u) * 2.6) 0 calc(var(--u) * 2.5) !important;
+  background: #15122b !important;
+  border: 1px solid rgba(139,92,246,.55) !important;
+  border-radius: calc(var(--u) * .3);
+  color: #f1f5f9 !important;
+  font: 500 calc(var(--u) * .8) var(--font-body);
+}
+.auth-painel .login-form .input::placeholder { color: #7f7d99 !important; }
+.auth-painel .login-form .input:focus {
+  border-color: #a78bfa !important;
+  box-shadow: 0 0 0 calc(var(--u) * .2) rgba(139,92,246,.25);
+  background: #18142f !important;
+}
+/* Ícones dos campos (gerados do mock). */
+.auth-painel .input-icon.ico-escudo,
+.auth-painel .input-icon.ico-chave {
+  left: calc(var(--u) * 1);
+  width: calc(var(--u) * 1.05);
+  height: calc(var(--u) * 1.05);
+  background: center / contain no-repeat;
+  font-size: 0;
+}
+.auth-painel .input-icon.ico-escudo { background-image: url("../assets/img/login/escudo.png"); }
+.auth-painel .input-icon.ico-chave  { background-image: url("../assets/img/login/chave.png"); }
+.auth-painel .btn-olho { right: calc(var(--u) * .3); color: #b8b6cc; }
+.auth-painel .btn-olho svg { width: calc(var(--u) * 1.1); height: calc(var(--u) * 1.1); }
+.auth-painel .form-error { margin: 0 0 calc(var(--u) * .9); font-size: calc(var(--u) * .8); }
+
+/* ── O BOTÃO DOURADO EM CHAMAS ──
+   A chama é a imagem gerada do mock, por cima do botão e vazando dele.
+   Os recuos do ::after encaixam o contorno do fogo na borda do botão. */
+.auth-painel .login-form button[type='submit'] {
+  position: relative;
+  height: calc(var(--u) * 2.4);
+  padding: 0;
+  margin: 0;
+  border: 0 !important;
+  border-radius: calc(var(--u) * .3);
+  background:
+    radial-gradient(ellipse 45% 70% at 50% 35%, rgba(255,247,200,.85), transparent 70%),
+    linear-gradient(180deg, #ffd65a 0%, #fbbf33 50%, #f2a822 100%) !important;
+  box-shadow: 0 0 calc(var(--u) * 1.2) rgba(251,191,36,.55), inset 0 1px 0 rgba(255,255,255,.6);
+  color: #3d2903 !important;
+  font-family: var(--font-section);
+  font-weight: 700;
+  font-size: calc(var(--u) * .88);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+.auth-painel .login-form button[type='submit']::after {
+  content: "";
+  position: absolute;
+  inset: calc(var(--u) * -2.6) calc(var(--u) * -1.45) calc(var(--u) * -1.1) calc(var(--u) * -1.2);
+  background: url("../assets/img/login/chama.webp") center / 100% 100% no-repeat;
+  opacity: .9;
+  pointer-events: none;
+}
+.auth-painel .login-form button[type='submit'] span { position: relative; z-index: 1; }
+/* `.login-form button[type='submit']:hover`, mais abaixo, tem a mesma
+   força e `!important`: sem repetir o fundo aqui, o hover voltava roxo. */
+.auth-painel .login-form button[type='submit']:hover {
+  background:
+    radial-gradient(ellipse 45% 70% at 50% 35%, rgba(255,247,200,.9), transparent 70%),
+    linear-gradient(180deg, #ffdc6e 0%, #fcc53f 50%, #f5ae2a 100%) !important;
+  transform: none;
+  filter: brightness(1.06);
+  box-shadow: 0 0 calc(var(--u) * 1.6) rgba(251,191,36,.7), inset 0 1px 0 rgba(255,255,255,.6);
+}
+
+/* ── Login social ── */
+.auth-painel .oauth-bloco { margin-top: calc(var(--u) * 1.25); }
+.auth-painel .oauth-sep {
+  margin: 0 0 calc(var(--u) * .8);
+  font-size: calc(var(--u) * .62);
+  letter-spacing: .12em;
+  color: #6f7090;
+}
+.auth-painel .oauth-sep::before,
+.auth-painel .oauth-sep::after { display: none; }
+.auth-painel .oauth-sep { justify-content: center; }
+.auth-painel .btn-oauth {
+  height: calc(var(--u) * 2.2);
+  padding: 0 calc(var(--u) * 1);
+  gap: calc(var(--u) * .5);
+  background: linear-gradient(180deg, rgba(120,122,170,.55), rgba(70,74,110,.6));
+  border: 1px solid rgba(200,200,245,.65);
+  border-radius: calc(var(--u) * .4);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 0 calc(var(--u) * .6) rgba(165,180,252,.25);
+  font: 600 calc(var(--u) * .8) var(--font-body);
+}
+.auth-painel .btn-oauth svg { width: calc(var(--u) * 1); height: calc(var(--u) * 1); }
 
 /* ── CELULAR ───────────────────────────────────────────────── */
 @media (max-width: 920px) {
+  #login-screen,
+  #registro-screen { --u: 12px; }
   .auth-tela { grid-template-columns: 1fr; }
   .auth-marca { display: none; }
-  .auth-painel { padding: 2rem 1.25rem; align-items: flex-start; border-left: 0; }
+  .auth-painel { padding: calc(var(--u) * 2.4) 1rem; align-items: flex-start; }
   .auth-logo-topo {
     display: flex;
     justify-content: center;
@@ -326,6 +519,7 @@
      duplicaria o SVG inteiro por causa de 26 pixels. */
   .auth-logo-topo svg { width: 64px; height: 64px; }
 }
+
 
 /* ─── LOGIN SCREEN ─── */
 #login-screen,

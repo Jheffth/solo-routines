@@ -7,7 +7,7 @@
   <title>Solo Routines</title>
   <link rel="icon" type="image/png" href="/favicon.png">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/design-system.css">
   <link rel="stylesheet" href="css/animations.css">
   <link rel="stylesheet" href="css/windows.css">
@@ -82,11 +82,14 @@
         <!-- A COLUNA DA MARCA. Some no celular (ver pages.css): numa
              tela estreita ela empurraria o botão Entrar para baixo da
              dobra, e quem abre no celular já decidiu entrar. -->
-        <!-- O PORTÃO (desenho B, escolhido pelo Arquiteto em 23/10/2026).
-             Os três pilares saíram: quem chega aqui já foi convocado, e a
-             escada de ranks diz o mesmo que eles em uma linha só. No lugar
-             do portal do mockup entra a insígnia que já gira no site. -->
+        <!-- O PORTÃO (mock do Arquiteto, recriado em 24/10/2026 — ver
+             design-systems/login-portao). A arte do portal é fundo; a
+             insígnia que gira no site fica presa ao centro do vórtice,
+             dentro de `.auth-portal`, que acompanha o "cover" da imagem. -->
         <aside class="auth-marca">
+          <div class="auth-portal" aria-hidden="true">
+            <div class="auth-marca-insignia js-insignia-solo" id="login-insignia"></div>
+          </div>
           <div class="auth-marca-topo">
             <span class="auth-marca-titulo">Solo Routines</span>
             <span class="auth-marca-assinatura">Sistema de Missões</span>
@@ -98,19 +101,22 @@
               <h2 class="auth-marca-frase">Levante-se.</h2>
               <p class="auth-marca-texto">A rotina é a dungeon. Cada dia cumprido é um andar a menos — e o Sistema anota tudo.</p>
             </div>
-            <div class="auth-marca-insignia js-insignia-solo" id="login-insignia"></div>
           </div>
 
           <div class="auth-ranks">
             <span class="auth-ranks-rotulo">Sua escalada de rank</span>
             <ol class="auth-ranks-lista" aria-label="Ranks de E até S">
-              <li>E</li><li>D</li><li>C</li><li>B</li><li>A</li><li class="rank-s">S</li>
+              <li class="rank-e">E</li><li class="rank-d">D</li><li class="rank-c">C</li><li class="rank-b">B</li><li class="rank-a">A</li><li class="rank-s">S</li>
             </ol>
           </div>
         </aside>
 
         <main class="auth-painel">
       <div class="login-card">
+        <span class="auth-luz auth-luz-topo" aria-hidden="true"></span>
+        <span class="auth-luz auth-luz-base" aria-hidden="true"></span>
+        <span class="auth-brilho auth-brilho-tl" aria-hidden="true"></span>
+        <span class="auth-brilho auth-brilho-br" aria-hidden="true"></span>
         <!-- Só no celular, onde a coluna da marca não aparece. -->
         <div class="auth-logo-topo js-insignia-solo"></div>
 
@@ -131,14 +137,14 @@
           <div class="form-group">
             <label class="form-label" for="login-usuario">Login de Hunter</label>
             <div class="input-icon-wrap">
-              <span class="input-icon">&#128737;&#65039;</span>
+              <span class="input-icon ico-escudo" aria-hidden="true"></span>
               <input type="text" class="input" id="login-usuario" placeholder="Seu login" autocomplete="username" required>
             </div>
           </div>
           <div class="form-group">
-            <label class="form-label" for="login-senha">Senha Secreta</label>
+            <label class="form-label" for="login-senha">Sua senha</label>
             <div class="input-icon-wrap input-pw-wrap">
-              <span class="input-icon">&#128273;</span>
+              <span class="input-icon ico-chave" aria-hidden="true"></span>
               <input type="password" class="input" id="login-senha" placeholder="..." autocomplete="current-password" required>
               <button type="button" class="btn-olho" id="olho-login" tabindex="-1" title="Revelar senha" aria-label="Revelar senha">
                 <svg id="olho-login-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -191,6 +197,9 @@
              duas parecerem uma tela só com duas abas, em vez de dois
              lugares diferentes do app. -->
         <aside class="auth-marca">
+          <div class="auth-portal" aria-hidden="true">
+            <div class="auth-marca-insignia js-insignia-solo"></div>
+          </div>
           <div class="auth-marca-topo">
             <span class="auth-marca-titulo">Solo Routines</span>
             <span class="auth-marca-assinatura">Somente por convocação</span>
@@ -202,19 +211,22 @@
               <h2 class="auth-marca-frase">Desperte.</h2>
               <p class="auth-marca-texto">Todo hunter começou no rank E. O convite é o primeiro andar da dungeon.</p>
             </div>
-            <div class="auth-marca-insignia js-insignia-solo"></div>
           </div>
 
           <div class="auth-ranks">
             <span class="auth-ranks-rotulo">Sua escalada de rank</span>
             <ol class="auth-ranks-lista" aria-label="Ranks de E até S">
-              <li class="rank-atual">E</li><li>D</li><li>C</li><li>B</li><li>A</li><li class="rank-s">S</li>
+              <li class="rank-e rank-atual">E</li><li class="rank-d">D</li><li class="rank-c">C</li><li class="rank-b">B</li><li class="rank-a">A</li><li class="rank-s">S</li>
             </ol>
           </div>
         </aside>
 
         <main class="auth-painel">
       <div class="login-card">
+        <span class="auth-luz auth-luz-topo" aria-hidden="true"></span>
+        <span class="auth-luz auth-luz-base" aria-hidden="true"></span>
+        <span class="auth-brilho auth-brilho-tl" aria-hidden="true"></span>
+        <span class="auth-brilho auth-brilho-br" aria-hidden="true"></span>
         <div class="auth-logo-topo js-insignia-solo"></div>
 
         <div class="auth-abas" role="tablist">
