@@ -8,6 +8,7 @@ passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
 python-multipart==0.0.9
 aiofiles==23.2.1
+Pillow>=10.4,<13  # leitura e validação dos prints de exercícios
 apscheduler==3.10.4
 requests==2.32.3
 python-dotenv==1.0.1

@@ -1,0 +1,31 @@
+/* Acompanhamento de movimento, adaptado à navegação do Rotinas. */
+#treinos-conteudo { display:grid; gap:18px; padding-bottom:32px; }
+#treinos-conteudo .card { padding:20px; }
+#treinos-conteudo h2 { font-size:1.15rem; margin:0 0 16px; }
+.tr-filtros,.tr-form { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; align-items:end; }
+#treinos-conteudo label { display:grid; gap:8px; font-size:.88rem; }
+#treinos-conteudo input:not([type=checkbox]),#treinos-conteudo select { width:100%; min-height:42px; border:1px solid var(--border-color,#3d344e); border-radius:8px; padding:9px 12px; background:var(--bg-card,#191322); color:var(--text-primary,#eee); box-sizing:border-box; }
+.tr-numeros { display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:12px; }
+.tr-numeros article { display:flex; flex-direction:column; gap:9px; border-top:2px solid #a78bfa; }
+.tr-numeros strong { font-size:1.65rem; }
+.tr-numeros span,.tr-legenda { font-size:.82rem; color:var(--text-muted,#b8adca); line-height:1.6; }
+.tr-acoes { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+.tr-form .tr-acoes,.tr-confirmar { grid-column:1/-1; }
+#treinos-conteudo label.tr-confirmar { display:flex; align-items:center; }
+.tr-metas { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:18px; }
+.tr-meta { padding:18px; border:1px solid var(--border-color,#3d344e); border-radius:12px; }
+.tr-meta h3 { font-size:1rem; margin:0 0 10px; overflow-wrap:anywhere; }
+.tr-meta p { font-size:.85rem; margin:10px 0; line-height:1.5; }
+.tr-meta progress { display:block; width:100%; height:12px; margin:16px 0; accent-color:#a78bfa; }
+.tr-tabela { overflow-x:auto; }
+.tr-tabela table { width:100%; border-collapse:collapse; font-size:.85rem; }
+.tr-tabela th,.tr-tabela td { text-align:left; padding:14px 10px; border-bottom:1px solid var(--border-color,#3d344e); }
+.tr-tabela strong { overflow-wrap:anywhere; }
+.tr-secao>.tr-acoes { margin-top:16px; }
+.tr-grafico { max-height:330px; overflow-y:auto; }
+.tr-dia { display:grid; grid-template-columns:90px minmax(50px,1fr) 155px; gap:12px; align-items:center; padding:8px 0; font-size:.8rem; }
+.tr-dia meter { width:100%; height:16px; accent-color:#a78bfa; }
+#tr-form-erro,#tr-aviso { color:#fda4af; overflow-wrap:anywhere; }
+#treinos-conteudo [hidden] { display:none !important; }
+#treinos-conteudo button:disabled { opacity:.5; cursor:default; }
+@media(max-width:600px) { .tr-filtros,.tr-form { grid-template-columns:1fr; } .tr-dia { grid-template-columns:75px 1fr; } .tr-dia span:last-child { grid-column:2; } #treinos-conteudo .card { padding:14px; } }

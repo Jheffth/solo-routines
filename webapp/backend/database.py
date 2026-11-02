@@ -1746,6 +1746,35 @@ class LogAuditoria(Base):
     ip               = Column(String(50), nullable=True)
 
 
+class AtividadeFisica(Base):
+    __tablename__ = "atividades_fisicas"
+    __table_args__ = (UniqueConstraint("usuario_id", "print_hash", name="uq_atividade_print_usuario"),)
+    id = Column(Integer, primary_key=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    titulo = Column(String(120), nullable=False)
+    data = Column(Date, nullable=False, index=True)
+    modalidade = Column(String(20), nullable=False)
+    distancia_km = Column(Float, nullable=False, default=0)
+    duracao_segundos = Column(Integer, nullable=False)
+    passos = Column(Integer, nullable=True)
+    elevacao_m = Column(Float, nullable=True)
+    velocidade_max_kmh = Column(Float, nullable=True)
+    print_hash = Column(String(64), nullable=True)
+    criado_em = Column(DateTime, default=datetime.utcnow)
+
+
+class MetaExercicio(Base):
+    __tablename__ = "metas_exercicios"
+    id = Column(Integer, primary_key=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    titulo = Column(String(120), nullable=False)
+    modalidade = Column(String(20), nullable=False, default="todas")
+    periodo = Column(String(10), nullable=False)
+    tipo = Column(String(20), nullable=False)
+    alvo = Column(Float, nullable=False)
+    tempo_limite_segundos = Column(Integer, nullable=True)
+
+
 # ==============================================================================
 # HELPERS
 # ==============================================================================

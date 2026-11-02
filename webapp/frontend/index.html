@@ -31,6 +31,7 @@
   <link rel="stylesheet" href="css/dashboard-extrato.css">
   <link rel="stylesheet" href="css/bots.css">
   <link rel="stylesheet" href="css/calendario.css">
+  <link rel="stylesheet" href="css/treinos.css">
   <link rel="stylesheet" href="css/painel-admin.css">
   <link rel="stylesheet" href="css/materiais.css">
   <link rel="stylesheet" href="css/loja.css?v=frag1">
@@ -445,6 +446,7 @@
             </span>
             <span>Dungeons</span>
           </a>
+          <a class="nav-item" data-page="treinos" id="nav-treinos" href="#"><span class="nav-icon" aria-hidden="true">🏃</span><span>Corrida e exercícios</span></a>
           <a class="nav-item" data-page="calendario" id="nav-calendario" href="#">
             <span class="nav-icon">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -1283,6 +1285,10 @@
         <!-- PAGE: HUNTER (perfil público) -->
         <!-- ═══════════════════ BOTS ═══════════════════ -->
         <!-- ═══════════════════ CALENDARIO ═══════════════════ -->
+        <div class="page hidden" id="page-treinos">
+          <div class="sys-plate"><div class="sys-plate-texts"><h1 class="sys-plate-title">CORRIDA E EXERCÍCIOS</h1><p>Seu movimento, sua evolução e suas metas.</p></div></div>
+          <div id="treinos-conteudo" aria-live="polite"></div>
+        </div>
         <div class="page hidden" id="page-calendario">
           <div class="sys-plate">
             <div class="sys-plate-glyph">
@@ -1691,6 +1697,7 @@
   <script src="js/pages/avisos-gerais.js?v=6"></script>
   <script src="js/pages/bots.js"></script>
   <script src="js/pages/calendario.js"></script>
+  <script src="js/pages/treinos.js"></script>
   <script src="js/pages/gerencial.js"></script>
   <script src="js/pages/painel-admin.js"></script>
   <script src="js/pages/materiais.js"></script>

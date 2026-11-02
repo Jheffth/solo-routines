@@ -301,6 +301,7 @@ const App = {
       case 'avisos': await AvisosGerais.carregar(); break;
       case 'bots':      await Bots.carregar();      break;
       case 'calendario': await Calendario.carregar(); break;
+      case 'treinos': await Treinos.carregar(); break;
         case 'habilidades': await Habilidades.carregar(); break;
       case 'rotinas':   await Rotinas.carregar();   break;
         case 'tarefas':   await Tarefas.carregar();   break;
@@ -405,6 +406,7 @@ const App = {
       case 'avisos': await AvisosGerais.carregar(); break;
       case 'bots':      await Bots.carregar();      break;
       case 'calendario': await Calendario.carregar(); break;
+      case 'treinos': await Treinos.carregar(); break;
       case 'materiais': await Materiais.carregar(); break;
       // 'hunter' não recarrega sozinho: quem abre é HunterPublico.abrir(login),
       // que já sabe de quem é o perfil. Navegar para cá sem login mostraria

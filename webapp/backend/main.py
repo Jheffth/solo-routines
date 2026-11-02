@@ -39,6 +39,7 @@ from routers.calendario import router as calendario_router
 from routers.bots       import router as bots_router
 from routers.avisos_gerais import router as avisos_gerais_router
 from routers.bot_whatsapp import router as whats_router
+from routers.treinos import router as treinos_router
 from routers import solobot
 from routers.pagamentos import router as pagamentos_router
 
@@ -83,6 +84,7 @@ def health():
 
 app.include_router(auth_router,          prefix="/api")
 app.include_router(oauth_router,         prefix="/api")
+app.include_router(treinos_router, prefix="/api")
 app.include_router(rotinas_router,       prefix="/api")
 app.include_router(habilidades_router,   prefix="/api")
 app.include_router(tarefas_router,       prefix="/api")
