@@ -704,6 +704,12 @@ def main_teste():
            'criação pelo bot mantém a permissão de Staff para passivas')
         db.close()
 
+        db = database.SessionLocal()
+        conversa.processar(canal, '/treino', db)
+        ok('Strava' in canal.saida[-1]['texto'] and '/rot treino DD/MM/AAAA' in canal.saida[-1]['texto'],
+           '/treino orienta o envio da imagem sem criar missão nem prompt')
+        db.close()
+
         print("\n=== A CONVERSA OK ===\n")
 
 

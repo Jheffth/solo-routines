@@ -114,7 +114,7 @@ def executavel_ocr():
     return shutil.which(os.getenv('TESSERACT_CMD', 'tesseract'))
 
 
-def ler_print(conteudo):
+def ler_print(conteudo, detalhes=False):
     from PIL import Image, ImageOps, UnidentifiedImageError
     import warnings
     try:
@@ -153,4 +153,53 @@ def ler_print(conteudo):
     dados = extrair_texto(textos[0])
     dados.update({k: v for k, v in extrair_texto(textos[1]).items() if k != 'titulo'})
     dados.update({k: v for k, v in extrair_texto(textos[2]).items() if k in ('passos', 'elevacao_m', 'data', 'velocidade_max_kmh')})
+    if detalhes:
+        texto = '\n'.join(textos)
+        normalizado = ''.join(c for c in unicodedata.normalize('NFD', texto.lower())
+                              if unicodedata.category(c) != 'Mn')
+        strava = ('strava' in normalizado and ('distancia' in normalizado
+                  or 'tempo de movimenta' in normalizado or 'tempo de movimento' in normalizado))
+        relativa = re.search(r'\b(hoje|ontem)\b', normalizado)
+        return dict(dados=dados, strava=strava,
+                    data_relativa=relativa[1] if relativa else None)
     return dados
+
+
+class TreinoDuplicado(Exception):
+    """O mesmo arquivo ou as mesmas métricas do dia já foram importados."""
+
+
+def assinatura_importacao(dados):
+    import hashlib
+    # O mesmo print é recomprimido por WhatsApp, Telegram e Bella.exe.
+    # Metadados e bytes da imagem não são uma identidade comum aos canais.
+    valor = f"{dados['data'].isoformat()}|{dados['distancia_km']:.3f}|{dados['duracao_segundos']}"
+    return hashlib.sha256(valor.encode('ascii')).hexdigest()
+
+
+def salvar_atividade(db, usuario_id, dados):
+    from sqlalchemy.exc import IntegrityError
+    from database import AtividadeFisica, ImportacaoTreino
+    chave = assinatura_importacao(dados) if dados.get('print_hash') else None
+    if chave:
+        # Também reconhece os prints salvos na versão anterior à tabela de importações.
+        anterior = db.query(AtividadeFisica.id).filter(
+            AtividadeFisica.usuario_id == usuario_id,
+            AtividadeFisica.data == dados['data'],
+            AtividadeFisica.distancia_km == dados['distancia_km'],
+            AtividadeFisica.duracao_segundos == dados['duracao_segundos'],
+            AtividadeFisica.print_hash.isnot(None)).first()
+        if anterior:
+            raise TreinoDuplicado()
+    a = AtividadeFisica(usuario_id=usuario_id, **dados)
+    db.add(a)
+    try:
+        db.flush()
+        if chave:
+            db.add(ImportacaoTreino(usuario_id=usuario_id, atividade_id=a.id, assinatura=chave))
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise TreinoDuplicado() from None
+    db.refresh(a)
+    return a

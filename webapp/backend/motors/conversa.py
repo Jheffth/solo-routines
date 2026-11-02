@@ -141,6 +141,13 @@ def _processar(texto: str, db: Session, canal):
 
     hoje = tempo.hoje()
 
+    if txt.lower().split(' ', 1)[0] == '/treino':
+        canal.enviar("🏃 Envie o print do Strava para registrar automaticamente sua corrida. "
+                     "Hoje/Ontem usam a data do envio. Para outro dia, use a legenda "
+                     "`/rot treino DD/MM/AAAA`. Escreva caminhada ou ciclismo para mudar a modalidade. "
+                     "Veja os resultados na guia Corrida e exercícios.")
+        return
+
     # ── /start ou /ajuda ─────────────────────────────────
     if txt.lower() in ("/start", "/ajuda", "ajuda"):
         # O MENU COMEÇA PELOS BOTÕES, e não pela lista de comandos. Quem
@@ -172,6 +179,7 @@ def _processar(texto: str, db: Session, canal):
             "▸ `/penitencia` — dívida em aberto\n"
             "▸ `/portoes` — quais abrem hoje\n"
             "▸ `/conquistas` · `/rotinas` · `/add [título]` (tarefa para hoje)\n"
+            "▸ `/treino` — registrar corrida enviando um print do Strava\n"
             "▸ `/criarrotina título | prioridade | dificuldade | início | fim | descrição`\n"
             "  Sem dias informados: todos os dias. Para dias específicos, diga: dias da semana segunda, quarta e sexta.\n"
             "  Para passiva: acrescente `| PASSIVA`, ou diga: tipo passiva. Informe início e fim.\n"

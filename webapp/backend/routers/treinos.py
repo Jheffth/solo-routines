@@ -5,7 +5,6 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from pydantic import BaseModel, Field, model_validator, ConfigDict
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
 from auth.router import get_usuario_atual
 from database import get_db, Usuario, AtividadeFisica, MetaExercicio
 from motors import tempo, treinos as motor
@@ -110,14 +109,10 @@ def painel(periodo: Periodo = 'mes', referencia: date | None = None,
 
 @router.post('/atividades', status_code=201)
 def criar(entrada: AtividadeEntrada, db: Session = Depends(get_db), usuario: Usuario = Depends(get_usuario_atual)):
-    a = AtividadeFisica(usuario_id=usuario.id, **entrada.model_dump())
-    db.add(a)
     try:
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(409, 'Este print já foi registrado na sua conta.') from None
-    db.refresh(a)
+        a = motor.salvar_atividade(db, usuario.id, entrada.model_dump())
+    except motor.TreinoDuplicado:
+        raise HTTPException(409, 'Este print ou treino já foi registrado na sua conta.') from None
     return serializar(a)
 
 

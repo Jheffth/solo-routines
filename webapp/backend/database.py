@@ -1760,7 +1760,17 @@ class AtividadeFisica(Base):
     elevacao_m = Column(Float, nullable=True)
     velocidade_max_kmh = Column(Float, nullable=True)
     print_hash = Column(String(64), nullable=True)
+    importacoes = relationship("ImportacaoTreino", cascade="all, delete-orphan")
     criado_em = Column(DateTime, default=datetime.utcnow)
+
+
+class ImportacaoTreino(Base):
+    __tablename__ = "importacoes_treino"
+    __table_args__ = (UniqueConstraint("usuario_id", "assinatura", name="uq_importacao_treino_usuario"),)
+    id = Column(Integer, primary_key=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    atividade_id = Column(Integer, ForeignKey("atividades_fisicas.id", ondelete="CASCADE"), nullable=False, index=True)
+    assinatura = Column(String(64), nullable=False)
 
 
 class MetaExercicio(Base):
