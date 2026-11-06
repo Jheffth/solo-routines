@@ -1,7 +1,7 @@
 {
   "_leia": "O que o bot do Rotinas sabe fazer pelo Solo Bot. Comando novo no motors/conversa.py = uma linha aqui + versao nova (AAAA.MM.DD, com .2, .3 no mesmo dia). O que for escrito em 'novidades' vira mensagem para quem tem o Rotinas conectado ao Solo Bot; deixe [] para mudar em silêncio. 'oculto': true = existe, mas não faz sentido pelo Solo Bot. 'uso' = a sintaxe exata com os argumentos na ordem (ex.: \"/somar <título> <valor>\"): é o que a IA do Solo Bot segue ao traduzir uma frase ou um áudio em comando. O test_solobot.py falha se este arquivo e o bot se desencontrarem.",
   "app": "rot",
-  "versao": "2026.11.02",
+  "versao": "2026.11.06",
   "comandos": [
     {"comando": "/hoje",       "descricao": "Tudo do dia, com botões",                  "exemplo": "/rot hoje"},
     {"comando": "/pendentes",  "descricao": "Só o que falta hoje",                      "exemplo": "/rot pendentes"},
@@ -16,7 +16,9 @@
     {"comando": "/refazer",   "descricao": "Corrigir o valor do último /somar",       "exemplo": "/rot refazer 21,10", "uso": "/refazer <valor certo>"},
     {"comando": "/bloco",      "descricao": "Fechar uma etapa do circuito",             "exemplo": "/rot bloco treino", "uso": "/bloco <título>"},
     {"comando": "/confessar",  "descricao": "Confessar a passiva que você quebrou",     "exemplo": "/rot confessar açúcar", "uso": "/confessar <passiva>"},
-    {"comando": "/reerguer",   "descricao": "Segunda chance numa missão (custa Mana)",  "exemplo": "/rot reerguer leitura", "uso": "/reerguer <título>"},
+    {"comando": "/reerguer",   "descricao": "Segunda chance numa missão ou em todas as fracassadas de hoje (custa Mana por missão)", "exemplo": "/rot reerguer todas", "uso": "/reerguer <título|todas>"},
+    {"comando": "/reeguer",    "descricao": "Reerguer todas as missões fracassadas de hoje que permitem segunda chance (custa Mana por missão)", "exemplo": "/rot reeguer todas", "uso": "/reeguer <título|todas>"},
+    {"comando": "/revogar",    "descricao": "Revogar todas as suas punições em aberto", "exemplo": "/rot revogar todas", "uso": "/revogar todas"},
     {"comando": "/status",     "descricao": "XP, nível e corrente",                     "exemplo": "/rot status"},
     {"comando": "/extrato",    "descricao": "O que rendeu hoje",                        "exemplo": "/rot extrato"},
     {"comando": "/penitencia", "descricao": "Dívida em aberto",                         "exemplo": "/rot penitencia"},
@@ -29,5 +31,5 @@
     {"comando": "/ajuda",      "descricao": "Todos os comandos do Rotinas",             "exemplo": "/rot ajuda"}
   ],
   "exemplos": [],
-  "novidades": []
+  "novidades": ["Novos: /rot reeguer todas reabre as missões elegíveis de hoje por Mana; /rot revogar todas retira suas punições em aberto."]
 }

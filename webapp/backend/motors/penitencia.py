@@ -237,6 +237,15 @@ def revogar(db, usuario_id: int, missao_titulo: str, missao_data: date) -> int:
                    TarefaDia.origem_data == missao_data,
                    TarefaDia.status.notin_(("CONCLUIDA", "CANCELADA"))))
     achadas = q.all()
+    return _revogar_pendentes(db, achadas)
+
+
+def revogar_todas(db, usuario_id: int) -> int:
+    """Revoga a dívida aberta do hunter usando os mesmos ajustes do Reerguer."""
+    return _revogar_pendentes(db, pendentes(db, usuario_id))
+
+
+def _revogar_pendentes(db, achadas) -> int:
     from motors import medidor
     for t in achadas:
         # Devolve o degrau: a penitencia nao chegou a valer.

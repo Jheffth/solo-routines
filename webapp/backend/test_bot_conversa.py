@@ -710,7 +710,104 @@ def main_teste():
            '/treino orienta o envio da imagem sem criar missão nem prompt')
         db.close()
 
+        testar_comandos_em_lote()
         print("\n=== A CONVERSA OK ===\n")
+
+
+def testar_comandos_em_lote():
+    from motors import conversa, economia, tempo
+    from routers.solobot import CanalSoloBot
+
+    hoje = tempo.hoje()
+    with database.SessionLocal() as db:
+        u = database.Usuario(nome="Lote", login="teste-lote", senha_hash=hash_senha("teste123"))
+        outro = database.Usuario(nome="Outro lote", login="teste-lote-outro", senha_hash=hash_senha("teste123"))
+        db.add_all([u, outro])
+        db.commit()
+        canal = CanalSoloBot("teste-lote", u)
+        custo = economia.custo_reerguer(db)
+
+        def missao(titulo, dono=u, data=hoje, status="FRACASSADA", **extra):
+            dados = dict(titulo=titulo, usuario_id=dono.id, tipo="DIARIA",
+                         hora_inicio="00:00", hora_fim="00:01", ativo=True)
+            dados.update(extra)
+            r = database.Rotina(**dados)
+            db.add(r)
+            db.flush()
+            ed = database.ExecucaoDia(rotina_id=r.id, usuario_id=dono.id, data=data, status=status)
+            db.add(ed)
+            db.commit()
+            return ed
+
+        a, b = missao("Lote A"), missao("Lote B")
+        terceira = missao("Lote C")
+        estrangeira = missao("Lote outro", dono=outro)
+        antiga = missao("Lote ontem", data=hoje - timedelta(days=1))
+        concluida = missao("Lote concluida", status="CONCLUIDA")
+        progressiva = missao("Lote progressiva", eh_progressiva=True)
+        sem_janela = missao("Lote sem janela", hora_inicio=None, hora_fim=None)
+        repetida = missao("Lote repetida")
+        repetida.reerguida = True
+        u.moedas = custo * 2
+        db.commit()
+        xp_antes = u.xp_total
+        conversa.processar(canal, "/reeguer todas", db)
+        ok(a.status == b.status == "PENDENTE" and a.reerguida and b.reerguida,
+           '/reeguer todas reabre as elegíveis e marca a segunda chance')
+        ok(u.moedas == 0 and u.xp_total == xp_antes,
+           'lote cobra Mana por missão sem conceder XP')
+        ok(terceira.status == "FRACASSADA" and "Mana insuficiente" in canal.saida[-1]['texto'],
+           'saldo insuficiente mantém o restante fracassado e informa a causa')
+        ok(estrangeira.status == antiga.status == progressiva.status == sem_janela.status == repetida.status == "FRACASSADA"
+           and concluida.status == "CONCLUIDA", 'lote respeita dono, data, estado e regras de reerguer')
+        u.moedas = custo
+        db.commit()
+        conversa.processar(canal, "/REERGUER TODAS", db)
+        ok(terceira.status == "PENDENTE" and u.moedas == 0,
+           'grafia reerguer e maiúsculas também funcionam')
+        conversa.processar(canal, "/reeguer todas", db)
+        ok(u.moedas == 0 and a.status == "PENDENTE", 'repetir lote não cobra pelas já reerguidas')
+        canal_outro = CanalSoloBot("vazio", outro)
+        conversa.processar(canal_outro, "/revogar todas", db)
+        ok('Nenhuma punição' in canal_outro.saida[-1]['texto'],
+           'revogar sem dívida informa que não há punições')
+
+        pacto = database.Pacto(usuario_id=u.id, titulo="Flexões", base=10, valor_atual=40,
+                               tipo="QUANTITATIVA", vezes_caiu=2)
+        db.add(pacto)
+        db.flush()
+
+        def punicao(dono=u, status="PENDENTE", natureza="PUNICAO", **extra):
+            t = database.TarefaDia(titulo="Dívida lote", usuario_id=dono.id, status=status,
+                                  natureza=natureza, data_prevista=hoje - timedelta(days=2), **extra)
+            db.add(t)
+            db.flush()
+            return t.id
+
+        p1 = punicao(pacto_id=pacto.id, origem_titulo="Antiga", origem_data=hoje - timedelta(days=2))
+        p2 = punicao(status="ATIVA", pacto_id=pacto.id)  # Sem origem também é dívida aberta.
+        preservadas = [punicao(dono=outro), punicao(status="CONCLUIDA"),
+                       punicao(status="CANCELADA"), punicao(natureza="NORMAL")]
+        db.commit()
+        moedas_antes = u.moedas
+        conversa.processar(canal, "/revogar", db)
+        ok(db.get(database.TarefaDia, p1) is not None and 'Use:' in canal.saida[-1]['texto'],
+           'revogação exige o argumento todas')
+        conversa.processar(canal, "/revogar todas", db)
+        ok(db.get(database.TarefaDia, p1) is None and db.get(database.TarefaDia, p2) is None,
+           'revoga todas as punições abertas, inclusive antigas e sem origem')
+        ok(all(db.get(database.TarefaDia, ident) is not None for ident in preservadas),
+           'preserva outros hunters, tarefas normais e punições encerradas')
+        ok(pacto.vezes_caiu == 0 and pacto.valor_atual == pacto.base
+           and u.moedas == moedas_antes and u.xp_total == xp_antes,
+           'revogar desfaz a escala do pacto sem conceder XP nem Mana')
+        conversa.processar(canal, "/revogar todas", db)
+        ok('Nenhuma punição' in canal.saida[-1]['texto'], 'repetir revogação informa dívida vazia')
+        estrangeira.status = "CONCLUIDA"
+        db.commit()
+        conversa.processar(canal_outro, "/reeguer todas", db)
+        ok('Nenhuma missão fracassada' in canal_outro.saida[-1]['texto'],
+           'lote sem missões fracassadas informa lista vazia')
 
 
 if __name__ == "__main__":

@@ -172,7 +172,9 @@ def _processar(texto: str, db: Session, canal):
             "Também aceita: `/somar R$ 30 ao turno da noite.`\n"
             "▸ `/bloco [título]` — fechar etapa do circuito\n"
             "▸ `/confessar [título]` — a passiva que você quebrou\n"
-            "▸ `/reerguer [título]` — segunda chance (custa Mana)\n\n"
+            "▸ `/reerguer [título]` — segunda chance (custa Mana)\n"
+            "▸ `/reeguer todas` ou `/reerguer todas` — reabrir as fracassadas de hoje (custa Mana por missão)\n"
+            "▸ `/revogar todas` — revogar todas as suas punições em aberto\n\n"
             "*Conferir*\n"
             "▸ `/status` — XP, nível e corrente\n"
             "▸ `/extrato` — o que rendeu hoje\n"
@@ -219,6 +221,40 @@ def _processar(texto: str, db: Session, canal):
         ))
         return
 
+    comando, *argumentos = txt.lower().split(maxsplit=1) or [""]
+    argumento = argumentos[0].strip() if argumentos else ""
+    if comando in ("/reeguer", "/reerguer") and argumento == "todas":
+        alvos = [a for a in _alvos_do_dia(db, usuario, hoje)
+                 if a.tipo == "r" and a.status == "FRACASSADA"]
+        if not alvos:
+            canal.enviar("Nenhuma missão fracassada de hoje para reerguer.")
+            return
+        linhas, reerguidas = [], 0
+        mana_antes = usuario.moedas or 0
+        for alvo in alvos:
+            sucesso, curta, _ = _agir(db, usuario, canal, "reer", alvo, hoje)
+            if sucesso:
+                reerguidas += 1
+                linhas.append(f"✅ {alvo.titulo}")
+            else:
+                db.rollback()
+                linhas.append(f"⚠️ {alvo.titulo}: {curta}")
+        canal.enviar(f"🔥 *{reerguidas} de {len(alvos)} missões reerguidas.*\n"
+                     f"💰 Mana gasta: {mana_antes - (usuario.moedas or 0)}.\n"
+                     "Valem até 23:59, sem recompensa.\n\n" + "\n".join(linhas))
+        return
+
+    if comando == "/revogar":
+        if argumento != "todas":
+            canal.enviar("⚠️ Use: `/revogar todas` — revoga suas punições em aberto.")
+            return
+        from motors import penitencia
+        quantidade = penitencia.revogar_todas(db, usuario.id)
+        db.commit()
+        canal.enviar(f"⛓️ *{quantidade} punições revogadas.*" if quantidade else
+                     "Nenhuma punição em aberto para revogar.")
+        return
+
     # ── AS AÇÕES POR TÍTULO ───────────────────────────────
     #
     # Todas passam pelo MESMO caminho: acha (podendo não achar, achar uma
@@ -236,6 +272,7 @@ def _processar(texto: str, db: Session, canal):
         ("/retomar",   "ret",  "retomar"),
         ("/cancelar",  "can",  "cancelar"),
         ("/reerguer",  "reer", "reerguer"),
+        ("/reeguer",   "reer", "reerguer"),
         ("/confessar", "conf", "confessar"),
     ):
         if not txt.lower().startswith(gatilho):
