@@ -76,26 +76,44 @@ def extrair_texto(texto):
     t = ''.join(c for c in unicodedata.normalize('NFD', texto.lower())
                 if unicodedata.category(c) != 'Mn')
     dados = {}
-    titulo = re.search(r'(?:^|\n)([^\r\n]+)\s*\n\s*Dist[âa]ncia', texto, re.I)
-    if titulo:
-        dados['titulo'] = titulo[1].strip()[:120]
+    # Título: última linha legível antes de "Distância", pulando banners de PR/conquista.
+    rotulo = re.search(r'dist.{0,2}ncia', texto, re.I)
+    if rotulo:
+        for linha in reversed(texto[:rotulo.start()].splitlines()):
+            limpa = re.sub(r'^[^\wÀ-ÿ]+', '', linha.strip())
+            norm = ''.join(c for c in unicodedata.normalize('NFD', limpa.lower()) if unicodedata.category(c) != 'Mn')
+            if re.search(r'melhor|recorde|conquista|\bpr\b|segmento', norm):
+                continue
+            if len(re.findall(r'[a-z]', norm)) >= 3:
+                dados['titulo'] = limpa[:120]
+                break
     maxima = re.search(r'velocidade max(?:ima|\.)?\s*\n\s*(\d+(?:[.,]\d+)?)\s*km/h', t)
     if maxima:
         dados['velocidade_max_kmh'] = float(maxima[1].replace(',', '.'))
-    km = re.search(r'(\d+(?:[.,]\d+)?)\s*km(?!\s*[/h])\b', t)
+    # Distância ancorada no rótulo: selos de PR no mapa ("melhor tempo em 1 km")
+    # e o ritmo ("6:58 /km") não podem ser lidos como a distância do treino.
+    km_padrao = r'(\d+(?:[.,]\d+)?)\s*km(?!\s*/|/|h)\b'
+    rotulo_km = re.search(r'dist.{0,2}ncia', t)
+    if rotulo_km:
+        km = re.search(km_padrao, t[rotulo_km.end():rotulo_km.end() + 120])
+    else:
+        linhas = [l for l in t.splitlines() if not re.search(r'melhor|recorde|tempo em|ritmo|/km', l)]
+        km = re.search(km_padrao, '\n'.join(linhas))
     if km:
         dados['distancia_km'] = float(km[1].replace(',', '.'))
-    movimento = re.search(r'(?:tempo de movimentacao|tempo de movimento|tempo decorrido|duracao)([\s\S]{0,120})', t)
+    # O OCR troca o "ç" por g, ¢ ou c: aceita qualquer caractere nessa posição.
+    movimento = re.search(r'(?:tempo de movimen\S*|tempo decorrido|dura\S{1,2}ao)([\s\S]{0,120})', t)
     if movimento:
-        relogio = re.search(r'\b\d{1,3}:\d{2}(?::\d{2})?\b', movimento[1])
+        # Ignora o ritmo (mm:ss /km) que divide a linha com o tempo no layout de duas colunas.
+        relogio = re.search(r'\b\d{1,3}:\d{2}(?::\d{2})?\b(?!\s*/)', movimento[1])
         if relogio:
             try:
                 dados['duracao_segundos'] = duracao(relogio[0])
             except ValueError:
                 pass
     for campo, rotulo, padrao in [('passos', 'passos', r'\b\d[\d. ]*\b'),
-                                 ('elevacao_m', 'ganho de elevacao', r'\b\d+\s*m\b')]:
-        trecho = re.search(rotulo + r'\s*\n([^\n]+)', t)
+                                 ('elevacao_m', r'ganho de eleva\S{1,2}ao', r'\b\d+\s*m\b')]:
+        trecho = re.search(rotulo + r'[^\n]*\n([^\n]+)', t)
         if trecho:
             valor = re.search(padrao, trecho[1])
             if valor:

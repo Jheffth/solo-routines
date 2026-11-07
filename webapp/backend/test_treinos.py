@@ -77,6 +77,30 @@ def test_parser_strava():
     assert 'distancia_km' not in m.extrair_texto('Velocidade média\n6,4 km/h')
 
 
+def test_parser_ignora_pr_do_mapa_e_ritmo():
+    # Regressão 07/11/2026: o selo "O melhor tempo em 1 km" no mapa virava a distância.
+    texto=('O melhor tempo em 1 km\nVida útil\nJefferson Costa\nHoje às 06:36 · Planaltina\nCorrida matinal\n'
+           'Seu melhor tempo em 1 milha!\nDistância Ritmo médio\n2,35 km 6:58 /km\n'
+           'Tempo de movimenta¢ao Ganho de elevagao\n16:21 21m\nElevação máxima Passos\n1.000 m 2.478')
+    d=m.extrair_texto(texto)
+    assert d['titulo']=='Corrida matinal'
+    assert d['distancia_km']==2.35 and d['duracao_segundos']==981 and d['elevacao_m']==21
+    coluna=('O melhor tempo em 1 km\nCorrida matinal\nSeu melhor tempo em 1\nDistancia\n2,35 km\n'
+            'Tempo de movimentagao\n16:21\nElevagao maxima\n1.000m')
+    assert m.extrair_texto(coluna)['distancia_km']==2.35
+    assert m.extrair_texto(coluna)['duracao_segundos']==981
+    assert 'distancia_km' not in m.extrair_texto('O melhor tempo em 1 km\nRitmo médio\n6:58 /km')
+
+
+def test_print_real_strava_pr(tmp_path):
+    from pathlib import Path
+    arquivo=Path(__file__).parent/'tests'/'fixtures'/'strava_2026-11-07.jpg'
+    if not m.executavel_ocr() or not arquivo.exists():
+        pytest.skip('Tesseract ou fixture ausente')
+    d=m.ler_print(arquivo.read_bytes())
+    assert d['distancia_km']==2.35 and d['duracao_segundos']==981 and d['passos']==2478
+
+
 @pytest.mark.parametrize('texto,esperado',[('17:50',1070),('1:02:03',3723),('125:00',7500)])
 def test_duracao(texto,esperado):
     assert m.duracao(texto)==esperado

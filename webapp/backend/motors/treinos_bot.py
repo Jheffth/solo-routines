@@ -94,8 +94,12 @@ def processar(db, usuario, imagem_base64, mime, legenda='', enviado_em=None):
     minutos, segundos = divmod(atividade.duracao_segundos, 60)
     total_km = f'{resumo["distancia_km"]:g}'.replace('.', ',')
     total_minutos = f'{resumo["minutos"]:g}'.replace('.', ',')
+    ritmo = ''
+    if atividade.distancia_km:
+        r_min, r_seg = divmod(round(atividade.duracao_segundos / atividade.distancia_km), 60)
+        ritmo = f' · {r_min}:{r_seg:02d} /km'
     texto = (f'🏃 Corrida e exercícios — registrado em {dia.strftime("%d/%m/%Y")}\n'
-             f'{km} km · {minutos}:{segundos:02d} · {atividade.modalidade}\n'
+             f'{km} km · {minutos}:{segundos:02d}{ritmo} · {atividade.modalidade}\n'
              f'Total do dia: {total_km} km e {total_minutos} minutos.\n'
              'Médias e metas atualizadas na guia Corrida e exercícios.')
     return resposta('registrado', texto, atividade_id=atividade.id, data=dia.isoformat(),
