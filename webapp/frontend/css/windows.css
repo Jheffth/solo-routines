@@ -320,8 +320,16 @@
 }
 
 /* ── Modal de Confirmação ──────────────────────────────── */
-#confirmacao-modal .draggable-window {
-  width: 380px;
+/* Ninguém posiciona esta janela por JS: sem coordenadas, o `fixed` herdava a
+   posição estática no fim do <body> (milhares de px abaixo) e só o backdrop
+   aparecia — a exclusão de treinos ficava presa na tela escura. Centraliza
+   por inset + margin:auto para não brigar com o transform da animação. */
+#modal-confirmacao {
+  inset: 0;
+  margin: auto;
+  min-width: 0;
+  width: min(420px, 95vw);
+  height: fit-content;
 }
 .modal-message {
   font-size: 0.95rem;
