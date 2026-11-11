@@ -147,6 +147,10 @@ def test_chave_unica_e_rollback_sem_atividade_orfa(ponte_cliente):
     ('Strava App\nDistância\n1,91 km\nHoje',True),
     ('Strava App\nTempo de movimentação\n17:50\nHoje',True),
     ('Foto de roupa\nDistância\n1,91 km',False),
+    ('Prévia da assinatura\nCorrida matinal\nDistancia Ritmo médio\n2,35 km 11:09 /km\nTempo de movimenta¢ao Ganho de elevagao\n26:16 22m\nPassos\n3.072\nAthlete Intelligence',True),
+    ('Distance Avg pace\n5.00 km 6:00 /km\nMoving Time Elevation Gain\n30:00 40 m',True),
+    ('Foto de bar\nDistância\nTempo de movimentação\n26:16',False),
+    ('Vestido preto\nPassos de dança\nMelhor tempo para sair',False),
 ])
 def test_classificacao_strava_incompleto(monkeypatch,texto,esperado):
     import io

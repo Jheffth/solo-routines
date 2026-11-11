@@ -132,6 +132,20 @@ def executavel_ocr():
     return shutil.which(os.getenv('TESSERACT_CMD', 'tesseract'))
 
 
+# O Strava em português não escreve "Strava" na tela de resumo: o print é reconhecido pelos rótulos típicos do app.
+_ROTULOS_STRAVA = (r'athlete intelligence', r'ritmo medio', r'ganho de eleva\S{1,2}ao', r'eleva\S{1,2}ao maxima', r'previa da assinatura',
+                   r'melhor tempo', r'\bpassos\b', r'avg pace', r'elevation gain', r'max elevation', r'best (?:time|effort)', r'subscription preview')
+
+
+def parece_strava(normalizado):
+    """normalizado: texto do OCR em minúsculas e sem acentos. Strava citado, ou distância + tempo + 2 rótulos típicos do app."""
+    distancia = 'distancia' in normalizado or 'distance' in normalizado
+    tempo = bool(re.search(r'tempo de movimen|moving time', normalizado))
+    if 'strava' in normalizado and (distancia or tempo):
+        return True
+    return distancia and tempo and sum(bool(re.search(r, normalizado)) for r in _ROTULOS_STRAVA) >= 2
+
+
 def ler_print(conteudo, detalhes=False):
     from PIL import Image, ImageOps, UnidentifiedImageError
     import warnings
@@ -175,8 +189,7 @@ def ler_print(conteudo, detalhes=False):
         texto = '\n'.join(textos)
         normalizado = ''.join(c for c in unicodedata.normalize('NFD', texto.lower())
                               if unicodedata.category(c) != 'Mn')
-        strava = ('strava' in normalizado and ('distancia' in normalizado
-                  or 'tempo de movimenta' in normalizado or 'tempo de movimento' in normalizado))
+        strava = parece_strava(normalizado)
         relativa = re.search(r'\b(hoje|ontem)\b', normalizado)
         return dict(dados=dados, strava=strava,
                     data_relativa=relativa[1] if relativa else None)
